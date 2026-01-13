@@ -1,0 +1,130 @@
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import reportWebVitals from './reportWebVitals';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Login from './pages/login';
+import PageNotFound from './pages/error/page-not-found';
+import Dashboard from './pages/dashboard';
+import TaskCreate from './pages/task-create';
+import Register from './pages/register';
+import TaskDisplay from './pages/task-display';
+import CreateClient from './pages/client-create';
+import ViewClients from './pages/client-view';
+import ClientProfile from './pages/client-profile';
+import TaskProfile from './pages/task-profile';
+import BillDisplay from './pages/billing-view';
+import FinanceEntry from './pages/finance-voucher-entry';
+import BankList from './pages/bank-account';
+import CapitalAccounts from './pages/capital-accuont';
+import ViewSales from './pages/sale-display';
+import ViewPurchase from './pages/purchase-display';
+import ViewReceived from './pages/received-display';
+import ViewPayments from './pages/payment-display';
+import ViewContra from './pages/contra-display';
+import ViewJournal from './pages/journal-display';
+import ViewExpenses from './pages/expense-display';
+import ViewStaff from './pages/staff-display';
+import StaffReport from './pages/staff-report';
+import ManageAttendance from './pages/staff-attendance';
+import OfficeAssistance from './pages/office-assistance';
+import ViewDSCRegister from './pages/office-assistance/dsc-report';
+import ViewFileIndex from './pages/office-assistance/file-index';
+import PasswordGroups from './pages/office-assistance/password-group';
+import ImportantLinks from './pages/office-assistance/important-link';
+import Services from './pages/office-assistance/services';
+import RecurringGroups from './pages/office-assistance/recurring-group';
+import FirmGroups from './pages/office-assistance/firm-groups';
+import ViewInactiveClients from './pages/office-assistance/inactive-client';
+import CAList from './pages/office-assistance/ca-list';
+import AutoReminder from './pages/office-assistance/auto-reminder';
+import Broadcast from './pages/broadcast';
+import TextMessageOoms from './pages/broadcast/message/ooms';
+import BroadcastReport from './pages/broadcast/report';
+import WhatsAppOoms from './pages/broadcast/whatsapp/ooms';
+import PushNotification from './pages/broadcast/push-notification/notification';
+import Settings from './pages/settings';
+import StaffList from './pages/settings/staff-list';
+import PermissionList from './pages/settings/permission';
+import InvoiceSettings from './pages/settings/invoice-setting';
+import AppSettings from './pages/settings/app-setting';
+import EmailConfig from './pages/settings/email-setting';
+import DefaultDaterange from './pages/settings/daterange-setting';
+import GoogleAuthentication from './pages/settings/google-auth';
+import GatewayConfig from './pages/settings/gateway-setting';
+import ViewBranch from './pages/settings/branch';
+import ViewAdmins from './pages/settings/admin';
+import Subscription from './pages/settings/subscription';
+import WebsiteSettings from './pages/settings/website';
+import WidgetSettings from './pages/settings/widget';
+import LedgerGroup from './finance/ledger-group';
+import ExpenseDetails from './pages/expense-details';
+import DiscountVoucherDetails from './pages/discount';
+import MyProfile from './components/myProfile';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <BrowserRouter>
+    <Routes>
+      <Route path='/' element={<Dashboard />}></Route>
+      <Route path='*' element={<Dashboard />}></Route>
+      <Route path='login' element={<Login />}></Route>
+      <Route path='/Myprofile' element={<MyProfile />}></Route>
+      <Route path='register' element={<Register />}></Route>
+      <Route path='task/create' element={<TaskCreate />}></Route>
+      <Route path='task/view' element={<TaskDisplay />}></Route>
+      <Route path='task/profile' element={<TaskProfile />}></Route>
+      <Route path='client/create' element={<CreateClient />}></Route>
+      <Route path='client/view' element={<ViewClients />}></Route>
+      <Route path='client/profile' element={<ClientProfile />}></Route>
+      <Route path='billing' element={<BillDisplay />}></Route>
+      <Route path='finance/voucher' element={<FinanceEntry />}></Route>
+      <Route path='finance/voucher/bank-list' element={<BankList />}></Route>
+      <Route path='finance/voucher/capital-account' element={<CapitalAccounts />}></Route>
+      <Route path='finance/voucher/sales' element={<ViewSales />}></Route>
+      <Route path='finance/voucher/purchase' element={<ViewPurchase />}></Route>
+      <Route path='finance/voucher/received' element={<ViewReceived />}></Route>
+      <Route path='finance/voucher/payment' element={<ViewPayments />}></Route>
+      <Route path='finance/voucher/contra' element={<ViewContra />}></Route>
+      <Route path='finance/voucher/journal' element={<ViewJournal />}></Route>
+      <Route path='finance/voucher/expense' element={<ViewExpenses />}></Route>
+      <Route path='finance/voucher/expense-details' element={<ExpenseDetails />}></Route>
+      <Route path='finance/voucher/ledger-group' element={<LedgerGroup />}></Route>
+      <Route path='finance/voucher/discount' element={<DiscountVoucherDetails />}></Route>
+      <Route path='staff/view' element={<ViewStaff />}></Route>
+      <Route path='staff/team-report' element={<StaffReport />}></Route>
+      <Route path='staff/attendance' element={<ManageAttendance />}></Route>
+      <Route path='staff/office-assistance' element={<OfficeAssistance />}></Route>
+      <Route path='staff/office-assistance/dsc-report' element={<ViewDSCRegister />}></Route>
+      <Route path='staff/office-assistance/file-index' element={<ViewFileIndex />}></Route>
+      <Route path='staff/office-assistance/password-groups' element={<PasswordGroups />}></Route>
+      <Route path='staff/office-assistance/important-links' element={<ImportantLinks />}></Route>
+      <Route path='staff/office-assistance/services' element={<Services />}></Route>
+      <Route path='staff/office-assistance/recurring-groups' element={<RecurringGroups />}></Route>
+      <Route path='staff/office-assistance/firm-groups' element={<FirmGroups />}></Route>
+      <Route path='staff/office-assistance/inactive-client' element={<ViewInactiveClients />}></Route>
+      <Route path='staff/office-assistance/ca-list' element={<CAList />}></Route>
+      <Route path='staff/office-assistance/auto-reminder' element={<AutoReminder />}></Route>
+      <Route path='broadcast' element={<Broadcast />}></Route>
+      <Route path='broadcast/text-message/ooms' element={<TextMessageOoms />}></Route>
+      <Route path='broadcast/whatsapp/ooms' element={<WhatsAppOoms />}></Route>
+      <Route path='broadcast/push-notification' element={<PushNotification />}></Route>
+      <Route path='broadcast/report' element={<BroadcastReport />}></Route>
+      <Route path='settings' element={<Settings />}></Route>
+      <Route path='settings/staff-list' element={<StaffList />}></Route>
+      <Route path='settings/permissions' element={<PermissionList />}></Route>
+      <Route path='settings/invoice-setting' element={<InvoiceSettings />}></Route>
+      <Route path='settings/app-setting' element={<AppSettings />}></Route>
+      <Route path='settings/email-setting' element={<EmailConfig />}></Route>
+      <Route path='settings/daterange-setting' element={<DefaultDaterange />}></Route>
+      <Route path='settings/google-auth' element={<GoogleAuthentication />}></Route>
+      <Route path='settings/gateway-setting' element={<GatewayConfig />}></Route>
+      <Route path='settings/branch' element={<ViewBranch />}></Route>
+      <Route path='settings/admin' element={<ViewAdmins />}></Route>
+      <Route path='settings/website' element={<WebsiteSettings />}></Route>
+      <Route path='settings/widget' element={<WidgetSettings />}></Route>
+      <Route path='subscription' element={<Subscription />}></Route>
+    </Routes>
+  </BrowserRouter>
+);
+reportWebVitals();
