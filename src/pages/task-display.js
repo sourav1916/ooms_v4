@@ -1,4 +1,4 @@
-//previous code 
+// previous code
 import React, { useState, useEffect } from 'react';
 import { Sidebar, Header } from '../components/header';
 import { useNavigate } from 'react-router-dom';
@@ -1193,18 +1193,49 @@ const TaskDisplay = () => {
     const handleDragEnd = (event) => {
         const { active, over } = event;
         
-        if (active.id !== over.id) {
-            setColumnConfig((items) => {
-                const oldIndex = items.findIndex((item) => item.id === active.id);
-                const newIndex = items.findIndex((item) => item.id === over.id);
-                
-                // Don't allow dragging fixed columns
-                if (items[oldIndex].fixed) return items;
-                
-                const newConfig = arrayMove(items, oldIndex, newIndex);
+        if (!over || active.id === over.id) {
+            setActiveDragId(null);
+            return;
+        }
+        
+        const oldIndex = columnConfig.findIndex((col) => col.id === active.id);
+        const newIndex = columnConfig.findIndex((col) => col.id === over.id);
+        
+        // Don't allow dragging if:
+        // 1. Source or target is a fixed column
+        // 2. Trying to drag fixed columns
+        // 3. Trying to drag after fixed columns
+        if (oldIndex === -1 || newIndex === -1) {
+            setActiveDragId(null);
+            return;
+        }
+        
+        const sourceColumn = columnConfig[oldIndex];
+        const targetColumn = columnConfig[newIndex];
+        
+        // Find the index of the first fixed column
+        const firstFixedIndex = columnConfig.findIndex(col => col.fixed);
+        
+        // Rules for dragging:
+        // 1. Fixed columns cannot be dragged
+        // 2. Cannot drag non-fixed columns to positions after fixed columns
+        // 3. Cannot drag fixed columns at all
+        if (sourceColumn.fixed) {
+            setActiveDragId(null);
+            return;
+        }
+        
+        if (newIndex >= firstFixedIndex && newIndex < columnConfig.length) {
+            // Trying to drag into or after fixed columns
+            // Only allow dragging to positions before the first fixed column
+            if (firstFixedIndex > 0) {
+                const newConfig = arrayMove(columnConfig, oldIndex, firstFixedIndex - 1);
                 saveColumnConfig(newConfig);
-                return newConfig;
-            });
+            }
+        } else {
+            // Normal drag within allowed area
+            const newConfig = arrayMove(columnConfig, oldIndex, newIndex);
+            saveColumnConfig(newConfig);
         }
         
         setActiveDragId(null);
@@ -1234,8 +1265,11 @@ const TaskDisplay = () => {
     const addNewColumn = () => {
         const newConfig = [...columnConfig];
         const newColumnId = (Date.now()).toString();
-        // Insert before the fixed columns (Status and Actions)
-        const insertIndex = newConfig.length - 2;
+        
+        // Find the index where to insert (before the first fixed column)
+        const firstFixedIndex = newConfig.findIndex(col => col.fixed);
+        const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length - 1;
+        
         newConfig.splice(insertIndex, 0, {
             id: newColumnId,
             name: `Column ${newConfig.length - 1}`,
@@ -1244,8 +1278,8 @@ const TaskDisplay = () => {
         saveColumnConfig(newConfig);
     };
 
-    // Sortable Column Component
-    const SortableColumn = ({ column, index }) => {
+    // Sortable Column Component - Fixed version
+    const SortableColumn = React.memo(({ column, index }) => {
         const {
             attributes,
             listeners,
@@ -1255,32 +1289,41 @@ const TaskDisplay = () => {
             isDragging
         } = useSortable({
             id: column.id,
-            disabled: column.fixed
+            disabled: column.fixed || index >= columnConfig.findIndex(col => col.fixed)
         });
 
         const style = {
             transform: CSS.Transform.toString(transform),
             transition,
             opacity: isDragging ? 0.5 : 1,
-            zIndex: isDragging ? 1000 : 1
+            zIndex: isDragging ? 1000 : 1,
+            cursor: column.fixed || index >= columnConfig.findIndex(col => col.fixed) ? 'not-allowed' : 'move'
         };
+
+        // Find the first fixed column index
+        const firstFixedIndex = columnConfig.findIndex(col => col.fixed);
+        
+        // Check if this column is in the draggable zone
+        const isDraggable = !column.fixed && index < firstFixedIndex;
 
         return (
             <motion.div
                 ref={setNodeRef}
                 style={style}
-                {...attributes}
-                {...listeners}
+                {...(isDraggable ? attributes : {})}
+                {...(isDraggable ? listeners : {})}
                 className={`border-2 rounded-xl p-4 transition-all duration-200 ${column.fixed
                     ? 'bg-indigo-50 border-indigo-300 shadow-sm cursor-not-allowed'
+                    : !isDraggable
+                    ? 'bg-gray-50 border-gray-200 cursor-not-allowed'
                     : 'bg-white border-gray-200 hover:shadow-md hover:border-gray-300 cursor-move'
                     }`}
-                whileHover={{ scale: column.fixed ? 1 : 1.02 }}
+                whileHover={{ scale: isDraggable ? 1.02 : 1 }}
             >
                 {/* Column Header */}
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                        {!column.fixed && (
+                        {isDraggable && (
                             <div className="cursor-grab active:cursor-grabbing">
                                 <FiMove className="w-4 h-4 text-gray-400 hover:text-gray-600" />
                             </div>
@@ -1292,9 +1335,14 @@ const TaskDisplay = () => {
                                     Fixed
                                 </span>
                             )}
+                            {!column.fixed && !isDraggable && (
+                                <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">
+                                    Locked
+                                </span>
+                            )}
                         </h3>
                     </div>
-                    {!column.fixed && column.items.length === 0 && (
+                    {!column.fixed && column.items.length === 0 && isDraggable && (
                         <button
                             onClick={() => {
                                 const colIndex = columnConfig.findIndex(col => col.id === column.id);
@@ -1331,6 +1379,20 @@ const TaskDisplay = () => {
                             ))}
                         </div>
                     </SortableContext>
+                    
+                    {/* Drag overlay for items */}
+                    <DragOverlay>
+                        {activeItemDragId ? (
+                            <div className="bg-white border border-indigo-400 shadow-lg rounded-lg px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                    <FiMove className="w-3 h-3 text-indigo-400" />
+                                    <span className="font-medium text-gray-700 text-sm">
+                                        {availableFields.find(f => f.id === activeItemDragId)?.label || 'Item'}
+                                    </span>
+                                </div>
+                            </div>
+                        ) : null}
+                    </DragOverlay>
                 </DndContext>
 
                 {/* Add Field Dropdown (only for non-fixed columns with space) */}
@@ -1368,10 +1430,10 @@ const TaskDisplay = () => {
                 )}
             </motion.div>
         );
-    };
+    });
 
     // Sortable Item Component
-    const SortableItem = ({ item, columnIndex, itemIndex, columnId }) => {
+    const SortableItem = React.memo(({ item, columnIndex, itemIndex, columnId }) => {
         const {
             attributes,
             listeners,
@@ -1414,7 +1476,7 @@ const TaskDisplay = () => {
                 </motion.button>
             </motion.div>
         );
-    };
+    });
 
     // Render cell content based on field type - Updated to include handleGetInOut parameter
     const renderCellContent = (task, fieldId, handleGetInOut, handleStatusChange) => {
@@ -1665,172 +1727,546 @@ const TaskDisplay = () => {
     };
 
     // Settings Modal Component with Drag & Drop
-    const SettingsModal = () => (
-        <AnimatePresence>
-            {settingsModalOpen && (
+    const SettingsModal = React.memo(() => {
+        const [localColumnConfig, setLocalColumnConfig] = useState(columnConfig);
+        const [localActiveDragId, setLocalActiveDragId] = useState(null);
+        const [localActiveItemDragId, setLocalActiveItemDragId] = useState(null);
+
+        // Initialize with current column config
+        useEffect(() => {
+            setLocalColumnConfig(columnConfig);
+        }, [columnConfig, settingsModalOpen]);
+
+        // Handle drag end for columns in modal
+        const handleModalDragEnd = (event) => {
+            const { active, over } = event;
+            
+            if (!over || active.id === over.id) {
+                setLocalActiveDragId(null);
+                return;
+            }
+            
+            const oldIndex = localColumnConfig.findIndex((col) => col.id === active.id);
+            const newIndex = localColumnConfig.findIndex((col) => col.id === over.id);
+            
+            if (oldIndex === -1 || newIndex === -1) {
+                setLocalActiveDragId(null);
+                return;
+            }
+            
+            const sourceColumn = localColumnConfig[oldIndex];
+            const targetColumn = localColumnConfig[newIndex];
+            
+            // Find the index of the first fixed column
+            const firstFixedIndex = localColumnConfig.findIndex(col => col.fixed);
+            
+            // Rules for dragging:
+            // 1. Fixed columns cannot be dragged
+            // 2. Cannot drag non-fixed columns to positions after fixed columns
+            if (sourceColumn.fixed) {
+                setLocalActiveDragId(null);
+                return;
+            }
+            
+            if (newIndex >= firstFixedIndex && newIndex < localColumnConfig.length) {
+                // Trying to drag into or after fixed columns
+                // Only allow dragging to positions before the first fixed column
+                if (firstFixedIndex > 0) {
+                    const newConfig = arrayMove(localColumnConfig, oldIndex, firstFixedIndex - 1);
+                    setLocalColumnConfig(newConfig);
+                }
+            } else {
+                // Normal drag within allowed area
+                const newConfig = arrayMove(localColumnConfig, oldIndex, newIndex);
+                setLocalColumnConfig(newConfig);
+            }
+            
+            setLocalActiveDragId(null);
+        };
+
+        // Handle drag end for items within a column in modal
+        const handleModalItemDragEnd = (event, columnIndex) => {
+            const { active, over } = event;
+            
+            if (active.id !== over.id) {
+                setLocalColumnConfig((items) => {
+                    const newConfig = [...items];
+                    const columnItems = newConfig[columnIndex].items;
+                    const oldIndex = columnItems.findIndex((item) => item.id === active.id);
+                    const newIndex = columnItems.findIndex((item) => item.id === over.id);
+                    
+                    newConfig[columnIndex].items = arrayMove(columnItems, oldIndex, newIndex);
+                    return newConfig;
+                });
+            }
+            
+            setLocalActiveItemDragId(null);
+        };
+
+        // Add item to column in modal
+        const addItemToColumnInModal = (columnIndex, fieldId) => {
+            const field = availableFields.find(f => f.id === fieldId);
+            if (!field) return;
+
+            const newConfig = [...localColumnConfig];
+            if (newConfig[columnIndex].items.length < 5) {
+                newConfig[columnIndex].items.push({
+                    id: field.id,
+                    label: field.label
+                });
+                setLocalColumnConfig(newConfig);
+            }
+        };
+
+        // Remove item from column in modal
+        const removeItemFromColumnInModal = (columnIndex, itemIndex) => {
+            const newConfig = [...localColumnConfig];
+            newConfig[columnIndex].items.splice(itemIndex, 1);
+            setLocalColumnConfig(newConfig);
+        };
+
+        // Add new column in modal
+        const addNewColumnInModal = () => {
+            const newConfig = [...localColumnConfig];
+            const newColumnId = (Date.now()).toString();
+            
+            // Find the index where to insert (before the first fixed column)
+            const firstFixedIndex = newConfig.findIndex(col => col.fixed);
+            const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length - 1;
+            
+            newConfig.splice(insertIndex, 0, {
+                id: newColumnId,
+                name: `Column ${newConfig.length - 1}`,
+                items: []
+            });
+            setLocalColumnConfig(newConfig);
+        };
+
+        // Save changes from modal
+        const saveModalChanges = () => {
+            saveColumnConfig(localColumnConfig);
+            setSettingsModalOpen(false);
+        };
+
+        // Reset to default in modal
+        const resetToDefaultInModal = () => {
+            setLocalColumnConfig(defaultColumnConfig);
+        };
+
+        // Sortable Column Component for Modal
+        const ModalSortableColumn = React.memo(({ column, index }) => {
+            const {
+                attributes,
+                listeners,
+                setNodeRef,
+                transform,
+                transition,
+                isDragging
+            } = useSortable({
+                id: column.id,
+                disabled: column.fixed || index >= localColumnConfig.findIndex(col => col.fixed)
+            });
+
+            const style = {
+                transform: CSS.Transform.toString(transform),
+                transition,
+                opacity: isDragging ? 0.5 : 1,
+                zIndex: isDragging ? 1000 : 1,
+                cursor: column.fixed || index >= localColumnConfig.findIndex(col => col.fixed) ? 'not-allowed' : 'move'
+            };
+
+            // Find the first fixed column index
+            const firstFixedIndex = localColumnConfig.findIndex(col => col.fixed);
+            
+            // Check if this column is in the draggable zone
+            const isDraggable = !column.fixed && index < firstFixedIndex;
+
+            return (
                 <motion.div
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setSettingsModalOpen(false)}
+                    ref={setNodeRef}
+                    style={style}
+                    {...(isDraggable ? attributes : {})}
+                    {...(isDraggable ? listeners : {})}
+                    className={`border-2 rounded-xl p-4 transition-all duration-200 ${column.fixed
+                        ? 'bg-indigo-50 border-indigo-300 shadow-sm cursor-not-allowed'
+                        : !isDraggable
+                        ? 'bg-gray-50 border-gray-200 cursor-not-allowed'
+                        : 'bg-white border-gray-200 hover:shadow-md hover:border-gray-300 cursor-move'
+                        }`}
+                    whileHover={{ scale: isDraggable ? 1.02 : 1 }}
                 >
-                    <motion.div
-                        className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
-                        initial={{ scale: 0.95, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.95, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-center">
-                            <div>
-                                <h2 className="text-xl font-bold">Table Column Settings</h2>
-                                <p className="text-indigo-100 text-sm mt-1">Drag and drop to rearrange columns and items</p>
-                            </div>
-                            <motion.button
-                                onClick={() => setSettingsModalOpen(false)}
-                                className="text-white hover:text-indigo-200 transition-colors duration-200 p-1 rounded-lg hover:bg-indigo-500"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                            >
-                                <FiX className="w-6 h-6" />
-                            </motion.button>
+                    {/* Column Header */}
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            {isDraggable && (
+                                <div className="cursor-grab active:cursor-grabbing">
+                                    <FiMove className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                                </div>
+                            )}
+                            <h3 className="font-bold text-gray-800 text-sm">
+                                {column.name}
+                                {column.fixed && (
+                                    <span className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-medium">
+                                        Fixed
+                                    </span>
+                                )}
+                                {!column.fixed && !isDraggable && (
+                                    <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">
+                                        Locked
+                                    </span>
+                                )}
+                            </h3>
                         </div>
-
-                        {/* Modal Content */}
-                        <div className="p-6 overflow-y-auto max-h-[70vh]">
-                            <DndContext
-                                sensors={sensors}
-                                collisionDetection={closestCenter}
-                                onDragStart={(event) => setActiveDragId(event.active.id)}
-                                onDragEnd={handleDragEnd}
-                                onDragCancel={() => setActiveDragId(null)}
+                        {!column.fixed && column.items.length === 0 && isDraggable && (
+                            <button
+                                onClick={() => {
+                                    const newConfig = [...localColumnConfig];
+                                    newConfig.splice(index, 1);
+                                    setLocalColumnConfig(newConfig);
+                                }}
+                                className="text-red-500 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
                             >
-                                <SortableContext
-                                    items={columnConfig.map(column => column.id)}
-                                    strategy={horizontalListSortingStrategy}
-                                >
-                                    <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-6">
-                                        {columnConfig.map((column, index) => (
-                                            <SortableColumn
-                                                key={column.id}
-                                                column={column}
-                                                index={index}
-                                            />
-                                        ))}
-                                    </div>
-                                </SortableContext>
-                            </DndContext>
+                                <FiX className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
 
-                            {/* Add Column Button */}
-                            <div className="mb-6">
+                    {/* Column Items with Drag & Drop */}
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={(event) => setLocalActiveItemDragId(event.active.id)}
+                        onDragEnd={(event) => handleModalItemDragEnd(event, index)}
+                        onDragCancel={() => setLocalActiveItemDragId(null)}
+                    >
+                        <SortableContext
+                            items={column.items.map(item => item.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            <div className="space-y-2 mb-3 min-h-[60px]">
+                                {column.items.map((item, itemIndex) => (
+                                    <ModalSortableItem
+                                        key={item.id}
+                                        item={item}
+                                        columnIndex={index}
+                                        itemIndex={itemIndex}
+                                        columnId={column.id}
+                                        removeItem={removeItemFromColumnInModal}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+
+                    {/* Add Field Dropdown (only for non-fixed columns with space) */}
+                    {!column.fixed && column.items.length < 5 && (
+                        <select
+                            value=""
+                            onChange={(e) => {
+                                if (e.target.value) {
+                                    addItemToColumnInModal(index, e.target.value);
+                                    e.target.value = '';
+                                }
+                            }}
+                            className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-white"
+                        >
+                            <option value="">Add field...</option>
+                            {availableFields
+                                .filter(field =>
+                                    !localColumnConfig.some(col =>
+                                        col.items.some(item => item.id === field.id)
+                                    )
+                                )
+                                .map(field => (
+                                    <option key={field.id} value={field.id}>
+                                        {field.label}
+                                    </option>
+                                ))}
+                        </select>
+                    )}
+
+                    {/* Empty State */}
+                    {!column.fixed && column.items.length === 0 && (
+                        <div className="text-center py-4 text-gray-400 text-sm">
+                            <p>Drag fields here or select from below</p>
+                        </div>
+                    )}
+                </motion.div>
+            );
+        });
+
+        // Sortable Item Component for Modal
+        const ModalSortableItem = React.memo(({ item, columnIndex, itemIndex, columnId, removeItem }) => {
+            const {
+                attributes,
+                listeners,
+                setNodeRef,
+                transform,
+                transition,
+                isDragging
+            } = useSortable({ id: item.id });
+
+            const style = {
+                transform: CSS.Transform.toString(transform),
+                transition,
+                opacity: isDragging ? 0.5 : 1,
+                zIndex: isDragging ? 1000 : 1
+            };
+
+            return (
+                <motion.div
+                    ref={setNodeRef}
+                    style={style}
+                    {...attributes}
+                    {...listeners}
+                    className={`flex items-center justify-between bg-white border px-3 py-2 rounded-lg text-sm transition-all duration-200
+                        ${isDragging ? 'shadow-lg border-indigo-400' : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: itemIndex * 0.05 }}
+                >
+                    <div className="flex items-center gap-2">
+                        <FiMove className="w-3 h-3 text-gray-400" />
+                        <span className="font-medium text-gray-700">{item.label}</span>
+                    </div>
+                    <motion.button
+                        onClick={() => removeItem(columnIndex, itemIndex)}
+                        className="text-red-500 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                    >
+                        <FiX className="w-3 h-3" />
+                    </motion.button>
+                </motion.div>
+            );
+        });
+
+        return (
+            <AnimatePresence>
+                {settingsModalOpen && (
+                    <motion.div
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setSettingsModalOpen(false)}
+                    >
+                        <motion.div
+                            className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Modal Header */}
+                            <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-xl font-bold">Table Column Settings</h2>
+                                    <p className="text-indigo-100 text-sm mt-1">Drag and drop to rearrange columns and items</p>
+                                </div>
                                 <motion.button
-                                    onClick={addNewColumn}
-                                    className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 border-2 border-dashed border-gray-300 rounded-xl text-gray-700 font-medium hover:from-gray-200 hover:to-gray-300 transition-all duration-200 flex items-center gap-2"
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setSettingsModalOpen(false)}
+                                    className="text-white hover:text-indigo-200 transition-colors duration-200 p-1 rounded-lg hover:bg-indigo-500"
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
                                 >
-                                    <FiPlus className="w-4 h-4" />
-                                    Add New Column
+                                    <FiX className="w-6 h-6" />
                                 </motion.button>
                             </div>
 
-                            {/* Available Fields */}
-                            <div className="border-t pt-6">
-                                <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
-                                    <FiGrid className="w-4 h-4 text-indigo-600" />
-                                    Available Fields
-                                </h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                                    {availableFields
-                                        .filter(field =>
-                                            !columnConfig.some(col =>
-                                                col.items.some(item => item.id === field.id)
-                                            )
-                                        )
-                                        .map(field => (
-                                            <motion.div
-                                                key={field.id}
-                                                className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-300 rounded-lg px-4 py-3 text-sm font-medium text-gray-700 transition-all duration-200 hover:shadow-md hover:border-gray-400 hover:from-white hover:to-gray-50 cursor-pointer text-center"
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
-                                                onClick={() => {
-                                                    // Add to the first non-fixed column with space
-                                                    const targetColumnIndex = columnConfig.findIndex(col =>
-                                                        !col.fixed && col.items.length < 5
-                                                    );
-                                                    if (targetColumnIndex !== -1) {
-                                                        addItemToColumn(targetColumnIndex, field.id);
-                                                    }
-                                                }}
-                                            >
-                                                {field.label}
-                                            </motion.div>
-                                        ))}
+                            {/* Modal Content */}
+                            <div className="p-6 overflow-y-auto max-h-[70vh]">
+                                <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragStart={(event) => setLocalActiveDragId(event.active.id)}
+                                    onDragEnd={handleModalDragEnd}
+                                    onDragCancel={() => setLocalActiveDragId(null)}
+                                >
+                                    <SortableContext
+                                        items={localColumnConfig.map(column => column.id)}
+                                        strategy={horizontalListSortingStrategy}
+                                    >
+                                        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-6">
+                                            {localColumnConfig.map((column, index) => (
+                                                <ModalSortableColumn
+                                                    key={column.id}
+                                                    column={column}
+                                                    index={index}
+                                                />
+                                            ))}
+                                        </div>
+                                    </SortableContext>
+                                    
+                                    {/* Drag overlay for columns */}
+                                    <DragOverlay>
+                                        {localActiveDragId ? (
+                                            <div className="bg-white border-2 border-indigo-300 shadow-xl rounded-xl p-4 w-48">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <FiMove className="w-4 h-4 text-indigo-400" />
+                                                    <h3 className="font-bold text-gray-800 text-sm">
+                                                        {localColumnConfig.find(col => col.id === localActiveDragId)?.name || 'Column'}
+                                                    </h3>
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    {localColumnConfig.find(col => col.id === localActiveDragId)?.items.length || 0} items
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </DragOverlay>
+                                </DndContext>
+
+                                {/* Add Column Button */}
+                                <div className="mb-6">
+                                    <motion.button
+                                        onClick={addNewColumnInModal}
+                                        className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 border-2 border-dashed border-gray-300 rounded-xl text-gray-700 font-medium hover:from-gray-200 hover:to-gray-300 transition-all duration-200 flex items-center gap-2"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <FiPlus className="w-4 h-4" />
+                                        Add New Column
+                                    </motion.button>
+                                </div>
+
+                                {/* Available Fields with Drag & Drop */}
+                                <div className="border-t pt-6">
+                                    <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
+                                        <FiGrid className="w-4 h-4 text-indigo-600" />
+                                        Available Fields (Drag to columns)
+                                    </h3>
+                                    <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={(event) => {
+                                            const { active, over } = event;
+                                            if (over && active.id !== over.id) {
+                                                // Find which column was dropped on
+                                                const columnIndex = localColumnConfig.findIndex(col => col.id === over.id);
+                                                if (columnIndex !== -1 && !localColumnConfig[columnIndex].fixed) {
+                                                    addItemToColumnInModal(columnIndex, active.id);
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <SortableContext
+                                            items={availableFields
+                                                .filter(field =>
+                                                    !localColumnConfig.some(col =>
+                                                        col.items.some(item => item.id === field.id)
+                                                    )
+                                                )
+                                                .map(field => field.id)}
+                                            strategy={horizontalListSortingStrategy}
+                                        >
+                                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                                {availableFields
+                                                    .filter(field =>
+                                                        !localColumnConfig.some(col =>
+                                                            col.items.some(item => item.id === field.id)
+                                                        )
+                                                    )
+                                                    .map(field => (
+                                                        <DraggableField
+                                                            key={field.id}
+                                                            field={field}
+                                                        />
+                                                    ))}
+                                            </div>
+                                        </SortableContext>
+                                    </DndContext>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Modal Footer */}
-                       <div className="border-t px-6 py-4 bg-gray-50">
-  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            {/* Modal Footer */}
+                            <div className="border-t px-6 py-4 bg-gray-50">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
-    {/* LEFT */}
-    <motion.button
-      onClick={() => {
-        saveColumnConfig(defaultColumnConfig);
-        setSettingsModalOpen(false);
-      }}
-      className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                 border border-gray-300 rounded-lg text-gray-700
-                 hover:bg-gray-200 transition-all duration-200 hover:shadow-sm gap-2"
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-    >
-      <FiRefreshCw className="w-4 h-4" />
-      Reset to Default
-    </motion.button>
+                                    {/* LEFT */}
+                                    <motion.button
+                                        onClick={resetToDefaultInModal}
+                                        className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                                 border border-gray-300 rounded-lg text-gray-700
+                                                 hover:bg-gray-200 transition-all duration-200 hover:shadow-sm gap-2"
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                    >
+                                        <FiRefreshCw className="w-4 h-4" />
+                                        Reset to Default
+                                    </motion.button>
 
-    {/* RIGHT */}
-    <div className="flex flex-col sm:flex-row gap-3">
-      <motion.button
-        onClick={() => setSettingsModalOpen(false)}
-        className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                   border border-gray-300 rounded-lg text-gray-700
-                   hover:bg-gray-200 transition-all duration-200 hover:shadow-sm"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        Cancel
-      </motion.button>
+                                    {/* RIGHT */}
+                                    <div className="flex flex-col sm:flex-row gap-3">
+                                        <motion.button
+                                            onClick={() => setSettingsModalOpen(false)}
+                                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                                       border border-gray-300 rounded-lg text-gray-700
+                                                       hover:bg-gray-200 transition-all duration-200 hover:shadow-sm"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            Cancel
+                                        </motion.button>
 
-      <motion.button
-        onClick={() => {
-          saveColumnConfig(columnConfig);
-          setSettingsModalOpen(false);
-        }}
-        className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                   bg-gradient-to-r from-indigo-600 to-indigo-700 text-white
-                   rounded-lg hover:from-indigo-700 hover:to-indigo-800
-                   transition-all duration-200 hover:shadow-md shadow-sm gap-2"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <FiSave className="w-4 h-4" />
-        Save Changes
-      </motion.button>
-    </div>
+                                        <motion.button
+                                            onClick={saveModalChanges}
+                                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                                       bg-gradient-to-r from-indigo-600 to-indigo-700 text-white
+                                                       rounded-lg hover:from-indigo-700 hover:to-indigo-800
+                                                       transition-all duration-200 hover:shadow-md shadow-sm gap-2"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            <FiSave className="w-4 h-4" />
+                                            Save Changes
+                                        </motion.button>
+                                    </div>
 
-  </div>
-</div>
-
+                                </div>
+                            </div>
+                        </motion.div>
                     </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    );
+                )}
+            </AnimatePresence>
+        );
+    });
+
+    // Draggable Field Component for Available Fields
+    const DraggableField = React.memo(({ field }) => {
+        const {
+            attributes,
+            listeners,
+            setNodeRef,
+            transform,
+            transition,
+            isDragging
+        } = useSortable({ id: field.id });
+
+        const style = {
+            transform: CSS.Transform.toString(transform),
+            transition,
+            opacity: isDragging ? 0.5 : 1,
+            zIndex: isDragging ? 1000 : 1
+        };
+
+        return (
+            <motion.div
+                ref={setNodeRef}
+                style={style}
+                {...attributes}
+                {...listeners}
+                className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-300 rounded-lg px-4 py-3 text-sm font-medium text-gray-700 transition-all duration-200 hover:shadow-md hover:border-gray-400 hover:from-white hover:to-gray-50 cursor-move text-center"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+            >
+                <div className="flex items-center justify-center gap-2">
+                    <FiMove className="w-3 h-3 text-gray-400" />
+                    {field.label}
+                </div>
+            </motion.div>
+        );
+    });
 
     return (
         <div className="min-h-screen bg-gray-50">
