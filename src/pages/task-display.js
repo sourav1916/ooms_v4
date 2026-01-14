@@ -1988,7 +1988,7 @@ const TaskDisplay = () => {
                                                 whileTap={{ scale: 0.95 }}
                                             >
                                                 <FiPlus className="w-4 h-4" />
-                                                <span className="hidden sm:inline">Create Task</span>
+                                                {/* <span className="hidden sm:inline">Create Task</span> */}
                                             </motion.button>
                                             
                                             {/* 3 Dot Menu (Export + Settings) */}
