@@ -41,7 +41,9 @@ import {
     FiMessageSquare,
     FiMove,
     FiSave,
-    FiList
+    FiList,
+    FiChevronDown,
+    FiChevronUp
 } from 'react-icons/fi';
 
 import { PiExportBold } from "react-icons/pi";
@@ -98,7 +100,7 @@ const TableViewSwitch = ({ viewMode, setViewMode }) => {
     );
 };
 
-// Task Table Component - Desktop remains exactly the same
+// Task Table Component - Mobile Responsive
 const TaskTable = ({ 
     tasks, 
     selectedTasks, 
@@ -110,16 +112,18 @@ const TaskTable = ({
     loading,
     toggleRowDropdown,
     activeRowDropdown,
-    handleGetInOut // Added prop
+    handleGetInOut,
+    setActiveRowDropdown,
+    handleStatusChange
 }) => {
     // Skeleton loader
     const SkeletonRow = () => (
-        <div className="flex items-center border-b border-gray-100 animate-pulse">
-            <div className="w-12 p-4 flex-shrink-0">
+        <div className="flex items-center border-b border-gray-100 animate-pulse p-4 md:p-4">
+            <div className="w-10 md:w-12 flex-shrink-0 mr-3 md:mr-0">
                 <div className="h-4 bg-gray-200 rounded w-4"></div>
             </div>
             {columnConfig.map((column, index) => (
-                <div key={index} className="flex-1 p-4">
+                <div key={index} className="hidden md:block flex-1 p-4">
                     <div className="space-y-2">
                         {column.items.map((item, itemIndex) => (
                             <div key={itemIndex} className="min-h-[1.5rem] flex items-center">
@@ -132,10 +136,162 @@ const TaskTable = ({
         </div>
     );
 
+    // Format date function
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB');
+    };
+
+    // Mobile task card for table view
+    const MobileTaskCard = ({ task }) => (
+        <motion.div
+            className="bg-white border border-gray-200 rounded-lg p-4 mb-3 md:hidden"
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+        >
+            {/* Mobile Card Header */}
+            <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        checked={selectedTasks.has(task.id)}
+                        onChange={() => handleTaskSelect(task.id)}
+                        className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500"
+                    />
+                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                        <FiBriefcase className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                        <div className="font-semibold text-gray-800 text-sm">{task.name}</div>
+                        <div className="text-xs text-gray-500">{task.task_id}</div>
+                    </div>
+                </div>
+                {/* 3-dot menu for mobile */}
+                <div className="relative">
+                    <motion.button
+                        onClick={() => toggleRowDropdown(task.id)}
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <FiMoreHorizontal className="w-4 h-4 text-gray-600" />
+                    </motion.button>
+                    
+                    {/* Mobile dropdown */}
+                    <AnimatePresence>
+                        {activeRowDropdown === task.id && (
+                            <motion.div
+                                className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                            >
+                                {/* Get In/Out option */}
+                                {task.in_out ? (
+                                    task.is_in_me ? (
+                                        <button
+                                            onClick={() => {
+                                                handleGetInOut(task.id, 'out');
+                                                setActiveRowDropdown(null);
+                                            }}
+                                            className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                        >
+                                            <FiArrowRight className="mr-3" />
+                                            Get OUT
+                                        </button>
+                                    ) : (
+                                        <div className="flex items-center w-full px-4 py-3 text-sm text-gray-500 bg-gray-50">
+                                            <FiUserCheck className="mr-3" />
+                                            {task.in_name} [{task.in_type?.toUpperCase() || 'USER'}]
+                                        </div>
+                                    )
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            handleGetInOut(task.id, 'in');
+                                            setActiveRowDropdown(null);
+                                        }}
+                                        className="flex items-center w-full px-4 py-3 text-sm text-indigo-600 hover:bg-indigo-50"
+                                    >
+                                        <FiArrowLeft className="mr-3" />
+                                        GET IN
+                                    </button>
+                                )}
+
+                                <div className="border-t my-1"></div>
+
+                                <button
+                                    onClick={() => {
+                                        setActiveRowDropdown(null);
+                                        // navigate to view
+                                    }}
+                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                    <FiEye className="mr-3" />
+                                    View Details
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        setActiveRowDropdown(null);
+                                        // navigate to edit
+                                    }}
+                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                    <FiEdit className="mr-3" />
+                                    Edit Task
+                                </button>
+
+                                <div className="border-t my-1"></div>
+
+                                <button
+                                    onClick={() => {
+                                        setActiveRowDropdown(null);
+                                        // delete modal
+                                    }}
+                                    className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                >
+                                    <FiTrash2 className="mr-3" />
+                                    Delete Task
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </div>
+
+            {/* Mobile Card Content */}
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-gray-700 text-sm">
+                        <FiCalendar className="w-3.5 h-3.5 text-gray-400" />
+                        <span>Due: {formatDate(task.due_date)}</span>
+                    </div>
+                    <div className="text-sm font-semibold text-gray-800">
+                        ₹{task.fees.toLocaleString()}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-gray-700 text-sm">
+                    <FiPhone className="w-3.5 h-3.5 text-gray-400" />
+                    <span>{task.mobile}</span>
+                </div>
+
+                <div className="text-sm text-gray-600">
+                    Service: {task.service_name}
+                </div>
+
+                <div className="text-xs text-gray-500">
+                    File: {task.file_no}
+                </div>
+            </div>
+        </motion.div>
+    );
+
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Table Header - Fixed */}
-            <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-10">
+            {/* Table Header - Fixed for desktop only */}
+            <div className="hidden md:block border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-10">
                 <div className="flex items-center min-w-max">
                     {/* Checkbox Column */}
                     <div className="w-12 p-4 flex-shrink-0">
@@ -163,15 +319,33 @@ const TaskTable = ({
                 </div>
             </div>
 
+            {/* Mobile header - Using tasks.length instead of filteredTasks */}
+            <div className="md:hidden border-b border-gray-200 bg-white px-4 py-3 sticky top-0 z-10">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <input
+                            type="checkbox"
+                            checked={selectAll}
+                            onChange={handleSelectAll}
+                            className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500"
+                        />
+                        <span className="font-semibold text-gray-800">Tasks</span>
+                    </div>
+                    <span className="text-sm text-gray-600">{tasks.length} tasks</span>
+                </div>
+            </div>
+
             {/* Scrollable Table Body */}
             <div className="flex-1 overflow-y-auto overflow-x-auto">
                 {loading ? (
                     // Skeleton Loaders
-                    Array.from({ length: 6 }).map((_, index) => (
-                        <SkeletonRow key={index} />
-                    ))
+                    <div className="md:min-w-max">
+                        {Array.from({ length: 6 }).map((_, index) => (
+                            <SkeletonRow key={index} />
+                        ))}
+                    </div>
                 ) : tasks.length === 0 ? (
-                    <div className="flex items-center justify-center py-12 text-gray-500">
+                    <div className="flex items-center justify-center py-12 text-gray-500 px-4">
                         <div className="text-center">
                             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <FiUser className="w-8 h-8 text-gray-400" />
@@ -181,46 +355,56 @@ const TaskTable = ({
                         </div>
                     </div>
                 ) : (
-                    <div className="min-w-max">
-                        {tasks.map((task, index) => (
-                            <motion.div
-                                key={task.id}
-                                className={`flex items-center border-b border-gray-100 hover:bg-gray-50 transition-colors group ${task.in_out ? 'bg-indigo-50' : ''}`}
-                                initial={{ opacity: 0, y: 5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.03 }}
-                            >
-                                {/* Checkbox */}
-                                <div className="w-12 p-4 flex-shrink-0">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedTasks.has(task.id)}
-                                        onChange={() => handleTaskSelect(task.id)}
-                                        className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500"
-                                    />
-                                </div>
+                    <div className="md:min-w-max">
+                        {/* Mobile view - cards */}
+                        <div className="md:hidden px-4 py-2">
+                            {tasks.map((task, index) => (
+                                <MobileTaskCard key={task.id} task={task} />
+                            ))}
+                        </div>
 
-                                {/* Dynamic Columns - Properly aligned */}
-                                {columnConfig.map(column => (
-                                    <div 
-                                        key={column.id} 
-                                        className="p-4 flex-1 min-w-[180px]"
-                                        style={{ 
-                                            minWidth: column.items.length > 1 ? '220px' : '180px',
-                                            maxWidth: column.items.length > 1 ? '280px' : '220px'
-                                        }}
-                                    >
-                                        <div className="space-y-2">
-                                            {column.items.map(item => (
-                                                <div key={item.id} className="min-h-[1.5rem] flex items-center">
-                                                    {renderCellContent(task, item.id, handleGetInOut)} {/* Added handleGetInOut */}
-                                                </div>
-                                            ))}
-                                        </div>
+                        {/* Desktop view - table */}
+                        <div className="hidden md:block">
+                            {tasks.map((task, index) => (
+                                <motion.div
+                                    key={task.id}
+                                    className={`flex items-center border-b border-gray-100 hover:bg-gray-50 transition-colors group ${task.in_out ? 'bg-indigo-50' : ''}`}
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.03 }}
+                                >
+                                    {/* Checkbox */}
+                                    <div className="w-12 p-4 flex-shrink-0">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedTasks.has(task.id)}
+                                            onChange={() => handleTaskSelect(task.id)}
+                                            className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500"
+                                        />
                                     </div>
-                                ))}
-                            </motion.div>
-                        ))}
+
+                                    {/* Dynamic Columns - Properly aligned */}
+                                    {columnConfig.map(column => (
+                                        <div 
+                                            key={column.id} 
+                                            className="p-4 flex-1 min-w-[180px]"
+                                            style={{ 
+                                                minWidth: column.items.length > 1 ? '220px' : '180px',
+                                                maxWidth: column.items.length > 1 ? '280px' : '220px'
+                                            }}
+                                        >
+                                            <div className="space-y-2">
+                                                {column.items.map(item => (
+                                                    <div key={item.id} className="min-h-[1.5rem] flex items-center">
+                                                        {renderCellContent(task, item.id, handleGetInOut, handleStatusChange)}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </motion.div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
@@ -228,7 +412,7 @@ const TaskTable = ({
     );
 };
 
-// Task Cards Component - Changed actions to visible buttons
+// Task Cards Component - Mobile Responsive with 3-dot menu
 const TaskCards = ({ 
     tasks, 
     selectedTasks, 
@@ -238,7 +422,10 @@ const TaskCards = ({
     loading,
     toggleRowDropdown,
     activeRowDropdown,
-    handleGetInOut // Added prop
+    handleGetInOut,
+    setActiveRowDropdown,
+    handleStatusChange,
+    statusOptions
 }) => {
     const navigate = useNavigate();
 
@@ -252,6 +439,19 @@ const TaskCards = ({
             case 'COMPLETE': return 'bg-green-100 text-green-700';
             case 'CANCELLED': return 'bg-red-100 text-red-700';
             default: return 'bg-gray-100 text-gray-700';
+        }
+    };
+
+    // Get status border color
+    const getStatusBorderColor = (status) => {
+        switch (status) {
+            case 'PENDING': return 'border-blue-300';
+            case 'IN_PROGRESS': return 'border-orange-300';
+            case 'UNDER_REVIEW': return 'border-purple-300';
+            case 'ON_HOLD': return 'border-yellow-300';
+            case 'COMPLETE': return 'border-green-300';
+            case 'CANCELLED': return 'border-red-300';
+            default: return 'border-gray-300';
         }
     };
 
@@ -270,7 +470,7 @@ const TaskCards = ({
 
     // Skeleton loader
     const SkeletonCard = () => (
-        <div className="bg-white rounded-lg border border-gray-200 p-6 animate-pulse">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6 animate-pulse">
             <div className="flex items-start justify-between mb-4">
                 <div>
                     <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
@@ -287,15 +487,15 @@ const TaskCards = ({
     );
 
     return (
-        <div className="p-6">
+        <div className="p-4 md:p-6">
             {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     {Array.from({ length: 6 }).map((_, index) => (
                         <SkeletonCard key={index} />
                     ))}
                 </div>
             ) : tasks.length === 0 ? (
-                <div className="flex items-center justify-center py-12 text-gray-500">
+                <div className="flex items-center justify-center py-12 text-gray-500 px-4">
                     <div className="text-center">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <FiBriefcase className="w-8 h-8 text-gray-400" />
@@ -305,7 +505,7 @@ const TaskCards = ({
                     </div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     {tasks.map((task, index) => (
                         <motion.div
                             key={task.id}
@@ -315,40 +515,131 @@ const TaskCards = ({
                             transition={{ delay: index * 0.05 }}
                         >
                             {/* Card Header */}
-                            <div className="p-6 border-b border-gray-100">
+                            <div className="p-4 md:p-6 border-b border-gray-100">
                                 <div className="flex items-start justify-between mb-3">
-                                    <div>
-                                        <div className="flex items-center gap-3">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-3 mb-2">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedTasks.has(task.id)}
                                                 onChange={() => handleTaskSelect(task.id)}
-                                                className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500"
+                                                className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500 flex-shrink-0"
                                             />
-                                            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
-                                                <FiBriefcase className="w-5 h-5 text-white" />
+                                            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                                                <FiBriefcase className="w-4 h-4 md:w-5 md:h-5 text-white" />
                                             </div>
-                                            <div>
-                                                <h3 className="font-semibold text-gray-800 text-sm">{task.name}</h3>
-                                                <p className="text-xs text-gray-500">{task.task_id}</p>
+                                            <div className="min-w-0">
+                                                <h3 className="font-semibold text-gray-800 text-sm truncate">{task.name}</h3>
+                                                <p className="text-xs text-gray-500 truncate">{task.task_id}</p>
                                             </div>
                                         </div>
+                                        <h4 className="font-bold text-gray-800 text-sm md:text-base truncate">{task.service_name}</h4>
+                                        <p className="text-gray-600 text-xs md:text-sm truncate">{task.firm_name}</p>
                                     </div>
-                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(task.status)}`}>
-                                        {formatStatus(task.status)}
-                                    </span>
+                                    <div className="flex flex-col items-end gap-2">
+                                        {/* 3-dot menu for cards */}
+                                        <div className="relative">
+                                            <motion.button
+                                                onClick={() => toggleRowDropdown(`card-${task.id}`)}
+                                                className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                                                whileHover={{ scale: 1.1 }}
+                                                whileTap={{ scale: 0.95 }}
+                                            >
+                                                <FiMoreHorizontal className="w-4 h-4 text-gray-600" />
+                                            </motion.button>
+
+                                            {/* Dropdown for cards */}
+                                            <AnimatePresence>
+                                                {activeRowDropdown === `card-${task.id}` && (
+                                                    <motion.div
+                                                        className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                                        initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                                                    >
+                                                        {/* Get In/Out option */}
+                                                        {task.in_out ? (
+                                                            task.is_in_me ? (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        handleGetInOut(task.id, 'out');
+                                                                        setActiveRowDropdown(null);
+                                                                    }}
+                                                                    className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                                                >
+                                                                    <FiArrowRight className="mr-3" />
+                                                                    Get OUT
+                                                                </button>
+                                                            ) : (
+                                                                <div className="flex items-center w-full px-4 py-3 text-sm text-gray-500 bg-gray-50">
+                                                                    <FiUserCheck className="mr-3" />
+                                                                    {task.in_name} [{task.in_type?.toUpperCase() || 'USER'}]
+                                                                </div>
+                                                            )
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => {
+                                                                    handleGetInOut(task.id, 'in');
+                                                                    setActiveRowDropdown(null);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-indigo-600 hover:bg-indigo-50"
+                                                            >
+                                                                <FiArrowLeft className="mr-3" />
+                                                                GET IN
+                                                            </button>
+                                                        )}
+
+                                                        <div className="border-t my-1"></div>
+
+                                                        <button
+                                                            onClick={() => {
+                                                                setActiveRowDropdown(null);
+                                                                navigate(`/task/profile`);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                                                        >
+                                                            <FiEye className="mr-3" />
+                                                            View Details
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => {
+                                                                setActiveRowDropdown(null);
+                                                                navigate(`/task/edit/${task.id}`);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                                                        >
+                                                            <FiEdit className="mr-3" />
+                                                            Edit Task
+                                                        </button>
+
+                                                        <div className="border-t my-1"></div>
+
+                                                        <button
+                                                            onClick={() => {
+                                                                setActiveRowDropdown(null);
+                                                                // delete modal
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                                        >
+                                                            <FiTrash2 className="mr-3" />
+                                                            Delete Task
+                                                        </button>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    </div>
                                 </div>
-                                <h4 className="font-bold text-gray-800 text-base mb-1">{task.service_name}</h4>
-                                <p className="text-gray-600 text-sm">{task.firm_name}</p>
                             </div>
 
-                            {/* Card Body */}
-                            <div className="p-6">
-                                <div className="space-y-4">
+                            {/* Card Body - Essential information with status dropdown below file */}
+                            <div className="p-4 md:p-6">
+                                <div className="space-y-3 md:space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-gray-700">
-                                            <FiCalendar className="w-4 h-4 text-gray-400" />
-                                            <span className="text-sm">Due: {new Date(task.due_date).toLocaleDateString()}</span>
+                                        <div className="flex items-center gap-2 text-gray-700 text-sm">
+                                            <FiCalendar className="w-3.5 h-3.5 text-gray-400" />
+                                            <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
                                         </div>
                                         <div className="text-sm font-semibold text-gray-800">
                                             <span className="inline-flex items-center gap-1">
@@ -358,88 +649,49 @@ const TaskCards = ({
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2 text-gray-700">
-                                        <FiPhone className="w-4 h-4 text-gray-400" />
-                                        <span className="text-sm">{task.mobile}</span>
+                                    <div className="flex items-center gap-2 text-gray-700 text-sm">
+                                        <FiPhone className="w-3.5 h-3.5 text-gray-400" />
+                                        <span>{task.mobile}</span>
                                     </div>
 
-                                    <div className="flex items-center gap-2 text-gray-700">
-                                        <FiUsers className="w-4 h-4 text-gray-400" />
-                                        <span className="text-sm">
-                                            {task.employees.length} assigned
-                                        </span>
+                                    <div className="flex items-center gap-2 text-gray-700 text-sm">
+                                        <FiUsers className="w-3.5 h-3.5 text-gray-400" />
+                                        <span>{task.employees.length} assigned</span>
                                     </div>
 
-                                    {/* Action Buttons - Visible (not in dropdown) */}
-                                    <div className="pt-4 border-t border-gray-100">
-                                        <div className="text-xs text-gray-500 mb-2">
-                                            File: {task.file_no}
-                                        </div>
-                                        
-                                        {/* Action Buttons Row */}
-                                        <div className="flex flex-col gap-2">
-                                            {/* Get In/Out Button - Only show if applicable */}
-                                            {task.in_out ? (
-                                                task.is_in_me ? (
-                                                    <motion.button
-                                                        onClick={() => handleGetInOut(task.id, 'out')}
-                                                        className="w-full px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                                                        whileHover={{ scale: 1.02 }}
-                                                        whileTap={{ scale: 0.98 }}
-                                                    >
-                                                        Get OUT
-                                                    </motion.button>
-                                                ) : (
-                                                    <button
-                                                        disabled
-                                                        className="w-full px-3 py-2 bg-gray-100 text-gray-500 rounded text-xs font-medium cursor-not-allowed"
-                                                    >
-                                                        {task.in_name} [{task.in_type?.toUpperCase() || 'USER'}]
-                                                    </button>
-                                                )
-                                            ) : (
-                                                <motion.button
-                                                    onClick={() => handleGetInOut(task.id, 'in')}
-                                                    className="w-full px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                                                    whileHover={{ scale: 1.02 }}
-                                                    whileTap={{ scale: 0.98 }}
+                                    <div className="text-xs text-gray-500">
+                                        File: {task.file_no}
+                                    </div>
+
+                                    {/* Status Dropdown - Below File Number */}
+                                    <div className="pt-2 border-t border-gray-100">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-medium text-gray-600">Status:</span>
+                                            <div className="flex-1">
+                                                <select
+                                                    value={task.status}
+                                                    onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                                                    className={`w-full px-3 py-1.5 text-xs border ${getStatusBorderColor(task.status)} rounded-lg focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all font-medium
+                                                        ${task.status === 'PENDING'
+                                                            ? 'text-blue-700'
+                                                            : task.status === 'IN_PROGRESS'
+                                                                ? 'text-orange-700'
+                                                                : task.status === 'UNDER_REVIEW'
+                                                                    ? 'text-purple-700'
+                                                                    : task.status === 'ON_HOLD'
+                                                                        ? 'text-yellow-700'
+                                                                        : task.status === 'COMPLETE'
+                                                                            ? 'text-green-700'
+                                                                            : 'text-red-700'
+                                                        }
+                                                    `}
                                                 >
-                                                    GET IN
-                                                </motion.button>
-                                            )}
-                                            
-                                            <div className="flex gap-2">
-                                                <motion.button
-                                                    onClick={() => navigate(`/task/profile`)}
-                                                    className="flex-1 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                                                    whileHover={{ scale: 1.02 }}
-                                                    whileTap={{ scale: 0.98 }}
-                                                >
-                                                    <FiEye className="w-3 h-3" />
-                                                    View
-                                                </motion.button>
-                                                
-                                                <motion.button
-                                                    onClick={() => navigate(`/task/edit/${task.id}`)}
-                                                    className="flex-1 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                                                    whileHover={{ scale: 1.02 }}
-                                                    whileTap={{ scale: 0.98 }}
-                                                >
-                                                    <FiEdit className="w-3 h-3" />
-                                                    Edit
-                                                </motion.button>
-                                                
-                                                <motion.button
-                                                    onClick={() => {
-                                                        // Add delete modal trigger here
-                                                    }}
-                                                    className="flex-1 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                                                    whileHover={{ scale: 1.02 }}
-                                                    whileTap={{ scale: 0.98 }}
-                                                >
-                                                    <FiTrash2 className="w-3 h-3" />
-                                                    Delete
-                                                </motion.button>
+                                                    {statusOptions.map((status) => (
+                                                        <option key={status.value} value={status.value}>
+                                                            {status.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
                                             </div>
                                         </div>
                                     </div>
@@ -479,6 +731,7 @@ const TaskDisplay = () => {
     const [activeDragId, setActiveDragId] = useState(null);
     const [activeItemDragId, setActiveItemDragId] = useState(null);
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
+    const [isMobile, setIsMobile] = useState(false);
 
     // Initialize DnD sensors
     const sensors = useSensors(
@@ -491,6 +744,20 @@ const TaskDisplay = () => {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
+
+    // Check if mobile on mount and resize
+    useEffect(() => {
+        const checkIfMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        
+        checkIfMobile();
+        window.addEventListener('resize', checkIfMobile);
+        
+        return () => {
+            window.removeEventListener('resize', checkIfMobile);
+        };
+    }, []);
 
     // Persist sidebar minimized state
     useEffect(() => {
@@ -585,7 +852,6 @@ const TaskDisplay = () => {
             name: 'Status',
             items: [
                 { id: 'status', label: 'Status' }
-                // Removed 'in_out' from here - it will be in actions menu
             ],
             fixed: true
         },
@@ -1151,7 +1417,7 @@ const TaskDisplay = () => {
     };
 
     // Render cell content based on field type - Updated to include handleGetInOut parameter
-    const renderCellContent = (task, fieldId, handleGetInOut) => {
+    const renderCellContent = (task, fieldId, handleGetInOut, handleStatusChange) => {
         switch (fieldId) {
             case 'create_date':
                 return (
@@ -1584,18 +1850,18 @@ const TaskDisplay = () => {
             {/* Main content */}
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="h-full flex flex-col">
-                    {/* Main Card - Full height with scrolling */}
+                    {/* Main Card - Mobile responsive */}
                     <motion.div
-                        className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full mx-4 sm:mx-6 md:mx-8 my-6"
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full mx-2 sm:mx-4 md:mx-8 my-4 md:my-6"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
                     >
-                        {/* Card Header - Table/Cards toggle moved to header */}
-                        <div className="border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
-                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                                <div>
-                                    <h5 className="text-xl font-bold text-gray-800 mb-1">
+                        {/* Card Header - Responsive */}
+                        <div className="border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-gray-50 to-white">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 md:gap-4">
+                                <div className="w-full md:w-auto">
+                                    <h5 className="text-lg md:text-xl font-bold text-gray-800 mb-1">
                                         Task Management
                                     </h5>
                                     <p className="text-gray-500 text-xs">
@@ -1604,197 +1870,204 @@ const TaskDisplay = () => {
                                 </div>
 
                                 <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
-                                    {/* Table/Cards Toggle - Moved to header before search */}
-                                    <div className="flex items-center gap-3">
-                                        <div className="lg:hidden">
-                                            <TableViewSwitch viewMode={viewMode} setViewMode={setViewMode} />
+                                    {/* Table/Cards Toggle and Search */}
+                                    <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full">
+                                        {/* Table/Cards Toggle */}
+                                        <div className="flex items-center gap-2">
+                                            <div className="md:hidden w-full">
+                                                <TableViewSwitch viewMode={viewMode} setViewMode={setViewMode} />
+                                            </div>
+                                            <div className="hidden md:block">
+                                                <TableViewSwitch viewMode={viewMode} setViewMode={setViewMode} />
+                                            </div>
+                                            
+                                            {/* Search Input - Mobile optimized */}
+                                            <div className="flex-1 md:flex-none md:min-w-[250px] lg:min-w-[300px]">
+                                                <div className="relative">
+                                                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search tasks..."
+                                                        value={searchQuery}
+                                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-sm bg-white"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="hidden lg:block">
-                                            <TableViewSwitch viewMode={viewMode} setViewMode={setViewMode} />
-                                        </div>
-                                        
-                                        {/* Search Input */}
-                                        <div className="flex-1 relative min-w-[300px]">
-                                            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                            <input
-                                                type="text"
-                                                placeholder="Search by service, firm, client, or file no..."
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-sm bg-white"
-                                            />
-                                        </div>
-                                    </div>
 
-                                    <div className="flex gap-2">
-                                        {/* Filter Dropdown */}
-                                        <div className="dropdown-container relative">
+                                        {/* Action Buttons - Mobile optimized */}
+                                        <div className="flex items-center gap-2">
+                                            {/* Filter Dropdown */}
+                                            <div className="dropdown-container relative">
+                                                <motion.button
+                                                    onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                                                    className="px-3 md:px-4 py-2.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 text-gray-700 font-medium flex items-center gap-2 shadow-sm text-sm"
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                >
+                                                    <FiFilter className="w-4 h-4" />
+                                                    <span className="hidden sm:inline">Filter</span>
+                                                </motion.button>
+
+                                                <AnimatePresence>
+                                                    {showFilterDropdown && (
+                                                        <motion.div
+                                                            className="absolute right-0 md:left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50 p-4"
+                                                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                                                            transition={{ duration: 0.15 }}
+                                                        >
+                                                            {/* Status Filter */}
+                                                            <div className="mb-4">
+                                                                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                                                                    Status
+                                                                </label>
+                                                                <select
+                                                                    value={selectedStatus}
+                                                                    onChange={(e) => setSelectedStatus(e.target.value)}
+                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                                                >
+                                                                    <option value="">All Status</option>
+                                                                    {statusOptions.map(status => (
+                                                                        <option key={status.value} value={status.value}>
+                                                                            {status.name}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+
+                                                            {/* Service Filter */}
+                                                            <div className="mb-4">
+                                                                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                                                                    Service
+                                                                </label>
+                                                                <select
+                                                                    value={selectedService}
+                                                                    onChange={(e) => setSelectedService(e.target.value)}
+                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                                                >
+                                                                    <option value="">All Services</option>
+                                                                    {serviceOptions.map(service => (
+                                                                        <option key={service.value} value={service.value}>
+                                                                            {service.name}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+
+                                                            {/* Actions */}
+                                                            <div className="flex justify-between gap-2">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedStatus('');
+                                                                        setSelectedService('');
+                                                                    }}
+                                                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100"
+                                                                >
+                                                                    Reset
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setShowFilterDropdown(false)}
+                                                                    className="w-full px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                                                                >
+                                                                    Apply
+                                                                </button>
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+
+                                            {/* Create Task Button */}
                                             <motion.button
-                                                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                                                className="px-4 py-2.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 text-gray-700 font-medium flex items-center gap-2 shadow-sm"
+                                                onClick={() => navigate('/task/create')}
+                                                className="px-3 md:px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm whitespace-nowrap"
                                                 whileHover={{ scale: 1.05 }}
                                                 whileTap={{ scale: 0.95 }}
                                             >
-                                                <FiFilter className="w-4 h-4" />
-                                                Filter
+                                                <FiPlus className="w-4 h-4" />
+                                                <span className="hidden sm:inline">Create Task</span>
                                             </motion.button>
+                                            
+                                            {/* 3 Dot Menu (Export + Settings) */}
+                                            <div className="relative dropdown-container">
+                                                <motion.button
+                                                    onClick={() => setShowMoreMenu(!showMoreMenu)}
+                                                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-gray-300 hover:bg-gray-100 transition shadow-sm"
+                                                    whileHover={{ scale: 1.08 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                >
+                                                    <FiMoreVertical className="w-5 h-5 text-gray-700" />
+                                                </motion.button>
 
-                                            <AnimatePresence>
-                                                {showFilterDropdown && (
-                                                    <motion.div
-                                                        className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50 p-4"
-                                                        initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                        exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                                                        transition={{ duration: 0.15 }}
-                                                    >
-                                                        {/* Status Filter */}
-                                                        <div className="mb-4">
-                                                            <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                                                Status
-                                                            </label>
-                                                            <select
-                                                                value={selectedStatus}
-                                                                onChange={(e) => setSelectedStatus(e.target.value)}
-                                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                                <AnimatePresence>
+                                                    {showMoreMenu && (
+                                                        <motion.div
+                                                            className="absolute right-0 mt-2 w-56 sm:w-60 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                                            initial={{ opacity: 0, y: -8 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            exit={{ opacity: 0, y: -8 }}
+                                                        >
+                                                            {/* Export Section */}
+                                                            <div className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
+                                                                Export
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => handleExport('pdf')}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
                                                             >
-                                                                <option value="">All Status</option>
-                                                                {statusOptions.map(status => (
-                                                                    <option key={status.value} value={status.value}>
-                                                                        {status.name}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
+                                                                <PiFilePdfDuotone className="w-4 h-4 mr-3 text-red-500" />
+                                                                Export as PDF
+                                                            </button>
 
-                                                        {/* Service Filter */}
-                                                        <div className="mb-4">
-                                                            <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                                                Service
-                                                            </label>
-                                                            <select
-                                                                value={selectedService}
-                                                                onChange={(e) => setSelectedService(e.target.value)}
-                                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                                            <button
+                                                                onClick={() => handleExport('excel')}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
                                                             >
-                                                                <option value="">All Services</option>
-                                                                {serviceOptions.map(service => (
-                                                                    <option key={service.value} value={service.value}>
-                                                                        {service.name}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
+                                                                <PiMicrosoftExcelLogoDuotone className="w-4 h-4 mr-3 text-green-500" />
+                                                                Export as Excel
+                                                            </button>
 
-                                                        {/* Actions */}
-                                                        <div className="flex justify-between gap-2">
+                                                            <button
+                                                                onClick={() => handleExport('whatsapp')}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
+                                                            >
+                                                                <FaWhatsapp className="w-4 h-4 mr-3 text-green-500" />
+                                                                Share via WhatsApp
+                                                            </button>
+
+                                                            <button
+                                                                onClick={() => handleExport('email')}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
+                                                            >
+                                                                <AiOutlineMail className="w-4 h-4 mr-3 text-blue-500" />
+                                                                Share via Email
+                                                            </button>
+
+                                                            {/* Divider */}
+                                                            <div className="h-px bg-gray-200 my-1" />
+
+                                                            {/* Settings - Only enabled in table view */}
                                                             <button
                                                                 onClick={() => {
-                                                                    setSelectedStatus('');
-                                                                    setSelectedService('');
+                                                                    if (viewMode === 'table') {
+                                                                        setSettingsModalOpen(true);
+                                                                        setShowMoreMenu(false);
+                                                                    }
                                                                 }}
-                                                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100"
+                                                                className={`flex items-center w-full px-4 py-3 text-sm ${viewMode === 'table' ? 'text-gray-700 hover:bg-gray-100' : 'text-gray-400 cursor-not-allowed'}`}
+                                                                disabled={viewMode !== 'table'}
                                                             >
-                                                                Reset
+                                                                <FiSettings className="w-4 h-4 mr-3" />
+                                                                Settings {viewMode !== 'table' && '(Table view only)'}
                                                             </button>
-                                                            <button
-                                                                onClick={() => setShowFilterDropdown(false)}
-                                                                className="w-full px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                                                            >
-                                                                Apply
-                                                            </button>
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </div>
-
-                                        <motion.button
-                                            onClick={() => navigate('/task/create')}
-                                            className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
-                                        >
-                                            <FiPlus className="w-4 h-4" />
-                                            {/* Create Task */}
-                                        </motion.button>
-                                        
-                                        {/* 3 Dot Menu (Export + Settings) - Settings disabled in card view */}
-                                        <div className="relative dropdown-container">
-                                            <motion.button
-                                                onClick={() => setShowMoreMenu(!showMoreMenu)}
-                                                className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-gray-300 hover:bg-gray-100 transition shadow-sm"
-                                                whileHover={{ scale: 1.08 }}
-                                                whileTap={{ scale: 0.95 }}
-                                            >
-                                                <FiMoreVertical className="w-5 h-5 text-gray-700" />
-                                            </motion.button>
-
-                                            <AnimatePresence>
-                                                {showMoreMenu && (
-                                                    <motion.div
-                                                        className="absolute right-0 top-full mt-2 w-60 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden"
-                                                        initial={{ opacity: 0, y: -8 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        exit={{ opacity: 0, y: -8 }}
-                                                    >
-                                                        {/* Export Section */}
-                                                        <div className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
-                                                            Export
-                                                        </div>
-
-                                                        <button
-                                                            onClick={() => handleExport('pdf')}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
-                                                        >
-                                                            <PiFilePdfDuotone className="w-4 h-4 mr-3 text-red-500" />
-                                                            Export as PDF
-                                                        </button>
-
-                                                        <button
-                                                            onClick={() => handleExport('excel')}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
-                                                        >
-                                                            <PiMicrosoftExcelLogoDuotone className="w-4 h-4 mr-3 text-green-500" />
-                                                            Export as Excel
-                                                        </button>
-
-                                                        <button
-                                                            onClick={() => handleExport('whatsapp')}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
-                                                        >
-                                                            <FaWhatsapp className="w-4 h-4 mr-3 text-green-500" />
-                                                            Share via WhatsApp
-                                                        </button>
-
-                                                        <button
-                                                            onClick={() => handleExport('email')}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
-                                                        >
-                                                            <AiOutlineMail className="w-4 h-4 mr-3 text-blue-500" />
-                                                            Share via Email
-                                                        </button>
-
-                                                        {/* Divider */}
-                                                        <div className="h-px bg-gray-200 my-1" />
-
-                                                        {/* Settings - Only enabled in table view */}
-                                                        <button
-                                                            onClick={() => {
-                                                                if (viewMode === 'table') {
-                                                                    setSettingsModalOpen(true);
-                                                                    setShowMoreMenu(false);
-                                                                }
-                                                            }}
-                                                            className={`flex items-center w-full px-4 py-3 text-sm ${viewMode === 'table' ? 'text-gray-700 hover:bg-gray-100' : 'text-gray-400 cursor-not-allowed'}`}
-                                                            disabled={viewMode !== 'table'}
-                                                        >
-                                                            <FiSettings className="w-4 h-4 mr-3" />
-                                                            Settings {viewMode !== 'table' && '(Table view only)'}
-                                                        </button>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1815,7 +2088,9 @@ const TaskDisplay = () => {
                                     loading={loading}
                                     toggleRowDropdown={toggleRowDropdown}
                                     activeRowDropdown={activeRowDropdown}
-                                    handleGetInOut={handleGetInOut} // Pass handleGetInOut
+                                    handleGetInOut={handleGetInOut}
+                                    setActiveRowDropdown={setActiveRowDropdown}
+                                    handleStatusChange={handleStatusChange}
                                 />
                             ) : (
                                 <TaskCards
@@ -1827,15 +2102,18 @@ const TaskDisplay = () => {
                                     loading={loading}
                                     toggleRowDropdown={toggleRowDropdown}
                                     activeRowDropdown={activeRowDropdown}
-                                    handleGetInOut={handleGetInOut} // Pass handleGetInOut
+                                    handleGetInOut={handleGetInOut}
+                                    setActiveRowDropdown={setActiveRowDropdown}
+                                    handleStatusChange={handleStatusChange}
+                                    statusOptions={statusOptions}
                                 />
                             )}
                         </div>
 
-                        {/* Footer - Moved to bottom with action buttons */}
-                        <div className="border-t border-gray-200 px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
+                        {/* Footer - Mobile responsive */}
+                        <div className="border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-gray-50 to-gray-100">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                                     <span className="font-semibold text-gray-800 text-sm">
                                         Showing {filteredTasks.length} of {tasks.length} tasks
                                     </span>
@@ -1844,35 +2122,35 @@ const TaskDisplay = () => {
                                     </div>
                                 </div>
                                 
-                                <div className="flex items-center gap-3">
-                                    {/* Action Buttons in Footer */}
+                                <div className="flex flex-wrap gap-2">
+                                    {/* Action Buttons in Footer - Mobile responsive */}
                                     <motion.button
-                                        className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg text-sm font-medium transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-3 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg text-xs md:text-sm font-medium transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 flex items-center gap-1 md:gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={selectedTasks.size === 0}
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
                                     >
-                                        <FiMail className="w-4 h-4" />
-                                        Send Message
+                                        <FiMail className="w-3 h-3 md:w-4 md:h-4" />
+                                        <span className="hidden sm:inline">Send Message</span>
                                     </motion.button>
                                     
                                     <motion.button
-                                        className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 hover:from-green-700 hover:to-green-800 flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-3 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-xs md:text-sm font-medium transition-all duration-200 hover:from-green-700 hover:to-green-800 flex items-center gap-1 md:gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={selectedTasks.size === 0}
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
                                     >
-                                        <FiDownload className="w-4 h-4" />
-                                        Export Selected
+                                        <FiDownload className="w-3 h-3 md:w-4 md:h-4" />
+                                        <span className="hidden sm:inline">Export Selected</span>
                                     </motion.button>
                                     
                                     <motion.button
-                                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg text-sm font-medium transition-all duration-200 hover:from-purple-700 hover:to-purple-800 flex items-center gap-2 shadow-sm"
+                                        className="px-3 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg text-xs md:text-sm font-medium transition-all duration-200 hover:from-purple-700 hover:to-purple-800 flex items-center gap-1 md:gap-2 shadow-sm"
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
                                     >
-                                        <FiPrinter className="w-4 h-4" />
-                                        Print All
+                                        <FiPrinter className="w-3 h-3 md:w-4 md:h-4" />
+                                        <span className="hidden sm:inline">Print All</span>
                                     </motion.button>
                                 </div>
                             </div>
@@ -1883,36 +2161,38 @@ const TaskDisplay = () => {
 
             {/* Floating Action Button for Selected Tasks - Mobile Optimized */}
             <AnimatePresence>
-  {selectedTasks.size > 0 && (
-    <motion.div
-      className="fixed bottom-20 right-6 z-50"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: -4 }}
-      exit={{ opacity: 0, y: 20 }}
-      transition={{ duration: 0.2 }}
-    >
-      <div className="flex items-center gap-3">
-        <motion.button
-          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-indigo-800 flex items-center gap-2 shadow-xl"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            console.log("Send message to:", [...selectedTasks]);
-          }}
-        >
-          <FiMail className="w-4 h-4" />
-          Send Message ({selectedTasks.size})
-        </motion.button>
-
-                            {/* <motion.button
-                                className="px-5 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl text-sm font-semibold hover:from-green-700 hover:to-green-800 flex items-center gap-2 shadow-xl"
+                {selectedTasks.size > 0 && (
+                    <motion.div
+                        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3">
+                            <motion.button
+                                className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-indigo-800 flex items-center gap-2 shadow-xl"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => {
+                                    console.log("Send message to:", [...selectedTasks]);
+                                }}
+                            >
+                                <FiMail className="w-4 h-4" />
+                                <span className="hidden sm:inline">Send Message</span>
+                                <span className="sm:hidden">({selectedTasks.size})</span>
+                            </motion.button>
+                            
+                            <motion.button
+                                className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl text-sm font-semibold hover:from-green-700 hover:to-green-800 flex items-center gap-2 shadow-xl"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleExport('selected')}
                             >
                                 <FiDownload className="w-4 h-4" />
-                                Export ({selectedTasks.size})
-                            </motion.button> */}
+                                <span className="hidden sm:inline">Export</span>
+                                <span className="sm:hidden">({selectedTasks.size})</span>
+                            </motion.button>
                         </div>
                     </motion.div>
                 )}
