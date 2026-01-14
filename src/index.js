@@ -69,7 +69,7 @@ root.render(
       <Route path='/' element={<Dashboard />}></Route>
       <Route path='*' element={<Dashboard />}></Route>
       <Route path='login' element={<Login />}></Route>
-      <Route path='/Myprofile' element={<MyProfile />}></Route>
+      <Route path='/my-profile' element={<MyProfile />}></Route>
       <Route path='register' element={<Register />}></Route>
       <Route path='task/create' element={<TaskCreate />}></Route>
       <Route path='task/view' element={<TaskDisplay />}></Route>

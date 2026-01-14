@@ -1716,7 +1716,7 @@ const TaskDisplay = () => {
                                             whileTap={{ scale: 0.95 }}
                                         >
                                             <FiPlus className="w-4 h-4" />
-                                            Create Task
+                                            {/* Create Task */}
                                         </motion.button>
                                         
                                         {/* 3 Dot Menu (Export + Settings) - Settings disabled in card view */}
