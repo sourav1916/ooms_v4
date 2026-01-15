@@ -79,21 +79,21 @@ const TableViewSwitch = ({ viewMode, setViewMode }) => {
         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
             <motion.button
                 onClick={() => setViewMode('table')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-600 hover:text-gray-800'}`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-600 hover:text-gray-800'}`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
             >
-                <FiList className="w-3.5 h-3.5" />
+                <FiList className="w-4 h-4" />
                 <span className="text-xs font-medium hidden sm:inline">Table</span>
             </motion.button>
             
             <motion.button
                 onClick={() => setViewMode('card')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-600 hover:text-gray-800'}`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-600 hover:text-gray-800'}`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
             >
-                <FiGrid className="w-3.5 h-3.5" />
+                <FiGrid className="w-4 h-4" />
                 <span className="text-xs font-medium hidden sm:inline">Cards</span>
             </motion.button>
         </div>
@@ -118,15 +118,18 @@ const TaskTable = ({
 }) => {
     // Skeleton loader
     const SkeletonRow = () => (
-        <div className="flex items-center border-b border-gray-100 animate-pulse p-4 md:p-4">
-            <div className="w-10 md:w-12 flex-shrink-0 mr-3 md:mr-0">
+        <div className="flex items-center border-b border-gray-100 animate-pulse p-3">
+            <div className="w-8 md:w-10 flex-shrink-0 mr-2">
+                <div className="h-4 bg-gray-200 rounded w-4"></div>
+            </div>
+            <div className="w-8 flex-shrink-0 mr-3">
                 <div className="h-4 bg-gray-200 rounded w-4"></div>
             </div>
             {columnConfig.map((column, index) => (
-                <div key={index} className="hidden md:block flex-1 p-4">
-                    <div className="space-y-2">
+                <div key={index} className="hidden md:block flex-1 p-2">
+                    <div className="space-y-1">
                         {column.items.map((item, itemIndex) => (
-                            <div key={itemIndex} className="min-h-[1.5rem] flex items-center">
+                            <div key={itemIndex} className="min-h-[1.25rem] flex items-center">
                                 <div className="h-3 bg-gray-200 rounded w-3/4"></div>
                             </div>
                         ))}
@@ -143,14 +146,14 @@ const TaskTable = ({
     };
 
     // Mobile task card for table view
-    const MobileTaskCard = ({ task }) => (
+    const MobileTaskCard = ({ task, index }) => (
         <motion.div
-            className="bg-white border border-gray-200 rounded-lg p-4 mb-3 md:hidden"
+            className="bg-white border border-gray-200 rounded-lg p-3 mb-2 md:hidden"
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
         >
             {/* Mobile Card Header */}
-            <div className="flex items-start justify-between mb-3">
+            <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
                     <input
                         type="checkbox"
@@ -158,8 +161,9 @@ const TaskTable = ({
                         onChange={() => handleTaskSelect(task.id)}
                         className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500"
                     />
-                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                        <FiBriefcase className="w-4 h-4 text-white" />
+                    <div className="font-bold text-gray-800 text-sm w-4">{index + 1}</div>
+                    <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                        <FiBriefcase className="w-3.5 h-3.5 text-white" />
                     </div>
                     <div>
                         <div className="font-semibold text-gray-800 text-sm">{task.name}</div>
@@ -170,11 +174,15 @@ const TaskTable = ({
                 <div className="relative">
                     <motion.button
                         onClick={() => toggleRowDropdown(task.id)}
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
+                        className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
                     >
-                        <FiMoreHorizontal className="w-4 h-4 text-gray-600" />
+                        <div className="flex flex-col items-center justify-center space-y-0.5">
+                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                        </div>
                     </motion.button>
                     
                     {/* Mobile dropdown */}
@@ -261,10 +269,10 @@ const TaskTable = ({
             </div>
 
             {/* Mobile Card Content */}
-            <div className="space-y-3">
+            <div className="space-y-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-gray-700 text-sm">
-                        <FiCalendar className="w-3.5 h-3.5 text-gray-400" />
+                        <FiCalendar className="w-3 h-3 text-gray-400" />
                         <span>Due: {formatDate(task.due_date)}</span>
                     </div>
                     <div className="text-sm font-semibold text-gray-800">
@@ -273,7 +281,7 @@ const TaskTable = ({
                 </div>
 
                 <div className="flex items-center gap-2 text-gray-700 text-sm">
-                    <FiPhone className="w-3.5 h-3.5 text-gray-400" />
+                    <FiPhone className="w-3 h-3 text-gray-400" />
                     <span>{task.mobile}</span>
                 </div>
 
@@ -294,7 +302,7 @@ const TaskTable = ({
             <div className="hidden md:block border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-10">
                 <div className="flex items-center min-w-max">
                     {/* Checkbox Column */}
-                    <div className="w-12 p-4 flex-shrink-0">
+                    <div className="w-10 p-3 flex-shrink-0">
                         <input
                             type="checkbox"
                             checked={selectAll}
@@ -303,15 +311,17 @@ const TaskTable = ({
                         />
                     </div>
 
-                    {/* Dynamic Columns - Properly aligned */}
+                    {/* SL No Column */}
+                    <div className="w-10 p-3  font-bold text-black-700 text-sm flex-shrink-0">
+                        SL No
+                    </div>
+
+                    {/* Fixed Columns Layout - Equal width distribution */}
                     {columnConfig.map(column => (
                         <div
                             key={column.id}
-                            className="p-4 font-semibold text-gray-700 text-sm flex-1 min-w-[180px]"
-                            style={{ 
-                                minWidth: column.items.length > 1 ? '220px' : '180px',
-                                maxWidth: column.items.length > 1 ? '280px' : '220px'
-                            }}
+                            className="p-3 font-semibold text-gray-700 text-sm flex-1 min-w-0"
+                            style={{ flex: '1 1 0%' }}
                         >
                             <div className="truncate">{column.name}</div>
                         </div>
@@ -320,23 +330,23 @@ const TaskTable = ({
             </div>
 
             {/* Mobile header - Using tasks.length instead of filteredTasks */}
-            <div className="md:hidden border-b border-gray-200 bg-white px-4 py-3 sticky top-0 z-10">
+            <div className="md:hidden border-b border-gray-200 bg-white px-3 py-2 sticky top-0 z-10">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <input
                             type="checkbox"
                             checked={selectAll}
                             onChange={handleSelectAll}
                             className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500"
                         />
-                        <span className="font-semibold text-gray-800">Tasks</span>
+                        <span className="font-semibold text-gray-800 text-sm">Tasks</span>
                     </div>
-                    <span className="text-sm text-gray-600">{tasks.length} tasks</span>
+                    <span className="text-xs text-gray-600">{tasks.length} tasks</span>
                 </div>
             </div>
 
             {/* Scrollable Table Body */}
-            <div className="flex-1 overflow-y-auto overflow-x-auto">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden">
                 {loading ? (
                     // Skeleton Loaders
                     <div className="md:min-w-max">
@@ -345,21 +355,21 @@ const TaskTable = ({
                         ))}
                     </div>
                 ) : tasks.length === 0 ? (
-                    <div className="flex items-center justify-center py-12 text-gray-500 px-4">
+                    <div className="flex items-center justify-center py-8 text-gray-500 px-4">
                         <div className="text-center">
-                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <FiUser className="w-8 h-8 text-gray-400" />
+                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <FiUser className="w-6 h-6 text-gray-400" />
                             </div>
-                            <p className="text-gray-500 font-medium">No tasks found</p>
-                            <p className="text-gray-400 text-sm mt-1">Try adjusting your search or filters</p>
+                            <p className="text-gray-500 font-medium text-sm">No tasks found</p>
+                            <p className="text-gray-400 text-xs mt-1">Try adjusting your search or filters</p>
                         </div>
                     </div>
                 ) : (
                     <div className="md:min-w-max">
                         {/* Mobile view - cards */}
-                        <div className="md:hidden px-4 py-2">
+                        <div className="md:hidden px-3 py-1">
                             {tasks.map((task, index) => (
-                                <MobileTaskCard key={task.id} task={task} />
+                                <MobileTaskCard key={task.id} task={task} index={index} />
                             ))}
                         </div>
 
@@ -374,7 +384,7 @@ const TaskTable = ({
                                     transition={{ delay: index * 0.03 }}
                                 >
                                     {/* Checkbox */}
-                                    <div className="w-12 p-4 flex-shrink-0">
+                                    <div className="w-10 p-3 flex-shrink-0">
                                         <input
                                             type="checkbox"
                                             checked={selectedTasks.has(task.id)}
@@ -383,19 +393,23 @@ const TaskTable = ({
                                         />
                                     </div>
 
-                                    {/* Dynamic Columns - Properly aligned */}
+                                    {/* SL No - Bold */}
+                                    <div className="w-10 p-3 flex-shrink-0">
+                                        <span className="font-bold text-gray-800 text-sm">
+                                            {index + 1}
+                                        </span>
+                                    </div>
+
+                                    {/* Fixed Columns Layout - Equal width distribution */}
                                     {columnConfig.map(column => (
                                         <div 
                                             key={column.id} 
-                                            className="p-4 flex-1 min-w-[180px]"
-                                            style={{ 
-                                                minWidth: column.items.length > 1 ? '220px' : '180px',
-                                                maxWidth: column.items.length > 1 ? '280px' : '220px'
-                                            }}
+                                            className="p-3 flex-1 min-w-0"
+                                            style={{ flex: '1 1 0%' }}
                                         >
-                                            <div className="space-y-2">
+                                            <div className="space-y-1">
                                                 {column.items.map(item => (
-                                                    <div key={item.id} className="min-h-[1.5rem] flex items-center">
+                                                    <div key={item.id} className="min-h-[1.25rem] flex items-center">
                                                         {renderCellContent(task, item.id, handleGetInOut, handleStatusChange)}
                                                     </div>
                                                 ))}
@@ -470,15 +484,15 @@ const TaskCards = ({
 
     // Skeleton loader
     const SkeletonCard = () => (
-        <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6 animate-pulse">
-            <div className="flex items-start justify-between mb-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
+            <div className="flex items-start justify-between mb-3">
                 <div>
-                    <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-24"></div>
+                    <div className="h-3 bg-gray-200 rounded w-24 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-20"></div>
                 </div>
-                <div className="h-6 bg-gray-200 rounded w-20"></div>
+                <div className="h-5 bg-gray-200 rounded w-16"></div>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
                 <div className="h-3 bg-gray-200 rounded w-full"></div>
                 <div className="h-3 bg-gray-200 rounded w-3/4"></div>
                 <div className="h-3 bg-gray-200 rounded w-1/2"></div>
@@ -487,25 +501,25 @@ const TaskCards = ({
     );
 
     return (
-        <div className="p-4 md:p-6">
+        <div className="p-3 md:p-4">
             {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {Array.from({ length: 6 }).map((_, index) => (
                         <SkeletonCard key={index} />
                     ))}
                 </div>
             ) : tasks.length === 0 ? (
-                <div className="flex items-center justify-center py-12 text-gray-500 px-4">
+                <div className="flex items-center justify-center py-8 text-gray-500 px-4">
                     <div className="text-center">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <FiBriefcase className="w-8 h-8 text-gray-400" />
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <FiBriefcase className="w-6 h-6 text-gray-400" />
                         </div>
-                        <p className="text-gray-500 font-medium">No tasks found</p>
-                        <p className="text-gray-400 text-sm mt-1">Try adjusting your search or filters</p>
+                        <p className="text-gray-500 font-medium text-sm">No tasks found</p>
+                        <p className="text-gray-400 text-xs mt-1">Try adjusting your search or filters</p>
                     </div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {tasks.map((task, index) => (
                         <motion.div
                             key={task.id}
@@ -515,37 +529,40 @@ const TaskCards = ({
                             transition={{ delay: index * 0.05 }}
                         >
                             {/* Card Header */}
-                            <div className="p-4 md:p-6 border-b border-gray-100">
-                                <div className="flex items-start justify-between mb-3">
+                            <div className="p-3 border-b border-gray-100">
+                                <div className="flex items-start justify-between mb-2">
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-3 mb-2">
+                                        <div className="flex items-center gap-2 mb-1">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedTasks.has(task.id)}
                                                 onChange={() => handleTaskSelect(task.id)}
-                                                className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500 flex-shrink-0"
+                                                className="w-3.5 h-3.5 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500 flex-shrink-0"
                                             />
-                                            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-                                                <FiBriefcase className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                                            <div className="font-bold text-gray-800 text-xs w-4">{index + 1}</div>
+                                            <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                                                <FiBriefcase className="w-3.5 h-3.5 text-white" />
                                             </div>
                                             <div className="min-w-0">
-                                                <h3 className="font-semibold text-gray-800 text-sm truncate">{task.name}</h3>
+                                                <h3 className="font-semibold text-gray-800 text-xs truncate">{task.name}</h3>
                                                 <p className="text-xs text-gray-500 truncate">{task.task_id}</p>
                                             </div>
                                         </div>
-                                        <h4 className="font-bold text-gray-800 text-sm md:text-base truncate">{task.service_name}</h4>
-                                        <p className="text-gray-600 text-xs md:text-sm truncate">{task.firm_name}</p>
+                                        <h4 className="font-bold text-gray-800 text-sm truncate">{task.service_name}</h4>
+                                        <p className="text-gray-600 text-xs truncate">{task.firm_name}</p>
                                     </div>
-                                    <div className="flex flex-col items-end gap-2">
+                                    <div className="flex flex-col items-end gap-1">
                                         {/* 3-dot menu for cards */}
                                         <div className="relative">
                                             <motion.button
                                                 onClick={() => toggleRowDropdown(`card-${task.id}`)}
-                                                className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                                                className="w-6 h-6 flex flex-col items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors space-y-0.5"
                                                 whileHover={{ scale: 1.1 }}
                                                 whileTap={{ scale: 0.95 }}
                                             >
-                                                <FiMoreHorizontal className="w-4 h-4 text-gray-600" />
+                                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
                                             </motion.button>
 
                                             {/* Dropdown for cards */}
@@ -634,28 +651,28 @@ const TaskCards = ({
                             </div>
 
                             {/* Card Body - Essential information with status dropdown below file */}
-                            <div className="p-4 md:p-6">
-                                <div className="space-y-3 md:space-y-4">
+                            <div className="p-3">
+                                <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-gray-700 text-sm">
-                                            <FiCalendar className="w-3.5 h-3.5 text-gray-400" />
+                                        <div className="flex items-center gap-1 text-gray-700 text-xs">
+                                            <FiCalendar className="w-3 h-3 text-gray-400" />
                                             <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
                                         </div>
-                                        <div className="text-sm font-semibold text-gray-800">
+                                        <div className="text-xs font-semibold text-gray-800">
                                             <span className="inline-flex items-center gap-1">
-                                                <FiDollarSign className="w-3 h-3" />
+                                                <FiDollarSign className="w-2.5 h-2.5" />
                                                 ₹{task.fees.toLocaleString()}
                                             </span>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2 text-gray-700 text-sm">
-                                        <FiPhone className="w-3.5 h-3.5 text-gray-400" />
+                                    <div className="flex items-center gap-1 text-gray-700 text-xs">
+                                        <FiPhone className="w-3 h-3 text-gray-400" />
                                         <span>{task.mobile}</span>
                                     </div>
 
-                                    <div className="flex items-center gap-2 text-gray-700 text-sm">
-                                        <FiUsers className="w-3.5 h-3.5 text-gray-400" />
+                                    <div className="flex items-center gap-1 text-gray-700 text-xs">
+                                        <FiUsers className="w-3 h-3 text-gray-400" />
                                         <span>{task.employees.length} assigned</span>
                                     </div>
 
@@ -665,13 +682,13 @@ const TaskCards = ({
 
                                     {/* Status Dropdown - Below File Number */}
                                     <div className="pt-2 border-t border-gray-100">
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1">
                                             <span className="text-xs font-medium text-gray-600">Status:</span>
                                             <div className="flex-1">
                                                 <select
                                                     value={task.status}
                                                     onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                                                    className={`w-full px-3 py-1.5 text-xs border ${getStatusBorderColor(task.status)} rounded-lg focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all font-medium
+                                                    className={`w-full px-2 py-1 text-xs border ${getStatusBorderColor(task.status)} rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all font-medium
                                                         ${task.status === 'PENDING'
                                                             ? 'text-blue-700'
                                                             : task.status === 'IN_PROGRESS'
@@ -809,7 +826,7 @@ const TaskDisplay = () => {
         { id: 'menu', label: 'Actions', type: 'actions' }
     ];
 
-    // Default column configuration
+    // Fixed column configuration
     const defaultColumnConfig = [
         {
             id: '1',
@@ -818,7 +835,8 @@ const TaskDisplay = () => {
                 { id: 'create_date', label: 'Create Date' },
                 { id: 'due_date', label: 'Due Date' },
                 { id: 'days_left', label: 'Days Left' }
-            ]
+            ],
+            fixed: true
         },
         {
             id: '2',
@@ -828,7 +846,8 @@ const TaskDisplay = () => {
                 { id: 'fees', label: 'Fees' },
                 { id: 'firm_name', label: 'Firm Name' },
                 { id: 'file_no', label: 'File No' }
-            ]
+            ],
+            fixed: true
         },
         {
             id: '3',
@@ -838,14 +857,16 @@ const TaskDisplay = () => {
                 { id: 'guardian_name', label: 'Guardian Name' },
                 { id: 'pan', label: 'PAN' },
                 { id: 'mobile', label: 'Mobile' }
-            ]
+            ],
+            fixed: true
         },
         {
             id: '4',
             name: 'Users',
             items: [
                 { id: 'employees', label: 'Employees' }
-            ]
+            ],
+            fixed: true
         },
         {
             id: '5',
@@ -1512,7 +1533,7 @@ const TaskDisplay = () => {
                 );
             case 'fees':
                 return (
-                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
                         <FiDollarSign className="w-3 h-3" />
                         ₹{task.fees.toLocaleString()}
                     </div>
@@ -1525,15 +1546,15 @@ const TaskDisplay = () => {
                 );
             case 'file_no':
                 return (
-                    <span className="text-gray-600 font-medium bg-gray-100 px-2 py-1 rounded text-xs">
+                    <span className="text-gray-600 font-medium bg-gray-100 px-2 py-0.5 rounded text-xs">
                         {task.file_no}
                     </span>
                 );
             case 'name':
                 return (
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
-                            <FiUser className="w-4 h-4 text-white" />
+                    <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
+                            <FiUser className="w-3.5 h-3.5 text-white" />
                         </div>
                         <div>
                             <div className="font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors text-sm">
@@ -1567,7 +1588,7 @@ const TaskDisplay = () => {
             case 'employees':
                 return (
                     <div className="flex -space-x-2">
-                        {task.employees.map((emp, empIndex) => (
+                        {task.employees.slice(0, 3).map((emp, empIndex) => (
                             <div
                                 key={emp.employee_username}
                                 className="w-6 h-6 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white"
@@ -1576,6 +1597,11 @@ const TaskDisplay = () => {
                                 {emp.name.charAt(0)}
                             </div>
                         ))}
+                        {task.employees.length > 3 && (
+                            <div className="w-6 h-6 bg-gray-300 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-gray-700">
+                                +{task.employees.length - 3}
+                            </div>
+                        )}
                     </div>
                 );
             case 'status':
@@ -1583,7 +1609,7 @@ const TaskDisplay = () => {
                     <select
                         value={task.status}
                         onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                        className={`w-full px-3 py-2 text-xs border rounded
+                        className={`w-full px-2 py-1 text-xs border rounded
                             focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all font-medium
                             ${task.status === 'PENDING'
                                 ? 'border-indigo-300 text-indigo-700'
@@ -1609,22 +1635,24 @@ const TaskDisplay = () => {
             case 'menu':
                 return (
                     <div className="relative dropdown-container">
-                        {/* Horizontal 3-dot button */}
+                        {/* Vertical 3-dot button - More compact */}
                         <motion.button
                             onClick={() => toggleRowDropdown(task.id)}
-                            className="w-9 h-9 flex items-center justify-center rounded-full
-                           bg-gray-100 hover:bg-gray-200 transition-colors"
+                            className="w-8 h-8 flex flex-col items-center justify-center rounded-full
+                           bg-gray-100 hover:bg-gray-200 transition-colors space-y-0.5"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.95 }}
                         >
-                            <FiMoreHorizontal className="w-5 h-5 text-gray-600" />
+                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
                         </motion.button>
 
-                        {/* Professional Dropdown with Get In/Out option */}
+                        {/* Professional Dropdown with Get In/Out option - Compact */}
                         <AnimatePresence>
                             {activeRowDropdown === task.id && (
                                 <motion.div
-                                    className="absolute right-0 mt-2 w-56 bg-white rounded-xl
+                                    className="absolute right-0 mt-1 w-52 bg-white rounded-lg
                                    shadow-xl border border-gray-200 z-50 overflow-hidden"
                                     initial={{ opacity: 0, y: -8, scale: 0.96 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1640,19 +1668,19 @@ const TaskDisplay = () => {
                                                         handleGetInOut(task.id, 'out');
                                                         setActiveRowDropdown(null);
                                                     }}
-                                                    className="flex items-center w-full px-4 py-3 text-sm
+                                                    className="flex items-center w-full px-3 py-2 text-sm
                                                    text-red-600 hover:bg-red-50 transition-colors"
                                                 >
-                                                    <FiArrowRight className="mr-3 text-red-600" />
+                                                    <FiArrowRight className="mr-2 text-red-600 w-4 h-4" />
                                                     Get OUT
                                                 </button>
                                             ) : (
                                                 <button
                                                     disabled
-                                                    className="flex items-center w-full px-4 py-3 text-sm
+                                                    className="flex items-center w-full px-3 py-2 text-sm
                                                    text-gray-500 hover:bg-gray-50 transition-colors cursor-not-allowed"
                                                 >
-                                                    <FiUserCheck className="mr-3 text-gray-500" />
+                                                    <FiUserCheck className="mr-2 text-gray-500 w-4 h-4" />
                                                     {task.in_name} [{task.in_type?.toUpperCase() || 'USER'}]
                                                 </button>
                                             )
@@ -1662,10 +1690,10 @@ const TaskDisplay = () => {
                                                     handleGetInOut(task.id, 'in');
                                                     setActiveRowDropdown(null);
                                                 }}
-                                                className="flex items-center w-full px-4 py-3 text-sm
+                                                className="flex items-center w-full px-3 py-2 text-sm
                                                text-indigo-600 hover:bg-indigo-50 transition-colors"
                                             >
-                                                <FiArrowLeft className="mr-3 text-indigo-600" />
+                                                <FiArrowLeft className="mr-2 text-indigo-600 w-4 h-4" />
                                                 GET IN
                                             </button>
                                         )}
@@ -1677,10 +1705,10 @@ const TaskDisplay = () => {
                                                 setActiveRowDropdown(null);
                                                 navigate(`/task/profile`);
                                             }}
-                                            className="flex items-center w-full px-4 py-3 text-sm
+                                            className="flex items-center w-full px-3 py-2 text-sm
                                            text-gray-700 hover:bg-indigo-50 transition-colors"
                                         >
-                                            <FiEye className="mr-3 text-indigo-600" />
+                                            <FiEye className="mr-2 text-indigo-600 w-4 h-4" />
                                             View Details
                                         </button>
 
@@ -1689,10 +1717,10 @@ const TaskDisplay = () => {
                                                 setActiveRowDropdown(null);
                                                 navigate(`/task/edit/${task.id}`);
                                             }}
-                                            className="flex items-center w-full px-4 py-3 text-sm
+                                            className="flex items-center w-full px-3 py-2 text-sm
                                            text-gray-700 hover:bg-green-50 transition-colors"
                                         >
-                                            <FiEdit className="mr-3 text-green-600" />
+                                            <FiEdit className="mr-2 text-green-600 w-4 h-4" />
                                             Edit Task
                                         </button>
 
@@ -1703,10 +1731,10 @@ const TaskDisplay = () => {
                                                 setActiveRowDropdown(null);
                                                 SetDeleteModal(true);
                                             }}
-                                            className="flex items-center w-full px-4 py-3 text-sm
+                                            className="flex items-center w-full px-3 py-2 text-sm
                                            text-red-600 hover:bg-red-50 transition-colors"
                                         >
-                                            <FiTrash2 className="mr-3" />
+                                            <FiTrash2 className="mr-2 w-4 h-4" />
                                             Delete Task
                                         </button>
                                     </div>
@@ -2044,190 +2072,204 @@ const TaskDisplay = () => {
         return (
             <AnimatePresence>
                 {settingsModalOpen && (
-                    <motion.div
-                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setSettingsModalOpen(false)}
-                    >
-                        <motion.div
-                            className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {/* Modal Header */}
-                            <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-center">
-                                <div>
-                                    <h2 className="text-xl font-bold">Table Column Settings</h2>
-                                    <p className="text-indigo-100 text-sm mt-1">Drag and drop to rearrange columns and items</p>
-                                </div>
-                                <motion.button
-                                    onClick={() => setSettingsModalOpen(false)}
-                                    className="text-white hover:text-indigo-200 transition-colors duration-200 p-1 rounded-lg hover:bg-indigo-500"
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                >
-                                    <FiX className="w-6 h-6" />
-                                </motion.button>
-                            </div>
+  <motion.div
+    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    onClick={() => setSettingsModalOpen(false)}
+  >
+    <motion.div
+      className="bg-white rounded-xl shadow-2xl w-full max-w-6xl
+                 max-h-[90vh] flex flex-col overflow-hidden"
+      initial={{ scale: 0.95, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.95, opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      onClick={(e) => e.stopPropagation()}
+    >
 
-                            {/* Modal Content */}
-                            <div className="p-6 overflow-y-auto max-h-[70vh]">
-                                <DndContext
-                                    sensors={sensors}
-                                    collisionDetection={closestCenter}
-                                    onDragStart={(event) => setLocalActiveDragId(event.active.id)}
-                                    onDragEnd={handleModalDragEnd}
-                                    onDragCancel={() => setLocalActiveDragId(null)}
-                                >
-                                    <SortableContext
-                                        items={localColumnConfig.map(column => column.id)}
-                                        strategy={horizontalListSortingStrategy}
-                                    >
-                                        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-6">
-                                            {localColumnConfig.map((column, index) => (
-                                                <ModalSortableColumn
-                                                    key={column.id}
-                                                    column={column}
-                                                    index={index}
-                                                />
-                                            ))}
-                                        </div>
-                                    </SortableContext>
-                                    
-                                    {/* Drag overlay for columns */}
-                                    <DragOverlay>
-                                        {localActiveDragId ? (
-                                            <div className="bg-white border-2 border-indigo-300 shadow-xl rounded-xl p-4 w-48">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <FiMove className="w-4 h-4 text-indigo-400" />
-                                                    <h3 className="font-bold text-gray-800 text-sm">
-                                                        {localColumnConfig.find(col => col.id === localActiveDragId)?.name || 'Column'}
-                                                    </h3>
-                                                </div>
-                                                <div className="text-xs text-gray-500">
-                                                    {localColumnConfig.find(col => col.id === localActiveDragId)?.items.length || 0} items
-                                                </div>
-                                            </div>
-                                        ) : null}
-                                    </DragOverlay>
-                                </DndContext>
+      {/* ================= HEADER ================= */}
+      <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-3 flex-wrap">
+  <h2 className="text-xl font-bold">Table Column Settings</h2>
+  <span className="text-indigo-100 text-sm">
+    — Drag and drop to rearrange columns and items
+  </span>
+</div>
+        <motion.button
+          onClick={() => setSettingsModalOpen(false)}
+          className="text-white hover:text-indigo-200 transition-colors duration-200 p-1 rounded-lg hover:bg-indigo-500"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <FiX className="w-6 h-6" />
+        </motion.button>
+      </div>
 
-                                {/* Add Column Button */}
-                                <div className="mb-6">
-                                    <motion.button
-                                        onClick={addNewColumnInModal}
-                                        className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 border-2 border-dashed border-gray-300 rounded-xl text-gray-700 font-medium hover:from-gray-200 hover:to-gray-300 transition-all duration-200 flex items-center gap-2"
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                    >
-                                        <FiPlus className="w-4 h-4" />
-                                        Add New Column
-                                    </motion.button>
-                                </div>
+      {/* ================= CONTENT ================= */}
+      <div className="p-6 overflow-y-auto flex-1">
 
-                                {/* Available Fields with Drag & Drop */}
-                                <div className="border-t pt-6">
-                                    <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
-                                        <FiGrid className="w-4 h-4 text-indigo-600" />
-                                        Available Fields (Drag to columns)
-                                    </h3>
-                                    <DndContext
-                                        sensors={sensors}
-                                        collisionDetection={closestCenter}
-                                        onDragEnd={(event) => {
-                                            const { active, over } = event;
-                                            if (over && active.id !== over.id) {
-                                                // Find which column was dropped on
-                                                const columnIndex = localColumnConfig.findIndex(col => col.id === over.id);
-                                                if (columnIndex !== -1 && !localColumnConfig[columnIndex].fixed) {
-                                                    addItemToColumnInModal(columnIndex, active.id);
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        <SortableContext
-                                            items={availableFields
-                                                .filter(field =>
-                                                    !localColumnConfig.some(col =>
-                                                        col.items.some(item => item.id === field.id)
-                                                    )
-                                                )
-                                                .map(field => field.id)}
-                                            strategy={horizontalListSortingStrategy}
-                                        >
-                                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                                                {availableFields
-                                                    .filter(field =>
-                                                        !localColumnConfig.some(col =>
-                                                            col.items.some(item => item.id === field.id)
-                                                        )
-                                                    )
-                                                    .map(field => (
-                                                        <DraggableField
-                                                            key={field.id}
-                                                            field={field}
-                                                        />
-                                                    ))}
-                                            </div>
-                                        </SortableContext>
-                                    </DndContext>
-                                </div>
-                            </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={(event) => setLocalActiveDragId(event.active.id)}
+          onDragEnd={handleModalDragEnd}
+          onDragCancel={() => setLocalActiveDragId(null)}
+        >
+          <SortableContext
+            items={localColumnConfig.map(column => column.id)}
+            strategy={horizontalListSortingStrategy}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-6">
+              {localColumnConfig.map((column, index) => (
+                <ModalSortableColumn
+                  key={column.id}
+                  column={column}
+                  index={index}
+                />
+              ))}
+            </div>
+          </SortableContext>
 
-                            {/* Modal Footer */}
-                            <div className="border-t px-6 py-4 bg-gray-50">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          {/* Drag overlay */}
+          <DragOverlay>
+            {localActiveDragId ? (
+              <div className="bg-white border-2 border-indigo-300 shadow-xl rounded-xl p-4 w-48">
+                <div className="flex items-center gap-2 mb-3">
+                  <FiMove className="w-4 h-4 text-indigo-400" />
+                  <h3 className="font-bold text-gray-800 text-sm">
+                    {localColumnConfig.find(col => col.id === localActiveDragId)?.name || 'Column'}
+                  </h3>
+                </div>
+                <div className="text-xs text-gray-500">
+                  {localColumnConfig.find(col => col.id === localActiveDragId)?.items.length || 0} items
+                </div>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
 
-                                    {/* LEFT */}
-                                    <motion.button
-                                        onClick={resetToDefaultInModal}
-                                        className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                                                 border border-gray-300 rounded-lg text-gray-700
-                                                 hover:bg-gray-200 transition-all duration-200 hover:shadow-sm gap-2"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <FiRefreshCw className="w-4 h-4" />
-                                        Reset to Default
-                                    </motion.button>
+        {/* Add Column Button */}
+        <div className="mb-6">
+          <motion.button
+            onClick={addNewColumnInModal}
+            className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200
+                       border-2 border-dashed border-gray-300 rounded-xl
+                       text-gray-700 font-medium hover:from-gray-200 hover:to-gray-300
+                       transition-all duration-200 flex items-center gap-2"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <FiPlus className="w-4 h-4" />
+            Add New Column
+          </motion.button>
+        </div>
 
-                                    {/* RIGHT */}
-                                    <div className="flex flex-col sm:flex-row gap-3">
-                                        <motion.button
-                                            onClick={() => setSettingsModalOpen(false)}
-                                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                                                       border border-gray-300 rounded-lg text-gray-700
-                                                       hover:bg-gray-200 transition-all duration-200 hover:shadow-sm"
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
-                                        >
-                                            Cancel
-                                        </motion.button>
+        {/* ================= AVAILABLE FIELDS ================= */}
+        <div className="border-t pt-6">
+          <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
+            <FiGrid className="w-4 h-4 text-indigo-600" />
+            Available Fields (Drag to columns)
+          </h3>
 
-                                        <motion.button
-                                            onClick={saveModalChanges}
-                                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                                                       bg-gradient-to-r from-indigo-600 to-indigo-700 text-white
-                                                       rounded-lg hover:from-indigo-700 hover:to-indigo-800
-                                                       transition-all duration-200 hover:shadow-md shadow-sm gap-2"
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
-                                        >
-                                            <FiSave className="w-4 h-4" />
-                                            Save Changes
-                                        </motion.button>
-                                    </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event) => {
+              const { active, over } = event;
+              if (over && active.id !== over.id) {
+                const columnIndex = localColumnConfig.findIndex(
+                  col => col.id === over.id
+                );
+                if (
+                  columnIndex !== -1 &&
+                  !localColumnConfig[columnIndex].fixed
+                ) {
+                  addItemToColumnInModal(columnIndex, active.id);
+                }
+              }
+            }}
+          >
+            <SortableContext
+              items={availableFields
+                .filter(field =>
+                  !localColumnConfig.some(col =>
+                    col.items.some(item => item.id === field.id)
+                  )
+                )
+                .map(field => field.id)}
+              strategy={horizontalListSortingStrategy}
+            >
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {availableFields
+                  .filter(field =>
+                    !localColumnConfig.some(col =>
+                      col.items.some(item => item.id === field.id)
+                    )
+                  )
+                  .map(field => (
+                    <DraggableField
+                      key={field.id}
+                      field={field}
+                    />
+                  ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
 
-                                </div>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
+      </div>
+
+      {/* ================= FOOTER ================= */}
+      <div className="border-t px-6 py-4 bg-gray-50">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+          <motion.button
+            onClick={resetToDefaultInModal}
+            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                       border border-gray-300 rounded-lg text-gray-700
+                       hover:bg-gray-200 transition-all duration-200 hover:shadow-sm gap-2"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <FiRefreshCw className="w-4 h-4" />
+            Reset to Default
+          </motion.button>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <motion.button
+              onClick={() => setSettingsModalOpen(false)}
+              className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                         border border-gray-300 rounded-lg text-gray-700
+                         hover:bg-gray-200 transition-all duration-200 hover:shadow-sm"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Cancel
+            </motion.button>
+
+            <motion.button
+              onClick={saveModalChanges}
+              className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                         bg-gradient-to-r from-indigo-600 to-indigo-700 text-white
+                         rounded-lg hover:from-indigo-700 hover:to-indigo-800
+                         transition-all duration-200 hover:shadow-md shadow-sm gap-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <FiSave className="w-4 h-4" />
+              Save Changes
+            </motion.button>
+          </div>
+
+        </div>
+      </div>
+
+    </motion.div>
+  </motion.div>
+)}
+
             </AnimatePresence>
         );
     });
@@ -2288,16 +2330,16 @@ const TaskDisplay = () => {
                 <div className="h-full flex flex-col">
                     {/* Main Card - Mobile responsive */}
                     <motion.div
-                        className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full mx-2 sm:mx-4 md:mx-8 my-4 md:my-6"
+                        className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full mx-2 sm:mx-4 md:mx-8 my-3 md:my-4"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
                     >
                         {/* Card Header - Responsive */}
-                        <div className="border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-gray-50 to-white">
-                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 md:gap-4">
+                        <div className="border-b border-gray-200 px-3 md:px-4 py-3 bg-gradient-to-r from-gray-50 to-white">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2 md:gap-3">
                                 <div className="w-full md:w-auto">
-                                    <h5 className="text-lg md:text-xl font-bold text-gray-800 mb-1">
+                                    <h5 className="text-base md:text-lg font-bold text-gray-800 mb-0.5">
                                         Task Management
                                     </h5>
                                     <p className="text-gray-500 text-xs">
@@ -2305,10 +2347,10 @@ const TaskDisplay = () => {
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+                                <div className="flex flex-col lg:flex-row gap-2 w-full lg:w-auto">
                                     {/* Table/Cards Toggle and Search */}
-                                    <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full">
-                                        {/* Table/Cards Toggle */}
+                                    <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full">
+                                        {/* Table/Cards Toggle - Same size as Filter button */}
                                         <div className="flex items-center gap-2">
                                             <div className="md:hidden w-full">
                                                 <TableViewSwitch viewMode={viewMode} setViewMode={setViewMode} />
@@ -2318,7 +2360,7 @@ const TaskDisplay = () => {
                                             </div>
                                             
                                             {/* Search Input - Mobile optimized */}
-                                            <div className="flex-1 md:flex-none md:min-w-[250px] lg:min-w-[300px]">
+                                            <div className="flex-1 md:flex-none md:min-w-[200px] lg:min-w-[250px]">
                                                 <div className="relative">
                                                     <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                                                     <input
@@ -2326,7 +2368,7 @@ const TaskDisplay = () => {
                                                         placeholder="Search tasks..."
                                                         value={searchQuery}
                                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-sm bg-white"
+                                                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-sm bg-white"
                                                     />
                                                 </div>
                                             </div>
@@ -2338,7 +2380,7 @@ const TaskDisplay = () => {
                                             <div className="dropdown-container relative">
                                                 <motion.button
                                                     onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                                                    className="px-3 md:px-4 py-2.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 text-gray-700 font-medium flex items-center gap-2 shadow-sm text-sm"
+                                                    className="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 text-gray-700 font-medium flex items-center gap-2 shadow-sm text-sm"
                                                     whileHover={{ scale: 1.05 }}
                                                     whileTap={{ scale: 0.95 }}
                                                 >
@@ -2349,21 +2391,21 @@ const TaskDisplay = () => {
                                                 <AnimatePresence>
                                                     {showFilterDropdown && (
                                                         <motion.div
-                                                            className="absolute right-0 md:left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 z-50 p-4"
+                                                            className="absolute right-0 md:left-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50 p-3"
                                                             initial={{ opacity: 0, y: -8, scale: 0.96 }}
                                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                                             exit={{ opacity: 0, y: -8, scale: 0.96 }}
                                                             transition={{ duration: 0.15 }}
                                                         >
                                                             {/* Status Filter */}
-                                                            <div className="mb-4">
+                                                            <div className="mb-3">
                                                                 <label className="block text-xs font-semibold text-gray-600 mb-1">
                                                                     Status
                                                                 </label>
                                                                 <select
                                                                     value={selectedStatus}
                                                                     onChange={(e) => setSelectedStatus(e.target.value)}
-                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                                                    className="w-full px-2 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                                                 >
                                                                     <option value="">All Status</option>
                                                                     {statusOptions.map(status => (
@@ -2375,14 +2417,14 @@ const TaskDisplay = () => {
                                                             </div>
 
                                                             {/* Service Filter */}
-                                                            <div className="mb-4">
+                                                            <div className="mb-3">
                                                                 <label className="block text-xs font-semibold text-gray-600 mb-1">
                                                                     Service
                                                                 </label>
                                                                 <select
                                                                     value={selectedService}
                                                                     onChange={(e) => setSelectedService(e.target.value)}
-                                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                                                    className="w-full px-2 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                                                 >
                                                                     <option value="">All Services</option>
                                                                     {serviceOptions.map(service => (
@@ -2400,13 +2442,13 @@ const TaskDisplay = () => {
                                                                         setSelectedStatus('');
                                                                         setSelectedService('');
                                                                     }}
-                                                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100"
+                                                                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-100"
                                                                 >
                                                                     Reset
                                                                 </button>
                                                                 <button
                                                                     onClick={() => setShowFilterDropdown(false)}
-                                                                    className="w-full px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                                                                    className="w-full px-2 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
                                                                 >
                                                                     Apply
                                                                 </button>
@@ -2419,7 +2461,7 @@ const TaskDisplay = () => {
                                             {/* Create Task Button */}
                                             <motion.button
                                                 onClick={() => navigate('/task/create')}
-                                                className="px-3 md:px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm whitespace-nowrap"
+                                                className="px-3 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm whitespace-nowrap"
                                                 whileHover={{ scale: 1.05 }}
                                                 whileTap={{ scale: 0.95 }}
                                             >
@@ -2431,55 +2473,55 @@ const TaskDisplay = () => {
                                             <div className="relative dropdown-container">
                                                 <motion.button
                                                     onClick={() => setShowMoreMenu(!showMoreMenu)}
-                                                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-gray-300 hover:bg-gray-100 transition shadow-sm"
+                                                    className="w-9 h-9 flex items-center justify-center rounded-full bg-white border border-gray-300 hover:bg-gray-100 transition shadow-sm"
                                                     whileHover={{ scale: 1.08 }}
                                                     whileTap={{ scale: 0.95 }}
                                                 >
-                                                    <FiMoreVertical className="w-5 h-5 text-gray-700" />
+                                                    <FiMoreVertical className="w-4 h-4 text-gray-700" />
                                                 </motion.button>
 
                                                 <AnimatePresence>
                                                     {showMoreMenu && (
                                                         <motion.div
-                                                            className="absolute right-0 mt-2 w-56 sm:w-60 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                                            className="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
                                                             initial={{ opacity: 0, y: -8 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             exit={{ opacity: 0, y: -8 }}
                                                         >
                                                             {/* Export Section */}
-                                                            <div className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">
+                                                            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
                                                                 Export
                                                             </div>
 
                                                             <button
                                                                 onClick={() => handleExport('pdf')}
-                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50"
                                                             >
-                                                                <PiFilePdfDuotone className="w-4 h-4 mr-3 text-red-500" />
+                                                                <PiFilePdfDuotone className="w-4 h-4 mr-2 text-red-500" />
                                                                 Export as PDF
                                                             </button>
 
                                                             <button
                                                                 onClick={() => handleExport('excel')}
-                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50"
                                                             >
-                                                                <PiMicrosoftExcelLogoDuotone className="w-4 h-4 mr-3 text-green-500" />
+                                                                <PiMicrosoftExcelLogoDuotone className="w-4 h-4 mr-2 text-green-500" />
                                                                 Export as Excel
                                                             </button>
 
                                                             <button
                                                                 onClick={() => handleExport('whatsapp')}
-                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50"
                                                             >
-                                                                <FaWhatsapp className="w-4 h-4 mr-3 text-green-500" />
+                                                                <FaWhatsapp className="w-4 h-4 mr-2 text-green-500" />
                                                                 Share via WhatsApp
                                                             </button>
 
                                                             <button
                                                                 onClick={() => handleExport('email')}
-                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50"
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50"
                                                             >
-                                                                <AiOutlineMail className="w-4 h-4 mr-3 text-blue-500" />
+                                                                <AiOutlineMail className="w-4 h-4 mr-2 text-blue-500" />
                                                                 Share via Email
                                                             </button>
 
@@ -2494,10 +2536,10 @@ const TaskDisplay = () => {
                                                                         setShowMoreMenu(false);
                                                                     }
                                                                 }}
-                                                                className={`flex items-center w-full px-4 py-3 text-sm ${viewMode === 'table' ? 'text-gray-700 hover:bg-gray-100' : 'text-gray-400 cursor-not-allowed'}`}
+                                                                className={`flex items-center w-full px-3 py-2 text-sm ${viewMode === 'table' ? 'text-gray-700 hover:bg-gray-100' : 'text-gray-400 cursor-not-allowed'}`}
                                                                 disabled={viewMode !== 'table'}
                                                             >
-                                                                <FiSettings className="w-4 h-4 mr-3" />
+                                                                <FiSettings className="w-4 h-4 mr-2" />
                                                                 Settings {viewMode !== 'table' && '(Table view only)'}
                                                             </button>
                                                         </motion.div>
@@ -2547,9 +2589,9 @@ const TaskDisplay = () => {
                         </div>
 
                         {/* Footer - Mobile responsive */}
-                        <div className="border-t border-gray-200 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-gray-50 to-gray-100">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <div className="border-t border-gray-200 px-3 md:px-4 py-2 bg-gradient-to-r from-gray-50 to-gray-100">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                                     <span className="font-semibold text-gray-800 text-sm">
                                         Showing {filteredTasks.length} of {tasks.length} tasks
                                     </span>
@@ -2561,31 +2603,31 @@ const TaskDisplay = () => {
                                 <div className="flex flex-wrap gap-2">
                                     {/* Action Buttons in Footer - Mobile responsive */}
                                     <motion.button
-                                        className="px-3 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg text-xs md:text-sm font-medium transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 flex items-center gap-1 md:gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-2 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg text-xs font-medium transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={selectedTasks.size === 0}
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
                                     >
-                                        <FiMail className="w-3 h-3 md:w-4 md:h-4" />
+                                        <FiMail className="w-3 h-3" />
                                         <span className="hidden sm:inline">Send Message</span>
                                     </motion.button>
                                     
                                     <motion.button
-                                        className="px-3 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-xs md:text-sm font-medium transition-all duration-200 hover:from-green-700 hover:to-green-800 flex items-center gap-1 md:gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-2 py-1.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-xs font-medium transition-all duration-200 hover:from-green-700 hover:to-green-800 flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={selectedTasks.size === 0}
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
                                     >
-                                        <FiDownload className="w-3 h-3 md:w-4 md:h-4" />
+                                        <FiDownload className="w-3 h-3" />
                                         <span className="hidden sm:inline">Export Selected</span>
                                     </motion.button>
                                     
                                     <motion.button
-                                        className="px-3 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg text-xs md:text-sm font-medium transition-all duration-200 hover:from-purple-700 hover:to-purple-800 flex items-center gap-1 md:gap-2 shadow-sm"
+                                        className="px-2 py-1.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg text-xs font-medium transition-all duration-200 hover:from-purple-700 hover:to-purple-800 flex items-center gap-1 shadow-sm"
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
                                     >
-                                        <FiPrinter className="w-3 h-3 md:w-4 md:h-4" />
+                                        <FiPrinter className="w-3 h-3" />
                                         <span className="hidden sm:inline">Print All</span>
                                     </motion.button>
                                 </div>
@@ -2607,7 +2649,7 @@ const TaskDisplay = () => {
                     >
                         <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3">
                             <motion.button
-                                className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl text-sm font-semibold hover:from-indigo-700 hover:to-indigo-800 flex items-center gap-2 shadow-xl"
+                                className="px-3 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg text-sm font-semibold hover:from-indigo-700 hover:to-indigo-800 flex items-center gap-2 shadow-xl"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => {
@@ -2620,7 +2662,7 @@ const TaskDisplay = () => {
                             </motion.button>
                             
                             <motion.button
-                                className="px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl text-sm font-semibold hover:from-green-700 hover:to-green-800 flex items-center gap-2 shadow-xl"
+                                className="px-3 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-sm font-semibold hover:from-green-700 hover:to-green-800 flex items-center gap-2 shadow-xl"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleExport('selected')}
@@ -2647,22 +2689,22 @@ const TaskDisplay = () => {
                         exit={{ opacity: 0 }}
                     >
                         <motion.div
-                            className="bg-white rounded-2xl p-6 max-w-sm w-full mx-auto"
+                            className="bg-white rounded-lg p-4 max-w-sm w-full mx-auto"
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
                         >
                             <div className="text-center">
-                                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <PiExportBold className="w-8 h-8 text-green-600" />
+                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <PiExportBold className="w-6 h-6 text-green-600" />
                                 </div>
-                                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                                <h3 className="text-base font-semibold text-gray-800 mb-2">
                                     Exporting {exportModal.type.toUpperCase()}
                                 </h3>
-                                <p className="text-gray-600 mb-6">
+                                <p className="text-gray-600 mb-4 text-sm">
                                     Your {exportModal.type} export is being processed...
                                 </p>
-                                <div className="flex justify-center space-x-3">
+                                <div className="flex justify-center space-x-2">
                                     <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"></div>
                                     <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                                     <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
