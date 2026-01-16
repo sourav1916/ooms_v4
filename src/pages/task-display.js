@@ -100,6 +100,249 @@ const TableViewSwitch = ({ viewMode, setViewMode }) => {
     );
 };
 
+// Users List Modal Component
+const UsersListModal = ({ isOpen, onClose, users, taskName }) => {
+    if (!isOpen) return null;
+    
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                >
+                    <motion.div
+                        className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-auto overflow-hidden"
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                                        <FiUsers className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold">Assigned Users</h3>
+                                        <p className="text-indigo-100 text-sm">Task: {taskName}</p>
+                                    </div>
+                                </div>
+                                <motion.button
+                                    onClick={onClose}
+                                    className="text-white hover:text-indigo-200 transition-colors p-2 rounded-lg hover:bg-white/10"
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </motion.button>
+                            </div>
+                        </div>
+                        
+                        {/* Users List */}
+                        <div className="p-6 max-h-[60vh] overflow-y-auto">
+                            <div className="space-y-3">
+                                {users.map((user, index) => (
+                                    <motion.div
+                                        key={user.employee_username}
+                                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: index * 0.05 }}
+                                    >
+                                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
+                                            {user.name.charAt(0)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-semibold text-gray-800 text-sm truncate">{user.name}</h4>
+                                            <p className="text-gray-600 text-xs truncate">{user.email}</p>
+                                            <p className="text-gray-500 text-xs mt-1">{user.role}</p>
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            ID: {user.employee_username}
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                            
+                            {users.length === 0 && (
+                                <div className="text-center py-8">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <FiUser className="w-8 h-8 text-gray-400" />
+                                    </div>
+                                    <p className="text-gray-500 font-medium">No users assigned</p>
+                                </div>
+                            )}
+                        </div>
+                        
+                        {/* Footer */}
+                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                            <div className="flex justify-between items-center">
+                                <div className="text-sm text-gray-600">
+                                    <span className="font-semibold">{users.length}</span> user{users.length !== 1 ? 's' : ''} assigned
+                                </div>
+                                <motion.button
+                                    onClick={onClose}
+                                    className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 font-medium text-sm"
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    Close
+                                </motion.button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
+// Status Change Modal Component - Fixed size
+const StatusChangeModal = ({ isOpen, onClose, taskId, currentStatus, onStatusChange, statusOptions }) => {
+    const [selectedStatus, setSelectedStatus] = useState(currentStatus);
+    
+    if (!isOpen) return null;
+    
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'PENDING': return 'bg-blue-100 text-blue-700 border-blue-300';
+            case 'IN_PROGRESS': return 'bg-orange-100 text-orange-700 border-orange-300';
+            case 'UNDER_REVIEW': return 'bg-purple-100 text-purple-700 border-purple-300';
+            case 'ON_HOLD': return 'bg-yellow-100 text-yellow-700 border-yellow-300';
+            case 'COMPLETE': return 'bg-green-100 text-green-700 border-green-300';
+            case 'CANCELLED': return 'bg-red-100 text-red-700 border-red-300';
+            default: return 'bg-gray-100 text-gray-700 border-gray-300';
+        }
+    };
+    
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'PENDING': return <FiClock className="w-4 h-4" />;
+            case 'IN_PROGRESS': return <FiLoader className="w-4 h-4" />;
+            case 'UNDER_REVIEW': return <FiEye className="w-4 h-4" />;
+            case 'ON_HOLD': return <FiXCircle className="w-4 h-4" />;
+            case 'COMPLETE': return <FiCheckCircle className="w-4 h-4" />;
+            case 'CANCELLED': return <FiXCircle className="w-4 h-4" />;
+            default: return <FiClock className="w-4 h-4" />;
+        }
+    };
+    
+    const handleConfirm = () => {
+        onStatusChange(taskId, selectedStatus);
+        onClose();
+    };
+    
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                >
+                    <motion.div
+                        className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-auto overflow-hidden"
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                                        <FiCheckCircle className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold">Change Status</h3>
+                                        <p className="text-indigo-100 text-xs">Update task status</p>
+                                    </div>
+                                </div>
+                                <motion.button
+                                    onClick={onClose}
+                                    className="text-white hover:text-indigo-200 transition-colors p-1 rounded-lg hover:bg-white/10"
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                >
+                                    <FiX className="w-4 h-4" />
+                                </motion.button>
+                            </div>
+                        </div>
+                        
+                        {/* Current Status */}
+                        <div className="p-4 border-b border-gray-200">
+                            <div className="mb-3">
+                                <label className="block text-xs font-semibold text-gray-600 mb-1">Current Status</label>
+                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${getStatusColor(currentStatus)}`}>
+                                    {getStatusIcon(currentStatus)}
+                                    <span className="font-medium text-sm">
+                                        {statusOptions.find(s => s.value === currentStatus)?.name || currentStatus}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            {/* New Status Selection */}
+                            <div className="mb-2">
+                                <label className="block text-xs font-semibold text-gray-600 mb-1">Select New Status</label>
+                                <div className="space-y-1.5">
+                                    {statusOptions.map((status) => (
+                                        <motion.button
+                                            key={status.value}
+                                            onClick={() => setSelectedStatus(status.value)}
+                                            className={`w-full flex items-center justify-between p-2.5 rounded-lg border transition-all ${selectedStatus === status.value ? 'ring-1 ring-indigo-500 ring-offset-1 ' : ''} ${getStatusColor(status.value)}`}
+                                            whileHover={{ scale: 1.01 }}
+                                            whileTap={{ scale: 0.99 }}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {getStatusIcon(status.value)}
+                                                <span className="font-medium text-sm">{status.name}</span>
+                                            </div>
+                                            {selectedStatus === status.value && (
+                                                <FiCheckCircle className="w-4 h-4" />
+                                            )}
+                                        </motion.button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Footer */}
+                        <div className="px-4 py-3 bg-gray-50 flex justify-end gap-2">
+                            <motion.button
+                                onClick={onClose}
+                                className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium text-sm"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                Cancel
+                            </motion.button>
+                            <motion.button
+                                onClick={handleConfirm}
+                                className="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 font-medium text-sm"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                Update
+                            </motion.button>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
 // Task Table Component - Mobile Responsive
 const TaskTable = ({ 
     tasks, 
@@ -114,7 +357,10 @@ const TaskTable = ({
     activeRowDropdown,
     handleGetInOut,
     setActiveRowDropdown,
-    handleStatusChange
+    handleStatusChange,
+    navigate,
+    openStatusModal,
+    openUsersModal
 }) => {
     // Skeleton loader
     const SkeletonRow = () => (
@@ -227,11 +473,23 @@ const TaskTable = ({
                                 )}
 
                                 <div className="border-t my-1"></div>
+                                
+                                {/* Status Change Button */}
+                                <button
+                                    onClick={() => {
+                                        openStatusModal(task.id, task.status);
+                                        setActiveRowDropdown(null);
+                                    }}
+                                    className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
+                                >
+                                    <FiCheckCircle className="mr-3" />
+                                    Change Status
+                                </button>
 
                                 <button
                                     onClick={() => {
                                         setActiveRowDropdown(null);
-                                        // navigate to view
+                                        navigate(`/task/profile/${task.id}`);
                                     }}
                                     className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                 >
@@ -242,7 +500,7 @@ const TaskTable = ({
                                 <button
                                     onClick={() => {
                                         setActiveRowDropdown(null);
-                                        // navigate to edit
+                                        navigate(`/task/edit/${task.id}`);
                                     }}
                                     className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                 >
@@ -286,7 +544,12 @@ const TaskTable = ({
                 </div>
 
                 <div className="text-sm text-gray-600">
-                    Service: {task.service_name}
+                    <button 
+                        onClick={() => navigate(`/task/${task.id}`)}
+                        className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                    >
+                        Service: {task.service_name}
+                    </button>
                 </div>
 
                 <div className="text-xs text-gray-500">
@@ -312,7 +575,7 @@ const TaskTable = ({
                     </div>
 
                     {/* SL No Column */}
-                    <div className="w-10 p-3  font-bold text-black-700 text-sm flex-shrink-0">
+                    <div className="w-10 p-3 font-bold text-black-700 text-sm flex-shrink-0 text-center">
                         SL No
                     </div>
 
@@ -320,10 +583,10 @@ const TaskTable = ({
                     {columnConfig.map(column => (
                         <div
                             key={column.id}
-                            className="p-3 font-semibold text-gray-700 text-sm flex-1 min-w-0"
+                            className="p-3 font-semibold text-gray-700 text-sm flex-1 min-w-0 text-center"
                             style={{ flex: '1 1 0%' }}
                         >
-                            <div className="truncate">{column.name}</div>
+                            <div className="truncate">{column.name === 'Users' ? 'Assigned' : column.name}</div>
                         </div>
                     ))}
                 </div>
@@ -394,7 +657,7 @@ const TaskTable = ({
                                     </div>
 
                                     {/* SL No - Bold */}
-                                    <div className="w-10 p-3 flex-shrink-0">
+                                    <div className="w-10 p-3 flex-shrink-0 text-center">
                                         <span className="font-bold text-gray-800 text-sm">
                                             {index + 1}
                                         </span>
@@ -404,13 +667,13 @@ const TaskTable = ({
                                     {columnConfig.map(column => (
                                         <div 
                                             key={column.id} 
-                                            className="p-3 flex-1 min-w-0"
+                                            className="p-3 flex-1 min-w-0 text-center"
                                             style={{ flex: '1 1 0%' }}
                                         >
                                             <div className="space-y-1">
                                                 {column.items.map(item => (
-                                                    <div key={item.id} className="min-h-[1.25rem] flex items-center">
-                                                        {renderCellContent(task, item.id, handleGetInOut, handleStatusChange)}
+                                                    <div key={item.id} className="min-h-[1.25rem] flex items-center justify-center">
+                                                        {renderCellContent(task, item.id, handleGetInOut, navigate, openStatusModal, openUsersModal)}
                                                     </div>
                                                 ))}
                                             </div>
@@ -439,10 +702,11 @@ const TaskCards = ({
     handleGetInOut,
     setActiveRowDropdown,
     handleStatusChange,
-    statusOptions
+    statusOptions,
+    navigate,
+    openStatusModal,
+    openUsersModal
 }) => {
-    const navigate = useNavigate();
-
     // Get status color
     const getStatusColor = (status) => {
         switch (status) {
@@ -548,7 +812,12 @@ const TaskCards = ({
                                                 <p className="text-xs text-gray-500 truncate">{task.task_id}</p>
                                             </div>
                                         </div>
-                                        <h4 className="font-bold text-gray-800 text-sm truncate">{task.service_name}</h4>
+                                        <button 
+                                            onClick={() => navigate(`/task/${task.id}`)}
+                                            className="text-left font-bold text-gray-800 text-sm truncate hover:text-indigo-600 hover:underline"
+                                        >
+                                            {task.service_name}
+                                        </button>
                                         <p className="text-gray-600 text-xs truncate">{task.firm_name}</p>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
@@ -607,11 +876,23 @@ const TaskCards = ({
                                                         )}
 
                                                         <div className="border-t my-1"></div>
+                                                        
+                                                        {/* Status Change Button */}
+                                                        <button
+                                                            onClick={() => {
+                                                                openStatusModal(task.id, task.status);
+                                                                setActiveRowDropdown(null);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
+                                                        >
+                                                            <FiCheckCircle className="mr-3" />
+                                                            Change Status
+                                                        </button>
 
                                                         <button
                                                             onClick={() => {
                                                                 setActiveRowDropdown(null);
-                                                                navigate(`/task/profile`);
+                                                                navigate(`/task/profile/${task.id}`);
                                                             }}
                                                             className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                                         >
@@ -650,7 +931,7 @@ const TaskCards = ({
                                 </div>
                             </div>
 
-                            {/* Card Body - Essential information with status dropdown below file */}
+                            {/* Card Body - Essential information */}
                             <div className="p-3">
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
@@ -671,44 +952,16 @@ const TaskCards = ({
                                         <span>{task.mobile}</span>
                                     </div>
 
-                                    <div className="flex items-center gap-1 text-gray-700 text-xs">
-                                        <FiUsers className="w-3 h-3 text-gray-400" />
-                                        <span>{task.employees.length} assigned</span>
-                                    </div>
-
                                     <div className="text-xs text-gray-500">
                                         File: {task.file_no}
                                     </div>
 
-                                    {/* Status Dropdown - Below File Number */}
+                                    {/* Status Display */}
                                     <div className="pt-2 border-t border-gray-100">
                                         <div className="flex items-center gap-1">
                                             <span className="text-xs font-medium text-gray-600">Status:</span>
-                                            <div className="flex-1">
-                                                <select
-                                                    value={task.status}
-                                                    onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                                                    className={`w-full px-2 py-1 text-xs border ${getStatusBorderColor(task.status)} rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all font-medium
-                                                        ${task.status === 'PENDING'
-                                                            ? 'text-blue-700'
-                                                            : task.status === 'IN_PROGRESS'
-                                                                ? 'text-orange-700'
-                                                                : task.status === 'UNDER_REVIEW'
-                                                                    ? 'text-purple-700'
-                                                                    : task.status === 'ON_HOLD'
-                                                                        ? 'text-yellow-700'
-                                                                        : task.status === 'COMPLETE'
-                                                                            ? 'text-green-700'
-                                                                            : 'text-red-700'
-                                                        }
-                                                    `}
-                                                >
-                                                    {statusOptions.map((status) => (
-                                                        <option key={status.value} value={status.value}>
-                                                            {status.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${getStatusColor(task.status)}`}>
+                                                {formatStatus(task.status)}
                                             </div>
                                         </div>
                                     </div>
@@ -749,6 +1002,8 @@ const TaskDisplay = () => {
     const [activeItemDragId, setActiveItemDragId] = useState(null);
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
     const [isMobile, setIsMobile] = useState(false);
+    const [statusModal, setStatusModal] = useState({ open: false, taskId: null, currentStatus: '' });
+    const [usersModal, setUsersModal] = useState({ open: false, users: [], taskName: '' });
 
     // Initialize DnD sensors
     const sensors = useSensors(
@@ -826,75 +1081,90 @@ const TaskDisplay = () => {
         { id: 'menu', label: 'Actions', type: 'actions' }
     ];
 
-    // Fixed column configuration
-    const defaultColumnConfig = [
-        {
-            id: '1',
-            name: 'Dates',
-            items: [
-                { id: 'create_date', label: 'Create Date' },
-                { id: 'due_date', label: 'Due Date' },
-                { id: 'days_left', label: 'Days Left' }
-            ],
-            fixed: true
-        },
-        {
-            id: '2',
-            name: 'Task',
-            items: [
-                { id: 'service_name', label: 'Service Name' },
-                { id: 'fees', label: 'Fees' },
-                { id: 'firm_name', label: 'Firm Name' },
-                { id: 'file_no', label: 'File No' }
-            ],
-            fixed: true
-        },
-        {
-            id: '3',
-            name: 'Client',
-            items: [
-                { id: 'name', label: 'Client Name' },
-                { id: 'guardian_name', label: 'Guardian Name' },
-                { id: 'pan', label: 'PAN' },
-                { id: 'mobile', label: 'Mobile' }
-            ],
-            fixed: true
-        },
-        {
-            id: '4',
-            name: 'Users',
-            items: [
-                { id: 'employees', label: 'Employees' }
-            ],
-            fixed: true
-        },
-        {
-            id: '5',
-            name: 'Status',
-            items: [
-                { id: 'status', label: 'Status' }
-            ],
-            fixed: true
-        },
-        {
-            id: '6',
-            name: 'Actions',
-            items: [
-                { id: 'menu', label: 'Actions' }
-            ],
-            fixed: true
-        }
-    ];
+    // Fixed column configuration - Only Status and Actions are fixed
+   const defaultColumnConfig = [
+    {
+        id: '1',
+        name: 'Dates',
+        items: [
+            { id: 'create_date', label: 'Create Date' },
+            { id: 'due_date', label: 'Due Date' },
+            { id: 'days_left', label: 'Days Left' }
+        ],
+        fixed: false // Make sure this is false
+    },
+    {
+        id: '2',
+        name: 'Task',
+        items: [
+            { id: 'service_name', label: 'Service Name' },
+            { id: 'fees', label: 'Fees' },
+            { id: 'firm_name', label: 'Firm Name' },
+            { id: 'file_no', label: 'File No' }
+        ],
+        fixed: false // Make sure this is false
+    },
+    {
+        id: '3',
+        name: 'Client',
+        items: [
+            { id: 'name', label: 'Client Name' },
+            { id: 'guardian_name', label: 'Guardian Name' },
+            { id: 'pan', label: 'PAN' },
+            { id: 'mobile', label: 'Mobile' }
+        ],
+        fixed: false // Make sure this is false
+    },
+    {
+        id: '4',
+        name: 'Assigned',
+        items: [
+            { id: 'employees', label: 'Employees' }
+        ],
+        fixed: false // Make sure this is false
+    },
+    {
+        id: '5',
+        name: 'Status',
+        items: [
+            { id: 'status', label: 'Status' }
+        ],
+        fixed: true // Only Status is fixed
+    },
+    {
+        id: '6',
+        name: 'Actions',
+        items: [
+            { id: 'menu', label: 'Actions' }
+        ],
+        fixed: true // Only Actions is fixed
+    }
+];
 
-    // Initialize column config
-    useEffect(() => {
-        const savedConfig = localStorage.getItem('taskColumnConfig');
-        if (savedConfig) {
-            setColumnConfig(JSON.parse(savedConfig));
-        } else {
+// Initialize column config
+useEffect(() => {
+    const savedConfig = localStorage.getItem('taskColumnConfig');
+    if (savedConfig) {
+        try {
+            const parsedConfig = JSON.parse(savedConfig);
+            // Make sure saved config has correct fixed properties
+            const updatedConfig = parsedConfig.map(col => {
+                // Only Status and Actions should be fixed
+                const shouldBeFixed = col.name === 'Status' || col.name === 'Actions';
+                return {
+                    ...col,
+                    fixed: shouldBeFixed
+                };
+            });
+            setColumnConfig(updatedConfig);
+        } catch (error) {
+            console.error('Error parsing saved config:', error);
             setColumnConfig(defaultColumnConfig);
         }
-    }, []);
+    } else {
+        setColumnConfig(defaultColumnConfig);
+    }
+}, []);
 
     // Save column config
     const saveColumnConfig = (config) => {
@@ -947,8 +1217,9 @@ const TaskDisplay = () => {
             is_in_me: false,
             is_recurring: false,
             employees: [
-                { employee_username: 'emp1', name: 'John Doe' },
-                { employee_username: 'emp2', name: 'Jane Smith' }
+                { employee_username: 'emp1', name: 'John Doe', email: 'john@example.com', role: 'Accountant' },
+                { employee_username: 'emp2', name: 'Jane Smith', email: 'jane@example.com', role: 'Manager' },
+                { employee_username: 'emp3', name: 'Mike Johnson', email: 'mike@example.com', role: 'Assistant' }
             ]
         },
         {
@@ -970,7 +1241,7 @@ const TaskDisplay = () => {
             is_recurring: true,
             recurring_type: 'Monthly',
             employees: [
-                { employee_username: 'emp3', name: 'Mike Johnson' }
+                { employee_username: 'emp3', name: 'Mike Johnson', email: 'mike@example.com', role: 'Assistant' }
             ]
         },
         {
@@ -991,8 +1262,8 @@ const TaskDisplay = () => {
             is_in_me: false,
             is_recurring: false,
             employees: [
-                { employee_username: 'emp1', name: 'John Doe' },
-                { employee_username: 'emp4', name: 'Sarah Wilson' }
+                { employee_username: 'emp1', name: 'John Doe', email: 'john@example.com', role: 'Accountant' },
+                { employee_username: 'emp4', name: 'Sarah Wilson', email: 'sarah@example.com', role: 'Auditor' }
             ]
         },
         {
@@ -1013,7 +1284,10 @@ const TaskDisplay = () => {
             is_in_me: false,
             is_recurring: false,
             employees: [
-                { employee_username: 'emp2', name: 'Jane Smith' }
+                { employee_username: 'emp2', name: 'Jane Smith', email: 'jane@example.com', role: 'Manager' },
+                { employee_username: 'emp5', name: 'David Brown', email: 'david@example.com', role: 'Legal Advisor' },
+                { employee_username: 'emp6', name: 'Emily Davis', email: 'emily@example.com', role: 'Assistant' },
+                { employee_username: 'emp7', name: 'Robert Wilson', email: 'robert@example.com', role: 'Consultant' }
             ]
         },
         {
@@ -1035,8 +1309,8 @@ const TaskDisplay = () => {
             is_recurring: true,
             recurring_type: 'Quarterly',
             employees: [
-                { employee_username: 'emp5', name: 'David Brown' },
-                { employee_username: 'emp3', name: 'Mike Johnson' }
+                { employee_username: 'emp5', name: 'David Brown', email: 'david@example.com', role: 'Legal Advisor' },
+                { employee_username: 'emp3', name: 'Mike Johnson', email: 'mike@example.com', role: 'Assistant' }
             ]
         }
     ]);
@@ -1222,10 +1496,6 @@ const TaskDisplay = () => {
         const oldIndex = columnConfig.findIndex((col) => col.id === active.id);
         const newIndex = columnConfig.findIndex((col) => col.id === over.id);
         
-        // Don't allow dragging if:
-        // 1. Source or target is a fixed column
-        // 2. Trying to drag fixed columns
-        // 3. Trying to drag after fixed columns
         if (oldIndex === -1 || newIndex === -1) {
             setActiveDragId(null);
             return;
@@ -1234,27 +1504,40 @@ const TaskDisplay = () => {
         const sourceColumn = columnConfig[oldIndex];
         const targetColumn = columnConfig[newIndex];
         
-        // Find the index of the first fixed column
-        const firstFixedIndex = columnConfig.findIndex(col => col.fixed);
+        // Find fixed columns (Status and Actions)
+        const fixedColumns = columnConfig.filter(col => col.fixed);
+        const fixedColumnIds = fixedColumns.map(col => col.id);
         
         // Rules for dragging:
         // 1. Fixed columns cannot be dragged
-        // 2. Cannot drag non-fixed columns to positions after fixed columns
-        // 3. Cannot drag fixed columns at all
+        // 2. Non-fixed columns can be dragged anywhere except between fixed columns
         if (sourceColumn.fixed) {
             setActiveDragId(null);
             return;
         }
         
-        if (newIndex >= firstFixedIndex && newIndex < columnConfig.length) {
-            // Trying to drag into or after fixed columns
-            // Only allow dragging to positions before the first fixed column
-            if (firstFixedIndex > 0) {
-                const newConfig = arrayMove(columnConfig, oldIndex, firstFixedIndex - 1);
-                saveColumnConfig(newConfig);
+        // If target is a fixed column, we need to find the nearest non-fixed position
+        if (targetColumn.fixed) {
+            // Try to place before or after the fixed columns based on direction
+            if (newIndex > oldIndex) {
+                // Dragging toward the end - place before the first fixed column
+                const firstFixedIndex = columnConfig.findIndex(col => col.fixed);
+                if (firstFixedIndex > 0) {
+                    const newConfig = arrayMove(columnConfig, oldIndex, firstFixedIndex - 1);
+                    saveColumnConfig(newConfig);
+                }
+            } else {
+                // Dragging toward the beginning - place at the end of non-fixed columns
+                const lastNonFixedIndex = columnConfig.reduce((lastIndex, col, index) => 
+                    !col.fixed ? index : lastIndex, -1
+                );
+                if (lastNonFixedIndex !== -1) {
+                    const newConfig = arrayMove(columnConfig, oldIndex, lastNonFixedIndex);
+                    saveColumnConfig(newConfig);
+                }
             }
         } else {
-            // Normal drag within allowed area
+            // Normal drag between non-fixed columns
             const newConfig = arrayMove(columnConfig, oldIndex, newIndex);
             saveColumnConfig(newConfig);
         }
@@ -1285,222 +1568,59 @@ const TaskDisplay = () => {
     // Add a new column
     const addNewColumn = () => {
         const newConfig = [...columnConfig];
-        const newColumnId = (Date.now()).toString();
+        const newColumnId = `col-${Date.now()}`;
         
         // Find the index where to insert (before the first fixed column)
         const firstFixedIndex = newConfig.findIndex(col => col.fixed);
-        const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length - 1;
+        const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length;
         
         newConfig.splice(insertIndex, 0, {
             id: newColumnId,
-            name: `Column ${newConfig.length - 1}`,
-            items: []
+            name: `Column ${newConfig.length + 1}`,
+            items: [],
+            fixed: false
         });
         saveColumnConfig(newConfig);
     };
 
-    // Sortable Column Component - Fixed version
-    const SortableColumn = React.memo(({ column, index }) => {
-        const {
-            attributes,
-            listeners,
-            setNodeRef,
-            transform,
-            transition,
-            isDragging
-        } = useSortable({
-            id: column.id,
-            disabled: column.fixed || index >= columnConfig.findIndex(col => col.fixed)
+    // Open status modal
+    const openStatusModal = (taskId, currentStatus) => {
+        setStatusModal({
+            open: true,
+            taskId,
+            currentStatus
         });
+    };
 
-        const style = {
-            transform: CSS.Transform.toString(transform),
-            transition,
-            opacity: isDragging ? 0.5 : 1,
-            zIndex: isDragging ? 1000 : 1,
-            cursor: column.fixed || index >= columnConfig.findIndex(col => col.fixed) ? 'not-allowed' : 'move'
-        };
+    // Close status modal
+    const closeStatusModal = () => {
+        setStatusModal({
+            open: false,
+            taskId: null,
+            currentStatus: ''
+        });
+    };
 
-        // Find the first fixed column index
-        const firstFixedIndex = columnConfig.findIndex(col => col.fixed);
-        
-        // Check if this column is in the draggable zone
-        const isDraggable = !column.fixed && index < firstFixedIndex;
+    // Open users modal - Updated to handle single employee click
+    const openUsersModal = (users, taskName) => {
+        setUsersModal({
+            open: true,
+            users,
+            taskName
+        });
+    };
 
-        return (
-            <motion.div
-                ref={setNodeRef}
-                style={style}
-                {...(isDraggable ? attributes : {})}
-                {...(isDraggable ? listeners : {})}
-                className={`border-2 rounded-xl p-4 transition-all duration-200 ${column.fixed
-                    ? 'bg-indigo-50 border-indigo-300 shadow-sm cursor-not-allowed'
-                    : !isDraggable
-                    ? 'bg-gray-50 border-gray-200 cursor-not-allowed'
-                    : 'bg-white border-gray-200 hover:shadow-md hover:border-gray-300 cursor-move'
-                    }`}
-                whileHover={{ scale: isDraggable ? 1.02 : 1 }}
-            >
-                {/* Column Header */}
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                        {isDraggable && (
-                            <div className="cursor-grab active:cursor-grabbing">
-                                <FiMove className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                            </div>
-                        )}
-                        <h3 className="font-bold text-gray-800 text-sm">
-                            {column.name}
-                            {column.fixed && (
-                                <span className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-medium">
-                                    Fixed
-                                </span>
-                            )}
-                            {!column.fixed && !isDraggable && (
-                                <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">
-                                    Locked
-                                </span>
-                            )}
-                        </h3>
-                    </div>
-                    {!column.fixed && column.items.length === 0 && isDraggable && (
-                        <button
-                            onClick={() => {
-                                const colIndex = columnConfig.findIndex(col => col.id === column.id);
-                                if (colIndex !== -1) removeColumn(colIndex);
-                            }}
-                            className="text-red-500 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
-                        >
-                            <FiX className="w-4 h-4" />
-                        </button>
-                    )}
-                </div>
+    // Close users modal
+    const closeUsersModal = () => {
+        setUsersModal({
+            open: false,
+            users: [],
+            taskName: ''
+        });
+    };
 
-                {/* Column Items with Drag & Drop */}
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragStart={(event) => setActiveItemDragId(event.active.id)}
-                    onDragEnd={(event) => handleItemDragEnd(event, index)}
-                    onDragCancel={() => setActiveItemDragId(null)}
-                >
-                    <SortableContext
-                        items={column.items.map(item => item.id)}
-                        strategy={verticalListSortingStrategy}
-                    >
-                        <div className="space-y-2 mb-3 min-h-[60px]">
-                            {column.items.map((item, itemIndex) => (
-                                <SortableItem
-                                    key={item.id}
-                                    item={item}
-                                    columnIndex={index}
-                                    itemIndex={itemIndex}
-                                    columnId={column.id}
-                                />
-                            ))}
-                        </div>
-                    </SortableContext>
-                    
-                    {/* Drag overlay for items */}
-                    <DragOverlay>
-                        {activeItemDragId ? (
-                            <div className="bg-white border border-indigo-400 shadow-lg rounded-lg px-3 py-2">
-                                <div className="flex items-center gap-2">
-                                    <FiMove className="w-3 h-3 text-indigo-400" />
-                                    <span className="font-medium text-gray-700 text-sm">
-                                        {availableFields.find(f => f.id === activeItemDragId)?.label || 'Item'}
-                                    </span>
-                                </div>
-                            </div>
-                        ) : null}
-                    </DragOverlay>
-                </DndContext>
-
-                {/* Add Field Dropdown (only for non-fixed columns with space) */}
-                {!column.fixed && column.items.length < 5 && (
-                    <select
-                        value=""
-                        onChange={(e) => {
-                            if (e.target.value) {
-                                addItemToColumn(index, e.target.value);
-                                e.target.value = '';
-                            }
-                        }}
-                        className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-white"
-                    >
-                        <option value="">Add field...</option>
-                        {availableFields
-                            .filter(field =>
-                                !columnConfig.some(col =>
-                                    col.items.some(item => item.id === field.id)
-                                )
-                            )
-                            .map(field => (
-                                <option key={field.id} value={field.id}>
-                                    {field.label}
-                                </option>
-                            ))}
-                    </select>
-                )}
-
-                {/* Empty State */}
-                {!column.fixed && column.items.length === 0 && (
-                    <div className="text-center py-4 text-gray-400 text-sm">
-                        <p>Drag fields here or select from below</p>
-                    </div>
-                )}
-            </motion.div>
-        );
-    });
-
-    // Sortable Item Component
-    const SortableItem = React.memo(({ item, columnIndex, itemIndex, columnId }) => {
-        const {
-            attributes,
-            listeners,
-            setNodeRef,
-            transform,
-            transition,
-            isDragging
-        } = useSortable({ id: item.id });
-
-        const style = {
-            transform: CSS.Transform.toString(transform),
-            transition,
-            opacity: isDragging ? 0.5 : 1,
-            zIndex: isDragging ? 1000 : 1
-        };
-
-        return (
-            <motion.div
-                ref={setNodeRef}
-                style={style}
-                {...attributes}
-                {...listeners}
-                className={`flex items-center justify-between bg-white border px-3 py-2 rounded-lg text-sm transition-all duration-200
-                    ${isDragging ? 'shadow-lg border-indigo-400' : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'}`}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: itemIndex * 0.05 }}
-            >
-                <div className="flex items-center gap-2">
-                    <FiMove className="w-3 h-3 text-gray-400" />
-                    <span className="font-medium text-gray-700">{item.label}</span>
-                </div>
-                <motion.button
-                    onClick={() => removeItemFromColumn(columnIndex, itemIndex)}
-                    className="text-red-500 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                >
-                    <FiX className="w-3 h-3" />
-                </motion.button>
-            </motion.div>
-        );
-    });
-
-    // Render cell content based on field type - Updated to include handleGetInOut parameter
-    const renderCellContent = (task, fieldId, handleGetInOut, handleStatusChange) => {
+    // Render cell content based on field type - UPDATED FOR EMPLOYEE CLICKS
+    const renderCellContent = (task, fieldId, handleGetInOut, navigate, openStatusModal, openUsersModal) => {
         switch (fieldId) {
             case 'create_date':
                 return (
@@ -1527,9 +1647,12 @@ const TaskDisplay = () => {
                 );
             case 'service_name':
                 return (
-                    <div className="font-semibold text-gray-800 text-sm">
+                    <button 
+                        onClick={() => navigate(`/task/${task.id}`)}
+                        className="font-semibold text-gray-800 text-sm hover:text-indigo-600 hover:underline transition-colors"
+                    >
                         {task.service_name}
-                    </div>
+                    </button>
                 );
             case 'fees':
                 return (
@@ -1552,7 +1675,7 @@ const TaskDisplay = () => {
                 );
             case 'name':
                 return (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 justify-center">
                         <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
                             <FiUser className="w-3.5 h-3.5 text-white" />
                         </div>
@@ -1580,61 +1703,88 @@ const TaskDisplay = () => {
                 );
             case 'mobile':
                 return (
-                    <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
+                    <div className="flex items-center gap-2 text-gray-700 font-medium text-sm justify-center">
                         <FiPhone className="w-3 h-3 text-gray-400" />
                         {task.mobile}
                     </div>
                 );
             case 'employees':
-                return (
-                    <div className="flex -space-x-2">
-                        {task.employees.slice(0, 3).map((emp, empIndex) => (
-                            <div
-                                key={emp.employee_username}
-                                className="w-6 h-6 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white"
-                                title={emp.name}
-                            >
-                                {emp.name.charAt(0)}
+                // If only one employee, make the icon clickable
+                if (task.employees.length === 1) {
+                    return (
+                        <button
+                            onClick={() => openUsersModal(task.employees, task.service_name)}
+                            className="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                            title={`Click to view ${task.employees[0].name}'s details`}
+                        >
+                            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white">
+                                {task.employees[0].name.charAt(0)}
                             </div>
-                        ))}
-                        {task.employees.length > 3 && (
-                            <div className="w-6 h-6 bg-gray-300 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-gray-700">
-                                +{task.employees.length - 3}
-                            </div>
-                        )}
-                    </div>
-                );
+                        </button>
+                    );
+                } else if (task.employees.length === 2) {
+                    // If exactly 2 employees, make both icons clickable
+                    return (
+                        <div className="flex -space-x-2 justify-center">
+                            {task.employees.map((emp, empIndex) => (
+                                <button
+                                    key={emp.employee_username}
+                                    onClick={() => openUsersModal(task.employees, task.service_name)}
+                                    className="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                                    title={`Click to view ${emp.name}'s details`}
+                                >
+                                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white">
+                                        {emp.name.charAt(0)}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    );
+                } else {
+                    const showMoreCount = task.employees.length - 2;
+                    return (
+                        <div className="flex -space-x-2 justify-center">
+                            {task.employees.slice(0, 2).map((emp, empIndex) => (
+                                <div
+                                    key={emp.employee_username}
+                                    className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white"
+                                >
+                                    {emp.name.charAt(0)}
+                                </div>
+                            ))}
+                            {task.employees.length > 2 && (
+                                <button
+                                    onClick={() => openUsersModal(task.employees, task.service_name)}
+                                    className="w-8 h-8 bg-gray-300 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-gray-700 hover:bg-gray-400 hover:text-gray-800 transition-colors"
+                                    title={`Click to view all ${task.employees.length} users`}
+                                >
+                                    +{showMoreCount}
+                                </button>
+                            )}
+                        </div>
+                    );
+                }
             case 'status':
+                const statusColor = task.status === 'PENDING' ? 'bg-blue-100 text-blue-700' :
+                                  task.status === 'IN_PROGRESS' ? 'bg-orange-100 text-orange-700' :
+                                  task.status === 'UNDER_REVIEW' ? 'bg-purple-100 text-purple-700' :
+                                  task.status === 'ON_HOLD' ? 'bg-yellow-100 text-yellow-700' :
+                                  task.status === 'COMPLETE' ? 'bg-green-100 text-green-700' :
+                                  'bg-red-100 text-red-700';
+                
                 return (
-                    <select
-                        value={task.status}
-                        onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                        className={`w-full px-2 py-1 text-xs border rounded
-                            focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all font-medium
-                            ${task.status === 'PENDING'
-                                ? 'border-indigo-300 text-indigo-700'
-                                : task.status === 'IN_PROGRESS'
-                                    ? 'border-orange-300 text-orange-700'
-                                    : task.status === 'UNDER_REVIEW'
-                                        ? 'border-purple-300 text-purple-700'
-                                        : task.status === 'ON_HOLD'
-                                            ? 'border-yellow-300 text-yellow-700'
-                                            : task.status === 'COMPLETE'
-                                                ? 'border-green-300 text-green-700'
-                                                : 'border-red-300 text-red-700'
-                            }
-                        `}
-                    >
-                        {statusOptions.map((status) => (
-                            <option key={status.value} value={status.value}>
-                                {status.name}
-                            </option>
-                        ))}
-                    </select>
+                    <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                        {task.status === 'PENDING' ? 'Pending' :
+                         task.status === 'IN_PROGRESS' ? 'In Progress' :
+                         task.status === 'UNDER_REVIEW' ? 'Under Review' :
+                         task.status === 'ON_HOLD' ? 'On Hold' :
+                         task.status === 'COMPLETE' ? 'Complete' :
+                         'Cancelled'}
+                    </div>
                 );
             case 'menu':
                 return (
-                    <div className="relative dropdown-container">
+                    <div className="relative dropdown-container flex justify-center">
                         {/* Vertical 3-dot button - More compact */}
                         <motion.button
                             onClick={() => toggleRowDropdown(task.id)}
@@ -1652,7 +1802,7 @@ const TaskDisplay = () => {
                         <AnimatePresence>
                             {activeRowDropdown === task.id && (
                                 <motion.div
-                                    className="absolute right-0 mt-1 w-52 bg-white rounded-lg
+                                    className="absolute right-0 mt-1 w-56 bg-white rounded-lg
                                    shadow-xl border border-gray-200 z-50 overflow-hidden"
                                     initial={{ opacity: 0, y: -8, scale: 0.96 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1668,7 +1818,7 @@ const TaskDisplay = () => {
                                                         handleGetInOut(task.id, 'out');
                                                         setActiveRowDropdown(null);
                                                     }}
-                                                    className="flex items-center w-full px-3 py-2 text-sm
+                                                    className="flex items-center w-full px-3 py-2.5 text-sm
                                                    text-red-600 hover:bg-red-50 transition-colors"
                                                 >
                                                     <FiArrowRight className="mr-2 text-red-600 w-4 h-4" />
@@ -1677,7 +1827,7 @@ const TaskDisplay = () => {
                                             ) : (
                                                 <button
                                                     disabled
-                                                    className="flex items-center w-full px-3 py-2 text-sm
+                                                    className="flex items-center w-full px-3 py-2.5 text-sm
                                                    text-gray-500 hover:bg-gray-50 transition-colors cursor-not-allowed"
                                                 >
                                                     <FiUserCheck className="mr-2 text-gray-500 w-4 h-4" />
@@ -1690,7 +1840,7 @@ const TaskDisplay = () => {
                                                     handleGetInOut(task.id, 'in');
                                                     setActiveRowDropdown(null);
                                                 }}
-                                                className="flex items-center w-full px-3 py-2 text-sm
+                                                className="flex items-center w-full px-3 py-2.5 text-sm
                                                text-indigo-600 hover:bg-indigo-50 transition-colors"
                                             >
                                                 <FiArrowLeft className="mr-2 text-indigo-600 w-4 h-4" />
@@ -1699,13 +1849,26 @@ const TaskDisplay = () => {
                                         )}
 
                                         <div className="border-t my-1"></div>
+                                        
+                                        {/* Status Change Button */}
+                                        <button
+                                            onClick={() => {
+                                                openStatusModal(task.id, task.status);
+                                                setActiveRowDropdown(null);
+                                            }}
+                                            className="flex items-center w-full px-3 py-2.5 text-sm
+                                           text-blue-600 hover:bg-blue-50 transition-colors"
+                                        >
+                                            <FiCheckCircle className="mr-2 text-blue-600 w-4 h-4" />
+                                            Change Status
+                                        </button>
 
                                         <button
                                             onClick={() => {
                                                 setActiveRowDropdown(null);
-                                                navigate(`/task/profile`);
+                                                navigate(`/task/profile/${task.id}`);
                                             }}
-                                            className="flex items-center w-full px-3 py-2 text-sm
+                                            className="flex items-center w-full px-3 py-2.5 text-sm
                                            text-gray-700 hover:bg-indigo-50 transition-colors"
                                         >
                                             <FiEye className="mr-2 text-indigo-600 w-4 h-4" />
@@ -1717,7 +1880,7 @@ const TaskDisplay = () => {
                                                 setActiveRowDropdown(null);
                                                 navigate(`/task/edit/${task.id}`);
                                             }}
-                                            className="flex items-center w-full px-3 py-2 text-sm
+                                            className="flex items-center w-full px-3 py-2.5 text-sm
                                            text-gray-700 hover:bg-green-50 transition-colors"
                                         >
                                             <FiEdit className="mr-2 text-green-600 w-4 h-4" />
@@ -1731,7 +1894,7 @@ const TaskDisplay = () => {
                                                 setActiveRowDropdown(null);
                                                 SetDeleteModal(true);
                                             }}
-                                            className="flex items-center w-full px-3 py-2 text-sm
+                                            className="flex items-center w-full px-3 py-2.5 text-sm
                                            text-red-600 hover:bg-red-50 transition-colors"
                                         >
                                             <FiTrash2 className="mr-2 w-4 h-4" />
@@ -1754,11 +1917,13 @@ const TaskDisplay = () => {
         }
     };
 
-    // Settings Modal Component with Drag & Drop
+    // Settings Modal Component with Drag & Drop - UPDATED COLUMN NAME EDITING
     const SettingsModal = React.memo(() => {
         const [localColumnConfig, setLocalColumnConfig] = useState(columnConfig);
         const [localActiveDragId, setLocalActiveDragId] = useState(null);
         const [localActiveItemDragId, setLocalActiveItemDragId] = useState(null);
+        const [editingColumnId, setEditingColumnId] = useState(null);
+        const [tempColumnName, setTempColumnName] = useState('');
 
         // Initialize with current column config
         useEffect(() => {
@@ -1785,26 +1950,40 @@ const TaskDisplay = () => {
             const sourceColumn = localColumnConfig[oldIndex];
             const targetColumn = localColumnConfig[newIndex];
             
-            // Find the index of the first fixed column
-            const firstFixedIndex = localColumnConfig.findIndex(col => col.fixed);
+            // Find fixed columns (Status and Actions)
+            const fixedColumns = localColumnConfig.filter(col => col.fixed);
+            const fixedColumnIds = fixedColumns.map(col => col.id);
             
             // Rules for dragging:
             // 1. Fixed columns cannot be dragged
-            // 2. Cannot drag non-fixed columns to positions after fixed columns
+            // 2. Non-fixed columns can be dragged anywhere except between fixed columns
             if (sourceColumn.fixed) {
                 setLocalActiveDragId(null);
                 return;
             }
             
-            if (newIndex >= firstFixedIndex && newIndex < localColumnConfig.length) {
-                // Trying to drag into or after fixed columns
-                // Only allow dragging to positions before the first fixed column
-                if (firstFixedIndex > 0) {
-                    const newConfig = arrayMove(localColumnConfig, oldIndex, firstFixedIndex - 1);
-                    setLocalColumnConfig(newConfig);
+            // If target is a fixed column, we need to find the nearest non-fixed position
+            if (targetColumn.fixed) {
+                // Try to place before or after the fixed columns based on direction
+                if (newIndex > oldIndex) {
+                    // Dragging toward the end - place before the first fixed column
+                    const firstFixedIndex = localColumnConfig.findIndex(col => col.fixed);
+                    if (firstFixedIndex > 0) {
+                        const newConfig = arrayMove(localColumnConfig, oldIndex, firstFixedIndex - 1);
+                        setLocalColumnConfig(newConfig);
+                    }
+                } else {
+                    // Dragging toward the beginning - place at the end of non-fixed columns
+                    const lastNonFixedIndex = localColumnConfig.reduce((lastIndex, col, index) => 
+                        !col.fixed ? index : lastIndex, -1
+                    );
+                    if (lastNonFixedIndex !== -1) {
+                        const newConfig = arrayMove(localColumnConfig, oldIndex, lastNonFixedIndex);
+                        setLocalColumnConfig(newConfig);
+                    }
                 }
             } else {
-                // Normal drag within allowed area
+                // Normal drag between non-fixed columns
                 const newConfig = arrayMove(localColumnConfig, oldIndex, newIndex);
                 setLocalColumnConfig(newConfig);
             }
@@ -1856,18 +2035,23 @@ const TaskDisplay = () => {
         // Add new column in modal
         const addNewColumnInModal = () => {
             const newConfig = [...localColumnConfig];
-            const newColumnId = (Date.now()).toString();
+            const newColumnId = `col-${Date.now()}`;
             
             // Find the index where to insert (before the first fixed column)
             const firstFixedIndex = newConfig.findIndex(col => col.fixed);
-            const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length - 1;
+            const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length;
             
             newConfig.splice(insertIndex, 0, {
                 id: newColumnId,
-                name: `Column ${newConfig.length - 1}`,
-                items: []
+                name: `New Column`,
+                items: [],
+                fixed: false
             });
             setLocalColumnConfig(newConfig);
+            
+            // Start editing the new column
+            setEditingColumnId(newColumnId);
+            setTempColumnName('New Column');
         };
 
         // Save changes from modal
@@ -1881,7 +2065,26 @@ const TaskDisplay = () => {
             setLocalColumnConfig(defaultColumnConfig);
         };
 
-        // Sortable Column Component for Modal
+        // Handle column name edit
+        const startEditingColumn = (columnId, currentName) => {
+            setEditingColumnId(columnId);
+            setTempColumnName(currentName);
+        };
+
+        const saveColumnName = (columnId) => {
+            if (!tempColumnName.trim()) {
+                setEditingColumnId(null);
+                return;
+            }
+            
+            const newConfig = localColumnConfig.map(col => 
+                col.id === columnId ? { ...col, name: tempColumnName.trim() } : col
+            );
+            setLocalColumnConfig(newConfig);
+            setEditingColumnId(null);
+        };
+
+        // Sortable Column Component for Modal - UPDATED FOR BETTER COLUMN NAME EDITING
         const ModalSortableColumn = React.memo(({ column, index }) => {
             const {
                 attributes,
@@ -1892,7 +2095,7 @@ const TaskDisplay = () => {
                 isDragging
             } = useSortable({
                 id: column.id,
-                disabled: column.fixed || index >= localColumnConfig.findIndex(col => col.fixed)
+                disabled: column.fixed
             });
 
             const style = {
@@ -1900,63 +2103,105 @@ const TaskDisplay = () => {
                 transition,
                 opacity: isDragging ? 0.5 : 1,
                 zIndex: isDragging ? 1000 : 1,
-                cursor: column.fixed || index >= localColumnConfig.findIndex(col => col.fixed) ? 'not-allowed' : 'move'
+                cursor: column.fixed ? 'not-allowed' : 'move'
             };
-
-            // Find the first fixed column index
-            const firstFixedIndex = localColumnConfig.findIndex(col => col.fixed);
-            
-            // Check if this column is in the draggable zone
-            const isDraggable = !column.fixed && index < firstFixedIndex;
 
             return (
                 <motion.div
                     ref={setNodeRef}
                     style={style}
-                    {...(isDraggable ? attributes : {})}
-                    {...(isDraggable ? listeners : {})}
+                    {...(column.fixed ? {} : attributes)}
+                    {...(column.fixed ? {} : listeners)}
                     className={`border-2 rounded-xl p-4 transition-all duration-200 ${column.fixed
                         ? 'bg-indigo-50 border-indigo-300 shadow-sm cursor-not-allowed'
-                        : !isDraggable
-                        ? 'bg-gray-50 border-gray-200 cursor-not-allowed'
                         : 'bg-white border-gray-200 hover:shadow-md hover:border-gray-300 cursor-move'
                         }`}
-                    whileHover={{ scale: isDraggable ? 1.02 : 1 }}
+                    whileHover={{ scale: column.fixed ? 1 : 1.02 }}
                 >
-                    {/* Column Header */}
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            {isDraggable && (
-                                <div className="cursor-grab active:cursor-grabbing">
-                                    <FiMove className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                    {/* Column Header - UPDATED FOR BETTER EDITING LAYOUT */}
+                    <div className="mb-3">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                {!column.fixed && (
+                                    <div className="cursor-grab active:cursor-grabbing flex-shrink-0">
+                                        <FiMove className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                                    </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                    {editingColumnId === column.id ? (
+                                        <div className="space-y-2">
+                                            <input
+                                                type="text"
+                                                value={tempColumnName}
+                                                onChange={(e) => setTempColumnName(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') saveColumnName(column.id);
+                                                    if (e.key === 'Escape') setEditingColumnId(null);
+                                                }}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-bold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                autoFocus
+                                                placeholder="Column name"
+                                            />
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => saveColumnName(column.id)}
+                                                    className="flex-1 px-3 py-1.5 bg-green-500 text-white rounded text-xs font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-1"
+                                                >
+                                                    <FiCheckCircle className="w-3 h-3" />
+                                                    
+                                                </button>
+                                                <button
+                                                    onClick={() => setEditingColumnId(null)}
+                                                    className="flex-1 px-3 py-1.5 bg-red-500 text-white rounded text-xs font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-1"
+                                                >
+                                                    <FiX className="w-3 h-3" />
+                                                    
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-between">
+                                            <div className="min-w-0">
+                                                <h3 className="font-bold text-gray-800 text-sm truncate">
+                                                    {column.name}
+                                                </h3>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    {column.fixed && (
+                                                        <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+                                                            Fixed
+                                                        </span>
+                                                    )}
+                                                    <span className="text-xs text-gray-500">
+                                                        {column.items.length} item{column.items.length !== 1 ? 's' : ''}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {!column.fixed && (
+                                                <button
+                                                    onClick={() => startEditingColumn(column.id, column.name)}
+                                                    className="text-gray-500 hover:text-gray-700 p-1 hover:bg-gray-100 rounded flex-shrink-0 ml-2"
+                                                    title="Edit column name"
+                                                >
+                                                    <FiEdit className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
+                            </div>
+                            {!column.fixed && column.items.length === 0 && !editingColumnId && (
+                                <button
+                                    onClick={() => {
+                                        const newConfig = [...localColumnConfig];
+                                        newConfig.splice(index, 1);
+                                        setLocalColumnConfig(newConfig);
+                                    }}
+                                    className="text-red-500 hover:text-red-700 transition-colors duration-200 p-1.5 rounded hover:bg-red-50 ml-2 flex-shrink-0"
+                                >
+                                    <FiX className="w-4 h-4" />
+                                </button>
                             )}
-                            <h3 className="font-bold text-gray-800 text-sm">
-                                {column.name}
-                                {column.fixed && (
-                                    <span className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-medium">
-                                        Fixed
-                                    </span>
-                                )}
-                                {!column.fixed && !isDraggable && (
-                                    <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">
-                                        Locked
-                                    </span>
-                                )}
-                            </h3>
                         </div>
-                        {!column.fixed && column.items.length === 0 && isDraggable && (
-                            <button
-                                onClick={() => {
-                                    const newConfig = [...localColumnConfig];
-                                    newConfig.splice(index, 1);
-                                    setLocalColumnConfig(newConfig);
-                                }}
-                                className="text-red-500 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
-                            >
-                                <FiX className="w-4 h-4" />
-                            </button>
-                        )}
                     </div>
 
                     {/* Column Items with Drag & Drop */}
@@ -1986,8 +2231,8 @@ const TaskDisplay = () => {
                         </SortableContext>
                     </DndContext>
 
-                    {/* Add Field Dropdown (only for non-fixed columns with space) */}
-                    {!column.fixed && column.items.length < 5 && (
+                    {/* Add Field Dropdown (only for columns with space) - Hide when editing */}
+                    {column.items.length < 5 && !editingColumnId && (
                         <select
                             value=""
                             onChange={(e) => {
@@ -2000,10 +2245,12 @@ const TaskDisplay = () => {
                         >
                             <option value="">Add field...</option>
                             {availableFields
+                                .filter(field => field.id !== 'menu') // Don't show menu in dropdown
                                 .filter(field =>
                                     !localColumnConfig.some(col =>
                                         col.items.some(item => item.id === field.id)
-                                    )
+                                    ) ||
+                                    localColumnConfig[index].items.some(item => item.id === field.id)
                                 )
                                 .map(field => (
                                     <option key={field.id} value={field.id}>
@@ -2013,10 +2260,10 @@ const TaskDisplay = () => {
                         </select>
                     )}
 
-                    {/* Empty State */}
-                    {!column.fixed && column.items.length === 0 && (
+                    {/* Empty State - Hide when editing */}
+                    {column.items.length === 0 && !editingColumnId && (
                         <div className="text-center py-4 text-gray-400 text-sm">
-                            <p>Drag fields here or select from below</p>
+                            <p>Drag fields here or select from dropdown</p>
                         </div>
                     )}
                 </motion.div>
@@ -2072,210 +2319,176 @@ const TaskDisplay = () => {
         return (
             <AnimatePresence>
                 {settingsModalOpen && (
-  <motion.div
-    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    onClick={() => setSettingsModalOpen(false)}
-  >
-    <motion.div
-      className="bg-white rounded-xl shadow-2xl w-full max-w-6xl
-                 max-h-[90vh] flex flex-col overflow-hidden"
-      initial={{ scale: 0.95, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.95, opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      onClick={(e) => e.stopPropagation()}
-    >
+                    <motion.div
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setSettingsModalOpen(false)}
+                    >
+                        <motion.div
+                            className="bg-white rounded-xl shadow-2xl w-full max-w-6xl
+                                     max-h-[90vh] flex flex-col overflow-hidden"
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
 
-      {/* ================= HEADER ================= */}
-      <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-3 flex-wrap">
-  <h2 className="text-xl font-bold">Table Column Settings</h2>
-  <span className="text-indigo-100 text-sm">
-    — Drag and drop to rearrange columns and items
-  </span>
-</div>
-        <motion.button
-          onClick={() => setSettingsModalOpen(false)}
-          className="text-white hover:text-indigo-200 transition-colors duration-200 p-1 rounded-lg hover:bg-indigo-500"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <FiX className="w-6 h-6" />
-        </motion.button>
-      </div>
+                            {/* ================= HEADER ================= */}
+                            <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-center">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <h2 className="text-xl font-bold">Table Column Settings</h2>
+                                    <span className="text-indigo-100 text-sm">
+                                        — Drag and drop to rearrange columns and items (Only Status and Actions are fixed)
+                                    </span>
+                                </div>
+                                <motion.button
+                                    onClick={() => setSettingsModalOpen(false)}
+                                    className="text-white hover:text-indigo-200 transition-colors duration-200 p-1 rounded-lg hover:bg-indigo-500"
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                >
+                                    <FiX className="w-6 h-6" />
+                                </motion.button>
+                            </div>
 
-      {/* ================= CONTENT ================= */}
-      <div className="p-6 overflow-y-auto flex-1">
+                            {/* ================= CONTENT ================= */}
+                            <div className="p-6 overflow-y-auto flex-1">
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={(event) => setLocalActiveDragId(event.active.id)}
-          onDragEnd={handleModalDragEnd}
-          onDragCancel={() => setLocalActiveDragId(null)}
-        >
-          <SortableContext
-            items={localColumnConfig.map(column => column.id)}
-            strategy={horizontalListSortingStrategy}
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-6">
-              {localColumnConfig.map((column, index) => (
-                <ModalSortableColumn
-                  key={column.id}
-                  column={column}
-                  index={index}
-                />
-              ))}
-            </div>
-          </SortableContext>
+                                <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragStart={(event) => setLocalActiveDragId(event.active.id)}
+                                    onDragEnd={handleModalDragEnd}
+                                    onDragCancel={() => setLocalActiveDragId(null)}
+                                >
+                                    <SortableContext
+                                        items={localColumnConfig.map(column => column.id)}
+                                        strategy={horizontalListSortingStrategy}
+                                    >
+                                        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-6">
+                                            {localColumnConfig.map((column, index) => (
+                                                <ModalSortableColumn
+                                                    key={column.id}
+                                                    column={column}
+                                                    index={index}
+                                                />
+                                            ))}
+                                        </div>
+                                    </SortableContext>
 
-          {/* Drag overlay */}
-          <DragOverlay>
-            {localActiveDragId ? (
-              <div className="bg-white border-2 border-indigo-300 shadow-xl rounded-xl p-4 w-48">
-                <div className="flex items-center gap-2 mb-3">
-                  <FiMove className="w-4 h-4 text-indigo-400" />
-                  <h3 className="font-bold text-gray-800 text-sm">
-                    {localColumnConfig.find(col => col.id === localActiveDragId)?.name || 'Column'}
-                  </h3>
-                </div>
-                <div className="text-xs text-gray-500">
-                  {localColumnConfig.find(col => col.id === localActiveDragId)?.items.length || 0} items
-                </div>
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+                                    {/* Drag overlay */}
+                                    <DragOverlay>
+                                        {localActiveDragId ? (
+                                            <div className="bg-white border-2 border-indigo-300 shadow-xl rounded-xl p-4 w-48">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <FiMove className="w-4 h-4 text-indigo-400" />
+                                                    <h3 className="font-bold text-gray-800 text-sm">
+                                                        {localColumnConfig.find(col => col.id === localActiveDragId)?.name || 'Column'}
+                                                    </h3>
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    {localColumnConfig.find(col => col.id === localActiveDragId)?.items.length || 0} items
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </DragOverlay>
+                                </DndContext>
 
-        {/* Add Column Button */}
-        <div className="mb-6">
-          <motion.button
-            onClick={addNewColumnInModal}
-            className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200
-                       border-2 border-dashed border-gray-300 rounded-xl
-                       text-gray-700 font-medium hover:from-gray-200 hover:to-gray-300
-                       transition-all duration-200 flex items-center gap-2"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <FiPlus className="w-4 h-4" />
-            Add New Column
-          </motion.button>
-        </div>
+                                {/* Add Column Button */}
+                                <div className="mb-6">
+                                    <motion.button
+                                        onClick={addNewColumnInModal}
+                                        className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200
+                                               border-2 border-dashed border-gray-300 rounded-xl
+                                               text-gray-700 font-medium hover:from-gray-200 hover:to-gray-300
+                                               transition-all duration-200 flex items-center gap-2"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <FiPlus className="w-4 h-4" />
+                                        Add New Column
+                                    </motion.button>
+                                </div>
 
-        {/* ================= AVAILABLE FIELDS ================= */}
-        <div className="border-t pt-6">
-          <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
-            <FiGrid className="w-4 h-4 text-indigo-600" />
-            Available Fields (Drag to columns)
-          </h3>
+                                {/* ================= AVAILABLE FIELDS ================= */}
+                                <div className="border-t pt-6">
+                                    <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
+                                        <FiGrid className="w-4 h-4 text-indigo-600" />
+                                        Available Fields (Drag to columns)
+                                    </h3>
 
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={(event) => {
-              const { active, over } = event;
-              if (over && active.id !== over.id) {
-                const columnIndex = localColumnConfig.findIndex(
-                  col => col.id === over.id
-                );
-                if (
-                  columnIndex !== -1 &&
-                  !localColumnConfig[columnIndex].fixed
-                ) {
-                  addItemToColumnInModal(columnIndex, active.id);
-                }
-              }
-            }}
-          >
-            <SortableContext
-              items={availableFields
-                .filter(field =>
-                  !localColumnConfig.some(col =>
-                    col.items.some(item => item.id === field.id)
-                  )
-                )
-                .map(field => field.id)}
-              strategy={horizontalListSortingStrategy}
-            >
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {availableFields
-                  .filter(field =>
-                    !localColumnConfig.some(col =>
-                      col.items.some(item => item.id === field.id)
-                    )
-                  )
-                  .map(field => (
-                    <DraggableField
-                      key={field.id}
-                      field={field}
-                    />
-                  ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                        {availableFields
+                                            .filter(field => field.id !== 'menu') // Don't show menu in available fields
+                                            .map(field => (
+                                                <DraggableField
+                                                    key={field.id}
+                                                    field={field}
+                                                    localColumnConfig={localColumnConfig}
+                                                />
+                                            ))}
+                                    </div>
+                                </div>
 
-      </div>
+                            </div>
 
-      {/* ================= FOOTER ================= */}
-      <div className="border-t px-6 py-4 bg-gray-50">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            {/* ================= FOOTER ================= */}
+                            <div className="border-t px-6 py-4 bg-gray-50">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
-          <motion.button
-            onClick={resetToDefaultInModal}
-            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                       border border-gray-300 rounded-lg text-gray-700
-                       hover:bg-gray-200 transition-all duration-200 hover:shadow-sm gap-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <FiRefreshCw className="w-4 h-4" />
-            Reset to Default
-          </motion.button>
+                                    <motion.button
+                                        onClick={resetToDefaultInModal}
+                                        className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                               border border-gray-300 rounded-lg text-gray-700
+                                               hover:bg-gray-200 transition-all duration-200 hover:shadow-sm gap-2"
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                    >
+                                        <FiRefreshCw className="w-4 h-4" />
+                                        Reset to Default
+                                    </motion.button>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <motion.button
-              onClick={() => setSettingsModalOpen(false)}
-              className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                         border border-gray-300 rounded-lg text-gray-700
-                         hover:bg-gray-200 transition-all duration-200 hover:shadow-sm"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Cancel
-            </motion.button>
+                                    <div className="flex flex-col sm:flex-row gap-3">
+                                        <motion.button
+                                            onClick={() => setSettingsModalOpen(false)}
+                                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                                     border border-gray-300 rounded-lg text-gray-700
+                                                     hover:bg-gray-200 transition-all duration-200 hover:shadow-sm"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            Cancel
+                                        </motion.button>
 
-            <motion.button
-              onClick={saveModalChanges}
-              className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                         bg-gradient-to-r from-indigo-600 to-indigo-700 text-white
-                         rounded-lg hover:from-indigo-700 hover:to-indigo-800
-                         transition-all duration-200 hover:shadow-md shadow-sm gap-2"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <FiSave className="w-4 h-4" />
-              Save Changes
-            </motion.button>
-          </div>
+                                        <motion.button
+                                            onClick={saveModalChanges}
+                                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                                     bg-gradient-to-r from-indigo-600 to-indigo-700 text-white
+                                                     rounded-lg hover:from-indigo-700 hover:to-indigo-800
+                                                     transition-all duration-200 hover:shadow-md shadow-sm gap-2"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            <FiSave className="w-4 h-4" />
+                                            Save Changes
+                                        </motion.button>
+                                    </div>
 
-        </div>
-      </div>
+                                </div>
+                            </div>
 
-    </motion.div>
-  </motion.div>
-)}
-
+                        </motion.div>
+                    </motion.div>
+                )}
             </AnimatePresence>
         );
     });
 
     // Draggable Field Component for Available Fields
-    const DraggableField = React.memo(({ field }) => {
+    const DraggableField = React.memo(({ field, localColumnConfig }) => {
         const {
             attributes,
             listeners,
@@ -2569,6 +2782,9 @@ const TaskDisplay = () => {
                                     handleGetInOut={handleGetInOut}
                                     setActiveRowDropdown={setActiveRowDropdown}
                                     handleStatusChange={handleStatusChange}
+                                    navigate={navigate}
+                                    openStatusModal={openStatusModal}
+                                    openUsersModal={openUsersModal}
                                 />
                             ) : (
                                 <TaskCards
@@ -2584,6 +2800,9 @@ const TaskDisplay = () => {
                                     setActiveRowDropdown={setActiveRowDropdown}
                                     handleStatusChange={handleStatusChange}
                                     statusOptions={statusOptions}
+                                    navigate={navigate}
+                                    openStatusModal={openStatusModal}
+                                    openUsersModal={openUsersModal}
                                 />
                             )}
                         </div>
@@ -2678,6 +2897,24 @@ const TaskDisplay = () => {
 
             {/* Settings Modal */}
             <SettingsModal />
+
+            {/* Status Change Modal */}
+            <StatusChangeModal
+                isOpen={statusModal.open}
+                onClose={closeStatusModal}
+                taskId={statusModal.taskId}
+                currentStatus={statusModal.currentStatus}
+                onStatusChange={handleStatusChange}
+                statusOptions={statusOptions}
+            />
+
+            {/* Users List Modal */}
+            <UsersListModal
+                isOpen={usersModal.open}
+                onClose={closeUsersModal}
+                users={usersModal.users}
+                taskName={usersModal.taskName}
+            />
 
             {/* Export Confirmation Modal */}
             <AnimatePresence>
