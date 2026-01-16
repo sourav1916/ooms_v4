@@ -26,160 +26,13 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiBell,
-  FiSearch
+  FiSearch,
+  FiLock,
+  FiUpload,
+  FiFile,
+  FiCreditCard,
+  FiShield
 } from 'react-icons/fi';
-
-// Mock Header Component
-// function Header({ mobileMenuOpen, setMobileMenuOpen, isMinimized }) {
-//   return (
-//     <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-40">
-//       <div className={`flex items-center justify-between h-16 px-4 transition-all duration-300 ${
-//         isMinimized ? 'lg:pl-20' : 'lg:pl-64'
-//       }`}>
-//         {/* Left side */}
-//         <div className="flex items-center gap-4">
-//           <button
-//             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-//             className="lg:hidden text-gray-600 hover:text-gray-900"
-//           >
-//             <FiMenu size={24} />
-//           </button>
-          
-//           <div className="hidden md:flex items-center gap-3 bg-gray-100 px-4 py-2 rounded-lg w-96">
-//             <FiSearch className="text-gray-400" size={18} />
-//             <input
-//               type="text"
-//               placeholder="Search..."
-//               className="bg-transparent border-none outline-none w-full text-sm"
-//             />
-//           </div>
-//         </div>
-
-//         {/* Right side */}
-//         <div className="flex items-center gap-4">
-//           <motion.button
-//             whileHover={{ scale: 1.05 }}
-//             whileTap={{ scale: 0.95 }}
-//             className="relative text-gray-600 hover:text-gray-900"
-//           >
-//             <FiBell size={20} />
-//             <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-//           </motion.button>
-          
-//           <div className="flex items-center gap-3">
-//             <div className="hidden sm:block text-right">
-//               <p className="text-sm font-semibold text-gray-900">John Doe</p>
-//               <p className="text-xs text-gray-500">john@example.com</p>
-//             </div>
-//             <div className="w-10 h-10 rounded-full bg-gray-900 text-white flex items-center justify-center font-semibold">
-//               JD
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </header>
-//   );
-// }
-
-// Mock Sidebar Component
-// function Sidebar({ mobileMenuOpen, setMobileMenuOpen, isMinimized, setIsMinimized }) {
-//   const menuItems = [
-//     { icon: <FiHome size={20} />, label: 'Dashboard', path: '/' },
-//     { icon: <FiBarChart2 size={20} />, label: 'Analytics', path: '/analytics' },
-//     { icon: <FiFileText size={20} />, label: 'Reports', path: '/reports' },
-//     { icon: <FiUser size={20} />, label: 'My Profile', path: '/profile', active: true },
-//     { icon: <FiSettings size={20} />, label: 'Settings', path: '/settings' },
-//   ];
-
-//   return (
-//     <>
-//       {/* Mobile Overlay */}
-//       <AnimatePresence>
-//         {mobileMenuOpen && (
-//           <motion.div
-//             initial={{ opacity: 0 }}
-//             animate={{ opacity: 1 }}
-//             exit={{ opacity: 0 }}
-//             onClick={() => setMobileMenuOpen(false)}
-//             className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-//           />
-//         )}
-//       </AnimatePresence>
-
-//       {/* Sidebar */}
-//       <motion.aside
-//         initial={false}
-//         animate={{
-//           width: isMinimized ? '5rem' : '16rem',
-//           x: mobileMenuOpen ? 0 : '-100%'
-//         }}
-//         transition={{ duration: 0.3 }}
-//         className={`fixed left-0 top-0 h-full bg-white border-r border-gray-200 z-50 lg:translate-x-0`}
-//       >
-//         <div className="flex flex-col h-full">
-//           {/* Logo */}
-//           <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
-//             <motion.div
-//               animate={{ opacity: isMinimized ? 0 : 1 }}
-//               className="flex items-center gap-2"
-//             >
-//               <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center text-white font-bold">
-//                 W
-//               </div>
-//               {!isMinimized && <span className="font-bold text-gray-900">WICHAT</span>}
-//             </motion.div>
-            
-//             <button
-//               onClick={() => setIsMinimized(!isMinimized)}
-//               className="hidden lg:block text-gray-500 hover:text-gray-900"
-//             >
-//               {isMinimized ? <FiChevronRight size={20} /> : <FiChevronLeft size={20} />}
-//             </button>
-//           </div>
-
-//           {/* Navigation */}
-//           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-//             {menuItems.map((item, index) => (
-//               <motion.button
-//                 key={index}
-//                 whileHover={{ x: 4 }}
-//                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${
-//                   item.active
-//                     ? 'bg-gray-900 text-white'
-//                     : 'text-gray-700 hover:bg-gray-100'
-//                 }`}
-//               >
-//                 <span className="flex-shrink-0">{item.icon}</span>
-//                 <motion.span
-//                   animate={{ opacity: isMinimized ? 0 : 1 }}
-//                   className="font-medium whitespace-nowrap"
-//                 >
-//                   {!isMinimized && item.label}
-//                 </motion.span>
-//               </motion.button>
-//             ))}
-//           </nav>
-
-//           {/* Logout */}
-//           <div className="p-3 border-t border-gray-200">
-//             <motion.button
-//               whileHover={{ x: 4 }}
-//               className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-//             >
-//               <FiLogOut size={20} />
-//               <motion.span
-//                 animate={{ opacity: isMinimized ? 0 : 1 }}
-//                 className="font-medium"
-//               >
-//                 {!isMinimized && 'Logout'}
-//               </motion.span>
-//             </motion.button>
-//           </div>
-//         </div>
-//       </motion.aside>
-//     </>
-//   );
-// }
 
 // Main Profile Component
 export default function MyProfile() {
@@ -208,10 +61,34 @@ export default function MyProfile() {
     twitter: '@johndoe',
     skills: ['Product Strategy', 'Team Leadership', 'Agile', 'Data Analysis'],
     language: 'English',
-    timezone: 'EST (UTC-5)'
+    timezone: 'EST (UTC-5)',
+    documents: {
+      aadharCard: null,
+      panCard: null,
+      bankStatement: null,
+      idProof: null
+    },
+    bankDetails: {
+      accountNumber: '',
+      accountHolder: '',
+      bankName: '',
+      ifscCode: '',
+      branch: ''
+    }
   });
 
   const [tempProfile, setTempProfile] = useState(profile);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [generatedOTP, setGeneratedOTP] = useState('');
+  const [otpInput, setOtpInput] = useState(['', '', '', '', '', '']);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [uploadingFile, setUploadingFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Persist sidebar minimized state
   useEffect(() => {
@@ -249,9 +126,135 @@ export default function MyProfile() {
     setTempProfile(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleBankDetailChange = (field, value) => {
+    setTempProfile(prev => ({
+      ...prev,
+      bankDetails: {
+        ...prev.bankDetails,
+        [field]: value
+      }
+    }));
+  };
+
+  // Generate OTP
+  const generateOTP = () => {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedOTP(otp);
+    setShowOTPModal(true);
+    
+    // Show OTP in alert (in real app, this would be sent via email/SMS)
+    alert(`Your OTP is: ${otp} (In production, this would be sent to your email/phone)`);
+    
+    // Auto-clear OTP after 10 minutes
+    setTimeout(() => {
+      setGeneratedOTP('');
+      setOtpInput(['', '', '', '', '', '']);
+    }, 600000);
+  };
+
+  // Handle password change
+  const handlePasswordChange = () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      alert("New password and confirm password don't match!");
+      return;
+    }
+    if (passwordData.newPassword.length < 8) {
+      alert("Password must be at least 8 characters long!");
+      return;
+    }
+    generateOTP();
+  };
+
+  // Verify OTP
+  const verifyOTP = () => {
+    const enteredOTP = otpInput.join('');
+    if (enteredOTP === generatedOTP) {
+      alert('Password changed successfully!');
+      setShowOTPModal(false);
+      setShowChangePassword(false);
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      setOtpInput(['', '', '', '', '', '']);
+    } else {
+      alert('Invalid OTP! Please try again.');
+    }
+  };
+
+  // Handle file upload
+  const handleFileUpload = (documentType, file) => {
+    if (!file) return;
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+    
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Only JPG, PNG, and PDF files are allowed');
+      return;
+    }
+    
+    setUploadingFile(documentType);
+    setUploadProgress(0);
+    
+    // Simulate upload progress
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          
+          // Update profile with uploaded file
+          const fileName = file.name;
+          setTempProfile(prev => ({
+            ...prev,
+            documents: {
+              ...prev.documents,
+              [documentType]: {
+                name: fileName,
+                size: file.size,
+                type: file.type,
+                uploadedAt: new Date().toISOString()
+              }
+            }
+          }));
+          
+          setUploadingFile(null);
+          alert(`${documentType.replace(/([A-Z])/g, ' $1')} uploaded successfully!`);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 100);
+  };
+
+  // Handle OTP input change
+  const handleOtpChange = (index, value) => {
+    if (value.length > 1) {
+      value = value.slice(0, 1);
+    }
+    
+    const newOtpInput = [...otpInput];
+    newOtpInput[index] = value;
+    setOtpInput(newOtpInput);
+    
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      if (nextInput) nextInput.focus();
+    }
+  };
+
   const tabs = [
     { id: 'personal', label: 'Personal Info', icon: <FiUser /> },
     { id: 'professional', label: 'Professional', icon: <FiBriefcase /> },
+    { id: 'documents', label: 'Documents', icon: <FiFile /> },
+    { id: 'security', label: 'Security', icon: <FiShield /> },
     { id: 'social', label: 'Social Links', icon: <FiGlobe /> },
     { id: 'preferences', label: 'Preferences', icon: <FiSettings /> }
   ];
@@ -577,6 +580,189 @@ export default function MyProfile() {
                     </div>
                   )}
 
+                  {activeTab === 'documents' && (
+                    <div className="space-y-6">
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900 mb-1">Documents & Verification</h2>
+                        <p className="text-sm text-gray-500">Upload and manage your identity documents</p>
+                      </div>
+                      
+                      {/* Bank Details */}
+                      <div className="border-b border-gray-200 pb-6">
+                        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <FiCreditCard />
+                          Bank Details
+                        </h3>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <InfoField
+                            icon={<FiUser />}
+                            label="Account Holder Name"
+                            value={isEditing ? tempProfile.bankDetails.accountHolder : profile.bankDetails.accountHolder}
+                            isEditing={isEditing}
+                            onChange={(v) => handleBankDetailChange('accountHolder', v)}
+                          />
+                          <InfoField
+                            icon={<FiCreditCard />}
+                            label="Account Number"
+                            value={isEditing ? tempProfile.bankDetails.accountNumber : profile.bankDetails.accountNumber}
+                            isEditing={isEditing}
+                            onChange={(v) => handleBankDetailChange('accountNumber', v)}
+                            type="password"
+                          />
+                          <InfoField
+                            icon={<FiBriefcase />}
+                            label="Bank Name"
+                            value={isEditing ? tempProfile.bankDetails.bankName : profile.bankDetails.bankName}
+                            isEditing={isEditing}
+                            onChange={(v) => handleBankDetailChange('bankName', v)}
+                          />
+                          <InfoField
+                            icon={<FiFile />}
+                            label="IFSC Code"
+                            value={isEditing ? tempProfile.bankDetails.ifscCode : profile.bankDetails.ifscCode}
+                            isEditing={isEditing}
+                            onChange={(v) => handleBankDetailChange('ifscCode', v)}
+                          />
+                          <InfoField
+                            icon={<FiMapPin />}
+                            label="Branch"
+                            value={isEditing ? tempProfile.bankDetails.branch : profile.bankDetails.branch}
+                            isEditing={isEditing}
+                            onChange={(v) => handleBankDetailChange('branch', v)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Document Uploads */}
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-4">Upload Documents</h3>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <DocumentUpload
+                            title="Aadhar Card"
+                            documentType="aadharCard"
+                            document={isEditing ? tempProfile.documents.aadharCard : profile.documents.aadharCard}
+                            isEditing={isEditing}
+                            onUpload={handleFileUpload}
+                            uploading={uploadingFile === 'aadharCard'}
+                            uploadProgress={uploadProgress}
+                          />
+                          <DocumentUpload
+                            title="PAN Card"
+                            documentType="panCard"
+                            document={isEditing ? tempProfile.documents.panCard : profile.documents.panCard}
+                            isEditing={isEditing}
+                            onUpload={handleFileUpload}
+                            uploading={uploadingFile === 'panCard'}
+                            uploadProgress={uploadProgress}
+                          />
+                          <DocumentUpload
+                            title="Bank Statement"
+                            documentType="bankStatement"
+                            document={isEditing ? tempProfile.documents.bankStatement : profile.documents.bankStatement}
+                            isEditing={isEditing}
+                            onUpload={handleFileUpload}
+                            uploading={uploadingFile === 'bankStatement'}
+                            uploadProgress={uploadProgress}
+                          />
+                          <DocumentUpload
+                            title="ID Proof"
+                            documentType="idProof"
+                            document={isEditing ? tempProfile.documents.idProof : profile.documents.idProof}
+                            isEditing={isEditing}
+                            onUpload={handleFileUpload}
+                            uploading={uploadingFile === 'idProof'}
+                            uploadProgress={uploadProgress}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'security' && (
+                    <div className="space-y-6">
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900 mb-1">Security Settings</h2>
+                        <p className="text-sm text-gray-500">Manage your password and account security</p>
+                      </div>
+                      
+                      {!showChangePassword ? (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-gray-50 rounded-lg p-6 border border-gray-200"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="font-semibold text-gray-900 mb-1">Password</h3>
+                              <p className="text-sm text-gray-500">Last changed 30 days ago</p>
+                            </div>
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => setShowChangePassword(true)}
+                              className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+                            >
+                              <FiLock size={16} />
+                              Change Password
+                            </motion.button>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className="bg-gray-50 rounded-lg p-6 border border-gray-200 space-y-4"
+                        >
+                          <h3 className="font-semibold text-gray-900">Change Password</h3>
+                          
+                          <div className="space-y-3">
+                            <PasswordField
+                              label="Current Password"
+                              value={passwordData.currentPassword}
+                              onChange={(v) => setPasswordData(prev => ({ ...prev, currentPassword: v }))}
+                            />
+                            <PasswordField
+                              label="New Password"
+                              value={passwordData.newPassword}
+                              onChange={(v) => setPasswordData(prev => ({ ...prev, newPassword: v }))}
+                            />
+                            <PasswordField
+                              label="Confirm New Password"
+                              value={passwordData.confirmPassword}
+                              onChange={(v) => setPasswordData(prev => ({ ...prev, confirmPassword: v }))}
+                            />
+                          </div>
+                          
+                          <div className="flex gap-3 pt-2">
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={handlePasswordChange}
+                              className="bg-gray-900 text-white px-5 py-2.5 rounded-lg hover:bg-gray-800"
+                            >
+                              Generate OTP & Change Password
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => {
+                                setShowChangePassword(false);
+                                setPasswordData({
+                                  currentPassword: '',
+                                  newPassword: '',
+                                  confirmPassword: ''
+                                });
+                              }}
+                              className="bg-white text-gray-700 px-5 py-2.5 rounded-lg border border-gray-300 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </motion.button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </div>
+                  )}
+
                   {activeTab === 'social' && (
                     <div className="space-y-6">
                       <div>
@@ -650,11 +836,89 @@ export default function MyProfile() {
           </div>
         </div>
       </main>
+
+      {/* OTP Verification Modal */}
+      <AnimatePresence>
+        {showOTPModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            onClick={() => setShowOTPModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Verify OTP</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Enter the 6-digit OTP sent to your registered email/phone
+              </p>
+              
+              <div className="mb-6">
+                <div className="flex justify-between gap-2 mb-4">
+                  {[0, 1, 2, 3, 4, 5].map((index) => (
+                    <input
+                      key={index}
+                      id={`otp-${index}`}
+                      type="text"
+                      maxLength="1"
+                      value={otpInput[index]}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-0 transition-colors"
+                      autoFocus={index === 0}
+                    />
+                  ))}
+                </div>
+                
+                <div className="text-center">
+                  <button
+                    onClick={() => {
+                      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+                      setGeneratedOTP(otp);
+                      alert(`New OTP sent: ${otp}`);
+                    }}
+                    className="text-sm text-gray-600 hover:text-gray-900 underline"
+                  >
+                    Resend OTP
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={verifyOTP}
+                  className="flex-1 bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800"
+                >
+                  Verify & Change Password
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setShowOTPModal(false);
+                    setOtpInput(['', '', '', '', '', '']);
+                  }}
+                  className="flex-1 bg-white text-gray-700 py-3 rounded-lg border border-gray-300 hover:bg-gray-50"
+                >
+                  Cancel
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function InfoField({ icon, label, value, isEditing, onChange }) {
+function InfoField({ icon, label, value, isEditing, onChange, type = 'text' }) {
   return (
     <div className="space-y-2">
       <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -665,16 +929,124 @@ function InfoField({ icon, label, value, isEditing, onChange }) {
         <motion.input
           initial={{ scale: 0.98 }}
           animate={{ scale: 1 }}
-          type="text"
+          type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
         />
       ) : (
         <div className="bg-gray-50 px-4 py-2.5 rounded-lg text-gray-900 border border-gray-200">
-          {value}
+          {type === 'password' ? '••••••••' : value}
         </div>
       )}
+    </div>
+  );
+}
+
+function PasswordField({ label, value, onChange }) {
+  const [showPassword, setShowPassword] = useState(false);
+  
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <div className="relative">
+        <input
+          type={showPassword ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+        >
+          {showPassword ? 'Hide' : 'Show'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DocumentUpload({ title, documentType, document, isEditing, onUpload, uploading, uploadProgress }) {
+  const fileInputRef = React.useRef(null);
+  
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      onUpload(documentType, file);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="block text-sm font-medium text-gray-700">{title}</label>
+      
+      {document ? (
+        <div className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg border border-gray-200">
+          <div className="flex items-center gap-3">
+            <FiFile className="text-gray-500" />
+            <div>
+              <p className="text-sm font-medium text-gray-900">{document.name}</p>
+              <p className="text-xs text-gray-500">
+                {Math.round(document.size / 1024)} KB • Uploaded {
+                  new Date(document.uploadedAt).toLocaleDateString()
+                }
+              </p>
+            </div>
+          </div>
+          {isEditing && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
+              Replace
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors">
+          {uploading ? (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Uploading...</span>
+                <span className="font-medium">{uploadProgress}%</span>
+              </div>
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gray-900"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${uploadProgress}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-center">
+              <FiUpload className="mx-auto text-gray-400 mb-2" size={24} />
+              <p className="text-sm text-gray-600 mb-1">Click to upload or drag and drop</p>
+              <p className="text-xs text-gray-500">PDF, JPG, PNG up to 5MB</p>
+              {isEditing && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-2 text-sm text-gray-900 hover:text-gray-700 font-medium"
+                >
+                  Select File
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.jpg,.jpeg,.png"
+        onChange={handleFileSelect}
+        disabled={!isEditing || uploading}
+      />
     </div>
   );
 }

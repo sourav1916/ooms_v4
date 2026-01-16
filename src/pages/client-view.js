@@ -274,7 +274,7 @@ const ClientTable = ({
                     </div>
 
                     {/* SL No Column - Added */}
-                    <div className="w-10 p-3 font-bold text-gray-700 text-sm flex-shrink-0">
+                    <div className="w-10 p-3 font-bold text-gray-700 text-sm flex-shrink-0 text-center">
                         SL No
                     </div>
 
@@ -282,7 +282,7 @@ const ClientTable = ({
                     {columnConfig.map(column => (
                         <div
                             key={column.id}
-                            className="p-3 font-semibold text-gray-700 text-sm flex-1 min-w-0"
+                            className="p-3 font-semibold text-gray-700 text-sm flex-1 min-w-0 text-center"
                             style={{ flex: '1 1 0%' }}
                         >
                             <div className="truncate">{column.name}</div>
@@ -356,7 +356,7 @@ const ClientTable = ({
                                     </div>
 
                                     {/* SL No - Bold - Added */}
-                                    <div className="w-10 p-3 flex-shrink-0">
+                                    <div className="w-10 p-3 flex-shrink-0 text-center">
                                         <span className="font-bold text-gray-800 text-sm">
                                             {index + 1}
                                         </span>
@@ -366,12 +366,12 @@ const ClientTable = ({
                                     {columnConfig.map(column => (
                                         <div 
                                             key={column.id} 
-                                            className="p-3 flex-1 min-w-0"
+                                            className="p-3 flex-1 min-w-0 text-center"
                                             style={{ flex: '1 1 0%' }}
                                         >
                                             <div className="space-y-1">
                                                 {column.items.map(item => (
-                                                    <div key={item.id} className="min-h-[1.25rem] flex items-center">
+                                                    <div key={item.id} className="min-h-[1.25rem] flex items-center justify-center">
                                                         {renderCellContent(client, item.id)}
                                                     </div>
                                                 ))}
@@ -1268,12 +1268,12 @@ const ViewClients = () => {
         );
     });
 
-    // Render cell content based on field type - Updated for compact layout
+    // Render cell content based on field type - Updated for compact layout and centered
     const renderCellContent = (client, fieldId) => {
         switch (fieldId) {
             case 'name':
                 return (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 justify-center">
                         <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
                             <FiUser className="w-3.5 h-3.5 text-white" />
                         </div>
@@ -1301,7 +1301,7 @@ const ViewClients = () => {
                 );
             case 'mobile':
                 return (
-                    <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
+                    <div className="flex items-center gap-2 text-gray-700 font-medium text-sm justify-center">
                         <FiPhone className="w-3 h-3 text-gray-400" />
                         {client.mobile}
                     </div>
@@ -1372,7 +1372,7 @@ const ViewClients = () => {
                 );
             case 'actions':
                 return (
-                    <div className="relative dropdown-container">
+                    <div className="relative dropdown-container flex justify-center">
                         {/* Vertical 3-dot button - Updated to match TaskDisplay */}
                         <motion.button
                             onClick={() => toggleRowDropdown(client.id)}
