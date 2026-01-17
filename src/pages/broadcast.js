@@ -5,12 +5,10 @@ import {
     FiFileText,
     FiSettings,
     FiBarChart2,
-    FiPhone,
     FiBell,
     FiMessageSquare,
     FiDatabase,
     FiLayers,
-    FiMail
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
