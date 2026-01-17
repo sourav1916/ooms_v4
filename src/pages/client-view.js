@@ -1831,186 +1831,186 @@ const ViewClients = () => {
         return (
             <AnimatePresence>
                 {settingsModalOpen && (
-                    <motion.div
-                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setSettingsModalOpen(false)}
+    <motion.div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={() => setSettingsModalOpen(false)}
+    >
+        <motion.div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={(e) => e.stopPropagation()}
+        >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-center shrink-0">
+                <div>
+                    <h2 className="text-xl font-bold">Table Column Settings</h2>
+                    <p className="text-blue-100 text-sm mt-1">Drag and drop to rearrange columns and items</p>
+                </div>
+                <motion.button
+                    onClick={() => setSettingsModalOpen(false)}
+                    className="text-white hover:text-blue-200 transition-colors duration-200 p-1 rounded-lg hover:bg-blue-500"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                >
+                    <FiX className="w-6 h-6" />
+                </motion.button>
+            </div>
+
+            {/* Modal Content - Scrollable area */}
+            <div className="flex-1 overflow-y-auto p-6">
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={(event) => setLocalActiveDragId(event.active.id)}
+                    onDragEnd={handleModalDragEnd}
+                    onDragCancel={() => setLocalActiveDragId(null)}
+                >
+                    <SortableContext
+                        items={localColumnConfig.map(column => column.id)}
+                        strategy={horizontalListSortingStrategy}
                     >
-                        <motion.div
-                            className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {/* Modal Header */}
-                            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-center">
-                                <div>
-                                    <h2 className="text-xl font-bold">Table Column Settings</h2>
-                                    <p className="text-blue-100 text-sm mt-1">Drag and drop to rearrange columns and items</p>
-                                </div>
-                                <motion.button
-                                    onClick={() => setSettingsModalOpen(false)}
-                                    className="text-white hover:text-blue-200 transition-colors duration-200 p-1 rounded-lg hover:bg-blue-500"
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                >
-                                    <FiX className="w-6 h-6" />
-                                </motion.button>
-                            </div>
-
-                            {/* Modal Content */}
-                            <div className="p-6 overflow-y-auto max-h-[70vh]">
-                                <DndContext
-                                    sensors={sensors}
-                                    collisionDetection={closestCenter}
-                                    onDragStart={(event) => setLocalActiveDragId(event.active.id)}
-                                    onDragEnd={handleModalDragEnd}
-                                    onDragCancel={() => setLocalActiveDragId(null)}
-                                >
-                                    <SortableContext
-                                        items={localColumnConfig.map(column => column.id)}
-                                        strategy={horizontalListSortingStrategy}
-                                    >
-                                        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-6">
-                                            {localColumnConfig.map((column, index) => (
-                                                <ModalSortableColumn
-                                                    key={column.id}
-                                                    column={column}
-                                                    index={index}
-                                                />
-                                            ))}
-                                        </div>
-                                    </SortableContext>
-                                    
-                                    {/* Drag overlay for columns */}
-                                    <DragOverlay>
-                                        {localActiveDragId ? (
-                                            <div className="bg-white border-2 border-blue-300 shadow-xl rounded-xl p-4 w-48">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <FiMove className="w-4 h-4 text-blue-400" />
-                                                    <h3 className="font-bold text-gray-800 text-sm">
-                                                        {localColumnConfig.find(col => col.id === localActiveDragId)?.name || 'Column'}
-                                                    </h3>
-                                                </div>
-                                                <div className="text-xs text-gray-500">
-                                                    {localColumnConfig.find(col => col.id === localActiveDragId)?.items.length || 0} items
-                                                </div>
-                                            </div>
-                                        ) : null}
-                                    </DragOverlay>
-                                </DndContext>
-
-                                {/* Add Column Button */}
-                                <div className="mb-6">
-                                    <motion.button
-                                        onClick={addNewColumnInModal}
-                                        className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 border-2 border-dashed border-gray-300 rounded-xl text-gray-700 font-medium hover:from-gray-200 hover:to-gray-300 transition-all duration-200 flex items-center gap-2"
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                    >
-                                        <FiPlus className="w-4 h-4" />
-                                        Add New Column
-                                    </motion.button>
-                                </div>
-
-                                {/* Available Fields with Drag & Drop */}
-                                <div className="border-t pt-6">
-                                    <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
-                                        <FiGrid className="w-4 h-4 text-blue-600" />
-                                        Available Fields (Drag to columns)
+                        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-6">
+                            {localColumnConfig.map((column, index) => (
+                                <ModalSortableColumn
+                                    key={column.id}
+                                    column={column}
+                                    index={index}
+                                />
+                            ))}
+                        </div>
+                    </SortableContext>
+                    
+                    {/* Drag overlay for columns */}
+                    <DragOverlay>
+                        {localActiveDragId ? (
+                            <div className="bg-white border-2 border-blue-300 shadow-xl rounded-xl p-4 w-48">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <FiMove className="w-4 h-4 text-blue-400" />
+                                    <h3 className="font-bold text-gray-800 text-sm">
+                                        {localColumnConfig.find(col => col.id === localActiveDragId)?.name || 'Column'}
                                     </h3>
-                                    <DndContext
-                                        sensors={sensors}
-                                        collisionDetection={closestCenter}
-                                        onDragEnd={(event) => {
-                                            const { active, over } = event;
-                                            if (over && active.id !== over.id) {
-                                                // Find which column was dropped on
-                                                const columnIndex = localColumnConfig.findIndex(col => col.id === over.id);
-                                                if (columnIndex !== -1 && !localColumnConfig[columnIndex].fixed) {
-                                                    addItemToColumnInModal(columnIndex, active.id);
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        <SortableContext
-                                            items={availableFields
-                                                .filter(field =>
-                                                    !localColumnConfig.some(col =>
-                                                        col.items.some(item => item.id === field.id)
-                                                    )
-                                                )
-                                                .map(field => field.id)}
-                                            strategy={horizontalListSortingStrategy}
-                                        >
-                                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                                                {availableFields
-                                                    .filter(field =>
-                                                        !localColumnConfig.some(col =>
-                                                            col.items.some(item => item.id === field.id)
-                                                        )
-                                                    )
-                                                    .map(field => (
-                                                        <DraggableField
-                                                            key={field.id}
-                                                            field={field}
-                                                        />
-                                                    ))}
-                                            </div>
-                                        </SortableContext>
-                                    </DndContext>
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    {localColumnConfig.find(col => col.id === localActiveDragId)?.items.length || 0} items
                                 </div>
                             </div>
+                        ) : null}
+                    </DragOverlay>
+                </DndContext>
 
-                            {/* Modal Footer */}
-                            <div className="border-t px-6 py-4 bg-gray-50">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                    <motion.button
-                                        onClick={resetToDefaultInModal}
-                                        className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                                                 border border-gray-300 rounded-lg text-gray-700
-                                                 hover:bg-gray-200 transition-all duration-200 hover:shadow-sm gap-2"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <FiRefreshCw className="w-4 h-4" />
-                                        Reset to Default
-                                    </motion.button>
+                {/* Add Column Button */}
+                <div className="mb-6">
+                    <motion.button
+                        onClick={addNewColumnInModal}
+                        className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 border-2 border-dashed border-gray-300 rounded-xl text-gray-700 font-medium hover:from-gray-200 hover:to-gray-300 transition-all duration-200 flex items-center gap-2"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                    >
+                        <FiPlus className="w-4 h-4" />
+                        Add New Column
+                    </motion.button>
+                </div>
 
-                                    <div className="flex flex-col sm:flex-row gap-3">
-                                        <motion.button
-                                            onClick={() => setSettingsModalOpen(false)}
-                                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                                                       border border-gray-300 rounded-lg text-gray-700
-                                                       hover:bg-gray-200 transition-all duration-200 hover:shadow-sm"
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
-                                        >
-                                            Cancel
-                                        </motion.button>
-
-                                        <motion.button
-                                            onClick={saveModalChanges}
-                                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                                                       bg-gradient-to-r from-blue-600 to-blue-700 text-white
-                                                       rounded-lg hover:from-blue-700 hover:to-blue-800
-                                                       transition-all duration-200 hover:shadow-md shadow-sm gap-2"
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
-                                        >
-                                            <FiSave className="w-4 h-4" />
-                                            Save Changes
-                                        </motion.button>
-                                    </div>
-                                </div>
+                {/* Available Fields with Drag & Drop */}
+                <div className="border-t pt-6">
+                    <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
+                        <FiGrid className="w-4 h-4 text-blue-600" />
+                        Available Fields (Drag to columns)
+                    </h3>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={(event) => {
+                            const { active, over } = event;
+                            if (over && active.id !== over.id) {
+                                // Find which column was dropped on
+                                const columnIndex = localColumnConfig.findIndex(col => col.id === over.id);
+                                if (columnIndex !== -1 && !localColumnConfig[columnIndex].fixed) {
+                                    addItemToColumnInModal(columnIndex, active.id);
+                                }
+                            }
+                        }}
+                    >
+                        <SortableContext
+                            items={availableFields
+                                .filter(field =>
+                                    !localColumnConfig.some(col =>
+                                        col.items.some(item => item.id === field.id)
+                                    )
+                                )
+                                .map(field => field.id)}
+                            strategy={horizontalListSortingStrategy}
+                        >
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                {availableFields
+                                    .filter(field =>
+                                        !localColumnConfig.some(col =>
+                                            col.items.some(item => item.id === field.id)
+                                        )
+                                    )
+                                    .map(field => (
+                                        <DraggableField
+                                            key={field.id}
+                                            field={field}
+                                        />
+                                    ))}
                             </div>
-                        </motion.div>
-                    </motion.div>
-                )}
+                        </SortableContext>
+                    </DndContext>
+                </div>
+            </div>
+
+            {/* Modal Footer - Always visible at bottom */}
+            <div className="border-t px-6 py-4 bg-gray-50 shrink-0">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <motion.button
+                        onClick={resetToDefaultInModal}
+                        className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                 border border-gray-300 rounded-lg text-gray-700
+                                 hover:bg-gray-200 transition-all duration-200 hover:shadow-sm gap-2"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <FiRefreshCw className="w-4 h-4" />
+                        Reset to Default
+                    </motion.button>
+
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <motion.button
+                            onClick={() => setSettingsModalOpen(false)}
+                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                       border border-gray-300 rounded-lg text-gray-700
+                                       hover:bg-gray-200 transition-all duration-200 hover:shadow-sm"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            Cancel
+                        </motion.button>
+
+                        <motion.button
+                            onClick={saveModalChanges}
+                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                       bg-gradient-to-r from-blue-600 to-blue-700 text-white
+                                       rounded-lg hover:from-blue-700 hover:to-blue-800
+                                       transition-all duration-200 hover:shadow-md shadow-sm gap-2"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <FiSave className="w-4 h-4" />
+                            Save Changes
+                        </motion.button>
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    </motion.div>
+)}
             </AnimatePresence>
         );
     });

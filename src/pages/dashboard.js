@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar, Header } from '../components/header';
 import {
     FiTrendingUp,
+    FiDownload,
     FiUsers,
     FiUserCheck,
     FiShoppingCart,
@@ -15,9 +16,26 @@ import {
     FiEye,
     FiEyeOff,
     FiArrowUpRight,
-    FiAward
+    FiAward,
+    FiGrid,
+    FiSave,
+    FiTrash2,
+    FiX,
+    FiCheck,
+    FiMove,
+    FiLayout,
+    FiMoreVertical,
+    FiLayers,
+    FiStar,
+    FiActivity,
+    FiBriefcase,
+    FiTarget,
+    FiShoppingBag,
+    FiUserPlus,
+    FiCheckCircle,
+    FiClock
 } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Dashboard = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -30,13 +48,401 @@ const Dashboard = () => {
     const [stats, setStats] = useState({});
     const [taskStats, setTaskStats] = useState([]);
     const [topClients, setTopClients] = useState([]);
-    const [serviceWiseSales, setServiceWiseSales] = useState([]);
-    const [staffWiseSales, setStaffWiseSales] = useState([]);
+    
+    // Customization state
+    const [isCustomizing, setIsCustomizing] = useState(false);
+    const [showCustomizeMenu, setShowCustomizeMenu] = useState(false);
+    const [widgets, setWidgets] = useState(() => {
+        const savedLayout = localStorage.getItem('dashboardLayout');
+        if (savedLayout) {
+            return JSON.parse(savedLayout);
+        }
+        // Default layout configuration
+        return [
+            {
+                id: 'sales-overview',
+                title: 'Sales Overview',
+                component: 'SalesOverview',
+                visible: true,
+                order: 0,
+                icon: FiTrendingUp,
+                category: 'sales'
+            },
+            {
+                id: 'quick-stats',
+                title: 'Quick Stats',
+                component: 'QuickStats',
+                visible: true,
+                order: 1,
+                icon: FiBarChart2,
+                category: 'overview'
+            },
+            {
+                id: 'task-summary',
+                title: 'Task Summary',
+                component: 'TaskSummary',
+                visible: true,
+                order: 2,
+                icon: FiCalendar,
+                category: 'tasks'
+            },
+            {
+                id: 'service-wise-sales',
+                title: 'Service Wise Sales',
+                component: 'ServiceWiseSales',
+                visible: true,
+                order: 3,
+                icon: FiPieChart,
+                category: 'sales'
+            },
+            {
+                id: 'staff-wise-sales',
+                title: 'Staff Wise Sales',
+                component: 'StaffWiseSales',
+                visible: true,
+                order: 4,
+                icon: FiUsers,
+                category: 'sales'
+            },
+            {
+                id: 'top-clients',
+                title: 'Top Clients',
+                component: 'TopClients',
+                visible: true,
+                order: 5,
+                icon: FiAward,
+                category: 'clients'
+            },
+            {
+                id: 'additional-stats',
+                title: 'Additional Stats',
+                component: 'AdditionalStats',
+                visible: true,
+                order: 6,
+                icon: FiGrid,
+                category: 'overview'
+            }
+        ];
+    });
+
+    const [draggedWidget, setDraggedWidget] = useState(null);
+    const [dragOverWidget, setDragOverWidget] = useState(null);
+    
+    // State for card arrangement inside components
+    const [quickStatsCards, setQuickStatsCards] = useState(() => {
+        const savedCards = localStorage.getItem('quickStatsCards');
+        if (savedCards) {
+            return JSON.parse(savedCards);
+        }
+        return [
+            { 
+                id: 'pending-billing', 
+                title: 'Pending Billing', 
+                value: 'pending_for_billing', 
+                icon: FiShoppingBag, 
+                color: 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white',
+                gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                link: '/view-billing', 
+                isCurrency: false 
+            },
+            { 
+                id: 'creditors', 
+                title: 'Creditors', 
+                value: 'creditor', 
+                icon: FiUsers, 
+                color: 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white',
+                gradient: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
+                link: '/view-creditors', 
+                isCurrency: true 
+            },
+            { 
+                id: 'debtors', 
+                title: 'Debtors', 
+                value: 'debtor', 
+                icon: FiShoppingCart, 
+                color: 'bg-gradient-to-br from-red-500 to-pink-600 text-white',
+                gradient: 'linear-gradient(135deg, #ef4444 0%, #ec4899 100%)',
+                link: '/view-debtors', 
+                isCurrency: true 
+            },
+            { 
+                id: 'today-received', 
+                title: 'Today Received', 
+                value: 'today_received', 
+                icon: FiDollarSign, 
+                color: 'bg-gradient-to-br from-green-500 to-emerald-600 text-white',
+                gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                link: '/view-received', 
+                isCurrency: true 
+            },
+            { 
+                id: 'today-payment', 
+                title: 'Today Payment', 
+                value: 'today_payment', 
+                icon: FiCreditCard, 
+                color: 'bg-gradient-to-br from-orange-500 to-amber-600 text-white',
+                gradient: 'linear-gradient(135deg, #f97316 0%, #f59e0b 100%)',
+                link: '/view-payments', 
+                isCurrency: true 
+            },
+            { 
+                id: 'today-birthday', 
+                title: 'Today Birthday', 
+                value: 'today_birthday', 
+                icon: FiCalendar, 
+                color: 'bg-gradient-to-br from-purple-500 to-violet-600 text-white',
+                gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                link: '/view-birthday-today', 
+                isCurrency: false 
+            }
+        ];
+    });
+
+    const [additionalStatsCards, setAdditionalStatsCards] = useState(() => {
+        const savedCards = localStorage.getItem('additionalStatsCards');
+        if (savedCards) {
+            return JSON.parse(savedCards);
+        }
+        return [
+            { 
+                id: 'total-client', 
+                title: 'Total Client', 
+                value: 'total_client', 
+                icon: FiUsers, 
+                color: 'bg-gradient-to-br from-gray-600 to-gray-700 text-white',
+                gradient: 'linear-gradient(135deg, #4b5563 0%, #374151 100%)',
+                link: '/view-client',
+                isCurrency: false
+            },
+            { 
+                id: 'new-client', 
+                title: 'New Client', 
+                value: 'new_client', 
+                icon: FiUserPlus, 
+                color: 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white',
+                gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                link: '/view-new-client',
+                isCurrency: false
+            },
+            { 
+                id: 'active-client', 
+                title: 'Active Client', 
+                value: 'active_client', 
+                icon: FiCheckCircle, 
+                color: 'bg-gradient-to-br from-green-500 to-emerald-600 text-white',
+                gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                link: '/view-active-client',
+                isCurrency: false
+            },
+            { 
+                id: 'net-profit', 
+                title: 'Net Profit', 
+                value: 'net_profit', 
+                icon: FiTrendingUp, 
+                color: 'bg-gradient-to-br from-emerald-500 to-green-600 text-white',
+                gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                link: '/view-finance-report',
+                isCurrency: true
+            },
+            { 
+                id: 'total-staff', 
+                title: 'Total Staff', 
+                value: 'total_stuff', 
+                icon: FiUsers, 
+                color: 'bg-gradient-to-br from-red-500 to-rose-600 text-white',
+                gradient: 'linear-gradient(135deg, #ef4444 0%, #e11d48 100%)',
+                link: '/view-stuff',
+                isCurrency: false
+            },
+            { 
+                id: 'present-today', 
+                title: 'Present Today', 
+                value: 'present_today', 
+                icon: FiUserCheck, 
+                color: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white',
+                gradient: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
+                link: '/attendance',
+                isCurrency: false
+            },
+            { 
+                id: 'task-create-today', 
+                title: 'Task Create Today', 
+                value: 'task_create_today', 
+                icon: FiPlus, 
+                color: 'bg-gradient-to-br from-indigo-500 to-blue-600 text-white',
+                gradient: 'linear-gradient(135deg, #667eea 0%, #3b82f6 100%)',
+                link: '/view-task-create-today',
+                isCurrency: false
+            },
+            { 
+                id: 'task-complete-today', 
+                title: 'Task Complete Today', 
+                value: 'task_complete_today', 
+                icon: FiCheckCircle, 
+                color: 'bg-gradient-to-br from-green-500 to-teal-600 text-white',
+                gradient: 'linear-gradient(135deg, #10b981 0%, #0d9488 100%)',
+                link: '/view-task-complete-today',
+                isCurrency: false
+            }
+        ];
+    });
+
+    const [draggedCard, setDraggedCard] = useState(null);
+    const [dragOverCard, setDragOverCard] = useState(null);
+    const [draggedCardSource, setDraggedCardSource] = useState(null); // 'quickStats' or 'additionalStats'
+
+    // Available widgets for adding (hidden widgets and new ones)
+    const [availableWidgets, setAvailableWidgets] = useState([
+        {
+            id: 'performance-metrics',
+            title: 'Performance Metrics',
+            component: 'PerformanceMetrics',
+            visible: false,
+            order: 7,
+            icon: FiActivity,
+            category: 'analytics'
+        },
+        {
+            id: 'revenue-trend',
+            title: 'Revenue Trend',
+            component: 'RevenueTrend',
+            visible: false,
+            order: 8,
+            icon: FiTrendingUp,
+            category: 'sales'
+        },
+        {
+            id: 'client-acquisition',
+            title: 'Client Acquisition',
+            component: 'ClientAcquisition',
+            visible: false,
+            order: 9,
+            icon: FiBriefcase,
+            category: 'clients'
+        },
+        {
+            id: 'goal-progress',
+            title: 'Goal Progress',
+            component: 'GoalProgress',
+            visible: false,
+            order: 10,
+            icon: FiTarget,
+            category: 'overview'
+        }
+    ]);
+
+    // Predefined templates with safe icon references
+    const predefinedTemplates = {
+        default: {
+            name: 'Default Layout',
+            description: 'Balanced view with all essential widgets',
+            icon: FiGrid,
+            widgets: [
+                'sales-overview',
+                'quick-stats',
+                'task-summary',
+                'service-wise-sales',
+                'staff-wise-sales',
+                'top-clients',
+                'additional-stats'
+            ]
+        },
+        salesFocus: {
+            name: 'Sales Focus',
+            description: 'Focus on sales and revenue metrics',
+            icon: FiTrendingUp,
+            widgets: [
+                'sales-overview',
+                'service-wise-sales',
+                'staff-wise-sales',
+                'revenue-trend',
+                'quick-stats',
+                'top-clients'
+            ]
+        },
+        taskManagement: {
+            name: 'Task Management',
+            description: 'Focus on task tracking and productivity',
+            icon: FiCalendar,
+            widgets: [
+                'task-summary',
+                'quick-stats',
+                'performance-metrics',
+                'goal-progress',
+                'additional-stats'
+            ]
+        },
+        executiveView: {
+            name: 'Executive View',
+            description: 'High-level overview for management',
+            icon: FiBriefcase,
+            widgets: [
+                'sales-overview',
+                'performance-metrics',
+                'revenue-trend',
+                'goal-progress',
+                'top-clients'
+            ]
+        },
+        analyticsHeavy: {
+            name: 'Analytics Heavy',
+            description: 'Data-driven view with maximum analytics',
+            icon: FiBarChart2,
+            widgets: [
+                'performance-metrics',
+                'revenue-trend',
+                'service-wise-sales',
+                'staff-wise-sales',
+                'client-acquisition',
+                'goal-progress'
+            ]
+        }
+    };
+
+    // Data-based layout suggestions
+    const getDataBasedSuggestions = () => {
+        const suggestions = [];
+        
+        if (stats.total_sale > 1000000) {
+            suggestions.push({
+                title: "High Revenue Focus",
+                description: "Your sales are high. Focus on maintaining growth.",
+                recommendedWidgets: ['revenue-trend', 'performance-metrics', 'goal-progress']
+            });
+        }
+        
+        if (stats.task_create_today > 30) {
+            suggestions.push({
+                title: "Task Management Focus",
+                description: "High task activity detected.",
+                recommendedWidgets: ['task-summary', 'performance-metrics']
+            });
+        }
+        
+        if (stats.total_client > 300) {
+            suggestions.push({
+                title: "Client Management Focus",
+                description: "Large client base detected.",
+                recommendedWidgets: ['client-acquisition', 'top-clients']
+            });
+        }
+        
+        return suggestions;
+    };
 
     // Persist sidebar minimized state
     useEffect(() => {
         localStorage.setItem('sidebarMinimized', JSON.stringify(isMinimized));
     }, [isMinimized]);
+
+    // Save layout to localStorage when not customizing
+    useEffect(() => {
+        if (!isCustomizing) {
+            localStorage.setItem('dashboardLayout', JSON.stringify(widgets));
+            localStorage.setItem('quickStatsCards', JSON.stringify(quickStatsCards));
+            localStorage.setItem('additionalStatsCards', JSON.stringify(additionalStatsCards));
+        }
+    }, [widgets, quickStatsCards, additionalStatsCards, isCustomizing]);
 
     // Lock body scroll when mobile sidebar is open
     useEffect(() => {
@@ -50,7 +456,7 @@ const Dashboard = () => {
         };
     }, [mobileMenuOpen]);
 
-    // Mock data - replace with actual API calls
+    // Mock data (same as before)
     const mockStats = {
         total_sale: 1250000,
         pending_for_billing: 23,
@@ -142,7 +548,6 @@ const Dashboard = () => {
 
     const fetchDashboardData = async () => {
         setLoading(true);
-        // Simulate API calls
         setTimeout(() => {
             setStats(mockStats);
             setTaskStats(mockTaskStats);
@@ -164,40 +569,1452 @@ const Dashboard = () => {
         return new Intl.NumberFormat('en-IN').format(number);
     };
 
-    const StatCard = ({ title, value, icon: Icon, color, link, isCurrency = false }) => (
-        <a href={link} className="block">
-            <motion.div 
-                className="flex items-center p-4 hover:bg-gray-50 rounded-lg transition-colors"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+    // Drag and drop handlers for widgets - FIXED to prevent re-render
+    const handleWidgetDragStart = useCallback((e, widgetId) => {
+        if (!isCustomizing) return;
+        e.stopPropagation();
+        setDraggedWidget(widgetId);
+        e.dataTransfer.setData('widgetId', widgetId);
+        e.dataTransfer.effectAllowed = 'move';
+    }, [isCustomizing]);
+
+    const handleWidgetDragOver = useCallback((e, widgetId) => {
+        if (!isCustomizing || !draggedWidget) return;
+        e.stopPropagation();
+        e.preventDefault();
+        if (widgetId !== draggedWidget) {
+            setDragOverWidget(widgetId);
+        }
+    }, [isCustomizing, draggedWidget]);
+
+    const handleWidgetDrop = useCallback((e, targetWidgetId) => {
+        if (!isCustomizing || !draggedWidget) return;
+        e.stopPropagation();
+        e.preventDefault();
+        
+        if (draggedWidget !== targetWidgetId) {
+            setWidgets(prevWidgets => {
+                const draggedIndex = prevWidgets.findIndex(w => w.id === draggedWidget);
+                const targetIndex = prevWidgets.findIndex(w => w.id === targetWidgetId);
+                
+                if (draggedIndex === -1 || targetIndex === -1) return prevWidgets;
+                
+                const newWidgets = [...prevWidgets];
+                const [removed] = newWidgets.splice(draggedIndex, 1);
+                newWidgets.splice(targetIndex, 0, removed);
+                
+                // Update order based on new position
+                return newWidgets.map((widget, index) => ({
+                    ...widget,
+                    order: index
+                }));
+            });
+        }
+        setDraggedWidget(null);
+        setDragOverWidget(null);
+    }, [isCustomizing, draggedWidget]);
+
+    const handleWidgetDragEnd = useCallback(() => {
+        setDraggedWidget(null);
+        setDragOverWidget(null);
+    }, []);
+
+    // Drag and drop handlers for cards inside components
+    const handleCardDragStart = useCallback((e, cardId, source) => {
+        if (!isCustomizing) return;
+        e.stopPropagation();
+        setDraggedCard(cardId);
+        setDraggedCardSource(source);
+        e.dataTransfer.setData('cardId', cardId);
+        e.dataTransfer.setData('source', source);
+        e.dataTransfer.effectAllowed = 'move';
+    }, [isCustomizing]);
+
+    const handleCardDragOver = useCallback((e, cardId, source) => {
+        if (!isCustomizing || !draggedCard || draggedCardSource !== source) return;
+        e.stopPropagation();
+        e.preventDefault();
+        if (cardId !== draggedCard) {
+            setDragOverCard(cardId);
+        }
+    }, [isCustomizing, draggedCard, draggedCardSource]);
+
+    const handleCardDrop = useCallback((e, targetCardId, source) => {
+        if (!isCustomizing || !draggedCard || draggedCardSource !== source) return;
+        e.stopPropagation();
+        e.preventDefault();
+        
+        if (draggedCard !== targetCardId) {
+            if (source === 'quickStats') {
+                setQuickStatsCards(prevCards => {
+                    const draggedIndex = prevCards.findIndex(c => c.id === draggedCard);
+                    const targetIndex = prevCards.findIndex(c => c.id === targetCardId);
+                    
+                    if (draggedIndex === -1 || targetIndex === -1) return prevCards;
+                    
+                    const newCards = [...prevCards];
+                    const [removed] = newCards.splice(draggedIndex, 1);
+                    newCards.splice(targetIndex, 0, removed);
+                    return newCards;
+                });
+            } else if (source === 'additionalStats') {
+                setAdditionalStatsCards(prevCards => {
+                    const draggedIndex = prevCards.findIndex(c => c.id === draggedCard);
+                    const targetIndex = prevCards.findIndex(c => c.id === targetCardId);
+                    
+                    if (draggedIndex === -1 || targetIndex === -1) return prevCards;
+                    
+                    const newCards = [...prevCards];
+                    const [removed] = newCards.splice(draggedIndex, 1);
+                    newCards.splice(targetIndex, 0, removed);
+                    return newCards;
+                });
+            }
+        }
+        setDraggedCard(null);
+        setDragOverCard(null);
+        setDraggedCardSource(null);
+    }, [isCustomizing, draggedCard, draggedCardSource]);
+
+    const handleCardDragEnd = useCallback(() => {
+        setDraggedCard(null);
+        setDragOverCard(null);
+        setDraggedCardSource(null);
+    }, []);
+
+    // Widget management
+    const toggleWidgetVisibility = useCallback((widgetId) => {
+        if (!isCustomizing) return;
+        setWidgets(items =>
+            items.map(item =>
+                item.id === widgetId
+                    ? { ...item, visible: !item.visible }
+                    : item
+            )
+        );
+    }, [isCustomizing]);
+
+    const deleteWidget = useCallback((widgetId) => {
+        if (!isCustomizing) return;
+        setWidgets(items => items.filter(item => item.id !== widgetId));
+        
+        // Add to available widgets if it's a special widget
+        const widget = widgets.find(w => w.id === widgetId);
+        if (widget && availableWidgets.find(aw => aw.id === widgetId)) {
+            setAvailableWidgets(prev => 
+                prev.map(w => w.id === widgetId ? { ...w, visible: false } : w)
+            );
+        }
+    }, [isCustomizing, widgets, availableWidgets]);
+
+    const addWidget = useCallback((widgetId) => {
+        if (!isCustomizing) return;
+        
+        const widgetToAdd = availableWidgets.find(w => w.id === widgetId) || widgets.find(w => w.id === widgetId);
+        if (widgetToAdd) {
+            const newWidget = {
+                ...widgetToAdd,
+                visible: true,
+                order: widgets.length
+            };
+            setWidgets(prev => [...prev.filter(w => w.id !== widgetId), newWidget]);
+            setAvailableWidgets(prev => 
+                prev.map(w => w.id === widgetId ? { ...w, visible: true } : w)
+            );
+        }
+    }, [isCustomizing, widgets, availableWidgets]);
+
+    const applyTemplate = useCallback((templateName) => {
+        const template = predefinedTemplates[templateName];
+        if (!template) return;
+        
+        const newWidgets = template.widgets.map((widgetId, index) => {
+            const existingWidget = widgets.find(w => w.id === widgetId);
+            const availableWidget = availableWidgets.find(w => w.id === widgetId);
+            
+            if (existingWidget) {
+                return { ...existingWidget, visible: true, order: index };
+            } else if (availableWidget) {
+                return { ...availableWidget, visible: true, order: index };
+            }
+            return null;
+        }).filter(Boolean);
+        
+        // Add any default widgets that weren't in the template but should be visible
+        const defaultWidgets = widgets.filter(w => 
+            !template.widgets.includes(w.id) && 
+            ['quick-stats', 'additional-stats'].includes(w.id)
+        ).map(w => ({ ...w, order: newWidgets.length + 1 }));
+        
+        setWidgets([...newWidgets, ...defaultWidgets]);
+    }, [widgets, availableWidgets]);
+
+    const resetLayout = useCallback(() => {
+        const defaultLayout = [
+            {
+                id: 'sales-overview',
+                title: 'Sales Overview',
+                component: 'SalesOverview',
+                visible: true,
+                order: 0,
+                icon: FiTrendingUp,
+                category: 'sales'
+            },
+            {
+                id: 'quick-stats',
+                title: 'Quick Stats',
+                component: 'QuickStats',
+                visible: true,
+                order: 1,
+                icon: FiBarChart2,
+                category: 'overview'
+            },
+            {
+                id: 'task-summary',
+                title: 'Task Summary',
+                component: 'TaskSummary',
+                visible: true,
+                order: 2,
+                icon: FiCalendar,
+                category: 'tasks'
+            },
+            {
+                id: 'service-wise-sales',
+                title: 'Service Wise Sales',
+                component: 'ServiceWiseSales',
+                visible: true,
+                order: 3,
+                icon: FiPieChart,
+                category: 'sales'
+            },
+            {
+                id: 'staff-wise-sales',
+                title: 'Staff Wise Sales',
+                component: 'StaffWiseSales',
+                visible: true,
+                order: 4,
+                icon: FiUsers,
+                category: 'sales'
+            },
+            {
+                id: 'top-clients',
+                title: 'Top Clients',
+                component: 'TopClients',
+                visible: true,
+                order: 5,
+                icon: FiAward,
+                category: 'clients'
+            },
+            {
+                id: 'additional-stats',
+                title: 'Additional Stats',
+                component: 'AdditionalStats',
+                visible: true,
+                order: 6,
+                icon: FiGrid,
+                category: 'overview'
+            }
+        ];
+        setWidgets(defaultLayout);
+        
+        const defaultQuickStatsCards = [
+            { 
+                id: 'pending-billing', 
+                title: 'Pending Billing', 
+                value: 'pending_for_billing', 
+                icon: FiShoppingBag, 
+                color: 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white',
+                gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                link: '/view-billing', 
+                isCurrency: false 
+            },
+            { 
+                id: 'creditors', 
+                title: 'Creditors', 
+                value: 'creditor', 
+                icon: FiUsers, 
+                color: 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white',
+                gradient: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
+                link: '/view-creditors', 
+                isCurrency: true 
+            },
+            { 
+                id: 'debtors', 
+                title: 'Debtors', 
+                value: 'debtor', 
+                icon: FiShoppingCart, 
+                color: 'bg-gradient-to-br from-red-500 to-pink-600 text-white',
+                gradient: 'linear-gradient(135deg, #ef4444 0%, #ec4899 100%)',
+                link: '/view-debtors', 
+                isCurrency: true 
+            },
+            { 
+                id: 'today-received', 
+                title: 'Today Received', 
+                value: 'today_received', 
+                icon: FiDollarSign, 
+                color: 'bg-gradient-to-br from-green-500 to-emerald-600 text-white',
+                gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                link: '/view-received', 
+                isCurrency: true 
+            },
+            { 
+                id: 'today-payment', 
+                title: 'Today Payment', 
+                value: 'today_payment', 
+                icon: FiCreditCard, 
+                color: 'bg-gradient-to-br from-orange-500 to-amber-600 text-white',
+                gradient: 'linear-gradient(135deg, #f97316 0%, #f59e0b 100%)',
+                link: '/view-payments', 
+                isCurrency: true 
+            },
+            { 
+                id: 'today-birthday', 
+                title: 'Today Birthday', 
+                value: 'today_birthday', 
+                icon: FiCalendar, 
+                color: 'bg-gradient-to-br from-purple-500 to-violet-600 text-white',
+                gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                link: '/view-birthday-today', 
+                isCurrency: false 
+            }
+        ];
+        setQuickStatsCards(defaultQuickStatsCards);
+        
+        const defaultAdditionalStatsCards = [
+            { 
+                id: 'total-client', 
+                title: 'Total Client', 
+                value: 'total_client', 
+                icon: FiUsers, 
+                color: 'bg-gradient-to-br from-gray-600 to-gray-700 text-white',
+                gradient: 'linear-gradient(135deg, #4b5563 0%, #374151 100%)',
+                link: '/view-client',
+                isCurrency: false
+            },
+            { 
+                id: 'new-client', 
+                title: 'New Client', 
+                value: 'new_client', 
+                icon: FiUserPlus, 
+                color: 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white',
+                gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                link: '/view-new-client',
+                isCurrency: false
+            },
+            { 
+                id: 'active-client', 
+                title: 'Active Client', 
+                value: 'active_client', 
+                icon: FiCheckCircle, 
+                color: 'bg-gradient-to-br from-green-500 to-emerald-600 text-white',
+                gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                link: '/view-active-client',
+                isCurrency: false
+            },
+            { 
+                id: 'net-profit', 
+                title: 'Net Profit', 
+                value: 'net_profit', 
+                icon: FiTrendingUp, 
+                color: 'bg-gradient-to-br from-emerald-500 to-green-600 text-white',
+                gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                link: '/view-finance-report',
+                isCurrency: true
+            },
+            { 
+                id: 'total-staff', 
+                title: 'Total Staff', 
+                value: 'total_stuff', 
+                icon: FiUsers, 
+                color: 'bg-gradient-to-br from-red-500 to-rose-600 text-white',
+                gradient: 'linear-gradient(135deg, #ef4444 0%, #e11d48 100%)',
+                link: '/view-stuff',
+                isCurrency: false
+            },
+            { 
+                id: 'present-today', 
+                title: 'Present Today', 
+                value: 'present_today', 
+                icon: FiUserCheck, 
+                color: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white',
+                gradient: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
+                link: '/attendance',
+                isCurrency: false
+            },
+            { 
+                id: 'task-create-today', 
+                title: 'Task Create Today', 
+                value: 'task_create_today', 
+                icon: FiPlus, 
+                color: 'bg-gradient-to-br from-indigo-500 to-blue-600 text-white',
+                gradient: 'linear-gradient(135deg, #667eea 0%, #3b82f6 100%)',
+                link: '/view-task-create-today',
+                isCurrency: false
+            },
+            { 
+                id: 'task-complete-today', 
+                title: 'Task Complete Today', 
+                value: 'task_complete_today', 
+                icon: FiCheckCircle, 
+                color: 'bg-gradient-to-br from-green-500 to-teal-600 text-white',
+                gradient: 'linear-gradient(135deg, #10b981 0%, #0d9488 100%)',
+                link: '/view-task-complete-today',
+                isCurrency: false
+            }
+        ];
+        setAdditionalStatsCards(defaultAdditionalStatsCards);
+    }, []);
+
+    const saveLayout = useCallback(() => {
+        setIsCustomizing(false);
+        setShowCustomizeMenu(false);
+        localStorage.setItem('dashboardLayout', JSON.stringify(widgets));
+        localStorage.setItem('quickStatsCards', JSON.stringify(quickStatsCards));
+        localStorage.setItem('additionalStatsCards', JSON.stringify(additionalStatsCards));
+    }, [widgets, quickStatsCards, additionalStatsCards]);
+
+    // UPDATED: Card Component with drag and drop support for ALL card-based widgets
+    const CardComponent = React.memo(({ card, index, source = 'quickStats' }) => {
+        const value = stats[card.value] || 0;
+        const IconComponent = card.icon;
+        const isDragged = draggedCard === card.id && draggedCardSource === source;
+        const isDragOver = dragOverCard === card.id && draggedCardSource === source;
+        
+        return (
+            <div
+                draggable={isCustomizing}
+                onDragStart={(e) => handleCardDragStart(e, card.id, source)}
+                onDragOver={(e) => handleCardDragOver(e, card.id, source)}
+                onDrop={(e) => handleCardDrop(e, card.id, source)}
+                onDragEnd={handleCardDragEnd}
+                className={`relative ${isCustomizing ? 'cursor-move select-none' : ''} ${
+                    isDragged ? 'opacity-50' : ''
+                } ${isDragOver ? 'scale-105 transition-transform duration-200' : ''}`}
+                style={{ 
+                    pointerEvents: isCustomizing ? 'auto' : 'auto',
+                    userSelect: isCustomizing ? 'none' : 'auto'
+                }}
             >
-                <div className={`rounded-lg p-3 mr-4 ${color}`}>
-                    <Icon className="w-5 h-5" />
-                </div>
-                <div>
-                    <div className={`text-lg font-semibold ${blurEnabled ? 'blur' : ''}`}>
-                        {isCurrency ? formatCurrency(value) : formatNumber(value)}
+                {/* Drag indicator */}
+                {isCustomizing && (
+                    <div className="absolute -top-2 -left-2 z-10">
+                        <div className="p-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg shadow-lg">
+                            <FiMove className="w-3 h-3 text-white" />
+                        </div>
                     </div>
-                    <div className="text-sm text-gray-600">{title}</div>
+                )}
+
+                <motion.div 
+                    className={`relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300`}
+                    style={{ background: card.gradient }}
+                    whileHover={{ 
+                        scale: isCustomizing ? 1 : 1.03,
+                        y: isCustomizing ? 0 : -5,
+                        transition: { duration: 0.2 }
+                    }}
+                    whileTap={{ scale: 0.98 }}
+                >
+                    <div className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                                <div className="text-white/80 text-sm font-medium mb-1">
+                                    {card.title}
+                                </div>
+                                <div className={`text-2xl font-bold text-white mb-2 ${blurEnabled ? 'blur' : ''}`}>
+                                    {card.isCurrency ? formatCurrency(value) : formatNumber(value)}
+                                </div>
+                            </div>
+                            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                                {IconComponent && <IconComponent className="w-6 h-6 text-white" />}
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-white/70 text-xs">
+                                {card.isCurrency ? 'Total Amount' : 'Total Count'}
+                            </span>
+                            {isCustomizing ? (
+                                <div className="p-1 bg-white/30 rounded-lg">
+                                    <FiMove className="w-3 h-3 text-white" />
+                                </div>
+                            ) : (
+                                <div className="text-white/70 text-xs">
+                                    View Details →
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {/* Shine effect on hover */}
+                    <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-white/0 via-white/20 to-white/0 hover:translate-x-full transition-transform duration-700 pointer-events-none" />
+                </motion.div>
+            </div>
+        );
+    });
+
+    CardComponent.displayName = 'CardComponent';
+
+    // Widget Wrapper Component
+    const WidgetWrapper = React.memo(({ widgetId, title, children, className = '' }) => {
+        const isVisible = widgets.find(w => w.id === widgetId)?.visible ?? true;
+        
+        if (!isVisible) return null;
+
+        const isDragged = draggedWidget === widgetId;
+        const isDragOver = dragOverWidget === widgetId;
+
+        return (
+            <div
+                draggable={isCustomizing}
+                onDragStart={(e) => handleWidgetDragStart(e, widgetId)}
+                onDragOver={(e) => handleWidgetDragOver(e, widgetId)}
+                onDrop={(e) => handleWidgetDrop(e, widgetId)}
+                onDragEnd={handleWidgetDragEnd}
+                className={`relative ${isCustomizing ? 'cursor-move select-none' : ''} ${
+                    isDragged ? 'opacity-50' : ''
+                } ${isDragOver ? 'border-2 border-dashed border-indigo-500 rounded-2xl' : ''} ${className}`}
+                style={{ 
+                    pointerEvents: isCustomizing ? 'auto' : 'auto',
+                    userSelect: isCustomizing ? 'none' : 'auto'
+                }}
+            >
+                {/* Customization Controls */}
+                {isCustomizing && (
+                    <div className="absolute -top-3 -left-3 z-10 flex items-center gap-2">
+                        <div className="p-2 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg shadow-lg">
+                            <FiMove className="w-3 h-3 text-white" />
+                        </div>
+                    </div>
+                )}
+
+                {/* Widget Controls */}
+                {isCustomizing && (
+                    <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                        <button
+                            onClick={() => toggleWidgetVisibility(widgetId)}
+                            className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white transition-all duration-200 hover:scale-110"
+                            title="Hide widget"
+                        >
+                            <FiEye className="w-4 h-4 text-gray-700" />
+                        </button>
+                        <button
+                            onClick={() => deleteWidget(widgetId)}
+                            className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-red-50 transition-all duration-200 hover:scale-110"
+                            title="Remove widget"
+                        >
+                            <FiTrash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                    </div>
+                )}
+
+                {/* Widget Content */}
+                <motion.div
+                    animate={{
+                        scale: isCustomizing ? 1.01 : 1,
+                        borderColor: isCustomizing ? '#6366f1' : 'transparent'
+                    }}
+                    className="bg-white rounded-2xl shadow-xl overflow-hidden"
+                    style={{ 
+                        pointerEvents: isCustomizing ? 'none' : 'auto'
+                    }}
+                >
+                    {children}
+                </motion.div>
+            </div>
+        );
+    });
+
+    WidgetWrapper.displayName = 'WidgetWrapper';
+
+    // New Widget Components
+    const PerformanceMetricsWidget = () => (
+        <WidgetWrapper widgetId="performance-metrics" title="Performance Metrics">
+            <div className="p-8">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl">
+                        <FiActivity className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">Performance Metrics</h3>
                 </div>
-            </motion.div>
-        </a>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-2xl border border-indigo-100">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-gray-600 font-medium">Productivity Score</span>
+                            <span className="text-2xl font-bold text-indigo-600">87%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                            <motion.div 
+                                className="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: '87%' }}
+                                transition={{ duration: 1, ease: "easeOut" }}
+                            />
+                        </div>
+                        <div className="mt-4 text-sm text-gray-500">↑ 12% from last month</div>
+                    </div>
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-gray-600 font-medium">Client Satisfaction</span>
+                            <span className="text-2xl font-bold text-green-600">92%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                            <motion.div 
+                                className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: '92%' }}
+                                transition={{ duration: 1, ease: "easeOut" }}
+                            />
+                        </div>
+                        <div className="mt-4 text-sm text-gray-500">↑ 8% from last month</div>
+                    </div>
+                </div>
+            </div>
+        </WidgetWrapper>
+    );
+
+    const RevenueTrendWidget = () => (
+        <WidgetWrapper widgetId="revenue-trend" title="Revenue Trend">
+            <div className="p-8">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl">
+                        <FiTrendingUp className="w-6 h-6 text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">Revenue Trend</h3>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-8 border border-green-100">
+                    <div className="text-center">
+                        <div className="text-4xl font-bold text-green-600 mb-2">+24.5%</div>
+                        <div className="text-lg font-medium text-gray-700 mb-1">Growth this quarter</div>
+                        <p className="text-gray-500">Compared to previous quarter</p>
+                    </div>
+                    <div className="mt-8 h-32 flex items-end justify-center gap-4">
+                        {[30, 50, 70, 90, 75, 85, 95].map((height, index) => (
+                            <motion.div
+                                key={index}
+                                className="w-8 bg-gradient-to-t from-green-400 to-emerald-500 rounded-t-lg"
+                                initial={{ height: 0 }}
+                                animate={{ height: `${height}%` }}
+                                transition={{ duration: 1, delay: index * 0.1 }}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </WidgetWrapper>
+    );
+
+    const ClientAcquisitionWidget = () => (
+        <WidgetWrapper widgetId="client-acquisition" title="Client Acquisition">
+            <div className="p-8">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-xl">
+                        <FiBriefcase className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">Client Acquisition</h3>
+                </div>
+                <div className="space-y-6">
+                    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 rounded-2xl border border-blue-100">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <div className="text-sm text-gray-600 mb-1">New Clients</div>
+                                <div className="text-2xl font-bold text-blue-600">12</div>
+                            </div>
+                            <div className="p-3 bg-blue-100 rounded-xl">
+                                <FiUserPlus className="w-6 h-6 text-blue-600" />
+                            </div>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full" style={{ width: '60%' }}></div>
+                        </div>
+                        <div className="mt-3 text-sm text-gray-500">Goal: 20 clients</div>
+                    </div>
+                    <div className="bg-gradient-to-br from-emerald-50 to-green-50 p-6 rounded-2xl border border-emerald-100">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <div className="text-sm text-gray-600 mb-1">Active Clients</div>
+                                <div className="text-2xl font-bold text-emerald-600">389</div>
+                            </div>
+                            <div className="p-3 bg-emerald-100 rounded-xl">
+                                <FiUsers className="w-6 h-6 text-emerald-600" />
+                            </div>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-gradient-to-r from-emerald-500 to-green-500 h-2 rounded-full" style={{ width: '85%' }}></div>
+                        </div>
+                        <div className="mt-3 text-sm text-gray-500">↑ 15% retention rate</div>
+                    </div>
+                </div>
+            </div>
+        </WidgetWrapper>
+    );
+
+    const GoalProgressWidget = () => (
+        <WidgetWrapper widgetId="goal-progress" title="Goal Progress">
+            <div className="p-8">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-gradient-to-br from-purple-100 to-violet-100 rounded-xl">
+                        <FiTarget className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">Goal Progress</h3>
+                </div>
+                <div className="space-y-6">
+                    <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-6 rounded-2xl border border-purple-100">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <div className="text-sm text-gray-600 mb-1">Monthly Sales Target</div>
+                                <div className="text-2xl font-bold text-purple-600">75%</div>
+                            </div>
+                            <div className="text-2xl">🎯</div>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                            <motion.div 
+                                className="bg-gradient-to-r from-purple-500 to-violet-500 h-3 rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: '75%' }}
+                                transition={{ duration: 1.5, ease: "easeOut" }}
+                            />
+                        </div>
+                        <div className="mt-3 text-sm text-gray-500">₹9.4L / ₹12.5L target</div>
+                    </div>
+                    <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-2xl border border-indigo-100">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <div className="text-sm text-gray-600 mb-1">Client Acquisition</div>
+                                <div className="text-2xl font-bold text-indigo-600">90%</div>
+                            </div>
+                            <div className="text-2xl">🚀</div>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                            <motion.div 
+                                className="bg-gradient-to-r from-indigo-500 to-blue-500 h-3 rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: '90%' }}
+                                transition={{ duration: 1.5, ease: "easeOut" }}
+                            />
+                        </div>
+                        <div className="mt-3 text-sm text-gray-500">18/20 new clients</div>
+                    </div>
+                </div>
+            </div>
+        </WidgetWrapper>
+    );
+
+    // UPDATED: Beautiful Sales Overview Widget (Congratulations Card)
+    const SalesOverviewWidget = () => (
+        <WidgetWrapper widgetId="sales-overview" title="Sales Overview" className="col-span-full">
+            <div className="relative overflow-hidden">
+                {/* Background Pattern */}
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50" />
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-100/50 to-purple-100/50 rounded-full -translate-y-32 translate-x-32" />
+                <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-blue-100/30 to-cyan-100/30 rounded-full -translate-x-48 translate-y-48" />
+                
+                <div className="relative p-8 md:p-12">
+                    <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+                        <div className="flex-1">
+                            {/* Header with Celebration */}
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="relative">
+                                    <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg">
+                                        <FiTrendingUp className="w-8 h-8 text-white" />
+                                    </div>
+                                    <div className="absolute -top-2 -right-2">
+                                        <span className="animate-ping absolute inline-flex h-4 w-4 rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex h-4 w-4 rounded-full bg-green-500"></span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-2xl md:text-3xl font-bold text-gray-800">
+                                            Congratulations! 
+                                        </h3>
+                                        {/* <div className="flex">
+                                            <span className="animate-bounce text-2xl">🎊</span>
+                                            <span className="animate-bounce text-2xl animation-delay-100">✨</span>
+                                            <span className="animate-bounce text-2xl animation-delay-200">🌟</span>
+                                        </div> */}
+                                    </div>
+                                    <p className="text-gray-600 mt-2">Outstanding performance this fiscal year!</p>
+                                </div>
+                            </div>
+
+                            {/* Sales Content */}
+                            <div className="mb-8">
+                                <p className="text-gray-500 mb-2">Current FY Total Sales</p>
+                                <div className="flex items-end gap-4">
+                                    <div className={`text-4xl md:text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent ${blurEnabled ? 'blur' : ''}`}>
+                                        {formatCurrency(stats.total_sale || 0)}
+                                    </div>
+                                    <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full">
+                                        <FiTrendingUp className="w-4 h-4 text-green-600" />
+                                        <span className="text-sm font-semibold text-green-600">+24.5%</span>
+                                    </div>
+                                </div>
+                                <p className="text-gray-500 mt-3">Achieved 92% of annual target</p>
+                            </div>
+
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                                <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-gray-100">
+                                    <div className="text-sm text-gray-600">Growth Rate</div>
+                                    <div className="text-xl font-bold text-green-600">24.5%</div>
+                                </div>
+                                <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-gray-100">
+                                    <div className="text-sm text-gray-600">Net Profit</div>
+                                    <div className="text-xl font-bold text-indigo-600">{formatCurrency(stats.net_profit || 0)}</div>
+                                </div>
+                                <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-gray-100">
+                                    <div className="text-sm text-gray-600">Active Clients</div>
+                                    <div className="text-xl font-bold text-purple-600">{stats.active_client || 0}</div>
+                                </div>
+                                <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-gray-100">
+                                    <div className="text-sm text-gray-600">Task Completion</div>
+                                    <div className="text-xl font-bold text-blue-600">{stats.task_complete_today || 0}</div>
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex flex-wrap gap-3">
+                                <motion.button 
+                                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl transition-all duration-300 hover:scale-105"
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <FiBarChart2 className="w-5 h-5" />
+                                        View Sales Report
+                                    </div>
+                                </motion.button>
+                                <motion.button 
+                                    className="px-6 py-3 bg-white text-gray-700 rounded-xl border border-gray-200 hover:bg-gray-50 transition-all duration-300 hover:shadow-lg hover:scale-105"
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <FiDownload className="w-5 h-5" />
+                                        Export Data
+                                    </div>
+                                </motion.button>
+                            </div>
+                        </div>
+
+                        {/* Right Side Visualization */}
+                        <div className="lg:w-1/3">
+                            <div className="relative">
+                                <div className="w-64 h-64 mx-auto relative">
+                                    {/* Animated circle */}
+                                    <svg className="w-full h-full" viewBox="0 0 100 100">
+                                        <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" strokeWidth="4"/>
+                                        <motion.circle 
+                                            cx="50" cy="50" r="45" fill="none" 
+                                            stroke="url(#gradient)" strokeWidth="6" strokeLinecap="round"
+                                            initial={{ strokeDasharray: '0, 283' }}
+                                            animate={{ strokeDasharray: '283, 283' }}
+                                            transition={{ duration: 2, ease: "easeOut" }}
+                                            transform="rotate(-90 50 50)"
+                                        />
+                                        <defs>
+                                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                <stop offset="0%" stopColor="#6366f1" />
+                                                <stop offset="100%" stopColor="#8b5cf6" />
+                                            </linearGradient>
+                                        </defs>
+                                    </svg>
+                                    
+                                    {/* Center content */}
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="text-center">
+                                            <div className="text-4xl font-bold text-indigo-600">92%</div>
+                                            <div className="text-gray-600">Target Achieved</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Decorative elements */}
+                                <div className="absolute -top-4 -right-4 w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                                    <FiAward className="w-8 h-8 text-white" />
+                                </div>
+                                <div className="absolute -bottom-4 -left-4 w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+                                    <FiTrendingUp className="w-6 h-6 text-white" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </WidgetWrapper>
+    );
+
+    // UPDATED: Quick Stats Widget with drag and drop for cards
+    const QuickStatsWidget = () => (
+        <WidgetWrapper widgetId="quick-stats" title="Quick Stats">
+            <div className="p-6">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-xl">
+                        <FiBarChart2 className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">Quick Stats</h3>
+                    {isCustomizing && (
+                        <div className="ml-auto text-xs px-3 py-1 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 rounded-full">
+                            Drag cards to reorder
+                        </div>
+                    )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {quickStatsCards.map((card, index) => (
+                        <CardComponent key={card.id} card={card} index={index} source="quickStats" />
+                    ))}
+                </div>
+            </div>
+        </WidgetWrapper>
     );
 
     const TaskStatusBadge = ({ count, color, link }) => (
-        <a href={link} className="inline-block text-center">
+        <a href={link} className="inline-block">
             {count > 0 ? (
-                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-medium ${color}`}>
+                <motion.span 
+                    className={`inline-flex items-center justify-center w-10 h-10 rounded-full text-sm font-bold ${color} shadow-lg hover:shadow-xl transition-shadow duration-300`}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                >
+                    {count}
+                </motion.span>
+            ) : (
+                <span className="inline-flex items-center justify-center w-10 h-10 text-gray-400 text-sm">
                     {count}
                 </span>
-            ) : (
-                <span className="text-gray-400 text-sm">{count}</span>
             )}
         </a>
     );
 
+    const TaskSummaryWidget = () => (
+        <WidgetWrapper widgetId="task-summary" title="Task Summary">
+            <div className="p-6">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl">
+                            <FiCalendar className="w-6 h-6 text-orange-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-800">Task Summary</h3>
+                            <p className="text-gray-500">Real-time task tracking</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <motion.button 
+                            className="p-3 bg-gradient-to-br from-red-100 to-pink-100 text-red-600 rounded-xl hover:shadow-lg transition-all duration-300"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <FiRefreshCw className="w-5 h-5" />
+                        </motion.button>
+                        <select className="px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm">
+                            <option value="">All Services</option>
+                            <option value="gst">GST Filing</option>
+                            <option value="tax">Income Tax</option>
+                            <option value="company">Company Registration</option>
+                        </select>
+                        <motion.button 
+                            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl transition-all duration-300 hover:scale-105"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <FiPlus className="w-5 h-5" />
+                            Create Task
+                        </motion.button>
+                    </div>
+                </div>
+                <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                    <table className="w-full">
+                        <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                            <tr>
+                                <th className="text-left p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">SERVICE NAME</th>
+                                <th className="text-center p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">OD</th>
+                                <th className="text-center p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">DT</th>
+                                <th className="text-center p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">D7</th>
+                                <th className="text-center p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">FT</th>
+                                <th className="text-center p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">WIP</th>
+                                <th className="text-center p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">PFC</th>
+                                <th className="text-center p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">PFD</th>
+                                <th className="text-center p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">CPL</th>
+                                <th className="text-center p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">CNL</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {taskStats.map((service, index) => (
+                                <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                                    <td className="p-4">
+                                        <div className="font-semibold text-gray-800">{service.name}</div>
+                                        <div className="text-sm text-gray-500">Service tasks</div>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <TaskStatusBadge
+                                            count={service.OD}
+                                            color="bg-gradient-to-br from-red-500 to-pink-600 text-white"
+                                            link="/view-task-od"
+                                        />
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <TaskStatusBadge
+                                            count={service.DT}
+                                            color="bg-gradient-to-br from-yellow-500 to-amber-600 text-white"
+                                            link="/view-task-dt"
+                                        />
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <TaskStatusBadge
+                                            count={service.D7}
+                                            color="bg-gradient-to-br from-blue-500 to-cyan-600 text-white"
+                                            link="/view-task-d7"
+                                        />
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <TaskStatusBadge
+                                            count={service.FT}
+                                            color="bg-gradient-to-br from-green-500 to-emerald-600 text-white"
+                                            link="/view-task-ft"
+                                        />
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <TaskStatusBadge
+                                            count={service.WIP}
+                                            color="bg-gradient-to-br from-blue-400 to-indigo-500 text-white"
+                                            link="/view-task-wip"
+                                        />
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <TaskStatusBadge
+                                            count={service.PFC}
+                                            color="bg-gradient-to-br from-yellow-400 to-orange-500 text-white"
+                                            link="/view-task-pfc"
+                                        />
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <TaskStatusBadge
+                                            count={service.PFD}
+                                            color="bg-gradient-to-br from-yellow-300 to-orange-400 text-white"
+                                            link="/view-task-pfd"
+                                        />
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <TaskStatusBadge
+                                            count={service.CPL}
+                                            color="bg-gradient-to-br from-green-400 to-emerald-500 text-white"
+                                            link="/view-task-cpl"
+                                        />
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <TaskStatusBadge
+                                            count={service.CNL}
+                                            color="bg-gradient-to-br from-red-400 to-rose-500 text-white"
+                                            link="/view-task-cnl"
+                                        />
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </WidgetWrapper>
+    );
+
+    const ServiceWiseSalesWidget = () => (
+        <WidgetWrapper widgetId="service-wise-sales" title="Service Wise Sales">
+            <div className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-violet-100 to-purple-100 rounded-xl">
+                            <FiPieChart className="w-6 h-6 text-violet-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-800">Service Wise Sales</h3>
+                            <p className="text-gray-500">Revenue distribution by service</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <motion.button 
+                            className="p-3 bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all duration-300"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <FiCalendar className="w-5 h-5" />
+                        </motion.button>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                className="px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm min-w-[200px]"
+                                placeholder="Select date range"
+                            />
+                            <motion.button 
+                                className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-600 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                <FiArrowUpRight className="w-5 h-5" />
+                            </motion.button>
+                        </div>
+                    </div>
+                </div>
+                <div className="h-80 flex items-center justify-center bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl border border-violet-100">
+                    <div className="text-center">
+                        <div className="relative inline-block">
+                            <FiPieChart className="w-20 h-20 text-violet-400/50 mb-4" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center">
+                                    <FiPieChart className="w-6 h-6 text-white" />
+                                </div>
+                            </div>
+                        </div>
+                        <p className="text-gray-500 text-lg font-medium">Service wise sales chart</p>
+                        <p className="text-gray-400 mt-2">Interactive chart visualization</p>
+                    </div>
+                </div>
+            </div>
+        </WidgetWrapper>
+    );
+
+    const StaffWiseSalesWidget = () => (
+        <WidgetWrapper widgetId="staff-wise-sales" title="Staff Wise Sales">
+            <div className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-teal-100 to-emerald-100 rounded-xl">
+                            <FiUsers className="w-6 h-6 text-teal-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-800">Staff Wise Sales</h3>
+                            <p className="text-gray-500">Performance by team members</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <motion.button 
+                            className="p-3 bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all duration-300"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <FiCalendar className="w-5 h-5" />
+                        </motion.button>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                className="px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm min-w-[200px]"
+                                placeholder="Select date range"
+                            />
+                            <motion.button 
+                                className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-600 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                <FiArrowUpRight className="w-5 h-5" />
+                            </motion.button>
+                        </div>
+                    </div>
+                </div>
+                <div className="h-80 flex items-center justify-center bg-gradient-to-br from-teal-50 to-emerald-50 rounded-2xl border border-teal-100">
+                    <div className="text-center">
+                        <div className="relative inline-block">
+                            <FiBarChart2 className="w-20 h-20 text-teal-400/50 mb-4" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-full flex items-center justify-center">
+                                    <FiBarChart2 className="w-6 h-6 text-white" />
+                                </div>
+                            </div>
+                        </div>
+                        <p className="text-gray-500 text-lg font-medium">Staff wise sales chart</p>
+                        <p className="text-gray-400 mt-2">Performance analytics by staff</p>
+                    </div>
+                </div>
+            </div>
+        </WidgetWrapper>
+    );
+
+    const TopClientsWidget = () => (
+        <WidgetWrapper widgetId="top-clients" title="Top Clients">
+            <div className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl">
+                            <FiAward className="w-6 h-6 text-amber-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-800">
+                                Top 10 Clients by Sales
+                            </h3>
+                            <p className="text-gray-500">Highest revenue generating clients</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="text"
+                            className="px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm min-w-[200px]"
+                            placeholder="Select date range"
+                        />
+                        <motion.button 
+                            className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-600 rounded-xl hover:shadow-lg transition-all duration-300 hover:scale-105"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <FiArrowUpRight className="w-5 h-5" />
+                        </motion.button>
+                    </div>
+                </div>
+                <div className="overflow-hidden rounded-2xl border border-gray-100">
+                    <table className="w-full">
+                        <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                            <tr>
+                                <th className="text-left p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">#</th>
+                                <th className="text-left p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">Name</th>
+                                <th className="text-left p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">Contact</th>
+                                <th className="text-left p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">Firms</th>
+                                <th className="text-left p-4 font-semibold text-gray-700 text-sm uppercase tracking-wider">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {topClients.map((client, index) => (
+                                <motion.tr 
+                                    key={index} 
+                                    className="hover:bg-gray-50/50 transition-colors"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.1 }}
+                                >
+                                    <td className="p-4">
+                                        <div className={`w-8 h-8 flex items-center justify-center rounded-full ${index < 3 ? 'bg-gradient-to-br from-amber-100 to-orange-100 text-amber-600' : 'bg-gray-100 text-gray-600'}`}>
+                                            <span className="font-bold">{index + 1}</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="font-semibold text-gray-800">{client.name}</div>
+                                        <div className="text-sm text-gray-500">C/O: {client.guardian_name}</div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="text-gray-700 font-medium">{client.mobile}</div>
+                                        <div className="text-sm text-gray-500">{client.email}</div>
+                                    </td>
+                                    <td className="p-4">
+                                        <span className="px-3 py-1 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 font-medium rounded-full text-sm">
+                                            {client.firms}
+                                        </span>
+                                    </td>
+                                    <td className="p-4">
+                                        <span className="text-lg font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                                            {formatCurrency(client.total)}
+                                        </span>
+                                    </td>
+                                </motion.tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </WidgetWrapper>
+    );
+
+    // UPDATED: Additional Stats Widget with drag and drop for cards
+    const AdditionalStatsWidget = () => (
+        <WidgetWrapper widgetId="additional-stats" title="Additional Stats">
+            <div className="p-6">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl">
+                        <FiGrid className="w-6 h-6 text-gray-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800">Additional Stats</h3>
+                    {isCustomizing && (
+                        <div className="ml-auto text-xs px-3 py-1 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 rounded-full">
+                            Drag cards to reorder
+                        </div>
+                    )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {additionalStatsCards.map((card, index) => (
+                        <CardComponent key={card.id} card={card} index={index} source="additionalStats" />
+                    ))}
+                </div>
+            </div>
+        </WidgetWrapper>
+    );
+
+    // Customization Panel Component - FIXED VERSION
+    const CustomizationPanel = () => {
+        const dataSuggestions = getDataBasedSuggestions();
+        const hiddenWidgets = widgets.filter(w => !w.visible);
+        const newAvailableWidgets = availableWidgets.filter(w => !w.visible);
+
+        return (
+            <motion.div
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 mb-6"
+            >
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Left Column - Templates */}
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <FiLayers className="w-5 h-5 text-indigo-600" />
+                            Predefined Templates
+                        </h3>
+                        <div className="space-y-3">
+                            {Object.entries(predefinedTemplates).map(([key, template]) => {
+                                const TemplateIcon = template.icon || FiGrid;
+                                return (
+                                    <motion.button
+                                        key={key}
+                                        onClick={() => applyTemplate(key)}
+                                        className="w-full p-4 text-left bg-gradient-to-r from-gray-50 to-white hover:from-indigo-50 hover:to-white rounded-xl border border-gray-200 transition-all duration-300 hover:shadow-lg hover:border-indigo-200"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg">
+                                                <TemplateIcon className="w-4 h-4 text-indigo-600" />
+                                            </div>
+                                            <div>
+                                                <div className="font-semibold text-gray-800">{template.name}</div>
+                                                <div className="text-sm text-gray-500">{template.description}</div>
+                                            </div>
+                                        </div>
+                                    </motion.button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Middle Column - Add Widgets */}
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <FiPlus className="w-5 h-5 text-green-600" />
+                            Add Widgets
+                        </h3>
+                        <div className="space-y-3">
+                            {[...hiddenWidgets, ...newAvailableWidgets].map((widget) => {
+                                const WidgetIcon = widget.icon || FiGrid;
+                                return (
+                                    <motion.button
+                                        key={widget.id}
+                                        onClick={() => addWidget(widget.id)}
+                                        className="w-full p-4 text-left bg-gradient-to-r from-gray-50 to-white hover:from-green-50 hover:to-white rounded-xl border border-gray-200 transition-all duration-300 hover:shadow-lg hover:border-green-200"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-gradient-to-br from-green-100 to-emerald-100 rounded-lg">
+                                                <WidgetIcon className="w-4 h-4 text-green-600" />
+                                            </div>
+                                            <div>
+                                                <div className="font-semibold text-gray-800">{widget.title}</div>
+                                                <div className="text-sm text-gray-500 capitalize">{widget.category}</div>
+                                            </div>
+                                            <div className="ml-auto">
+                                                <FiPlus className="w-4 h-4 text-green-600" />
+                                            </div>
+                                        </div>
+                                    </motion.button>
+                                );
+                            })}
+                            {[...hiddenWidgets, ...newAvailableWidgets].length === 0 && (
+                                <div className="text-center py-8 text-gray-500">
+                                    <FiCheck className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                                    <p>All available widgets are added</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Right Column - Data Based Suggestions */}
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <FiStar className="w-5 h-5 text-yellow-600" />
+                            Smart Suggestions
+                        </h3>
+                        <div className="space-y-3">
+                            {dataSuggestions.map((suggestion, index) => (
+                                <motion.div
+                                    key={index}
+                                    className="p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border border-yellow-100"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: index * 0.1 }}
+                                >
+                                    <div className="font-semibold text-gray-800 mb-1">{suggestion.title}</div>
+                                    <div className="text-sm text-gray-600 mb-3">{suggestion.description}</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {suggestion.recommendedWidgets.map(widgetId => {
+                                            const widget = [...widgets, ...availableWidgets].find(w => w.id === widgetId);
+                                            if (!widget) return null;
+                                            const WidgetIcon = widget.icon || FiGrid;
+                                            return (
+                                                <button
+                                                    key={widgetId}
+                                                    onClick={() => addWidget(widgetId)}
+                                                    className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 rounded-full text-sm hover:shadow-md transition-all duration-300"
+                                                >
+                                                    <WidgetIcon className="w-3 h-3" />
+                                                    {widget.title}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </motion.div>
+                            ))}
+                            {dataSuggestions.length === 0 && (
+                                <div className="text-center py-8 text-gray-500">
+                                    <FiActivity className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                                    <p>No data-based suggestions available</p>
+                                    <p className="text-sm">More suggestions will appear as you use the system</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </motion.div>
+        );
+    };
+
+    // Customization Mode Toolbar
+    const CustomizationToolbar = () => (
+        <motion.div
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 mb-6 rounded-2xl shadow-xl"
+        >
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                        <FiLayout className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h3 className="font-semibold text-lg">Dashboard Customization Mode</h3>
+                        <p className="text-indigo-200 text-sm">
+                            Drag widgets to reorder • Drag cards inside widgets to reorder • Click icons to hide/delete
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <motion.button
+                        onClick={resetLayout}
+                        className="px-5 py-2.5 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-xl transition-all duration-300 hover:scale-105"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        Reset Layout
+                    </motion.button>
+                    <motion.button
+                        onClick={saveLayout}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-white text-indigo-600 rounded-xl hover:bg-gray-50 transition-all duration-300 hover:scale-105"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <FiCheck className="w-4 h-4" />
+                        Save & Exit
+                    </motion.button>
+                </div>
+            </div>
+        </motion.div>
+    );
+
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -211,437 +2028,229 @@ const Dashboard = () => {
                 setIsMinimized={setIsMinimized}
             />
 
-            {/* Main content */}
-            <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    {/* Subscription Alert */}
-                    <motion.div 
-                        className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6"
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <FiAward className="w-5 h-5 text-red-600" />
-                                <div>
-                                    <div className="font-semibold text-red-800">
-                                        ALERT: Your subscription will expire in 7 days.
-                                    </div>
-                                    <div className="text-red-600 text-sm">
-                                        Renew your subscription to continue uninterrupted service
-                                    </div>
-                                </div>
-                            </div>
-                            <motion.button 
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+            {/* Main content - FULL WIDTH */}
+            <div className={`pt-16 transition-all duration-300 ease-in-out w-full ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
+                <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+                    {/* UPDATED: Header with alert and 3-dot button in same row */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
+                        {/* Subscription Alert - Now takes full width on mobile, less on desktop */}
+                        <div className="flex-1">
+                            <motion.div 
+                                className="bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-2xl p-6 shadow-lg"
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3 }}
                             >
-                                Renew Now
-                            </motion.button>
-                        </div>
-                    </motion.div>
-
-                    {/* Main Stats Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                        {/* Sales Overview Card */}
-                        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                            <div className="flex items-end p-6">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <FiTrendingUp className="w-5 h-5 text-green-600" />
-                                        <h3 className="text-lg font-semibold text-gray-800">
-                                            Congratulations! 🎉
-                                        </h3>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                    <div className="p-3 bg-gradient-to-br from-red-100 to-rose-100 rounded-xl">
+                                        <FiAward className="w-6 h-6 text-red-600" />
                                     </div>
-                                    <p className="text-gray-600 mb-4">Current FY Sales</p>
-                                    <div className={`text-2xl font-bold text-green-600 mb-4 ${blurEnabled ? 'blur' : ''}`}>
-                                        {formatCurrency(stats.total_sale || 0)}
+                                    <div className="flex-1">
+                                        <div className="font-bold text-red-800 text-lg">
+                                            ALERT: Your subscription will expire in 7 days.
+                                        </div>
+                                        <div className="text-red-600 text-sm">
+                                            Renew your subscription to continue uninterrupted service
+                                        </div>
                                     </div>
                                     <motion.button 
-                                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                                        className="px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl hover:shadow-xl transition-all duration-300 hover:scale-105"
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
                                     >
-                                        View Sales Report
+                                        Renew Now
                                     </motion.button>
                                 </div>
-                                <div className="hidden lg:block">
-                                    <div className="w-24 h-24 bg-indigo-50 rounded-lg flex items-center justify-center">
-                                        <FiBarChart2 className="w-12 h-12 text-indigo-600" />
-                                    </div>
-                                </div>
-                            </div>
+                            </motion.div>
                         </div>
+                        
+                        {/* UPDATED: Customize Button - Now properly aligned to the right */}
+                        <div className="flex items-center justify-center pt-5 ">
+                            <div className="relative">
+                                <motion.button
+                                    onClick={() => setShowCustomizeMenu(!showCustomizeMenu)}
+                                    className="p-3 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 hover:border-indigo-300 hover:scale-105"
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    <FiMoreVertical className="w-5 h-5 text-gray-700" />
+                                </motion.button>
 
-                        {/* Quick Stats Grid */}
-                        <div className="lg:col-span-2">
-                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm h-full">
-                                <div className="p-6">
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                        <StatCard
-                                            title="Pending Billing"
-                                            value={stats.pending_for_billing || 0}
-                                            icon={FiCreditCard}
-                                            color="bg-indigo-100 text-indigo-600"
-                                            link="/view-billing"
-                                        />
-                                        <StatCard
-                                            title="Creditors"
-                                            value={stats.creditor || 0}
-                                            icon={FiUsers}
-                                            color="bg-cyan-100 text-cyan-600"
-                                            link="/view-creditors"
-                                            isCurrency
-                                        />
-                                        <StatCard
-                                            title="Debtors"
-                                            value={stats.debtor || 0}
-                                            icon={FiShoppingCart}
-                                            color="bg-red-100 text-red-600"
-                                            link="/view-debtors"
-                                            isCurrency
-                                        />
-                                        <StatCard
-                                            title="Today Received"
-                                            value={stats.today_received || 0}
-                                            icon={FiDollarSign}
-                                            color="bg-green-100 text-green-600"
-                                            link="/view-received"
-                                            isCurrency
-                                        />
-                                        <StatCard
-                                            title="Today Payment"
-                                            value={stats.today_payment || 0}
-                                            icon={FiCreditCard}
-                                            color="bg-orange-100 text-orange-600"
-                                            link="/view-payments"
-                                            isCurrency
-                                        />
-                                        <StatCard
-                                            title="Today Birthday"
-                                            value={stats.today_birthday || 0}
-                                            icon={FiCalendar}
-                                            color="bg-purple-100 text-purple-600"
-                                            link="/view-birthday-today"
-                                        />
-                                    </div>
-                                </div>
+                                {/* Customize Menu Dropdown */}
+                                <AnimatePresence>
+                                    {showCustomizeMenu && !isCustomizing && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
+                                            className="absolute top-12 right-0 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 min-w-[240px]"
+                                        >
+                                            <div className="p-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setIsCustomizing(true);
+                                                        setShowCustomizeMenu(false);
+                                                    }}
+                                                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gradient-to-r from-indigo-50 to-white rounded-lg transition-all duration-300"
+                                                >
+                                                    <div className="p-2 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg">
+                                                        <FiGrid className="w-4 h-4 text-indigo-600" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-semibold text-gray-800">Customize Layout</div>
+                                                        <div className="text-xs text-gray-500">Rearrange and modify widgets</div>
+                                                    </div>
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        resetLayout();
+                                                        setShowCustomizeMenu(false);
+                                                    }}
+                                                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gradient-to-r from-gray-50 to-white rounded-lg transition-all duration-300"
+                                                >
+                                                    <div className="p-2 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg">
+                                                        <FiRefreshCw className="w-4 h-4 text-gray-600" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-semibold text-gray-800">Reset to Default</div>
+                                                        <div className="text-xs text-gray-500">Restore original layout</div>
+                                                    </div>
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setBlurEnabled(!blurEnabled);
+                                                        setShowCustomizeMenu(false);
+                                                    }}
+                                                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gradient-to-r from-gray-50 to-white rounded-lg transition-all duration-300"
+                                                >
+                                                    <div className="p-2 bg-gradient-to-br from-green-100 to-emerald-100 rounded-lg">
+                                                        {blurEnabled ? (
+                                                            <FiEye className="w-4 h-4 text-green-600" />
+                                                        ) : (
+                                                            <FiEyeOff className="w-4 h-4 text-gray-600" />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-semibold text-gray-800">
+                                                            {blurEnabled ? 'Show Values' : 'Hide Values'}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {blurEnabled ? 'Display all values' : 'Blur sensitive data'}
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </div>
                     </div>
 
-                    {/* Task Summary */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
-                        <div className="border-b border-gray-200 p-6">
-                            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                                <h3 className="text-lg font-semibold text-gray-800">Task Summary</h3>
-                                <div className="flex items-center gap-3">
-                                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                        <FiRefreshCw className="w-4 h-4" />
-                                    </button>
-                                    <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-                                        <option value="">All Services</option>
-                                        <option value="gst">GST Filing</option>
-                                        <option value="tax">Income Tax</option>
-                                        <option value="company">Company Registration</option>
-                                    </select>
-                                    <motion.button 
-                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <FiPlus className="w-4 h-4" />
-                                        Create Task
-                                    </motion.button>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-6">
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-200">
-                                        <tr>
-                                            <th className="text-left p-4 font-semibold text-gray-700 text-sm">SERVICE NAME</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 text-sm">OD</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 text-sm">DT</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 text-sm">D7</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 text-sm">FT</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 text-sm">WIP</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 text-sm">PFC</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 text-sm">PFD</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 text-sm">CPL</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 text-sm">CNL</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {taskStats.map((service, index) => (
-                                            <tr key={index} className="hover:bg-gray-50 transition-colors">
-                                                <td className="p-4 font-medium text-gray-800">{service.name}</td>
-                                                <td className="p-4 text-center">
-                                                    <TaskStatusBadge
-                                                        count={service.OD}
-                                                        color="bg-red-100 text-red-800"
-                                                        link="/view-task-od"
-                                                    />
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    <TaskStatusBadge
-                                                        count={service.DT}
-                                                        color="bg-yellow-100 text-yellow-800"
-                                                        link="/view-task-dt"
-                                                    />
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    <TaskStatusBadge
-                                                        count={service.D7}
-                                                        color="bg-blue-100 text-blue-800"
-                                                        link="/view-task-d7"
-                                                    />
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    <TaskStatusBadge
-                                                        count={service.FT}
-                                                        color="bg-green-100 text-green-800"
-                                                        link="/view-task-ft"
-                                                    />
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    <TaskStatusBadge
-                                                        count={service.WIP}
-                                                        color="bg-blue-100 text-blue-800"
-                                                        link="/view-task-wip"
-                                                    />
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    <TaskStatusBadge
-                                                        count={service.PFC}
-                                                        color="bg-yellow-100 text-yellow-800"
-                                                        link="/view-task-pfc"
-                                                    />
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    <TaskStatusBadge
-                                                        count={service.PFD}
-                                                        color="bg-yellow-100 text-yellow-800"
-                                                        link="/view-task-pfd"
-                                                    />
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    <TaskStatusBadge
-                                                        count={service.CPL}
-                                                        color="bg-green-100 text-green-800"
-                                                        link="/view-task-cpl"
-                                                    />
-                                                </td>
-                                                <td className="p-4 text-center">
-                                                    <TaskStatusBadge
-                                                        count={service.CNL}
-                                                        color="bg-red-100 text-red-800"
-                                                        link="/view-task-cnl"
-                                                    />
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    {/* Customization Toolbar */}
+                    <AnimatePresence>
+                        {isCustomizing && (
+                            <>
+                                <CustomizationToolbar />
+                                <CustomizationPanel />
+                            </>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Dashboard Widgets Grid - FULL WIDTH with proper spacing */}
+                    <div className={`grid grid-cols-1 ${isCustomizing ? 'pb-20' : ''} space-y-8`}>
+                        {widgets
+                            .filter(widget => widget.visible)
+                            .sort((a, b) => a.order - b.order)
+                            .map((widget) => {
+                                switch (widget.component) {
+                                    case 'SalesOverview':
+                                        return <SalesOverviewWidget key={widget.id} />;
+                                    case 'QuickStats':
+                                        return <QuickStatsWidget key={widget.id} />;
+                                    case 'TaskSummary':
+                                        return <TaskSummaryWidget key={widget.id} />;
+                                    case 'ServiceWiseSales':
+                                        return <ServiceWiseSalesWidget key={widget.id} />;
+                                    case 'StaffWiseSales':
+                                        return <StaffWiseSalesWidget key={widget.id} />;
+                                    case 'TopClients':
+                                        return <TopClientsWidget key={widget.id} />;
+                                    case 'AdditionalStats':
+                                        return <AdditionalStatsWidget key={widget.id} />;
+                                    case 'PerformanceMetrics':
+                                        return <PerformanceMetricsWidget key={widget.id} />;
+                                    case 'RevenueTrend':
+                                        return <RevenueTrendWidget key={widget.id} />;
+                                    case 'ClientAcquisition':
+                                        return <ClientAcquisitionWidget key={widget.id} />;
+                                    case 'GoalProgress':
+                                        return <GoalProgressWidget key={widget.id} />;
+                                    default:
+                                        return null;
+                                }
+                            })}
                     </div>
 
-                    {/* Charts Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        {/* Service Wise Sales */}
-                        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                            <div className="border-b border-gray-200 p-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-semibold text-gray-800">Service Wise Sales</h3>
-                                    <div className="flex items-center gap-2">
-                                        <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                            <FiCalendar className="w-4 h-4" />
-                                        </button>
+                    {/* Save Button (Fixed at bottom during customization) */}
+                    <AnimatePresence>
+                        {isCustomizing && (
+                            <motion.div
+                                initial={{ y: 100, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: 100, opacity: 0 }}
+                                className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-20"
+                            >
+                                <div className="bg-white rounded-2xl shadow-2xl p-6 border border-gray-200 min-w-[320px] backdrop-blur-sm bg-white/95">
+                                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                                        <div className="text-center sm:text-left">
+                                            <p className="font-bold text-gray-800">Customization Mode Active</p>
+                                            <p className="text-sm text-gray-500">Drag widgets and cards to customize</p>
+                                        </div>
                                         <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                                                placeholder="Select date range"
-                                            />
-                                            <button className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                                                <FiArrowUpRight className="w-4 h-4" />
+                                            <button
+                                                onClick={() => {
+                                                    setIsCustomizing(false);
+                                                    setShowCustomizeMenu(false);
+                                                }}
+                                                className="px-5 py-2.5 text-gray-700 hover:bg-gray-100 rounded-xl transition-all duration-300"
+                                            >
+                                                Cancel
                                             </button>
+                                            <motion.button
+                                                onClick={saveLayout}
+                                                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl transition-all duration-300 hover:scale-105"
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                            >
+                                                <FiCheck className="w-4 h-4" />
+                                                Save Layout
+                                            </motion.button>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="p-6">
-                                <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                                    <div className="text-center">
-                                        <FiPieChart className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                                        <p className="text-gray-500">Service wise sales chart</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Staff Wise Sales */}
-                        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                            <div className="border-b border-gray-200 p-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-semibold text-gray-800">Staff Wise Sales</h3>
-                                    <div className="flex items-center gap-2">
-                                        <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                            <FiCalendar className="w-4 h-4" />
-                                        </button>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                                                placeholder="Select date range"
-                                            />
-                                            <button className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                                                <FiArrowUpRight className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-6">
-                                <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                                    <div className="text-center">
-                                        <FiBarChart2 className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                                        <p className="text-gray-500">Staff wise sales chart</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Top Clients */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
-                        <div className="border-b border-gray-200 p-6">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-semibold text-gray-800">
-                                    Top 10 Clients by Sales
-                                </h3>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="text"
-                                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                                        placeholder="Select date range"
-                                    />
-                                    <button className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                                        <FiArrowUpRight className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-6">
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-200">
-                                        <tr>
-                                            <th className="text-left p-4 font-semibold text-gray-700 text-sm">#</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 text-sm">Name</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 text-sm">Contact</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 text-sm">Firms</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 text-sm">Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {topClients.map((client, index) => (
-                                            <tr key={index} className="hover:bg-gray-50 transition-colors">
-                                                <td className="p-4 text-gray-600">{index + 1}</td>
-                                                <td className="p-4">
-                                                    <div className="font-medium text-gray-800">{client.name}</div>
-                                                    <div className="text-sm text-gray-500">C/O: {client.guardian_name}</div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className="text-gray-700">{client.mobile}</div>
-                                                    <div className="text-sm text-gray-500">{client.email}</div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className="text-yellow-600 font-medium">{client.firms}</span>
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className="text-green-600 font-bold">
-                                                        {formatCurrency(client.total)}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Additional Stats */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                        <div className="p-6">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <StatCard
-                                    title="Total Client"
-                                    value={stats.total_client || 0}
-                                    icon={FiUsers}
-                                    color="bg-gray-100 text-gray-600"
-                                    link="/view-client"
-                                />
-                                <StatCard
-                                    title="New Client"
-                                    value={stats.new_client || 0}
-                                    icon={FiUsers}
-                                    color="bg-indigo-100 text-indigo-600"
-                                    link="/view-new-client"
-                                />
-                                <StatCard
-                                    title="Active Client"
-                                    value={stats.active_client || 0}
-                                    icon={FiUsers}
-                                    color="bg-green-100 text-green-600"
-                                    link="/view-active-client"
-                                />
-                                <StatCard
-                                    title="Net Profit"
-                                    value={stats.net_profit || 0}
-                                    icon={FiTrendingUp}
-                                    color="bg-green-100 text-green-600"
-                                    link="/view-finance-report"
-                                    isCurrency
-                                />
-                                <StatCard
-                                    title="Total Staff"
-                                    value={stats.total_stuff || 0}
-                                    icon={FiUsers}
-                                    color="bg-red-100 text-red-600"
-                                    link="/view-stuff"
-                                />
-                                <StatCard
-                                    title="Present Today"
-                                    value={stats.present_today || 0}
-                                    icon={FiUserCheck}
-                                    color="bg-red-100 text-red-600"
-                                    link="/attendance"
-                                />
-                                <StatCard
-                                    title="Task Create Today"
-                                    value={stats.task_create_today || 0}
-                                    icon={FiPlus}
-                                    color="bg-indigo-100 text-indigo-600"
-                                    link="/view-task-create-today"
-                                />
-                                <StatCard
-                                    title="Task Complete Today"
-                                    value={stats.task_complete_today || 0}
-                                    icon={FiUserCheck}
-                                    color="bg-green-100 text-green-600"
-                                    link="/view-task-complete-today"
-                                />
-                            </div>
-                        </div>
-                    </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
+
+            {/* Custom CSS for animations */}
+            <style jsx>{`
+                @keyframes float {
+                    0%, 100% { transform: translateY(0px); }
+                    50% { transform: translateY(-10px); }
+                }
+                .animate-float {
+                    animation: float 3s ease-in-out infinite;
+                }
+                .animation-delay-100 {
+                    animation-delay: 0.1s;
+                }
+                .animation-delay-200 {
+                    animation-delay: 0.2s;
+                }
+            `}</style>
         </div>
     );
 };
