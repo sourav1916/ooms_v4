@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiGrid, FiX } from 'react-icons/fi';
+import { FiX } from 'react-icons/fi';
 // import { availableFields, defaultColumnConfig } from '';
 
 const SettingsModal = ({ 
@@ -11,14 +11,6 @@ const SettingsModal = ({
   onResetToDefault 
 }) => {
   if (!isOpen) return null;
-
-  const addItemToColumn = (columnIndex, fieldId) => {
-    // Implementation from original code
-  };
-
-  const removeItemFromColumn = (columnIndex, itemIndex) => {
-    // Implementation from original code
-  };
 
   return (
     <AnimatePresence>
