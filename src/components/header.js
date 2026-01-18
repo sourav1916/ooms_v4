@@ -213,15 +213,16 @@ const isSubmenuItemActive = (submenuPath, currentPath) => {
 };
 
 // ==========================================
-// 5. NavItem Component
+// 5. NavItem Component (Updated for Billing Badge)
 // ==========================================
-const NavItem = ({ item, isMobile, isMinimized, isHovered, currentPath, openSubmenus, toggleSubmenu, setHoveredMenu, hoveredMenu, setMobileMenuOpen, hasProjects, unreadCount }) => {
+const NavItem = ({ item, isMobile, isMinimized, isHovered, currentPath, openSubmenus, toggleSubmenu, setHoveredMenu, hoveredMenu, setMobileMenuOpen, hasProjects, unreadCount, pendingBillingCount }) => {
   const isActive = isItemActive(item, currentPath);
   const isDisabled = requiresProject(item) && !hasProjects;
   const hasSubmenu = item.submenus && item.submenus.length > 0;
   const isOpen = isMobile ? openSubmenus[`mobile-${item.key}`] : openSubmenus[item.key];
   const isMini = !isMobile && isMinimized && !isHovered;
   const showUnreadBadge = item.key === 'live-chat' && unreadCount > 0;
+  const showBillingBadge = item.key === 'billing' && pendingBillingCount > 0;
 
   // Render Submenu Item (Parent)
   if (hasSubmenu) {
@@ -236,8 +237,13 @@ const NavItem = ({ item, isMobile, isMinimized, isHovered, currentPath, openSubm
           onMouseLeave={() => isMini && setHoveredMenu(null)}
         >
           <div className={`flex items-center ${isMini ? 'justify-center w-full' : 'gap-3'}`}>
-            <span className={`${isActive ? THEME.iconActive : THEME.iconInactive} transition-colors`}>
+            <span className={`${isActive ? THEME.iconActive : THEME.iconInactive} transition-colors relative`}>
               {item.icon}
+              {isMini && showBillingBadge && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-amber-500 text-white text-[10px] font-semibold flex items-center justify-center border-2 border-white">
+                  {pendingBillingCount > 9 ? '9+' : pendingBillingCount}
+                </span>
+              )}
             </span>
             {!isMini && <span>{item.title}</span>}
           </div>
@@ -251,6 +257,7 @@ const NavItem = ({ item, isMobile, isMinimized, isHovered, currentPath, openSubm
           {isMini && hoveredMenu === item.key && (
             <div className="absolute left-16 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs rounded-md shadow-lg z-50 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
               {item.title}
+              {showBillingBadge && ` • ${pendingBillingCount} Pending`}
             </div>
           )}
         </button>
@@ -266,24 +273,23 @@ const NavItem = ({ item, isMobile, isMinimized, isHovered, currentPath, openSubm
             >
               <div className="ml-5 pl-4 border-l-2 border-indigo-100 my-1 space-y-0.5">
                 {item.submenus.map((sub, idx) => {
-                    const isSubActive = isSubmenuItemActive(sub.path, currentPath);
-                    return (
+                  const isSubActive = isSubmenuItemActive(sub.path, currentPath);
+                  return (
                     <NavLink
-  key={idx}
-  to={sub.path}
-  onClick={() => isMobile && setMobileMenuOpen(false)}
-  className={({ isActive }) =>
-    `block px-3 py-2 rounded-md text-sm transition-all duration-200 ${
-      isActive
-        ? 'text-indigo-700 font-semibold bg-indigo-50'
-        : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-50'
-    }`
-  }
->
-  {sub.title}
-</NavLink>
-
-                    )
+                      key={idx}
+                      to={sub.path}
+                      onClick={() => isMobile && setMobileMenuOpen(false)}
+                      className={({ isActive }) =>
+                        `block px-3 py-2 rounded-md text-sm transition-all duration-200 ${
+                          isActive
+                            ? 'text-indigo-700 font-semibold bg-indigo-50'
+                            : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-50'
+                        }`
+                      }
+                    >
+                      {sub.title}
+                    </NavLink>
+                  )
                 })}
               </div>
             </motion.div>
@@ -310,6 +316,11 @@ const NavItem = ({ item, isMobile, isMinimized, isHovered, currentPath, openSubm
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
+          {isMini && showBillingBadge && (
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-amber-500 text-white text-[10px] font-semibold flex items-center justify-center border-2 border-white">
+              {pendingBillingCount > 9 ? '9+' : pendingBillingCount}
+            </span>
+          )}
         </span>
         {!isMini && (
           <div className="flex-1 flex items-center justify-between">
@@ -320,14 +331,21 @@ const NavItem = ({ item, isMobile, isMinimized, isHovered, currentPath, openSubm
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
+              {showBillingBadge && (
+                <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md border border-amber-200">
+                  <span className="text-xs font-semibold">{pendingBillingCount}</span>
+                  <span className="text-[10px] font-medium">Pending</span>
+                </div>
+              )}
               {isDisabled && <FiLock size={12} className="text-slate-300" />}
             </div>
           </div>
         )}
         {isMini && hoveredMenu === item.key && (
-            <div className="absolute left-16 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs rounded-md shadow-lg z-50 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
-              {item.title} {isDisabled && '(Locked)'}
-            </div>
+          <div className="absolute left-16 ml-3 px-3 py-1.5 bg-slate-800 text-white text-xs rounded-md shadow-lg z-50 whitespace-nowrap animate-in fade-in zoom-in-95 duration-200">
+            {item.title} {isDisabled && '(Locked)'}
+            {showBillingBadge && ` • ${pendingBillingCount} Pending`}
+          </div>
         )}
       </NavLink>
     </div>
@@ -487,17 +505,17 @@ export const Sidebar = ({ mobileMenuOpen, setMobileMenuOpen, isMinimized, setIsM
   const [isHovered, setIsHovered] = useState(false);
   const [currentPath, setCurrentPath] = useState('');
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+  const [pendingBillingCount, setPendingBillingCount] = useState(23); // Mock pending billing count
 
   const userData = getUserData();
   const projectList = userData?.projects?.list || (Array.isArray(userData?.projects) ? userData.projects : []);
   const hasProjects = projectList.length > 0 || (userData?.projects?.project_count > 0);
 
- const location = useLocation();
+  const location = useLocation();
 
-useEffect(() => {
-  setCurrentPath(location.pathname);
-}, [location.pathname]);
-
+  useEffect(() => {
+    setCurrentPath(location.pathname);
+  }, [location.pathname]);
 
   // Fetch and calculate total unread count
   useEffect(() => {
@@ -533,6 +551,24 @@ useEffect(() => {
     };
   }, []);
 
+  // Mock function to fetch pending billing count (in real app, this would be an API call)
+  useEffect(() => {
+    // Simulate fetching pending billing count
+    const fetchPendingBillingCount = async () => {
+      // In real implementation, you would fetch from API
+      // For now, we'll use mock data
+      const mockPendingCount = 23; // This would come from an API
+      setPendingBillingCount(mockPendingCount);
+    };
+
+    fetchPendingBillingCount();
+    
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchPendingBillingCount, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const toggleSubmenu = (menuKey) => {
     setOpenSubmenus(prev => ({ ...prev, [menuKey]: !prev[menuKey] }));
   };
@@ -542,36 +578,44 @@ useEffect(() => {
   };
 
   const menuItems = [
-  { key: 'dashboard', title: 'Dashboard', icon: <FiHome size={18} />, path: '/' },
-  { 
-    key: 'tasks', title: 'Tasks', icon: <FiUsers size={18} />, 
-    submenus: [
-      { title: 'New Task', path: '/task/create' },
-      { title: 'View Task', path: '/task/view' }
-    ]
-  },
-  { 
-    key: 'clients', title: 'Clients', icon: <FiUsers size={18} />, 
-    submenus: [
-      { title: 'New Client', path: '/client/create' },
-      { title: 'View Client', path: '/client/view' }
-    ]
-  },
-  { key: 'billing', title: 'Billing', icon: <FiBarChart2 size={18} />, path: '/billing' },
-  { key: 'finance', title: 'Finance', icon: <FiBarChart2 size={18} />, path: '/finance/voucher/' },
-  { 
-    key: 'staff-management', title: 'Staff Management', icon: <FiUsers size={18} />, 
-    submenus: [
-      { title: 'Staff', path: '/staff/view' },
-      { title: 'Team Report', path: '/staff/team-report' },
-      { title: 'Attendance', path: '/staff/attendance' },
-      { title: 'Assistance', path: '/staff/office-assistance' }
-    ]
-  },
-  { key: 'broadcast', title: 'Broadcast', icon: <FiMessageSquare size={18} />, path: '/broadcast' },
-  { key: 'settings', title: 'Settings', icon: <FiSettings size={18} />, path: '/settings' },
-  { key: 'subscription', title: 'Subscription', icon: <FiCreditCard size={18} />, path: '/subscription' }
-];
+    { key: 'dashboard', title: 'Dashboard', icon: <FiHome size={18} />, path: '/' },
+    { 
+      key: 'tasks', title: 'Tasks', icon: <FiUsers size={18} />, 
+      submenus: [
+        { title: 'New Task', path: '/task/create' },
+        { title: 'View Task', path: '/task/view' }
+      ]
+    },
+    { 
+      key: 'clients', title: 'Clients', icon: <FiUsers size={18} />, 
+      submenus: [
+        { title: 'New Client', path: '/client/create' },
+        { title: 'View Client', path: '/client/view' }
+      ]
+    },
+    { 
+      key: 'billing', 
+      title: 'Billing', 
+      icon: <FiBarChart2 size={18} />, 
+      path: '/billing',
+      badgeCount: pendingBillingCount,
+      badgeColor: 'bg-amber-500',
+      badgeText: 'Pending'
+    },
+    { key: 'finance', title: 'Finance', icon: <FiBarChart2 size={18} />, path: '/finance/voucher/' },
+    { 
+      key: 'staff-management', title: 'Staff Management', icon: <FiUsers size={18} />, 
+      submenus: [
+        { title: 'Staff', path: '/staff/view' },
+        { title: 'Team Report', path: '/staff/team-report' },
+        { title: 'Attendance', path: '/staff/attendance' },
+        { title: 'Assistance', path: '/staff/office-assistance' }
+      ]
+    },
+    { key: 'broadcast', title: 'Broadcast', icon: <FiMessageSquare size={18} />, path: '/broadcast' },
+    { key: 'settings', title: 'Settings', icon: <FiSettings size={18} />, path: '/settings' },
+    { key: 'subscription', title: 'Subscription', icon: <FiCreditCard size={18} />, path: '/subscription' }
+  ];
 
   return (
     <>
@@ -598,6 +642,7 @@ useEffect(() => {
                     hasProjects={hasProjects}
                     setMobileMenuOpen={setMobileMenuOpen}
                     unreadCount={totalUnreadCount}
+                    pendingBillingCount={pendingBillingCount}
                   />
                 ))}
               </div>
@@ -630,6 +675,7 @@ useEffect(() => {
                 hoveredMenu={hoveredMenu}
                 hasProjects={hasProjects}
                 unreadCount={totalUnreadCount}
+                pendingBillingCount={pendingBillingCount}
               />
             ))}
           </nav>
