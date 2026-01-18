@@ -66,6 +66,139 @@ import {
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+// Status Change Modal Component - NEW: For changing status from dropdown
+const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusChange, statusOptions }) => {
+    const [selectedStatus, setSelectedStatus] = useState(currentStatus);
+    
+    if (!isOpen) return null;
+    
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'ACTIVE': return 'bg-green-100 text-green-700 border-green-300';
+            case 'INACTIVE': return 'bg-red-100 text-red-700 border-red-300';
+            case 'PENDING': return 'bg-yellow-100 text-yellow-700 border-yellow-300';
+            default: return 'bg-gray-100 text-gray-700 border-gray-300';
+        }
+    };
+    
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'ACTIVE': return <FiCheckCircle className="w-4 h-4" />;
+            case 'INACTIVE': return <FiX className="w-4 h-4" />;
+            case 'PENDING': return <FiClock className="w-4 h-4" />;
+            default: return <FiClock className="w-4 h-4" />;
+        }
+    };
+    
+    const handleConfirm = () => {
+        onStatusChange(clientId, selectedStatus);
+        onClose();
+    };
+    
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                >
+                    <motion.div
+                        className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-auto overflow-hidden"
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                                        <FiCheckCircle className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold">Change Status</h3>
+                                        <p className="text-blue-100 text-xs">Update client status</p>
+                                    </div>
+                                </div>
+                                <motion.button
+                                    onClick={onClose}
+                                    className="text-white hover:text-blue-200 transition-colors p-1 rounded-lg hover:bg-white/10"
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                >
+                                    <FiX className="w-4 h-4" />
+                                </motion.button>
+                            </div>
+                        </div>
+                        
+                        {/* Current Status */}
+                        <div className="p-4 border-b border-gray-200">
+                            <div className="mb-3">
+                                <label className="block text-xs font-semibold text-gray-600 mb-1">Current Status</label>
+                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${getStatusColor(currentStatus)}`}>
+                                    {getStatusIcon(currentStatus)}
+                                    <span className="font-medium text-sm">
+                                        {statusOptions.find(s => s.value === currentStatus)?.name || currentStatus}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            {/* New Status Selection */}
+                            <div className="mb-2">
+                                <label className="block text-xs font-semibold text-gray-600 mb-1">Select New Status</label>
+                                <div className="space-y-1.5">
+                                    {statusOptions.map((status) => (
+                                        <motion.button
+                                            key={status.value}
+                                            onClick={() => setSelectedStatus(status.value)}
+                                            className={`w-full flex items-center justify-between p-2.5 rounded-lg border transition-all ${selectedStatus === status.value ? 'ring-1 ring-blue-500 ring-offset-1 ' : ''} ${getStatusColor(status.value)}`}
+                                            whileHover={{ scale: 1.01 }}
+                                            whileTap={{ scale: 0.99 }}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {getStatusIcon(status.value)}
+                                                <span className="font-medium text-sm">{status.name}</span>
+                                            </div>
+                                            {selectedStatus === status.value && (
+                                                <FiCheckCircle className="w-4 h-4" />
+                                            )}
+                                        </motion.button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Footer */}
+                        <div className="px-4 py-3 bg-gray-50 flex justify-end gap-2">
+                            <motion.button
+                                onClick={onClose}
+                                className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium text-sm"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                Cancel
+                            </motion.button>
+                            <motion.button
+                                onClick={handleConfirm}
+                                className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 font-medium text-sm"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                Update
+                            </motion.button>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
 // View Mode Toggle Component - Updated button size to match Filter
 const TableViewSwitch = ({ viewMode, setViewMode }) => {
     return (
@@ -106,10 +239,10 @@ const ClientTable = ({
     toggleRowDropdown,
     activeRowDropdown,
     setActiveRowDropdown,
-    handleStatusChange
+    handleStatusChange,
+    openStatusModal, // NEW: Added prop for status modal
+    navigate // NEW: Added prop for navigation
 }) => {
-    const navigate = useNavigate();
-
     // Skeleton loader
     const SkeletonRow = () => (
         <div className="flex items-center border-b border-gray-100 animate-pulse p-3">
@@ -134,7 +267,7 @@ const ClientTable = ({
     );
 
     // Mobile client card for table view
-    const MobileClientCard = ({ client, index }) => {
+    const MobileClientCard = ({ client, index, handleExport }) => {
         return (
             <motion.div
                 className="bg-white border border-gray-200 rounded-lg p-3 mb-2 md:hidden"
@@ -174,7 +307,7 @@ const ClientTable = ({
                             </div>
                         </motion.button>
                         
-                        {/* Mobile dropdown */}
+                        {/* Mobile dropdown - UPDATED: Added Change Status option */}
                         <AnimatePresence>
                             {activeRowDropdown === client.id && (
                                 <motion.div
@@ -183,6 +316,20 @@ const ClientTable = ({
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -8, scale: 0.96 }}
                                 >
+                                    {/* NEW: Change Status option */}
+                                    <button
+                                        onClick={() => {
+                                            openStatusModal(client.id, client.status);
+                                            setActiveRowDropdown(null);
+                                        }}
+                                        className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
+                                    >
+                                        <FiCheckCircle className="mr-3" />
+                                        Change Status
+                                    </button>
+
+                                    <div className="border-t my-1"></div>
+
                                     <button
                                         onClick={() => {
                                             setActiveRowDropdown(null);
@@ -240,14 +387,38 @@ const ClientTable = ({
                             <FiPhone className="w-3 h-3 text-gray-400" />
                             <span>{client.mobile}</span>
                         </div>
-                        <div className={`text-sm font-semibold ${client.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                            ₹{Math.abs(client.balance).toLocaleString()}
+                        <div className="flex items-center gap-1">
+                            <div className={`text-sm font-semibold ${client.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                ₹{Math.abs(client.balance).toLocaleString()}
+                            </div>
+                            <motion.button
+                                onClick={() => handleExport('whatsapp', client)}
+                                className="text-green-600 hover:text-green-700 p-2"
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                title="Send via WhatsApp"
+                            >
+                                <FaWhatsapp className="w-4 h-4" />
+                            </motion.button>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2 text-gray-700 text-sm">
                         <FiUsers className="w-3 h-3 text-gray-400" />
                         <span>{client.firm_list.length} firms</span>
+                    </div>
+
+                    {/* NEW: Status as text display in mobile */}
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-gray-600">Status:</span>
+                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+                            client.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                            client.status === 'INACTIVE' ? 'bg-red-100 text-red-700' :
+                            'bg-yellow-100 text-yellow-700'
+                        }`}>
+                            {client.status === 'ACTIVE' ? 'Active' :
+                             client.status === 'INACTIVE' ? 'Inactive' : 'Pending'}
+                        </div>
                     </div>
 
                     <div className="text-xs text-gray-500">
@@ -331,7 +502,7 @@ const ClientTable = ({
                         {/* Mobile view - cards */}
                         <div className="md:hidden px-3 py-1">
                             {clients.map((client, index) => (
-                                <MobileClientCard key={client.id} client={client} index={index} />
+                                <MobileClientCard key={client.id} client={client} index={index} handleExport={() => {}} />
                             ))}
                         </div>
 
@@ -372,7 +543,7 @@ const ClientTable = ({
                                             <div className="space-y-1">
                                                 {column.items.map(item => (
                                                     <div key={item.id} className="min-h-[1.25rem] flex items-center justify-center">
-                                                        {renderCellContent(client, item.id)}
+                                                        {renderCellContent(client, item.id, openStatusModal)} {/* NEW: Added openStatusModal prop */}
                                                     </div>
                                                 ))}
                                             </div>
@@ -400,10 +571,11 @@ const ClientCards = ({
     activeRowDropdown,
     setActiveRowDropdown,
     handleStatusChange,
-    statusOptions
+    statusOptions,
+    openStatusModal, // NEW: Added prop for status modal
+    navigate, // NEW: Added prop for navigation
+    handleExport // Added for WhatsApp functionality
 }) => {
-    const navigate = useNavigate();
-
     // Get status color
     const getStatusColor = (status) => {
         switch (status) {
@@ -512,7 +684,7 @@ const ClientCards = ({
                                                 <div className="w-1 h-1 rounded-full bg-gray-600"></div>
                                             </motion.button>
 
-                                            {/* Dropdown for cards */}
+                                            {/* Dropdown for cards - UPDATED: Added Change Status option */}
                                             <AnimatePresence>
                                                 {activeRowDropdown === `card-${client.id}` && (
                                                     <motion.div
@@ -521,6 +693,20 @@ const ClientCards = ({
                                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                                         exit={{ opacity: 0, y: -8, scale: 0.96 }}
                                                     >
+                                                        {/* NEW: Change Status option */}
+                                                        <button
+                                                            onClick={() => {
+                                                                openStatusModal(client.id, client.status);
+                                                                setActiveRowDropdown(null);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
+                                                        >
+                                                            <FiCheckCircle className="mr-3" />
+                                                            Change Status
+                                                        </button>
+
+                                                        <div className="border-t my-1"></div>
+
                                                         <button
                                                             onClick={() => {
                                                                 setActiveRowDropdown(null);
@@ -581,8 +767,19 @@ const ClientCards = ({
                                             <FiPhone className="w-3 h-3 text-gray-400" />
                                             <span>{client.mobile}</span>
                                         </div>
-                                        <div className={`text-xs font-semibold ${client.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                            {formatBalance(client.balance)}
+                                        <div className="flex items-center gap-1">
+                                            <div className={`text-xs font-semibold ${client.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                {formatBalance(client.balance)}
+                                            </div>
+                                            <motion.button
+                                                onClick={() => handleExport('whatsapp', client)}
+                                                className="text-green-600 hover:text-green-700 p-0.5"
+                                                whileHover={{ scale: 1.1 }}
+                                                whileTap={{ scale: 0.9 }}
+                                                title="Send via WhatsApp"
+                                            >
+                                                <FaWhatsapp className="w-3 h-3" />
+                                            </motion.button>
                                         </div>
                                     </div>
 
@@ -596,29 +793,13 @@ const ClientCards = ({
                                         ))}
                                     </div>
 
-                                    {/* Status Dropdown */}
+                                    {/* NEW: Status Display as Text (not dropdown) */}
                                     <div className="pt-2 border-t border-gray-100">
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center justify-between">
                                             <span className="text-xs font-medium text-gray-600">Status:</span>
-                                            <div className="flex-1">
-                                                <select
-                                                    value={client.status}
-                                                    onChange={(e) => handleStatusChange(client.id, e.target.value)}
-                                                    className={`w-full px-2 py-1 text-xs border ${getStatusBorderColor(client.status)} rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none transition-all font-medium
-                                                        ${client.status === 'ACTIVE'
-                                                            ? 'text-green-700'
-                                                            : client.status === 'INACTIVE'
-                                                                ? 'text-red-700'
-                                                                : 'text-yellow-700'
-                                                        }
-                                                    `}
-                                                >
-                                                    {statusOptions.map((status) => (
-                                                        <option key={status.value} value={status.value}>
-                                                            {status.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${getStatusColor(client.status)}`}>
+                                                {client.status === 'ACTIVE' ? 'Active' :
+                                                 client.status === 'INACTIVE' ? 'Inactive' : 'Pending'}
                                             </div>
                                         </div>
                                     </div>
@@ -658,6 +839,7 @@ const ViewClients = () => {
     const [activeItemDragId, setActiveItemDragId] = useState(null);
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
     const [isMobile, setIsMobile] = useState(false);
+    const [statusModal, setStatusModal] = useState({ open: false, clientId: null, currentStatus: '' }); // NEW: Status modal state
 
     // Initialize DnD sensors
     const sensors = useSensors(
@@ -916,6 +1098,24 @@ const ViewClients = () => {
         ));
     };
 
+    // NEW: Open status modal
+    const openStatusModal = (clientId, currentStatus) => {
+        setStatusModal({
+            open: true,
+            clientId,
+            currentStatus
+        });
+    };
+
+    // NEW: Close status modal
+    const closeStatusModal = () => {
+        setStatusModal({
+            open: false,
+            clientId: null,
+            currentStatus: ''
+        });
+    };
+
     // Filter clients based on search and filters
     const filteredClients = clients.filter(client => {
         const matchesSearch = searchQuery === '' ||
@@ -1062,214 +1262,34 @@ const ViewClients = () => {
         
         newConfig.splice(insertIndex, 0, {
             id: newColumnId,
-            name: `Column ${newConfig.length - 1}`,
+            name: `New Column`,
             items: []
         });
         saveColumnConfig(newConfig);
     };
 
-    // Sortable Column Component - Fixed version
-    const SortableColumn = React.memo(({ column, index }) => {
-        const {
-            attributes,
-            listeners,
-            setNodeRef,
-            transform,
-            transition,
-            isDragging
-        } = useSortable({
-            id: column.id,
-            disabled: column.fixed || index >= columnConfig.findIndex(col => col.fixed)
-        });
+    // NEW: Get status color for text display
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'ACTIVE': return 'bg-green-100 text-green-700';
+            case 'INACTIVE': return 'bg-red-100 text-red-700';
+            case 'PENDING': return 'bg-yellow-100 text-yellow-700';
+            default: return 'bg-gray-100 text-gray-700';
+        }
+    };
 
-        const style = {
-            transform: CSS.Transform.toString(transform),
-            transition,
-            opacity: isDragging ? 0.5 : 1,
-            zIndex: isDragging ? 1000 : 1,
-            cursor: column.fixed || index >= columnConfig.findIndex(col => col.fixed) ? 'not-allowed' : 'move'
-        };
+    // NEW: Get status display text
+    const getStatusText = (status) => {
+        switch (status) {
+            case 'ACTIVE': return 'Active';
+            case 'INACTIVE': return 'Inactive';
+            case 'PENDING': return 'Pending';
+            default: return status;
+        }
+    };
 
-        // Find the first fixed column index
-        const firstFixedIndex = columnConfig.findIndex(col => col.fixed);
-        
-        // Check if this column is in the draggable zone
-        const isDraggable = !column.fixed && index < firstFixedIndex;
-
-        return (
-            <motion.div
-                ref={setNodeRef}
-                style={style}
-                {...(isDraggable ? attributes : {})}
-                {...(isDraggable ? listeners : {})}
-                className={`border-2 rounded-xl p-4 transition-all duration-200 ${column.fixed
-                    ? 'bg-blue-50 border-blue-300 shadow-sm cursor-not-allowed'
-                    : !isDraggable
-                    ? 'bg-gray-50 border-gray-200 cursor-not-allowed'
-                    : 'bg-white border-gray-200 hover:shadow-md hover:border-gray-300 cursor-move'
-                    }`}
-                whileHover={{ scale: isDraggable ? 1.02 : 1 }}
-            >
-                {/* Column Header */}
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                        {isDraggable && (
-                            <div className="cursor-grab active:cursor-grabbing">
-                                <FiMove className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                            </div>
-                        )}
-                        <h3 className="font-bold text-gray-800 text-sm">
-                            {column.name}
-                            {column.fixed && (
-                                <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
-                                    Fixed
-                                </span>
-                            )}
-                            {!column.fixed && !isDraggable && (
-                                <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">
-                                    Locked
-                                </span>
-                            )}
-                        </h3>
-                    </div>
-                    {!column.fixed && column.items.length === 0 && isDraggable && (
-                        <button
-                            onClick={() => {
-                                const colIndex = columnConfig.findIndex(col => col.id === column.id);
-                                if (colIndex !== -1) removeColumn(colIndex);
-                            }}
-                            className="text-red-500 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
-                        >
-                            <FiX className="w-4 h-4" />
-                        </button>
-                    )}
-                </div>
-
-                {/* Column Items with Drag & Drop */}
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragStart={(event) => setActiveItemDragId(event.active.id)}
-                    onDragEnd={(event) => handleItemDragEnd(event, index)}
-                    onDragCancel={() => setActiveItemDragId(null)}
-                >
-                    <SortableContext
-                        items={column.items.map(item => item.id)}
-                        strategy={verticalListSortingStrategy}
-                    >
-                        <div className="space-y-2 mb-3 min-h-[60px]">
-                            {column.items.map((item, itemIndex) => (
-                                <SortableItem
-                                    key={item.id}
-                                    item={item}
-                                    columnIndex={index}
-                                    itemIndex={itemIndex}
-                                    columnId={column.id}
-                                />
-                            ))}
-                        </div>
-                    </SortableContext>
-                    
-                    {/* Drag overlay for items */}
-                    <DragOverlay>
-                        {activeItemDragId ? (
-                            <div className="bg-white border border-blue-400 shadow-lg rounded-lg px-3 py-2">
-                                <div className="flex items-center gap-2">
-                                    <FiMove className="w-3 h-3 text-blue-400" />
-                                    <span className="font-medium text-gray-700 text-sm">
-                                        {availableFields.find(f => f.id === activeItemDragId)?.label || 'Item'}
-                                    </span>
-                                </div>
-                            </div>
-                        ) : null}
-                    </DragOverlay>
-                </DndContext>
-
-                {/* Add Field Dropdown (only for non-fixed columns with space) */}
-                {!column.fixed && column.items.length < 5 && (
-                    <select
-                        value=""
-                        onChange={(e) => {
-                            if (e.target.value) {
-                                addItemToColumn(index, e.target.value);
-                                e.target.value = '';
-                            }
-                        }}
-                        className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
-                    >
-                        <option value="">Add field...</option>
-                        {availableFields
-                            .filter(field =>
-                                !columnConfig.some(col =>
-                                    col.items.some(item => item.id === field.id)
-                                )
-                            )
-                            .map(field => (
-                                <option key={field.id} value={field.id}>
-                                    {field.label}
-                                </option>
-                            ))}
-                    </select>
-                )}
-
-                {/* Empty State */}
-                {!column.fixed && column.items.length === 0 && (
-                    <div className="text-center py-4 text-gray-400 text-sm">
-                        <p>Drag fields here or select from below</p>
-                    </div>
-                )}
-            </motion.div>
-        );
-    });
-
-    // Sortable Item Component
-    const SortableItem = React.memo(({ item, columnIndex, itemIndex, columnId }) => {
-        const {
-            attributes,
-            listeners,
-            setNodeRef,
-            transform,
-            transition,
-            isDragging
-        } = useSortable({ id: item.id });
-
-        const style = {
-            transform: CSS.Transform.toString(transform),
-            transition,
-            opacity: isDragging ? 0.5 : 1,
-            zIndex: isDragging ? 1000 : 1
-        };
-
-        return (
-            <motion.div
-                ref={setNodeRef}
-                style={style}
-                {...attributes}
-                {...listeners}
-                className={`flex items-center justify-between bg-white border px-3 py-2 rounded-lg text-sm transition-all duration-200
-                    ${isDragging ? 'shadow-lg border-blue-400' : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'}`}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: itemIndex * 0.05 }}
-            >
-                <div className="flex items-center gap-2">
-                    <FiMove className="w-3 h-3 text-gray-400" />
-                    <span className="font-medium text-gray-700">{item.label}</span>
-                </div>
-                <motion.button
-                    onClick={() => removeItemFromColumn(columnIndex, itemIndex)}
-                    className="text-red-500 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                >
-                    <FiX className="w-3 h-3" />
-                </motion.button>
-            </motion.div>
-        );
-    });
-
-    // Render cell content based on field type - Updated for compact layout and centered
-    const renderCellContent = (client, fieldId) => {
+    // Render cell content based on field type - UPDATED for status text display and openStatusModal parameter
+    const renderCellContent = (client, fieldId, openStatusModal) => {
         switch (fieldId) {
             case 'name':
                 return (
@@ -1277,15 +1297,19 @@ const ViewClients = () => {
                         <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
                             <FiUser className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <div>
-                            <div className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors text-sm">
-                                {client.name}
-                            </div>
-                            <div className="text-xs text-gray-500 font-medium">
-                                @{client.username}
-                            </div>
+                        <div
+    className="min-w-0 cursor-pointer"
+    onClick={() => navigate(`/client/profile/${client.id}`)}
+>
+    <h3 className="font-semibold text-gray-800 text-xs truncate hover:text-blue-600">
+        {client.name}
+    </h3>
+    <p className="text-xs text-gray-500 truncate hover:text-blue-500">
+        @{client.username}
+    </p>
+</div>
                         </div>
-                    </div>
+                  
                 );
             case 'guardian_name':
                 return (
@@ -1308,16 +1332,27 @@ const ViewClients = () => {
                 );
             case 'balance':
                 return (
-                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${client.balance < 0
-                        ? 'bg-red-50 text-red-700 border border-red-200'
-                        : 'bg-green-50 text-green-700 border border-green-200'
-                        }`}>
-                        {client.balance < 0 ? (
-                            <FiTrendingDown className="w-3 h-3" />
-                        ) : (
-                            <FiTrendingUp className="w-3 h-3" />
-                        )}
-                        {formatBalance(client.balance)}
+                    <div className="flex items-center gap-1 justify-center">
+                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${client.balance < 0
+                            ? 'bg-red-50 text-red-700 border border-red-200'
+                            : 'bg-green-50 text-green-700 border border-green-200'
+                            }`}>
+                            {client.balance < 0 ? (
+                                <FiTrendingDown className="w-3 h-3" />
+                            ) : (
+                                <FiTrendingUp className="w-3 h-3" />
+                            )}
+                            {formatBalance(client.balance)}
+                        </div>
+                        <motion.button
+                            onClick={() => handleExport('whatsapp', client)}
+                            className="text-green-600 hover:text-green-700 p-1 hover:bg-green-50 rounded"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            title="Send via WhatsApp"
+                        >
+                            <FaWhatsapp className="w-4 h-4" />
+                        </motion.button>
                     </div>
                 );
             case 'firm_count':
@@ -1349,26 +1384,11 @@ const ViewClients = () => {
                     </div>
                 );
             case 'status':
+                // NEW: Display status as text instead of dropdown in table view
                 return (
-                    <select
-                        value={client.status}
-                        onChange={(e) => handleStatusChange(client.id, e.target.value)}
-                        className={`w-full px-2 py-1 text-xs border rounded
-                            focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none transition-all font-medium
-                            ${client.status === 'ACTIVE'
-                                ? 'border-green-300 text-green-700'
-                                : client.status === 'INACTIVE'
-                                    ? 'border-red-300 text-red-700'
-                                    : 'border-yellow-300 text-yellow-700'
-                            }
-                        `}
-                    >
-                        {statusOptions.map((status) => (
-                            <option key={status.value} value={status.value}>
-                                {status.name}
-                            </option>
-                        ))}
-                    </select>
+                    <div className={`inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-medium ${getStatusColor(client.status)}`}>
+                        {getStatusText(client.status)}
+                    </div>
                 );
             case 'actions':
                 return (
@@ -1386,7 +1406,7 @@ const ViewClients = () => {
                             <div className="w-1 h-1 rounded-full bg-gray-600"></div>
                         </motion.button>
 
-                        {/* Professional Dropdown - Compact */}
+                        {/* Professional Dropdown - Compact - UPDATED: Added Change Status option */}
                         <AnimatePresence>
                             {activeRowDropdown === client.id && (
                                 <motion.div
@@ -1398,6 +1418,21 @@ const ViewClients = () => {
                                     transition={{ duration: 0.15 }}
                                 >
                                     <div className="py-1">
+                                        {/* NEW: Change Status Button */}
+                                        <button
+                                            onClick={() => {
+                                                openStatusModal(client.id, client.status);
+                                                setActiveRowDropdown(null);
+                                            }}
+                                            className="flex items-center w-full px-3 py-2 text-sm
+                                           text-blue-600 hover:bg-blue-50 transition-colors"
+                                        >
+                                            <FiCheckCircle className="mr-2 text-blue-600 w-4 h-4" />
+                                            Change Status
+                                        </button>
+
+                                        <div className="border-t my-1"></div>
+
                                         <button
                                             onClick={() => {
                                                 setActiveRowDropdown(null);
@@ -1461,11 +1496,13 @@ const ViewClients = () => {
         }
     };
 
-    // Settings Modal Component with Drag & Drop - Fixed rerender
+    // Settings Modal Component with Drag & Drop - UPDATED: Added column name editing for new columns
     const SettingsModal = React.memo(() => {
         const [localColumnConfig, setLocalColumnConfig] = useState(columnConfig);
         const [localActiveDragId, setLocalActiveDragId] = useState(null);
         const [localActiveItemDragId, setLocalActiveItemDragId] = useState(null);
+        const [editingColumnId, setEditingColumnId] = useState(null); // NEW: Track which column is being edited
+        const [tempColumnName, setTempColumnName] = useState(''); // NEW: Temporary column name
 
         // Initialize with current column config - Fixed to prevent rerender
         useEffect(() => {
@@ -1473,6 +1510,8 @@ const ViewClients = () => {
                 setLocalColumnConfig(JSON.parse(JSON.stringify(columnConfig)));
                 setLocalActiveDragId(null);
                 setLocalActiveItemDragId(null);
+                setEditingColumnId(null); // NEW: Reset editing state
+                setTempColumnName(''); // NEW: Reset temp name
             }
         }, [columnConfig, settingsModalOpen]);
 
@@ -1562,21 +1601,52 @@ const ViewClients = () => {
             setLocalColumnConfig(newConfig);
         };
 
-        // Add new column in modal
+        // NEW: Add new column in modal with editable name
         const addNewColumnInModal = () => {
             const newConfig = [...localColumnConfig];
-            const newColumnId = (Date.now()).toString();
+            const newColumnId = `col-${Date.now()}`;
             
             // Find the index where to insert (before the first fixed column)
             const firstFixedIndex = newConfig.findIndex(col => col.fixed);
-            const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length - 1;
+            const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length;
             
             newConfig.splice(insertIndex, 0, {
                 id: newColumnId,
-                name: `Column ${newConfig.length - 1}`,
-                items: []
+                name: `New Column`,
+                items: [],
+                fixed: false
             });
             setLocalColumnConfig(newConfig);
+            
+            // NEW: Start editing the new column immediately
+            setEditingColumnId(newColumnId);
+            setTempColumnName('New Column');
+        };
+
+        // NEW: Start editing column name
+        const startEditingColumn = (columnId, currentName) => {
+            setEditingColumnId(columnId);
+            setTempColumnName(currentName);
+        };
+
+        // NEW: Save column name
+        const saveColumnName = (columnId) => {
+            if (!tempColumnName.trim()) {
+                setEditingColumnId(null);
+                return;
+            }
+            
+            const newConfig = localColumnConfig.map(col => 
+                col.id === columnId ? { ...col, name: tempColumnName.trim() } : col
+            );
+            setLocalColumnConfig(newConfig);
+            setEditingColumnId(null);
+        };
+
+        // NEW: Cancel editing column name
+        const cancelEditingColumn = () => {
+            setEditingColumnId(null);
+            setTempColumnName('');
         };
 
         // Save changes from modal
@@ -1588,9 +1658,11 @@ const ViewClients = () => {
         // Reset to default in modal
         const resetToDefaultInModal = () => {
             setLocalColumnConfig(JSON.parse(JSON.stringify(defaultColumnConfig)));
+            setEditingColumnId(null);
+            setTempColumnName('');
         };
 
-        // Sortable Column Component for Modal
+        // Sortable Column Component for Modal - UPDATED: Added column name editing
         const ModalSortableColumn = React.memo(({ column, index }) => {
             const {
                 attributes,
@@ -1632,7 +1704,7 @@ const ViewClients = () => {
                         }`}
                     whileHover={{ scale: isDraggable ? 1.02 : 1 }}
                 >
-                    {/* Column Header */}
+                    {/* Column Header - UPDATED: Added column name editing */}
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             {isDraggable && (
@@ -1640,28 +1712,76 @@ const ViewClients = () => {
                                     <FiMove className="w-4 h-4 text-gray-400 hover:text-gray-600" />
                                 </div>
                             )}
-                            <h3 className="font-bold text-gray-800 text-sm">
-                                {column.name}
-                                {column.fixed && (
-                                    <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
-                                        Fixed
-                                    </span>
+                            <div className="flex-1 min-w-0">
+                                {editingColumnId === column.id ? (
+                                    <div className="space-y-2">
+                                        <input
+                                            type="text"
+                                            value={tempColumnName}
+                                            onChange={(e) => setTempColumnName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') saveColumnName(column.id);
+                                                if (e.key === 'Escape') cancelEditingColumn();
+                                            }}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            autoFocus
+                                            placeholder="Column name"
+                                        />
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => saveColumnName(column.id)}
+                                                className="flex-1 px-3 py-1.5 bg-green-500 text-white rounded text-xs font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <FiCheckCircle className="w-3 h-3" />
+                                                
+                                            </button>
+                                            <button
+                                                onClick={cancelEditingColumn}
+                                                className="flex-1 px-3 py-1.5 bg-red-500 text-white rounded text-xs font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <FiX className="w-3 h-3" />
+                                                
+                                            </button>
+                                        </div>
+                                </div>
+                                ) : (
+                                    <div className="flex items-center justify-between">
+                                        <div className="min-w-0">
+                                            <h3 className="font-bold text-gray-800 text-sm truncate">
+                                                {column.name}
+                                            </h3>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                {column.fixed && (
+                                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+                                                        Fixed
+                                                    </span>
+                                                )}
+                                                <span className="text-xs text-gray-500">
+                                                    {column.items.length} item{column.items.length !== 1 ? 's' : ''}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {!column.fixed && (
+                                            <button
+                                                onClick={() => startEditingColumn(column.id, column.name)}
+                                                className="text-gray-500 hover:text-gray-700 p-1 hover:bg-gray-100 rounded flex-shrink-0 ml-2"
+                                                title="Edit column name"
+                                            >
+                                                <FiEdit className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
-                                {!column.fixed && !isDraggable && (
-                                    <span className="ml-2 text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">
-                                        Locked
-                                    </span>
-                                )}
-                            </h3>
+                            </div>
                         </div>
-                        {!column.fixed && column.items.length === 0 && isDraggable && (
+                        {!column.fixed && column.items.length === 0 && editingColumnId !== column.id && (
                             <button
                                 onClick={() => {
                                     const newConfig = [...localColumnConfig];
                                     newConfig.splice(index, 1);
                                     setLocalColumnConfig(newConfig);
                                 }}
-                                className="text-red-500 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
+                                className="text-red-500 hover:text-red-700 transition-colors duration-200 p-1.5 rounded hover:bg-red-50 ml-2 flex-shrink-0"
                             >
                                 <FiX className="w-4 h-4" />
                             </button>
@@ -1709,8 +1829,8 @@ const ViewClients = () => {
                         </DragOverlay>
                     </DndContext>
 
-                    {/* Add Field Dropdown (only for non-fixed columns with space) */}
-                    {!column.fixed && column.items.length < 5 && (
+                    {/* Add Field Dropdown (only for non-fixed columns with space) - Hide when editing */}
+                    {!column.fixed && column.items.length < 5 && editingColumnId !== column.id && (
                         <select
                             value=""
                             onChange={(e) => {
@@ -1723,10 +1843,12 @@ const ViewClients = () => {
                         >
                             <option value="">Add field...</option>
                             {availableFields
+                                .filter(field => field.id !== 'actions') // Don't show actions in dropdown
                                 .filter(field =>
                                     !localColumnConfig.some(col =>
                                         col.items.some(item => item.id === field.id)
-                                    )
+                                    ) ||
+                                    localColumnConfig[index].items.some(item => item.id === field.id)
                                 )
                                 .map(field => (
                                     <option key={field.id} value={field.id}>
@@ -1736,10 +1858,10 @@ const ViewClients = () => {
                         </select>
                     )}
 
-                    {/* Empty State */}
-                    {!column.fixed && column.items.length === 0 && (
+                    {/* Empty State - Hide when editing */}
+                    {!column.fixed && column.items.length === 0 && editingColumnId !== column.id && (
                         <div className="text-center py-4 text-gray-400 text-sm">
-                            <p>Drag fields here or select from below</p>
+                            <p>Drag fields here or select from dropdown</p>
                         </div>
                     )}
                 </motion.div>
@@ -1831,186 +1953,188 @@ const ViewClients = () => {
         return (
             <AnimatePresence>
                 {settingsModalOpen && (
-    <motion.div
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={() => setSettingsModalOpen(false)}
-    >
-        <motion.div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={(e) => e.stopPropagation()}
-        >
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-center shrink-0">
-                <div>
-                    <h2 className="text-xl font-bold">Table Column Settings</h2>
-                    <p className="text-blue-100 text-sm mt-1">Drag and drop to rearrange columns and items</p>
-                </div>
-                <motion.button
-                    onClick={() => setSettingsModalOpen(false)}
-                    className="text-white hover:text-blue-200 transition-colors duration-200 p-1 rounded-lg hover:bg-blue-500"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                >
-                    <FiX className="w-6 h-6" />
-                </motion.button>
-            </div>
-
-            {/* Modal Content - Scrollable area */}
-            <div className="flex-1 overflow-y-auto p-6">
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragStart={(event) => setLocalActiveDragId(event.active.id)}
-                    onDragEnd={handleModalDragEnd}
-                    onDragCancel={() => setLocalActiveDragId(null)}
-                >
-                    <SortableContext
-                        items={localColumnConfig.map(column => column.id)}
-                        strategy={horizontalListSortingStrategy}
+                    <motion.div
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setSettingsModalOpen(false)}
                     >
-                        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-6">
-                            {localColumnConfig.map((column, index) => (
-                                <ModalSortableColumn
-                                    key={column.id}
-                                    column={column}
-                                    index={index}
-                                />
-                            ))}
-                        </div>
-                    </SortableContext>
-                    
-                    {/* Drag overlay for columns */}
-                    <DragOverlay>
-                        {localActiveDragId ? (
-                            <div className="bg-white border-2 border-blue-300 shadow-xl rounded-xl p-4 w-48">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <FiMove className="w-4 h-4 text-blue-400" />
-                                    <h3 className="font-bold text-gray-800 text-sm">
-                                        {localColumnConfig.find(col => col.id === localActiveDragId)?.name || 'Column'}
+                        <motion.div
+                            className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Modal Header */}
+                            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-center shrink-0">
+                                <div>
+                                    <h2 className="text-xl font-bold">Table Column Settings</h2>
+                                    <p className="text-blue-100 text-sm mt-1">Drag and drop to rearrange columns and items. Click on column names to edit them.</p>
+                                </div>
+                                <motion.button
+                                    onClick={() => setSettingsModalOpen(false)}
+                                    className="text-white hover:text-blue-200 transition-colors duration-200 p-1 rounded-lg hover:bg-blue-500"
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                >
+                                    <FiX className="w-6 h-6" />
+                                </motion.button>
+                            </div>
+
+                            {/* Modal Content - Scrollable area */}
+                            <div className="flex-1 overflow-y-auto p-6">
+                                <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragStart={(event) => setLocalActiveDragId(event.active.id)}
+                                    onDragEnd={handleModalDragEnd}
+                                    onDragCancel={() => setLocalActiveDragId(null)}
+                                >
+                                    <SortableContext
+                                        items={localColumnConfig.map(column => column.id)}
+                                        strategy={horizontalListSortingStrategy}
+                                    >
+                                        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-6">
+                                            {localColumnConfig.map((column, index) => (
+                                                <ModalSortableColumn
+                                                    key={column.id}
+                                                    column={column}
+                                                    index={index}
+                                                />
+                                            ))}
+                                        </div>
+                                    </SortableContext>
+                                    
+                                    {/* Drag overlay for columns */}
+                                    <DragOverlay>
+                                        {localActiveDragId ? (
+                                            <div className="bg-white border-2 border-blue-300 shadow-xl rounded-xl p-4 w-48">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <FiMove className="w-4 h-4 text-blue-400" />
+                                                    <h3 className="font-bold text-gray-800 text-sm">
+                                                        {localColumnConfig.find(col => col.id === localActiveDragId)?.name || 'Column'}
+                                                    </h3>
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    {localColumnConfig.find(col => col.id === localActiveDragId)?.items.length || 0} items
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </DragOverlay>
+                                </DndContext>
+
+                                {/* Add Column Button */}
+                                <div className="mb-6">
+                                    <motion.button
+                                        onClick={addNewColumnInModal}
+                                        className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 border-2 border-dashed border-gray-300 rounded-xl text-gray-700 font-medium hover:from-gray-200 hover:to-gray-300 transition-all duration-200 flex items-center gap-2"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <FiPlus className="w-4 h-4" />
+                                        Add New Column
+                                    </motion.button>
+                                </div>
+
+                                {/* Available Fields with Drag & Drop */}
+                                <div className="border-t pt-6">
+                                    <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
+                                        <FiGrid className="w-4 h-4 text-blue-600" />
+                                        Available Fields (Drag to columns)
                                     </h3>
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                    {localColumnConfig.find(col => col.id === localActiveDragId)?.items.length || 0} items
+                                    <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={(event) => {
+                                            const { active, over } = event;
+                                            if (over && active.id !== over.id) {
+                                                // Find which column was dropped on
+                                                const columnIndex = localColumnConfig.findIndex(col => col.id === over.id);
+                                                if (columnIndex !== -1 && !localColumnConfig[columnIndex].fixed) {
+                                                    addItemToColumnInModal(columnIndex, active.id);
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <SortableContext
+                                            items={availableFields
+                                                .filter(field => field.id !== 'actions') // Don't show actions in available fields
+                                                .filter(field =>
+                                                    !localColumnConfig.some(col =>
+                                                        col.items.some(item => item.id === field.id)
+                                                    )
+                                                )
+                                                .map(field => field.id)}
+                                            strategy={horizontalListSortingStrategy}
+                                        >
+                                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                                {availableFields
+                                                    .filter(field => field.id !== 'actions') // Don't show actions in available fields
+                                                    .filter(field =>
+                                                        !localColumnConfig.some(col =>
+                                                            col.items.some(item => item.id === field.id)
+                                                        )
+                                                    )
+                                                    .map(field => (
+                                                        <DraggableField
+                                                            key={field.id}
+                                                            field={field}
+                                                        />
+                                                    ))}
+                                            </div>
+                                        </SortableContext>
+                                    </DndContext>
                                 </div>
                             </div>
-                        ) : null}
-                    </DragOverlay>
-                </DndContext>
 
-                {/* Add Column Button */}
-                <div className="mb-6">
-                    <motion.button
-                        onClick={addNewColumnInModal}
-                        className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 border-2 border-dashed border-gray-300 rounded-xl text-gray-700 font-medium hover:from-gray-200 hover:to-gray-300 transition-all duration-200 flex items-center gap-2"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                    >
-                        <FiPlus className="w-4 h-4" />
-                        Add New Column
-                    </motion.button>
-                </div>
+                            {/* Modal Footer - Always visible at bottom */}
+                            <div className="border-t px-6 py-4 bg-gray-50 shrink-0">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                    <motion.button
+                                        onClick={resetToDefaultInModal}
+                                        className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                                 border border-gray-300 rounded-lg text-gray-700
+                                                 hover:bg-gray-200 transition-all duration-200 hover:shadow-sm gap-2"
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                    >
+                                        <FiRefreshCw className="w-4 h-4" />
+                                        Reset to Default
+                                    </motion.button>
 
-                {/* Available Fields with Drag & Drop */}
-                <div className="border-t pt-6">
-                    <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
-                        <FiGrid className="w-4 h-4 text-blue-600" />
-                        Available Fields (Drag to columns)
-                    </h3>
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={(event) => {
-                            const { active, over } = event;
-                            if (over && active.id !== over.id) {
-                                // Find which column was dropped on
-                                const columnIndex = localColumnConfig.findIndex(col => col.id === over.id);
-                                if (columnIndex !== -1 && !localColumnConfig[columnIndex].fixed) {
-                                    addItemToColumnInModal(columnIndex, active.id);
-                                }
-                            }
-                        }}
-                    >
-                        <SortableContext
-                            items={availableFields
-                                .filter(field =>
-                                    !localColumnConfig.some(col =>
-                                        col.items.some(item => item.id === field.id)
-                                    )
-                                )
-                                .map(field => field.id)}
-                            strategy={horizontalListSortingStrategy}
-                        >
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                                {availableFields
-                                    .filter(field =>
-                                        !localColumnConfig.some(col =>
-                                            col.items.some(item => item.id === field.id)
-                                        )
-                                    )
-                                    .map(field => (
-                                        <DraggableField
-                                            key={field.id}
-                                            field={field}
-                                        />
-                                    ))}
+                                    <div className="flex flex-col sm:flex-row gap-3">
+                                        <motion.button
+                                            onClick={() => setSettingsModalOpen(false)}
+                                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                                       border border-gray-300 rounded-lg text-gray-700
+                                                       hover:bg-gray-200 transition-all duration-200 hover:shadow-sm"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            Cancel
+                                        </motion.button>
+
+                                        <motion.button
+                                            onClick={saveModalChanges}
+                                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
+                                                       bg-gradient-to-r from-blue-600 to-blue-700 text-white
+                                                       rounded-lg hover:from-blue-700 hover:to-blue-800
+                                                       transition-all duration-200 hover:shadow-md shadow-sm gap-2"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            <FiSave className="w-4 h-4" />
+                                            Save Changes
+                                        </motion.button>
+                                    </div>
+                                </div>
                             </div>
-                        </SortableContext>
-                    </DndContext>
-                </div>
-            </div>
-
-            {/* Modal Footer - Always visible at bottom */}
-            <div className="border-t px-6 py-4 bg-gray-50 shrink-0">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <motion.button
-                        onClick={resetToDefaultInModal}
-                        className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                                 border border-gray-300 rounded-lg text-gray-700
-                                 hover:bg-gray-200 transition-all duration-200 hover:shadow-sm gap-2"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        <FiRefreshCw className="w-4 h-4" />
-                        Reset to Default
-                    </motion.button>
-
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <motion.button
-                            onClick={() => setSettingsModalOpen(false)}
-                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                                       border border-gray-300 rounded-lg text-gray-700
-                                       hover:bg-gray-200 transition-all duration-200 hover:shadow-sm"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            Cancel
-                        </motion.button>
-
-                        <motion.button
-                            onClick={saveModalChanges}
-                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
-                                       bg-gradient-to-r from-blue-600 to-blue-700 text-white
-                                       rounded-lg hover:from-blue-700 hover:to-blue-800
-                                       transition-all duration-200 hover:shadow-md shadow-sm gap-2"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            <FiSave className="w-4 h-4" />
-                            Save Changes
-                        </motion.button>
-                    </div>
-                </div>
-            </div>
-        </motion.div>
-    </motion.div>
-)}
+                        </motion.div>
+                    </motion.div>
+                )}
             </AnimatePresence>
         );
     });
@@ -2273,6 +2397,8 @@ const ViewClients = () => {
                                     activeRowDropdown={activeRowDropdown}
                                     setActiveRowDropdown={setActiveRowDropdown}
                                     handleStatusChange={handleStatusChange}
+                                    openStatusModal={openStatusModal} // NEW: Pass openStatusModal function
+                                    navigate={navigate} // NEW: Pass navigate function
                                 />
                             ) : (
                                 <ClientCards
@@ -2287,6 +2413,9 @@ const ViewClients = () => {
                                     setActiveRowDropdown={setActiveRowDropdown}
                                     handleStatusChange={handleStatusChange}
                                     statusOptions={statusOptions}
+                                    openStatusModal={openStatusModal} // NEW: Pass openStatusModal function
+                                    navigate={navigate} // NEW: Pass navigate function
+                                    handleExport={handleExport} // Added for WhatsApp functionality
                                 />
                             )}
                         </div>
@@ -2381,6 +2510,16 @@ const ViewClients = () => {
 
             {/* Settings Modal */}
             <SettingsModal />
+
+            {/* NEW: Status Change Modal */}
+            <StatusChangeModal
+                isOpen={statusModal.open}
+                onClose={closeStatusModal}
+                clientId={statusModal.clientId}
+                currentStatus={statusModal.currentStatus}
+                onStatusChange={handleStatusChange}
+                statusOptions={statusOptions}
+            />
 
             {/* Export Confirmation Modal - Compact */}
             <AnimatePresence>
