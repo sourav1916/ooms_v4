@@ -11,11 +11,39 @@ import {
     FiMail,
     FiChevronDown,
     FiFilter,
+    FiClock,
+    FiCheckSquare,
+    FiDollarSign,
+    FiFilePlus,
+    FiTrendingUp,
+    FiArrowRight,
+    FiDownload,
+    FiSend,
+    FiCheck,
+    FiAlertCircle,
+    FiFile,
+    FiActivity,
+    FiBarChart2,
+    FiPercent,
+    FiUser,
+    FiBriefcase,
+    FiHash,
+    FiCreditCard,
+    FiRepeat,
+    FiEdit,
+    FiEye,
+    FiShare2,
+    FiChevronsDown,
+    FiChevronsUp,
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
 import { AiOutlineMail } from "react-icons/ai";
 import { FaWhatsapp } from "react-icons/fa6";
+import { TbFileInvoice, TbCurrencyRupee } from "react-icons/tb";
+import { MdOutlineAttachMoney, MdOutlineMoneyOffCsred, MdOutlineDashboard } from "react-icons/md";
+import { HiOutlineDocumentText, HiOutlineTrendingUp } from "react-icons/hi";
+import { BsThreeDots, BsArrowRight } from "react-icons/bs";
 import EmailSelectionModal from '../components/email-selection';
 import MobileSelectionModal from '../components/mobile-selection';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,8 +67,85 @@ const BillDisplay = () => {
     const datePickerRef = useRef(null);
     const tableRef = useRef(null);
 
+    // Bill type tabs state - default to 'pending' as requested
+    const [selectedBillType, setSelectedBillType] = useState('pending');
+
+    // Show more state for table
+    const [showAllData, setShowAllData] = useState(false);
+    const visibleRows = 10; // Show 10 rows initially
+
+    // Bill type cards data - Only 3 cards: Pending, Generated, Non-Billable
+    const billTypeCards = [
+        { 
+            value: 'pending', 
+            label: 'Pending', 
+            icon: FiClock, 
+            color: 'orange', 
+            bgColor: 'from-orange-50 to-amber-50',
+            borderColor: 'border-orange-200',
+            textColor: 'text-orange-700',
+            hoverColor: 'hover:from-orange-100 hover:to-amber-100',
+            activeColor: 'from-orange-500 to-amber-500',
+            description: 'Awaiting billing',
+            gradient: 'bg-gradient-to-r from-orange-500 to-amber-500',
+            cardGradient: 'bg-gradient-to-br from-orange-500/5 via-orange-400/3 to-amber-500/5',
+            lightGradient: 'bg-gradient-to-br from-orange-50/80 via-amber-50/50 to-yellow-50/30',
+            countColor: 'bg-gradient-to-r from-orange-500 to-amber-500',
+            chartColor: '#f97316',
+            subDescription: 'Need action',
+            trend: '+12%',
+            amount: '₹85,500',
+            iconBg: 'bg-gradient-to-br from-orange-500/15 to-amber-500/15',
+            trendIcon: FiActivity
+        },
+        { 
+            value: 'generated', 
+            label: 'Generated', 
+            icon: HiOutlineDocumentText, 
+            color: 'green', 
+            bgColor: 'from-emerald-50 to-teal-50',
+            borderColor: 'border-emerald-200',
+            textColor: 'text-emerald-700',
+            hoverColor: 'hover:from-emerald-100 hover:to-teal-100',
+            activeColor: 'from-emerald-500 to-teal-500',
+            description: 'Bills created',
+            gradient: 'bg-gradient-to-r from-emerald-500 to-teal-500',
+            cardGradient: 'bg-gradient-to-br from-emerald-500/5 via-emerald-400/3 to-teal-500/5',
+            lightGradient: 'bg-gradient-to-br from-emerald-50/80 via-teal-50/50 to-cyan-50/30',
+            countColor: 'bg-gradient-to-r from-emerald-500 to-teal-500',
+            chartColor: '#10b981',
+            subDescription: 'Ready for payment',
+            trend: '+24%',
+            amount: '₹1,85,000',
+            iconBg: 'bg-gradient-to-br from-emerald-500/15 to-teal-500/15',
+            trendIcon: FiTrendingUp
+        },
+        { 
+            value: 'nonbillable', 
+            label: 'Non-Billable', 
+            icon: MdOutlineMoneyOffCsred, 
+            color: 'red', 
+            bgColor: 'from-rose-50 to-pink-50',
+            borderColor: 'border-rose-200',
+            textColor: 'text-rose-700',
+            hoverColor: 'hover:from-rose-100 hover:to-pink-100',
+            activeColor: 'from-rose-500 to-pink-500',
+            description: 'Marked non-billable',
+            gradient: 'bg-gradient-to-r from-rose-500 to-pink-500',
+            cardGradient: 'bg-gradient-to-br from-rose-500/5 via-rose-400/3 to-pink-500/5',
+            lightGradient: 'bg-gradient-to-br from-rose-50/80 via-pink-50/50 to-red-50/30',
+            countColor: 'bg-gradient-to-r from-rose-500 to-pink-500',
+            chartColor: '#f43f5e',
+            subDescription: 'Write off',
+            trend: '-5%',
+            amount: '₹32,500',
+            iconBg: 'bg-gradient-to-br from-rose-500/15 to-pink-500/15',
+            trendIcon: FiBarChart2
+        }
+    ];
+
     // Service options
-    const [serviceOptions] = useState([
+    const serviceOptions = [
         { value: '', name: 'All Services' },
         { value: '1', name: 'Tax Filing' },
         { value: '2', name: 'Audit Services' },
@@ -48,7 +153,7 @@ const BillDisplay = () => {
         { value: '4', name: 'Company Registration' },
         { value: '5', name: 'Accounting' },
         { value: '6', name: 'Legal Compliance' }
-    ]);
+    ];
 
     // Quick date filters
     const quickDateFilters = [
@@ -80,7 +185,8 @@ const BillDisplay = () => {
             recurring_type: '',
             completer_name: 'Sarah Wilson',
             completer_mobile: '9876543215',
-            completer_user_type: 'employee'
+            completer_user_type: 'employee',
+            bill_status: 'pending'
         },
         {
             id: '2',
@@ -101,7 +207,8 @@ const BillDisplay = () => {
             due_date: '2024-03-05',
             completer_name: 'Mike Johnson',
             completer_mobile: '9876543216',
-            completer_user_type: 'manager'
+            completer_user_type: 'manager',
+            bill_status: 'pending'
         },
         {
             id: '3',
@@ -121,7 +228,8 @@ const BillDisplay = () => {
             recurring_type: '',
             completer_name: 'Emily Davis',
             completer_mobile: '9876543217',
-            completer_user_type: 'employee'
+            completer_user_type: 'employee',
+            bill_status: 'generated'
         },
         {
             id: '4',
@@ -142,7 +250,8 @@ const BillDisplay = () => {
             due_date: '2025-01-30',
             completer_name: 'David Wilson',
             completer_mobile: '9876543218',
-            completer_user_type: 'manager'
+            completer_user_type: 'manager',
+            bill_status: 'nonbillable'
         },
         {
             id: '5',
@@ -163,7 +272,8 @@ const BillDisplay = () => {
             due_date: '2024-05-20',
             completer_name: 'Jennifer Lee',
             completer_mobile: '9876543219',
-            completer_user_type: 'employee'
+            completer_user_type: 'employee',
+            bill_status: 'pending'
         },
         {
             id: '6',
@@ -183,7 +293,8 @@ const BillDisplay = () => {
             recurring_type: '',
             completer_name: 'Richard Moore',
             completer_mobile: '9876543221',
-            completer_user_type: 'manager'
+            completer_user_type: 'manager',
+            bill_status: 'generated'
         },
         {
             id: '7',
@@ -204,7 +315,8 @@ const BillDisplay = () => {
             due_date: '2024-03-13',
             completer_name: 'Thomas Clark',
             completer_mobile: '9876543223',
-            completer_user_type: 'employee'
+            completer_user_type: 'employee',
+            bill_status: 'pending'
         },
         {
             id: '8',
@@ -224,7 +336,8 @@ const BillDisplay = () => {
             recurring_type: '',
             completer_name: 'Patricia Harris',
             completer_mobile: '9876543225',
-            completer_user_type: 'manager'
+            completer_user_type: 'manager',
+            bill_status: 'nonbillable'
         },
         {
             id: '9',
@@ -245,7 +358,8 @@ const BillDisplay = () => {
             due_date: '2024-08-03',
             completer_name: 'Susan Young',
             completer_mobile: '9876543227',
-            completer_user_type: 'employee'
+            completer_user_type: 'employee',
+            bill_status: 'pending'
         },
         {
             id: '10',
@@ -265,7 +379,8 @@ const BillDisplay = () => {
             recurring_type: '',
             completer_name: 'Daniel King',
             completer_mobile: '9876543229',
-            completer_user_type: 'manager'
+            completer_user_type: 'manager',
+            bill_status: 'generated'
         }
     ]);
 
@@ -274,12 +389,73 @@ const BillDisplay = () => {
     const [selectAll, setSelectAll] = useState(false);
 
     // State for dropdown menus
-    const [showAddDropdown, setShowAddDropdown] = useState(false);
+    const [showExportDropdown, setShowExportDropdown] = useState(false);
     const [activeRowDropdown, setActiveRowDropdown] = useState(null);
     const [exportModal, setExportModal] = useState({ open: false, type: '', data: null });
 
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [isWhatsappModalOpen, setWhatsappModalOpen] = useState(false);
+
+    // Calculate totals for cards
+    const calculateTotals = () => {
+        const pending = billingData.filter(item => item.bill_status === 'pending');
+        const generated = billingData.filter(item => item.bill_status === 'generated');
+        const nonbillable = billingData.filter(item => item.bill_status === 'nonbillable');
+        
+        return {
+            pending: {
+                count: pending.length,
+                amount: pending.reduce((sum, item) => sum + item.fees, 0)
+            },
+            generated: {
+                count: generated.length,
+                amount: generated.reduce((sum, item) => sum + item.fees, 0)
+            },
+            nonbillable: {
+                count: nonbillable.length,
+                amount: nonbillable.reduce((sum, item) => sum + item.fees, 0)
+            },
+            all: {
+                count: billingData.length,
+                amount: billingData.reduce((sum, item) => sum + item.fees, 0)
+            }
+        };
+    };
+
+    const totals = calculateTotals();
+
+    // Update card data with real totals
+    const updatedBillTypeCards = billTypeCards.map(card => {
+        const totalData = totals[card.value];
+        return {
+            ...card,
+            count: totalData?.count || 0,
+            amount: totalData ? `₹${totalData.amount.toLocaleString()}` : '₹0'
+        };
+    });
+
+    // Filter data based on search, service filter and bill type
+    const filteredData = billingData.filter(item => {
+        const matchesSearch = searchQuery === '' ||
+            item.service_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.firm_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.file_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.pan.toLowerCase().includes(searchQuery.toLowerCase());
+
+        const matchesService = selectedService === '' || item.service_id === selectedService;
+        const matchesBillType = selectedBillType === 'all' || item.bill_status === selectedBillType;
+
+        return matchesSearch && matchesService && matchesBillType;
+    });
+
+    // Get data to display (limited or all)
+    const displayData = showAllData ? filteredData : filteredData.slice(0, visibleRows);
+    const hasMoreData = filteredData.length > visibleRows;
+
+    // Calculate total bill amount for filtered data
+    const totalBillAmount = filteredData.reduce((total, item) => total + item.fees, 0);
+    const totalBillsCount = filteredData.length;
 
     // Persist sidebar minimized state
     useEffect(() => {
@@ -407,7 +583,7 @@ const BillDisplay = () => {
         if (selectAll) {
             setSelectedItems([]);
         } else {
-            setSelectedItems(billingData.map(item => item.task_id));
+            setSelectedItems(displayData.map(item => item.task_id));
         }
         setSelectAll(!selectAll);
     };
@@ -428,19 +604,23 @@ const BillDisplay = () => {
         console.log('Selected items for non-billable:', selectedItems);
     };
 
-    // Filter data based on search and service filter
-    const filteredData = billingData.filter(item => {
-        const matchesSearch = searchQuery === '' ||
-            item.service_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.firm_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.file_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.pan.toLowerCase().includes(searchQuery.toLowerCase());
+    const getBillTypeColor = (type) => {
+        const colors = {
+            pending: 'orange',
+            generated: 'green',
+            nonbillable: 'red'
+        };
+        return colors[type] || 'gray';
+    };
 
-        const matchesService = selectedService === '' || item.service_id === selectedService;
-
-        return matchesSearch && matchesService;
-    });
+    const getBillTypeIcon = (type) => {
+        const icons = {
+            pending: FiClock,
+            generated: HiOutlineDocumentText,
+            nonbillable: MdOutlineMoneyOffCsred
+        };
+        return icons[type] || FiFileText;
+    };
 
     // Handle export
     const handleExport = (type, data = null) => {
@@ -500,7 +680,7 @@ const BillDisplay = () => {
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (!event.target.closest('.dropdown-container')) {
-                setShowAddDropdown(false);
+                setShowExportDropdown(false);
                 setActiveRowDropdown(null);
             }
         };
@@ -515,30 +695,10 @@ const BillDisplay = () => {
     useEffect(() => {
         if (selectedItems.length === 0) {
             setSelectAll(false);
-        } else if (selectedItems.length === billingData.length) {
+        } else if (selectedItems.length === displayData.length) {
             setSelectAll(true);
         }
-    }, [selectedItems, billingData.length]);
-
-    // Calculate dynamic heights based on viewport
-    const [tableHeight, setTableHeight] = useState('calc(100vh - 260px)');
-    
-    useEffect(() => {
-        const updateTableHeight = () => {
-            const headerHeight = 64; // Header height
-            const cardHeaderHeight = 96; // Card header height
-            const tableHeaderHeight = 48; // Table header height
-            const actionButtonsHeight = selectedItems.length > 0 ? 80 : 0; // Action buttons height
-            const padding = 48; // Padding top/bottom
-            
-            const availableHeight = window.innerHeight - headerHeight - cardHeaderHeight - tableHeaderHeight - actionButtonsHeight - padding;
-            setTableHeight(`${Math.max(400, availableHeight)}px`);
-        };
-
-        updateTableHeight();
-        window.addEventListener('resize', updateTableHeight);
-        return () => window.removeEventListener('resize', updateTableHeight);
-    }, [selectedItems.length]);
+    }, [selectedItems, displayData.length]);
 
     // Custom Date Picker Component
     const DatePickerComponent = () => (
@@ -634,7 +794,7 @@ const BillDisplay = () => {
     );
 
     return (
-        <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 ">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -648,19 +808,19 @@ const BillDisplay = () => {
                 setIsMinimized={setIsMinimized}
             />
 
-            {/* Main content - Fixed to fill screen */}
-            <div className={`pt-16 h-full transition-all duration-300 ${isMinimized ? 'lg:pl-20' : 'lg:pl-72'}`}>
-                <div className="h-full px-4 sm:px-6 lg:px-8 py-4">
+            {/* Main content */}
+            <div className={`pt-16 transition-all duration-300 ${isMinimized ? 'lg:pl-20' : 'lg:pl-72'}`}>
+                <div className="px-4 sm:px-6 lg:px-8 py-4">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4 }}
-                        className="h-full flex flex-col"
+                        className="flex flex-col space-y-6"
+                        style={{ paddingBottom: selectedItems.length > 0 ? '100px' : '0' }}
                     >
-                        {/* Main Card with glass effect - Full height */}
-                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 shadow-xl flex flex-col h-full overflow-hidden">
-                            {/* Card Header - Compact */}
-                            <div className="border-b border-gray-200/60 px-6 py-4 bg-gradient-to-r from-gray-50 to-white flex-shrink-0">
+                        {/* Header Section - NOT sticky anymore */}
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 shadow-xl relative z-40">
+                            <div className="border-b border-gray-200/60 px-6 py-4 bg-gradient-to-r from-gray-50 to-white">
                                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                                     <div className="flex-1 min-w-0">
                                         <h5 className="text-xl font-bold text-gray-900 mb-1 truncate">
@@ -728,391 +888,555 @@ const BillDisplay = () => {
                                                 </div>
 
                                                 {/* Export Dropdown */}
-                                                <div className="dropdown-container relative">
-                                                    <motion.button
-                                                        onClick={() => setShowAddDropdown(!showAddDropdown)}
-                                                        className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl whitespace-nowrap"
-                                                        whileHover={{ scale: 1.02, y: -1 }}
-                                                        whileTap={{ scale: 0.98 }}
-                                                    >
-                                                        <PiExportBold className="w-4 h-4" />
-                                                        <span className="hidden sm:inline">Export</span>
-                                                        <FiChevronDown className={`w-4 h-4 transition-transform ${showAddDropdown ? 'rotate-180' : ''}`} />
-                                                    </motion.button>
+                                                {/* Export Dropdown */}
+<div className="dropdown-container relative">
+    <motion.button
+        onClick={() => setShowExportDropdown(!showExportDropdown)}
+        className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl whitespace-nowrap"
+        whileHover={{ scale: 1.02, y: -1 }}
+        whileTap={{ scale: 0.98 }}
+    >
+        <PiExportBold className="w-4 h-4" />
+        <span className="hidden sm:inline">Export</span>
+        <FiChevronDown className={`w-4 h-4 transition-transform ${showExportDropdown ? 'rotate-180' : ''}`} />
+    </motion.button>
 
-                                                    <AnimatePresence>
-                                                        {showAddDropdown && (
-                                                            <motion.div
-                                                                initial={{ opacity: 0, y: -10 }}
-                                                                animate={{ opacity: 1, y: 0 }}
-                                                                exit={{ opacity: 0, y: -10 }}
-                                                                className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 overflow-hidden"
-                                                            >
-                                                                <div className="py-1">
-                                                                    <button
-                                                                        onClick={() => handleExport('pdf')}
-                                                                        className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
-                                                                    >
-                                                                        <PiFilePdfDuotone className="w-4 h-4 mr-3 text-red-500" />
-                                                                        Export as PDF
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleExport('excel')}
-                                                                        className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
-                                                                    >
-                                                                        <PiMicrosoftExcelLogoDuotone className="w-4 h-4 mr-3 text-green-500" />
-                                                                        Export as Excel
-                                                                    </button>
-                                                                    <div className="border-t border-gray-100">
-                                                                        <button
-                                                                            onClick={() => setWhatsappModalOpen(true)}
-                                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
-                                                                        >
-                                                                            <FaWhatsapp className="w-4 h-4 mr-3 text-green-500" />
-                                                                            Share via WhatsApp
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => setIsEmailModalOpen(true)}
-                                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
-                                                                        >
-                                                                            <AiOutlineMail className="w-4 h-4 mr-3 text-blue-500" />
-                                                                            Share via Email
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </motion.div>
-                                                        )}
-                                                    </AnimatePresence>
-                                                </div>
+    <AnimatePresence>
+        {showExportDropdown && (
+            <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="fixed lg:absolute right-0 lg:right-auto mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-[9999] overflow-hidden"
+                style={{
+                    top: 'calc(100% + 8px)',
+                    left: 'auto',
+                    right: '0'
+                }}
+            >
+                <div className="py-1">
+                    <button
+                        onClick={() => handleExport('pdf')}
+                        className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
+                    >
+                        <PiFilePdfDuotone className="w-4 h-4 mr-3 text-red-500" />
+                        Export as PDF
+                    </button>
+                    <button
+                        onClick={() => handleExport('excel')}
+                        className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
+                    >
+                        <PiMicrosoftExcelLogoDuotone className="w-4 h-4 mr-3 text-green-500" />
+                        Export as Excel
+                    </button>
+                    <div className="border-t border-gray-100">
+                        <button
+                            onClick={() => setWhatsappModalOpen(true)}
+                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
+                        >
+                            <FaWhatsapp className="w-4 h-4 mr-3 text-green-500" />
+                            Share via WhatsApp
+                        </button>
+                        <button
+                            onClick={() => setIsEmailModalOpen(true)}
+                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
+                        >
+                            <AiOutlineMail className="w-4 h-4 mr-3 text-blue-500" />
+                            Share via Email
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        )}
+    </AnimatePresence>
+</div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Table Container - Dynamic height */}
-                            <div className="flex-1 flex flex-col overflow-hidden">
-                                {/* Table Header - Fixed - NO HORIZONTAL SCROLL */}
-                                <div className="border-b border-gray-200/60 bg-gradient-to-r from-gray-50 to-gray-100/50 flex-shrink-0">
-                                    <table className="w-full text-sm table-fixed">
-                                        <thead>
-                                            <tr className="text-gray-700">
-                                                <th className="text-left p-3 font-semibold text-gray-800 w-16">#</th>
-                                                <th className="text-left p-3 font-semibold text-gray-800 w-[18%]">SERVICE</th>
-                                                <th className="text-left p-3 font-semibold text-gray-800 w-[15%]">DATES</th>
-                                                <th className="text-left p-3 font-semibold text-gray-800 w-[18%]">FIRM/CLIENT</th>
-                                                <th className="text-left p-3 font-semibold text-gray-800 w-[15%]">INFO</th>
-                                                <th className="text-left p-3 font-semibold text-gray-800 w-[15%]">COMPLETE BY</th>
-                                                <th className="text-center p-3 font-semibold text-gray-800 w-36">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <span className="text-xs">SELECT</span>
-                                                        <motion.button
-                                                            onClick={handleSelectAll}
-                                                            className={`relative w-10 h-5 rounded-full transition-colors duration-300 ${selectAll ? 'bg-indigo-600' : 'bg-gray-300'}`}
-                                                            whileTap={{ scale: 0.95 }}
-                                                        >
-                                                            <motion.div
-                                                                className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-md ${selectAll ? 'left-5' : 'left-0.5'}`}
-                                                                layout
-                                                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                                            />
-                                                            {selectAll && (
-                                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                                    <FiCheckCircle className="w-2.5 h-2.5 text-white absolute left-1.5" />
-                                                                </div>
-                                                            )}
-                                                        </motion.button>
+                        {/* Cards Section - Only 3 cards: Pending, Generated, Non-Billable */}
+                        <div className="grid grid-cols-3 gap-3 relative z-30">
+                            {updatedBillTypeCards.map((card) => {
+                                const Icon = card.icon;
+                                const TrendIcon = card.trendIcon;
+                                const isActive = selectedBillType === card.value;
+                                return (
+                                    <motion.div
+                                        key={card.value}
+                                        whileHover={{ y: -2 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setSelectedBillType(card.value)}
+                                        className={`relative cursor-pointer overflow-hidden rounded-xl border transition-all duration-200 ${
+                                            isActive 
+                                            ? `border ${card.borderColor} shadow-lg shadow-${card.color}-500/10 ring-1 ring-${card.color}-200`
+                                            : 'border-gray-200 shadow-sm hover:shadow-md'
+                                        } ${card.lightGradient} backdrop-blur-sm`}
+                                    >
+                                        <div className={`absolute inset-0 ${card.cardGradient}`}></div>
+                                        
+                                        {isActive && (
+                                            <div className="absolute top-0 right-0 w-2 h-2">
+                                                <motion.div
+                                                    initial={{ scale: 0 }}
+                                                    animate={{ scale: 1 }}
+                                                    className={`w-2 h-2 rounded-full ${card.gradient}`}
+                                                />
+                                            </div>
+                                        )}
+                                        
+                                        <div className="relative p-3">
+                                            {/* Compact design: Icon and Label in one line */}
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-7 h-7 rounded-lg ${card.iconBg} flex items-center justify-center`}>
+                                                        <Icon className={`w-3.5 h-3.5 ${card.textColor}`} />
                                                     </div>
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                    </table>
+                                                    <h3 className={`text-xs font-semibold ${card.textColor} truncate`}>
+                                                        {card.label}
+                                                    </h3>
+                                                </div>
+                                                <div className={`text-xs px-1.5 py-0.5 rounded-full ${card.countColor} text-white font-bold`}>
+                                                    {card.count}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Counter shows below line */}
+                                            <div className="space-y-1">
+                                                <div className="flex items-baseline justify-between">
+                                                    <span className="text-sm font-bold text-gray-900 truncate">
+                                                        {card.amount}
+                                                    </span>
+                                                    <div className={`flex items-center gap-1 ${card.trend.startsWith('+') ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                        <TrendIcon className="w-2.5 h-2.5" />
+                                                        <span className="text-[10px] font-medium">
+                                                            {card.trend}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="w-full bg-gray-200/50 rounded-full h-1">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${(card.count / totals.all.count) * 100}%` }}
+                                                        transition={{ duration: 0.8, ease: "easeOut" }}
+                                                        className={`h-1 rounded-full ${card.gradient}`}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Table Section */}
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                            {/* Table Header */}
+                            <div className="border-b border-gray-200">
+                                <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <h3 className="text-sm font-semibold text-gray-700">
+                                            {selectedBillType === 'pending' ? 'Pending Bills' :
+                                             selectedBillType === 'generated' ? 'Generated Bills' :
+                                             'Non-Billable Items'} ({filteredData.length})
+                                        </h3>
+                                        {selectedItems.length > 0 && (
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-6 h-6 flex items-center justify-center bg-indigo-100 text-indigo-700 rounded-md text-xs font-bold">
+                                                    {selectedItems.length}
+                                                </div>
+                                                <span className="text-sm text-gray-600">
+                                                    selected
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={handleSelectAll}
+                                            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+                                        >
+                                            <div className={`relative w-8 h-4 rounded-full transition-colors duration-300 ${selectAll ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+                                                <motion.div
+                                                    className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow ${selectAll ? 'left-4' : 'left-0.5'}`}
+                                                    layout
+                                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                                />
+                                                {selectAll && (
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <FiCheckCircle className="w-1.5 h-1.5 text-white absolute left-1" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <span>Select All</span>
+                                        </button>
+                                    </div>
                                 </div>
+                            </div>
 
-                                {/* Scrollable Table Body - Vertical scrolling only */}
-                                <div 
-                                    className="flex-1 overflow-y-auto overflow-x-hidden"
-                                    style={{ height: tableHeight }}
-                                    ref={tableRef}
-                                >
-                                    <table className="w-full text-sm table-fixed">
-                                        <tbody className="divide-y divide-gray-200/60">
-                                            {filteredData.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="7" className="text-center py-12">
-                                                        <div className="flex flex-col items-center justify-center">
-                                                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                                                <FiFileText className="w-8 h-8 text-gray-400" />
-                                                            </div>
-                                                            <p className="text-gray-500 font-medium">No pending billing records found</p>
-                                                            <p className="text-gray-400 text-sm mt-1">Try adjusting your filters</p>
+                            {/* Table - Shows all data without internal scroll */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr className="border-b border-gray-200">
+                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">
+                                                #
+                                            </th>
+                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[200px]">
+                                                Service
+                                            </th>
+                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
+                                                Dates
+                                            </th>
+                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[180px]">
+                                                Firm/Client
+                                            </th>
+                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[160px]">
+                                                Information
+                                            </th>
+                                            <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[160px]">
+                                                Completed By
+                                            </th>
+                                            <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {displayData.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="7" className="py-12 text-center">
+                                                    <div className="flex flex-col items-center justify-center">
+                                                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                                            <TbFileInvoice className="w-8 h-8 text-gray-400" />
                                                         </div>
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                filteredData.map((item, index) => {
-                                                    const recurringPeriod = item.is_recurring ?
-                                                        getPreviousPeriod(item.recurring_type, item.due_date) : '';
-                                                    const shortPeriod = item.is_recurring ?
-                                                        item.recurring_type.charAt(0).toUpperCase() + item.recurring_type.slice(1) : '';
-                                                    const isDropdownOpen = activeRowDropdown === item.task_id;
-                                                    const isSelected = selectedItems.includes(item.task_id);
+                                                        <p className="text-gray-500 font-medium mb-2">
+                                                            No records found
+                                                        </p>
+                                                        <p className="text-gray-400 text-sm">
+                                                            Try adjusting your search or filters
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            displayData.map((item, index) => {
+                                                const recurringPeriod = item.is_recurring ?
+                                                    getPreviousPeriod(item.recurring_type, item.due_date) : '';
+                                                const shortPeriod = item.is_recurring ?
+                                                    item.recurring_type.charAt(0).toUpperCase() + item.recurring_type.slice(1) : '';
+                                                const isDropdownOpen = activeRowDropdown === item.task_id;
+                                                const isSelected = selectedItems.includes(item.task_id);
+                                                const billStatusColor = getBillTypeColor(item.bill_status);
+                                                const Icon = getBillTypeIcon(item.bill_status);
 
-                                                    return (
-                                                        <motion.tr
-                                                            key={item.id}
-                                                            initial={{ opacity: 0 }}
-                                                            animate={{ opacity: 1 }}
-                                                            className={`group transition-all duration-200 ${isSelected ? 'bg-gradient-to-r from-indigo-50/70 to-indigo-100/30 border-l-4 border-l-indigo-500' : 'hover:bg-gradient-to-r hover:from-indigo-50/30 hover:to-white'}`}
-                                                        >
-                                                            <td className="p-3 w-16">
-                                                                <div className="w-7 h-7 flex items-center justify-center bg-gray-100 rounded-lg font-medium text-gray-700">
+                                                return (
+                                                    <motion.tr
+                                                        key={item.id}
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        className={`group hover:bg-gray-50/50 transition-colors duration-150 ${isSelected ? 'bg-indigo-50/50' : ''}`}
+                                                    >
+                                                        <td className="py-3 px-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded text-xs font-medium text-gray-700">
                                                                     {index + 1}
                                                                 </div>
-                                                            </td>
-                                                            <td className="p-3 w-[18%]">
-                                                                <a 
-                                                                    href={`/view-task-details?task_id=${item.task_id}`}
-                                                                    className="block hover:no-underline"
+                                                                <motion.button
+                                                                    onClick={() => handleToggleSelect(item.task_id)}
+                                                                    className={`relative w-7 h-3.5 rounded-full transition-colors duration-300 ${isSelected ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                                                                    whileTap={{ scale: 0.95 }}
                                                                 >
-                                                                    <div className="flex items-start gap-2">
+                                                                    <motion.div
+                                                                        className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full shadow ${isSelected ? 'left-3.5' : 'left-0.5'}`}
+                                                                        layout
+                                                                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                                                    />
+                                                                    {isSelected && (
+                                                                        <div className="absolute inset-0 flex items-center justify-center">
+                                                                            <FiCheckCircle className="w-1.5 h-1.5 text-white absolute left-1" />
+                                                                        </div>
+                                                                    )}
+                                                                </motion.button>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <div className="flex items-start gap-3">
+                                                                <div className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 ${
+                                                                    billStatusColor === 'orange' ? 'bg-orange-100' :
+                                                                    billStatusColor === 'green' ? 'bg-emerald-100' :
+                                                                    billStatusColor === 'red' ? 'bg-rose-100' :
+                                                                    'bg-indigo-100'
+                                                                }`}>
+                                                                    <Icon className={`w-4 h-4 ${
+                                                                        billStatusColor === 'orange' ? 'text-orange-600' :
+                                                                        billStatusColor === 'green' ? 'text-emerald-600' :
+                                                                        billStatusColor === 'red' ? 'text-rose-600' :
+                                                                        'text-indigo-600'
+                                                                    }`} />
+                                                                </div>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <h4 className="font-medium text-gray-900 text-sm truncate">
+                                                                            {item.service_name}
+                                                                        </h4>
                                                                         {item.is_recurring && (
-                                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800">
                                                                                 R
                                                                             </span>
                                                                         )}
-                                                                        <b className={`transition-colors text-sm ${isSelected ? 'text-indigo-900' : 'text-gray-900 group-hover:text-indigo-700'} line-clamp-2`}>
-                                                                            {item.service_name}
-                                                                        </b>
                                                                     </div>
-                                                                    <div className="mt-1">
-                                                                        <span className="text-green-700 font-bold text-sm">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-emerald-700 font-bold text-sm">
                                                                             ₹{Number(item.fees).toLocaleString()}
                                                                         </span>
-                                                                        {item.is_recurring && (
-                                                                            <div className="mt-2 space-y-1">
-                                                                                <div className="text-xs text-orange-700 font-semibold bg-orange-50 px-2 py-1 rounded line-clamp-1">
-                                                                                    Period: {recurringPeriod}
-                                                                                </div>
-                                                                                <div className="text-xs text-green-600 line-clamp-1">
-                                                                                    {shortPeriod} Billing Cycle
-                                                                                </div>
-                                                                            </div>
+                                                                        {item.is_recurring && recurringPeriod && (
+                                                                            <span className="text-xs text-gray-500 truncate">
+                                                                                {recurringPeriod}
+                                                                            </span>
                                                                         )}
                                                                     </div>
-                                                                </a>
-                                                            </td>
-                                                            <td className="p-3 w-[15%]">
-                                                                <div className="space-y-2">
-                                                                    <div className="flex items-center gap-2 text-xs">
-                                                                        <div className="w-5 h-5 flex items-center justify-center bg-gray-100 rounded">
-                                                                            <FiCalendar className="w-2.5 h-2.5 text-gray-500" />
-                                                                        </div>
-                                                                        <span className="text-gray-700 line-clamp-1">
-                                                                            {formatDate(item.create_date)}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2 text-xs">
-                                                                        <div className="w-5 h-5 flex items-center justify-center bg-green-100 rounded">
-                                                                            <FiCheckCircle className="w-2.5 h-2.5 text-green-600" />
-                                                                        </div>
-                                                                        <span className="text-green-700 font-medium line-clamp-1">
-                                                                            {formatDate(item.complete_date)}
-                                                                        </span>
-                                                                    </div>
                                                                 </div>
-                                                            </td>
-                                                            <td className="p-3 w-[18%]">
-                                                                <a 
-                                                                    href={`/view-client-profile?username=${item.username}`}
-                                                                    className="block hover:no-underline"
-                                                                >
-                                                                    <div className={`font-semibold transition-colors text-sm ${isSelected ? 'text-indigo-900' : 'text-gray-900 group-hover:text-indigo-700'} line-clamp-2`}>
-                                                                        {item.firm_name}
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-600 mt-1 line-clamp-1">
-                                                                        {item.name}
-                                                                    </div>
-                                                                </a>
-                                                            </td>
-                                                            <td className="p-3 w-[15%]">
-                                                                <div className="space-y-1">
-                                                                    <div className="text-xs line-clamp-1">
-                                                                        <span className="text-gray-500">PAN:</span>
-                                                                        <span className={`font-medium ml-1 ${isSelected ? 'text-indigo-800' : 'text-gray-800'}`}>{item.pan}</span>
-                                                                    </div>
-                                                                    <div className="text-xs line-clamp-1">
-                                                                        <span className="text-gray-500">File No:</span>
-                                                                        <span className={`font-medium ml-1 ${isSelected ? 'text-indigo-800' : 'text-gray-800'}`}>{item.file_no}</span>
-                                                                    </div>
-                                                                    <div className="text-xs line-clamp-1">
-                                                                        <span className="text-gray-500">Mobile:</span>
-                                                                        <span className="text-indigo-700 font-medium ml-1">{item.mobile}</span>
-                                                                    </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2 text-sm">
+                                                                    <FiCalendar className="w-3 h-3 text-gray-400" />
+                                                                    <span className="text-gray-700">
+                                                                        {formatDate(item.create_date)}
+                                                                    </span>
                                                                 </div>
-                                                            </td>
-                                                            <td className="p-3 w-[15%]">
-                                                                <div className="space-y-1">
-                                                                    <div className="font-medium text-gray-900 text-sm line-clamp-1">
-                                                                        {item.completer_name}
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-600 line-clamp-1">
-                                                                        {item.completer_mobile}
-                                                                    </div>
-                                                                    <div className="text-xs">
-                                                                        <span className={`px-2 py-0.5 rounded-full ${item.completer_user_type === 'manager' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} line-clamp-1`}>
-                                                                            {item.completer_user_type.toUpperCase()}
-                                                                        </span>
-                                                                    </div>
+                                                                <div className="flex items-center gap-2 text-sm">
+                                                                    <FiCheckCircle className="w-3 h-3 text-emerald-400" />
+                                                                    <span className="text-emerald-600">
+                                                                        {formatDate(item.complete_date)}
+                                                                    </span>
                                                                 </div>
-                                                            </td>
-                                                            <td className="p-3 w-36">
-                                                                <div className="flex items-center justify-center gap-2">
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <div>
+                                                                <h4 className="font-medium text-gray-900 text-sm mb-1 truncate">
+                                                                    {item.firm_name}
+                                                                </h4>
+                                                                <p className="text-gray-600 text-sm truncate">
+                                                                    {item.name}
+                                                                </p>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <div className="space-y-1">
+                                                                <div className="text-sm">
+                                                                    <span className="text-gray-500">PAN: </span>
+                                                                    <span className="font-medium text-gray-800">{item.pan}</span>
+                                                                </div>
+                                                                <div className="text-sm">
+                                                                    <span className="text-gray-500">File: </span>
+                                                                    <span className="font-medium text-gray-800">{item.file_no}</span>
+                                                                </div>
+                                                                <div className="text-sm">
+                                                                    <span className="text-gray-500">Mobile: </span>
+                                                                    <span className="font-medium text-indigo-700">{item.mobile}</span>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <div className="space-y-1">
+                                                                <h4 className="font-medium text-gray-900 text-sm truncate">
+                                                                    {item.completer_name}
+                                                                </h4>
+                                                                <p className="text-gray-600 text-sm truncate">
+                                                                    {item.completer_mobile}
+                                                                </p>
+                                                                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                                                                    item.completer_user_type === 'manager' 
+                                                                    ? 'bg-purple-100 text-purple-800' 
+                                                                    : 'bg-blue-100 text-blue-800'
+                                                                }`}>
+                                                                    {item.completer_user_type.toUpperCase()}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <div className="dropdown-container relative">
                                                                     <motion.button
-                                                                        onClick={() => handleToggleSelect(item.task_id)}
-                                                                        className={`relative w-10 h-5 rounded-full transition-colors duration-300 ${isSelected ? 'bg-indigo-600' : 'bg-gray-300'}`}
-                                                                        whileTap={{ scale: 0.95 }}
+                                                                        className="p-1.5 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-100 transition-all duration-150 cursor-pointer"
+                                                                        onClick={() => toggleRowDropdown(item.task_id)}
+                                                                        whileHover={{ scale: 1.1 }}
+                                                                        whileTap={{ scale: 0.9 }}
                                                                     >
-                                                                        <motion.div
-                                                                            className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-md ${isSelected ? 'left-5' : 'left-0.5'}`}
-                                                                            layout
-                                                                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                                                        />
-                                                                        {isSelected && (
-                                                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                                                <FiCheckCircle className="w-2.5 h-2.5 text-white absolute left-1.5" />
-                                                                            </div>
-                                                                        )}
+                                                                        <FiMoreVertical className="w-4 h-4" />
                                                                     </motion.button>
-                                                                    <div className="dropdown-container relative">
-                                                                        <motion.button
-                                                                            className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-all duration-200 cursor-pointer group-hover:bg-gray-200"
-                                                                            onClick={() => toggleRowDropdown(item.task_id)}
-                                                                            whileHover={{ scale: 1.1 }}
-                                                                            whileTap={{ scale: 0.9 }}
-                                                                        >
-                                                                            <FiMoreVertical className="w-3.5 h-3.5" />
-                                                                        </motion.button>
-                                                                        <AnimatePresence>
-                                                                            {isDropdownOpen && (
-                                                                                <motion.div
-                                                                                    initial={{ opacity: 0, y: -10 }}
-                                                                                    animate={{ opacity: 1, y: 0 }}
-                                                                                    exit={{ opacity: 0, y: -10 }}
-                                                                                    className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 overflow-hidden"
-                                                                                >
-                                                                                    <div className="py-1">
+                                                                    <AnimatePresence>
+                                                                        {isDropdownOpen && (
+                                                                            <motion.div
+                                                                                initial={{ opacity: 0, y: -10 }}
+                                                                                animate={{ opacity: 1, y: 0 }}
+                                                                                exit={{ opacity: 0, y: -10 }}
+                                                                                className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                                                            >
+                                                                                <div className="py-1">
+                                                                                    <button
+                                                                                        className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                                                                                        onClick={() => {
+                                                                                            setActiveRowDropdown(null);
+                                                                                            handleToggleSelect(item.task_id);
+                                                                                        }}
+                                                                                    >
+                                                                                        {isSelected ? (
+                                                                                            <>
+                                                                                                <FiXCircle className="w-4 h-4 mr-3 text-red-500" />
+                                                                                                Deselect
+                                                                                            </>
+                                                                                        ) : (
+                                                                                            <>
+                                                                                                <FiCheckCircle className="w-4 h-4 mr-3 text-emerald-500" />
+                                                                                                Select
+                                                                                            </>
+                                                                                        )}
+                                                                                    </button>
+                                                                                    <div className="border-t border-gray-100">
                                                                                         <button
-                                                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
-                                                                                            onClick={() => {
-                                                                                                setActiveRowDropdown(null);
-                                                                                                handleToggleSelect(item.task_id);
-                                                                                            }}
+                                                                                            className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                                                                                            onClick={() => handleExport('print', item)}
                                                                                         >
-                                                                                            {isSelected ? (
-                                                                                                <>
-                                                                                                    <FiXCircle className="w-4 h-4 mr-3 text-red-500" />
-                                                                                                    Deselect
-                                                                                                </>
-                                                                                            ) : (
-                                                                                                <>
-                                                                                                    <FiCheckCircle className="w-4 h-4 mr-3 text-green-500" />
-                                                                                                    Select
-                                                                                                </>
-                                                                                            )}
+                                                                                            <FiPrinter className="w-4 h-4 mr-3" />
+                                                                                            Print
                                                                                         </button>
-                                                                                        <div className="border-t border-gray-100">
-                                                                                            <button
-                                                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
-                                                                                                onClick={() => handleExport('print', item)}
-                                                                                            >
-                                                                                                <FiPrinter className="w-4 h-4 mr-3" />
-                                                                                                Print
-                                                                                            </button>
-                                                                                            <button
-                                                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
-                                                                                                onClick={() => setWhatsappModalOpen(true)}
-                                                                                            >
-                                                                                                <FaWhatsapp className="w-4 h-4 mr-3 text-green-500" />
-                                                                                                WhatsApp
-                                                                                            </button>
-                                                                                            <button
-                                                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-150"
-                                                                                                onClick={() => setIsEmailModalOpen(true)}
-                                                                                            >
-                                                                                                <AiOutlineMail className="w-4 h-4 mr-3 text-blue-500" />
-                                                                                                Email
-                                                                                            </button>
-                                                                                        </div>
+                                                                                        <button
+                                                                                            className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                                                                                            onClick={() => setWhatsappModalOpen(true)}
+                                                                                        >
+                                                                                            <FaWhatsapp className="w-4 h-4 mr-3 text-emerald-500" />
+                                                                                            WhatsApp
+                                                                                        </button>
+                                                                                        <button
+                                                                                            className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                                                                                            onClick={() => setIsEmailModalOpen(true)}
+                                                                                        >
+                                                                                            <AiOutlineMail className="w-4 h-4 mr-3 text-blue-500" />
+                                                                                            Email
+                                                                                        </button>
                                                                                     </div>
-                                                                                </motion.div>
-                                                                            )}
-                                                                        </AnimatePresence>
-                                                                    </div>
+                                                                                </div>
+                                                                            </motion.div>
+                                                                        )}
+                                                                    </AnimatePresence>
                                                                 </div>
-                                                            </td>
-                                                        </motion.tr>
-                                                    );
-                                                })
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* Fixed Action Buttons Container - Only shows when items are selected */}
-                                <AnimatePresence>
-                                    {selectedItems.length > 0 && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: 20 }}
-                                            className="sticky bottom-0 left-0 right-0 border-t border-gray-200/60 bg-gradient-to-r from-white to-gray-50/95 backdrop-blur-sm shadow-2xl z-10 flex-shrink-0"
-                                        >
-                                            <div className="px-6 py-3">
-                                                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 flex items-center justify-center bg-indigo-100 text-indigo-700 rounded-lg font-bold shadow-md">
-                                                            {selectedItems.length}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-bold text-gray-800 text-sm">
-                                                                {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
                                                             </div>
-                                                            <div className="text-xs text-gray-500">
-                                                                Ready for billing
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <motion.button
-                                                            onClick={handleGenerateBill}
-                                                            className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
-                                                            whileHover={{ scale: 1.05 }}
-                                                            whileTap={{ scale: 0.98 }}
-                                                        >
-                                                            <FiFileText className="w-4 h-4" />
-                                                            Generate Bill
-                                                        </motion.button>
-                                                        <motion.button
-                                                            onClick={handleMarkNonBillable}
-                                                            className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
-                                                            whileHover={{ scale: 1.05 }}
-                                                            whileTap={{ scale: 0.98 }}
-                                                        >
-                                                            <FiXCircle className="w-4 h-4" />
-                                                            Mark Non-Billable
-                                                        </motion.button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                                        </td>
+                                                    </motion.tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
+
+                            {/* Show More/Less Button */}
+                            {hasMoreData && (
+                                <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
+                                    <div className="flex items-center justify-center">
+                                        <motion.button
+                                            onClick={() => setShowAllData(!showAllData)}
+                                            className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            {showAllData ? (
+                                                <>
+                                                    <FiChevronsUp className="w-4 h-4" />
+                                                    Show Less ({visibleRows} rows)
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FiChevronsDown className="w-4 h-4" />
+                                                    Show More ({filteredData.length - visibleRows} more rows)
+                                                </>
+                                            )}
+                                        </motion.button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 </div>
             </div>
+
+            {/* Fixed Selection Action Bar - Shows when items are selected */}
+            <AnimatePresence>
+                {selectedItems.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 100 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 100 }}
+                        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-2xl z-40"
+                        style={{ 
+                            left: isMinimized ? '80px' : '288px',
+                            right: 0,
+                            transition: 'left 0.3s ease'
+                        }}
+                    >
+                        <div className="px-6 py-4">
+                            <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold shadow-lg">
+                                        {selectedItems.length}
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-gray-800 text-lg">
+                                            {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
+                                        </div>
+                                        <div className="text-sm text-gray-500 flex items-center gap-2">
+                                            <FiCheckCircle className="w-3 h-3 text-emerald-500" />
+                                            Ready for billing action
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                                    <motion.button
+                                        onClick={handleGenerateBill}
+                                        className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl flex-1 sm:flex-none"
+                                        whileHover={{ scale: 1.05, y: -2 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <TbFileInvoice className="w-5 h-5" />
+                                        <span>Generate Bill for Selected Items</span>
+                                        <FiArrowRight className="w-4 h-4" />
+                                    </motion.button>
+                                    
+                                    <motion.button
+                                        onClick={handleMarkNonBillable}
+                                        className="px-6 py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl flex-1 sm:flex-none"
+                                        whileHover={{ scale: 1.05, y: -2 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <MdOutlineMoneyOffCsred className="w-5 h-5" />
+                                        <span>Mark Selected as Non-Billable</span>
+                                        <FiAlertCircle className="w-4 h-4" />
+                                    </motion.button>
+                                    
+                                    <motion.button
+                                        onClick={() => setSelectedItems([])}
+                                        className="px-6 py-3 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-3"
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <FiXCircle className="w-5 h-5" />
+                                        <span>Clear Selection</span>
+                                    </motion.button>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Modals */}
             <EmailSelectionModal
@@ -1141,40 +1465,40 @@ const BillDisplay = () => {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-2xl p-8 max-w-md w-full mx-auto shadow-2xl"
+                            className="bg-white rounded-xl p-6 max-w-sm w-full mx-auto shadow-xl"
                         >
                             <div className="text-center">
                                 <motion.div
                                     animate={{ rotate: 360 }}
                                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                    className="w-20 h-20 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6"
+                                    className="w-16 h-16 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4"
                                 >
-                                    <PiExportBold className="w-10 h-10 text-indigo-600" />
+                                    <PiExportBold className="w-8 h-8 text-indigo-600" />
                                 </motion.div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                                <h3 className="text-lg font-bold text-gray-900 mb-2">
                                     Exporting {exportModal.type.toUpperCase()}
                                 </h3>
-                                <p className="text-gray-600 mb-8">
+                                <p className="text-gray-600 mb-6 text-sm">
                                     Your {exportModal.type} export is being processed...
                                 </p>
-                                <div className="flex justify-center space-x-3 mb-6">
+                                <div className="flex justify-center space-x-2 mb-4">
                                     <motion.div
-                                        className="w-3 h-3 bg-indigo-600 rounded-full"
+                                        className="w-2.5 h-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full"
                                         animate={{ scale: [1, 1.5, 1] }}
                                         transition={{ duration: 0.6, repeat: Infinity }}
                                     ></motion.div>
                                     <motion.div
-                                        className="w-3 h-3 bg-indigo-600 rounded-full"
+                                        className="w-2.5 h-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full"
                                         animate={{ scale: [1, 1.5, 1] }}
                                         transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
                                     ></motion.div>
                                     <motion.div
-                                        className="w-3 h-3 bg-indigo-600 rounded-full"
+                                        className="w-2.5 h-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full"
                                         animate={{ scale: [1, 1.5, 1] }}
                                         transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
                                     ></motion.div>
                                 </div>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-xs text-gray-500">
                                     This will only take a moment
                                 </p>
                             </div>
