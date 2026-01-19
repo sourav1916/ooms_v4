@@ -1,4 +1,3 @@
-// ContraTransfer.js
 import React, { useState, useEffect, useMemo } from 'react';
 import { FiX, FiCalendar, FiDollarSign, FiFileText, FiArrowRight, FiCreditCard, FiHash } from 'react-icons/fi';
 
@@ -98,16 +97,23 @@ const ContraTransfer = ({
     };
 
     const formContent = (
-        <div className="bg-white rounded-xl shadow-2xl flex flex-col h-full border border-gray-300">
-            {/* Fixed Header */}
-            <div className="flex-shrink-0 flex items-center justify-between p-3 border-b border-gray-300 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-t-xl">
-                <div>
-                    <h2 className="text-xl font-bold">Bank Transfer (Contra)</h2>
+        <div className="bg-white rounded-xl shadow-2xl flex flex-col h-full border border-gray-200">
+            {/* Compact Header */}
+            <div className="flex-shrink-0 flex items-center justify-between p-3 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-t-xl">
+                <div className="flex items-center space-x-3">
+                    <div className="p-1.5 bg-white/10 rounded-lg">
+                        <FiArrowRight className="w-5 h-5" />
+                    </div>
+                    <div className="flex items-center space-x-4">
+                        <h2 className="text-lg font-bold">Bank Transfer (Contra)</h2>
+                        <span className="text-indigo-200 text-sm hidden sm:inline">|</span>
+                        <p className="text-indigo-100 text-xs sm:text-sm hidden sm:block">{appSettings.company_name}</p>
+                    </div>
                 </div>
                 {mode === 'modal' && (
                     <button
                         onClick={onClose}
-                        className="text-purple-200 hover:text-white p-2 rounded-lg bg-purple-500 hover:bg-purple-600 transition-colors"
+                        className="p-1.5 text-indigo-200 hover:text-white hover:bg-indigo-500 rounded-lg transition-colors"
                     >
                         <FiX className="w-5 h-5" />
                     </button>
@@ -115,42 +121,45 @@ const ContraTransfer = ({
             </div>
 
             {/* Scrollable Content Area */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-gray-50">
                 <form onSubmit={handleSubmit}>
-                    {/* Bank Transfer Section */}
+                    {/* Bank Transfer Section - Compact */}
                     <div className="mb-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {/* From Bank */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    From Bank (Payment Out) <span className="text-red-500">*</span>
-                                </label>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-sm font-semibold text-gray-700">
+                                        From Bank (Payment Out) <span className="text-red-500">*</span>
+                                    </label>
+                                    <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">Required</span>
+                                </div>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <FiCreditCard className="w-5 h-5 text-gray-400" />
+                                    <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                                        <FiCreditCard className="w-4 h-4 text-gray-400" />
                                     </div>
                                     <select
                                         name="out_bank_id"
                                         value={formData.out_bank_id}
                                         onChange={handleInputChange}
-                                        className="pl-10 w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 hover:border-purple-400 transition-colors appearance-none bg-white"
+                                        className="pl-9 w-full pr-10 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-all duration-200 shadow-sm appearance-none bg-white text-sm"
                                         required
                                     >
                                         <option value="" disabled>Select From Bank</option>
                                         {bankOptions.map(bank => (
-                                            <option key={bank.id} value={bank.id}>
-                                                {bank.name} - {bank.account} - BAL: ₹{bank.balance}
+                                            <option key={bank.id} value={bank.id} className="text-sm">
+                                                {bank.name} - {bank.account} (₹{bank.balance})
                                             </option>
                                         ))}
                                     </select>
-                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
+                                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </div>
                                 </div>
                                 {formData.out_bank_id && (
-                                    <div className="mt-2 text-sm text-gray-600">
+                                    <div className="mt-2 text-xs text-gray-600">
                                         Selected: {getSelectedOutBank()?.name} - Balance: ₹{getSelectedOutBank()?.balance}
                                     </div>
                                 )}
@@ -158,35 +167,38 @@ const ContraTransfer = ({
 
                             {/* To Bank */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    To Bank (Payment In) <span className="text-red-500">*</span>
-                                </label>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-sm font-semibold text-gray-700">
+                                        To Bank (Payment In) <span className="text-red-500">*</span>
+                                    </label>
+                                    <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">Required</span>
+                                </div>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <FiCreditCard className="w-5 h-5 text-gray-400" />
+                                    <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                                        <FiCreditCard className="w-4 h-4 text-gray-400" />
                                     </div>
                                     <select
                                         name="in_bank_id"
                                         value={formData.in_bank_id}
                                         onChange={handleInputChange}
-                                        className="pl-10 w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 hover:border-purple-400 transition-colors appearance-none bg-white"
+                                        className="pl-9 w-full pr-10 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-all duration-200 shadow-sm appearance-none bg-white text-sm"
                                         required
                                     >
                                         <option value="" disabled>Select To Bank</option>
                                         {bankOptions.map(bank => (
-                                            <option key={bank.id} value={bank.id}>
-                                                {bank.name} - {bank.account} - BAL: ₹{bank.balance}
+                                            <option key={bank.id} value={bank.id} className="text-sm">
+                                                {bank.name} - {bank.account} (₹{bank.balance})
                                             </option>
                                         ))}
                                     </select>
-                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
+                                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                         </svg>
                                     </div>
                                 </div>
                                 {formData.in_bank_id && (
-                                    <div className="mt-2 text-sm text-gray-600">
+                                    <div className="mt-2 text-xs text-gray-600">
                                         Selected: {getSelectedInBank()?.name} - Balance: ₹{getSelectedInBank()?.balance}
                                     </div>
                                 )}
@@ -194,20 +206,23 @@ const ContraTransfer = ({
                         </div>
                     </div>
 
-                    {/* Date and Amount Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    {/* Date and Amount Section - Compact */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                         {/* Date */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Transfer Date <span className="text-red-500">*</span>
-                            </label>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-sm font-semibold text-gray-700">
+                                    Transfer Date <span className="text-red-500">*</span>
+                                </label>
+                                <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">Required</span>
+                            </div>
                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FiCalendar className="w-5 h-5 text-gray-400" />
+                                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                                    <FiCalendar className="w-4 h-4 text-gray-400" />
                                 </div>
                                 <input
                                     type="date"
-                                    className="pl-10 w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 hover:border-purple-400 transition-colors"
+                                    className="pl-9 w-full pr-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-all duration-200 shadow-sm bg-white text-sm"
                                     name="date"
                                     value={formData.date}
                                     onChange={handleInputChange}
@@ -218,16 +233,19 @@ const ContraTransfer = ({
 
                         {/* Amount */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Transfer Amount <span className="text-red-500">*</span>
-                            </label>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-sm font-semibold text-gray-700">
+                                    Transfer Amount <span className="text-red-500">*</span>
+                                </label>
+                                <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">Required</span>
+                            </div>
                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FiDollarSign className="w-5 h-5 text-gray-400" />
+                                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                                    <FiDollarSign className="w-4 h-4 text-gray-400" />
                                 </div>
                                 <input
                                     type="number"
-                                    className="pl-10 w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 hover:border-purple-400 transition-colors"
+                                    className="pl-9 w-full pr-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-all duration-200 shadow-sm text-sm"
                                     name="amount"
                                     value={formData.amount}
                                     onChange={handleInputChange}
@@ -240,24 +258,27 @@ const ContraTransfer = ({
                         </div>
                     </div>
 
-                    {/* Transaction Ref ID and Description Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    {/* Transaction Ref ID and Description Section - Compact */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                         {/* Transaction Ref ID */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Transaction Reference ID
-                            </label>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-sm font-semibold text-gray-700">
+                                    Transaction Reference ID
+                                </label>
+                                <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">Optional</span>
+                            </div>
                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FiHash className="w-5 h-5 text-gray-400" />
+                                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                                    <FiHash className="w-4 h-4 text-gray-400" />
                                 </div>
                                 <input
                                     type="text"
-                                    className="pl-10 w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 hover:border-purple-400 transition-colors"
+                                    className="pl-9 w-full pr-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-all duration-200 shadow-sm text-sm"
                                     name="transaction_ref_id"
                                     value={formData.transaction_ref_id}
                                     onChange={handleInputChange}
-                                    placeholder="Enter transaction reference number"
+                                    placeholder="Enter transaction reference"
                                     maxLength="50"
                                 />
                             </div>
@@ -268,15 +289,15 @@ const ContraTransfer = ({
 
                         {/* Description */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                                 Transfer Description
                             </label>
                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 pt-3 pointer-events-none">
-                                    <FiFileText className="w-5 h-5 text-gray-400" />
+                                <div className="absolute left-3 top-3 pointer-events-none">
+                                    <FiFileText className="w-4 h-4 text-gray-400" />
                                 </div>
                                 <textarea
-                                    className="pl-10 w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 hover:border-purple-400 transition-colors"
+                                    className="pl-10 w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-all duration-200 shadow-sm text-sm"
                                     name="remark"
                                     value={formData.remark}
                                     onChange={handleInputChange}
@@ -287,38 +308,45 @@ const ContraTransfer = ({
                         </div>
                     </div>
 
-                    {/* Transfer Summary */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <h4 className="text-md font-semibold text-gray-900 mb-3">Transfer Summary</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
-                                <div className="text-sm text-gray-600 mb-1">From Bank</div>
-                                <div className="font-semibold text-red-600 truncate">
+                    {/* Transfer Summary - Compact */}
+                    <div className="bg-gradient-to-br from-indigo-50 to-white p-4 rounded-lg border border-indigo-100 shadow-sm">
+                        <div className="flex items-center mb-3">
+                            <div className="p-1.5 bg-indigo-600 text-white rounded mr-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <h4 className="text-sm font-bold text-gray-900">Transfer Summary</h4>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="text-center p-2 bg-white rounded border border-gray-200">
+                                <div className="text-xs text-gray-600 mb-1">From Bank</div>
+                                <div className="font-semibold text-red-600 text-sm truncate">
                                     {getSelectedOutBank()?.name || 'Not selected'}
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1">
-                                    Balance: {getSelectedOutBank() ? `₹${getSelectedOutBank().balance}` : 'N/A'}
+                                    ₹{getSelectedOutBank()?.balance || 'N/A'}
                                 </div>
                             </div>
-                            <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
-                                <div className="text-sm text-gray-600 mb-1">Transfer Amount</div>
-                                <div className="font-semibold text-purple-600 text-lg">
-                                    {formData.amount ? `₹${Number(formData.amount).toLocaleString('en-IN')}` : '0.00'}
+                            <div className="text-center p-2 bg-white rounded border border-gray-200">
+                                <div className="text-xs text-gray-600 mb-1">Amount</div>
+                                <div className="font-semibold text-indigo-600 text-sm">
+                                    {formData.amount ? formatCurrency(formData.amount) : '₹0'}
                                 </div>
                             </div>
-                            <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
-                                <div className="text-sm text-gray-600 mb-1">To Bank</div>
-                                <div className="font-semibold text-green-600 truncate">
+                            <div className="text-center p-2 bg-white rounded border border-gray-200">
+                                <div className="text-xs text-gray-600 mb-1">To Bank</div>
+                                <div className="font-semibold text-green-600 text-sm truncate">
                                     {getSelectedInBank()?.name || 'Not selected'}
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1">
-                                    Balance: {getSelectedInBank() ? `₹${getSelectedInBank().balance}` : 'N/A'}
+                                    ₹{getSelectedInBank()?.balance || 'N/A'}
                                 </div>
                             </div>
-                            <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
-                                <div className="text-sm text-gray-600 mb-1">Transaction Ref</div>
-                                <div className="font-semibold text-blue-600 truncate">
-                                    {formData.transaction_ref_id || 'Not provided'}
+                            <div className="text-center p-2 bg-white rounded border border-gray-200">
+                                <div className="text-xs text-gray-600 mb-1">Ref ID</div>
+                                <div className="font-semibold text-blue-600 text-sm truncate">
+                                    {formData.transaction_ref_id || 'N/A'}
                                 </div>
                             </div>
                         </div>
@@ -326,43 +354,63 @@ const ContraTransfer = ({
                 </form>
             </div>
 
-            {/* Fixed Footer */}
-            <div className="flex-shrink-0 border-t border-gray-300 bg-gray-50 p-3 rounded-b-xl">
-                <div className="flex justify-between items-center">
-                    <div className="text-sm text-gray-600">
-                        <div className="font-semibold">
-                            Transfer Amount: {formData.amount ? `₹${Number(formData.amount).toLocaleString('en-IN')}` : '0.00'}
+            {/* Compact Footer */}
+            <div className="flex-shrink-0 border-t border-gray-200 bg-white p-4 rounded-b-xl shadow-lg">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    {/* Warning Message */}
+                    {formData.out_bank_id === formData.in_bank_id && formData.out_bank_id && formData.in_bank_id && (
+                        <div className="w-full lg:w-auto">
+                            <div className="flex items-center text-amber-600 text-xs font-medium px-3 py-1.5 bg-amber-50 border border-amber-200 rounded">
+                                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.342 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                                Cannot transfer between same bank account
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex space-x-3">
-                        {mode === 'modal' && (
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
-                                disabled={isSubmitting}
-                            >
-                                Cancel
-                            </button>
-                        )}
-                        <button
-                            type="submit"
-                            onClick={handleSubmit}
-                            disabled={isSubmitting || !formData.out_bank_id || !formData.in_bank_id || !formData.amount || formData.out_bank_id === formData.in_bank_id}
-                            className="px-8 py-3 text-sm font-medium text-white bg-purple-600 border border-transparent rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Processing Transfer...
-                                </>
-                            ) : (
-                                `Transfer Funds - ${formData.amount ? `₹${Number(formData.amount).toLocaleString('en-IN')}` : '0.00'}`
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
+                        {/* Amount Display */}
+                        <div className="hidden lg:block px-3 py-1.5 bg-gradient-to-r from-indigo-50 to-indigo-100 rounded border border-indigo-200">
+                            <div className="text-xs text-indigo-700 font-semibold">
+                                Amount: <span className="text-sm">{formData.amount ? formatCurrency(formData.amount) : '₹0'}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            {mode === 'modal' && (
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    disabled={isSubmitting}
+                                    className="px-4 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-500 focus:border-gray-500 transition-all duration-150 disabled:opacity-50 shadow-sm"
+                                >
+                                    Cancel
+                                </button>
                             )}
-                        </button>
+                            <button
+                                type="submit"
+                                onClick={handleSubmit}
+                                disabled={isSubmitting || !formData.out_bank_id || !formData.in_bank_id || !formData.amount || formData.out_bank_id === formData.in_bank_id}
+                                className="px-5 py-2 text-xs font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 border border-transparent rounded-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 shadow hover:shadow-md min-w-[140px] flex items-center justify-center"
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <FiArrowRight className="w-3.5 h-3.5 mr-1.5" />
+                                        Transfer Funds
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -373,14 +421,14 @@ const ContraTransfer = ({
     if (mode === 'modal') {
         return isOpen ? (
             <div className="fixed inset-0 z-50 overflow-y-auto">
-                <div className="flex items-center justify-center min-h-screen p-4">
+                <div className="flex items-center justify-center min-h-screen p-2 sm:p-4">
                     {/* Overlay */}
                     <div
-                        className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                        className="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity"
                         onClick={onClose}
                     />
-                    {/* Professional Modal panel with fixed height */}
-                    <div className="relative w-full max-w-6xl bg-white rounded-xl shadow-2xl h-[85vh] flex flex-col">
+                    {/* Compact Modal panel */}
+                    <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl h-[85vh] flex flex-col transform transition-all duration-300 scale-100">
                         {formContent}
                     </div>
                 </div>
