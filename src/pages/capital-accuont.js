@@ -6,11 +6,15 @@ import {
     FiSettings,
     FiDollarSign,
     FiMenu,
-    FiFileText
+    FiFileText,
+    FiFilter,
+    FiChevronRight,
+    FiPrinter,
+    FiTrendingUp
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CapitalAccounts = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -141,6 +145,24 @@ const CapitalAccounts = () => {
             opening_date: '25-12-2023',
             opening_type: '1',
             balance: 3100000
+        },
+        {
+            account_id: '11',
+            name: 'Angel Investor',
+            remark: 'Angel investment round',
+            opening_balance: 800000,
+            opening_date: '10-01-2024',
+            opening_type: '1',
+            balance: 850000
+        },
+        {
+            account_id: '12',
+            name: 'Venture Capital',
+            remark: 'Series A funding',
+            opening_balance: 3000000,
+            opening_date: '20-02-2024',
+            opening_type: '1',
+            balance: 3200000
         }
     ];
 
@@ -173,6 +195,9 @@ const CapitalAccounts = () => {
             maximumFractionDigits: 2
         }).format(amount);
     };
+
+    // Calculate total capital
+    const totalCapital = accounts.reduce((acc, account) => acc + account.balance, 0);
 
     // Simulate API call to fetch accounts
     const fetchAccountList = async (showLoading = false) => {
@@ -309,30 +334,38 @@ const CapitalAccounts = () => {
         };
     }, []);
 
+    // Get balance color
+    const getBalanceColor = (balance) => {
+        const numBalance = Number(balance);
+        if (numBalance < 0) return 'bg-red-100 text-red-700';
+        if (numBalance > 0) return 'bg-green-100 text-green-700';
+        return 'bg-slate-100 text-slate-700';
+    };
+
     // Skeleton loader component
     const SkeletonRow = () => (
-        <tr className="border-b border-gray-200 animate-pulse">
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-8"></div>
+        <tr className="border-b border-slate-100 animate-pulse">
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-6 mx-auto"></div>
             </td>
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-32 mx-auto"></div>
             </td>
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-24"></div>
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-24 mx-auto"></div>
             </td>
-            <td className="p-4 text-right">
-                <div className="h-6 bg-gray-200 rounded w-16 ml-auto"></div>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-16 mx-auto"></div>
             </td>
-            <td className="p-4">
-                <div className="h-6 bg-gray-200 rounded w-8 ml-auto"></div>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-10 mx-auto"></div>
             </td>
         </tr>
     );
 
-    // Skeleton Loading Component
+    // Skeleton Loading Component for full page
     const SkeletonLoader = () => (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -347,34 +380,45 @@ const CapitalAccounts = () => {
             />
 
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                        {/* Card Header Skeleton */}
-                        <div className="border-b border-gray-200 px-6 py-4">
-                            <div className="animate-pulse">
-                                <div className="h-6 bg-gray-200 rounded w-48 mb-2"></div>
-                                <div className="h-4 bg-gray-200 rounded w-64"></div>
+                <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                        {/* Skeleton Header */}
+                        <div className="border-b border-slate-200 px-6 py-4">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div>
+                                    <div className="h-6 bg-gray-200 rounded w-48 mb-2"></div>
+                                    <div className="h-4 bg-gray-200 rounded w-32"></div>
+                                </div>
+                                <div className="flex gap-3">
+                                    <div className="h-10 bg-gray-200 rounded w-40"></div>
+                                    <div className="h-10 bg-gray-200 rounded w-32"></div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Table Skeleton */}
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        {[...Array(5)].map((_, i) => (
-                                            <th key={i} className="p-4">
-                                                <div className="h-4 bg-gray-200 rounded w-20"></div>
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {[...Array(5)].map((_, i) => (
-                                        <SkeletonRow key={i} />
-                                    ))}
-                                </tbody>
-                            </table>
+                        {/* Skeleton Table */}
+                        <div className="overflow-hidden">
+                            <div className="border-b border-slate-200">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                                        <tr>
+                                            {[...Array(5)].map((_, i) => (
+                                                <th key={i} className="text-center p-3">
+                                                    <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+
+                            <div className="p-4">
+                                {[...Array(6)].map((_, index) => (
+                                    <div key={index} className="mb-4">
+                                        <div className="h-12 bg-gray-100 rounded"></div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -382,7 +426,7 @@ const CapitalAccounts = () => {
         </div>
     );
 
-    // Modal Content Component
+    // Modal Content Component (moved inside CapitalAccounts to access state variables)
     const ModalContent = ({
         isOpen,
         onClose,
@@ -561,7 +605,7 @@ const CapitalAccounts = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -575,201 +619,301 @@ const CapitalAccounts = () => {
                 setIsMinimized={setIsMinimized}
             />
 
-            {/* Main content */}
+            {/* Main Content Area - Full Page Scroll */}
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    {/* Header Stats Card - Smaller */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="h-full flex flex-col"
+                        transition={{ duration: 0.2 }}
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md mb-4"
                     >
-                        {/* Main Card - Full height with scrolling */}
-                        <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full">
-                            {/* Card Header */}
-                            <div className="border-b border-gray-200 px-6 py-4">
-                                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                                    <div>
-                                        <h5 className="text-lg font-semibold text-gray-800 mb-1">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-blue-100 text-xs font-medium">Total Capital</p>
+                                <h3 className="text-lg font-bold mt-1">₹{formatCurrency(totalCapital)}</h3>
+                                <p className="text-blue-100 text-xs mt-1">
+                                    {accounts.length} Capital Accounts
+                                </p>
+                            </div>
+                            <FiTrendingUp className="w-5 h-5 opacity-80" />
+                        </div>
+                    </motion.div>
+
+                    {/* Main Card */}
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="bg-white rounded-xl shadow-lg border border-slate-200"
+                    >
+                        {/* Card Header */}
+                        <div className="border-b border-slate-200 px-6 py-4 bg-gradient-to-r from-slate-50 to-white sticky top-0 z-10">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="p-1.5 bg-blue-100 rounded-lg">
+                                            <FiTrendingUp className="w-4 h-4 text-blue-600" />
+                                        </div>
+                                        <h5 className="text-lg font-bold text-slate-800">
                                             Capital Accounts
                                         </h5>
-                                        <p className="text-gray-600 text-sm">
-                                            Total Accounts: <span className='text-green-700 font-semibold'>{accounts.length}</span>
-                                        </p>
                                     </div>
+                                    <p className="text-slate-600 text-xs font-medium">
+                                        Manage all capital accounts and investments
+                                    </p>
+                                </div>
 
-                                    <div className="flex gap-2">
-                                        {/* Export Dropdown */}
-                                        <div className="dropdown-container relative">
-                                            <motion.button
-                                                onClick={() => setShowAddDropdown(!showAddDropdown)}
-                                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 shadow-sm"
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
-                                            >
-                                                <PiExportBold className="w-4 h-4" />
-                                                Export
-                                            </motion.button>
+                                <div className="flex gap-2">
+                                    {/* Export Dropdown */}
+                                    <div className="dropdown-container relative">
+                                        <motion.button
+                                            onClick={() => setShowAddDropdown(!showAddDropdown)}
+                                            className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                        >
+                                            <PiExportBold className="w-4 h-4" />
+                                            Export
+                                            <FiChevronRight className={`w-3 h-3 transition-transform ${showAddDropdown ? 'rotate-90' : ''}`} />
+                                        </motion.button>
 
+                                        <AnimatePresence>
                                             {showAddDropdown && (
                                                 <motion.div
-                                                    initial={{ opacity: 0, y: -10 }}
+                                                    initial={{ opacity: 0, y: 5 }}
                                                     animate={{ opacity: 1, y: 0 }}
-                                                    className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                                    exit={{ opacity: 0, y: 5 }}
+                                                    className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
                                                 >
                                                     <div className="py-1">
                                                         <button
                                                             onClick={() => handleExport('pdf')}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                            className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
                                                         >
-                                                            <PiFilePdfDuotone className="w-4 h-4 mr-3 text-red-500" />
-                                                            Export as PDF
+                                                            <div className="p-1.5 bg-red-50 rounded mr-2 group-hover:bg-red-100 transition-colors">
+                                                                <PiFilePdfDuotone className="w-3.5 h-3.5 text-red-500" />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <div className="font-medium text-xs">Export as PDF</div>
+                                                            </div>
                                                         </button>
                                                         <button
                                                             onClick={() => handleExport('excel')}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                            className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
                                                         >
-                                                            <PiMicrosoftExcelLogoDuotone className="w-4 h-4 mr-3 text-green-500" />
-                                                            Export as Excel
+                                                            <div className="p-1.5 bg-green-50 rounded mr-2 group-hover:bg-green-100 transition-colors">
+                                                                <PiMicrosoftExcelLogoDuotone className="w-3.5 h-3.5 text-green-500" />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <div className="font-medium text-xs">Export as Excel</div>
+                                                            </div>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleExport('print')}
+                                                            className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                        >
+                                                            <div className="p-1.5 bg-slate-50 rounded mr-2 group-hover:bg-slate-100 transition-colors">
+                                                                <FiPrinter className="w-3.5 h-3.5 text-slate-600" />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <div className="font-medium text-xs">Print Report</div>
+                                                            </div>
                                                         </button>
                                                     </div>
                                                 </motion.div>
                                             )}
-                                        </div>
-
-                                        <motion.button
-                                            onClick={() => setShowAddModal(true)}
-                                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 shadow-sm"
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
-                                        >
-                                            <FiPlus className="w-4 h-4" />
-                                            Add Account
-                                        </motion.button>
+                                        </AnimatePresence>
                                     </div>
-                                </div>
-                            </div>
 
-                            {/* Table Container with Fixed Header and Footer, Scrollable Body */}
-                            <div className="flex-1 flex flex-col overflow-hidden min-h-[400px]">
-                                {/* Fixed Table Header */}
-                                <div className="border-b border-gray-200 bg-gray-50 flex-shrink-0">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr>
-                                                <th className="text-left p-4 font-semibold text-gray-700">Sl</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700">Account Name</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700">Remark</th>
-                                                <th className="text-right p-4 font-semibold text-gray-700">Balance</th>
-                                                <th className="text-center p-4 font-semibold text-gray-700">Actions</th>
-                                            </tr>
-                                        </thead>
-                                    </table>
-                                </div>
-
-                                {/* Scrollable Table Body */}
-                                <div 
-                                    className="flex-1 overflow-y-auto"
-                                    style={{ maxHeight: 'calc(100vh - 400px)' }}
-                                >
-                                    <table className="w-full text-sm">
-                                        <tbody className="bg-white">
-                                            {accounts.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="5" className="text-center py-8 text-gray-500">
-                                                        <div className="flex flex-col items-center justify-center">
-                                                            <FiFileText className="w-12 h-12 text-gray-300 mb-3" />
-                                                            <p className="text-gray-500">No capital accounts found</p>
-                                                            <motion.button
-                                                                onClick={() => setShowAddModal(true)}
-                                                                className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
-                                                                whileHover={{ scale: 1.05 }}
-                                                                whileTap={{ scale: 0.95 }}
-                                                            >
-                                                                Create Your First Capital Account
-                                                            </motion.button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                accounts.map((account, index) => {
-                                                    const isDropdownOpen = activeRowDropdown === account.account_id;
-                                                    const isNegativeBalance = Number(account.balance) < 0;
-
-                                                    return (
-                                                        <tr
-                                                            key={account.account_id}
-                                                            className="border-b border-gray-200 hover:bg-gray-50 transition-colors group"
-                                                        >
-                                                            <td className="p-4 text-gray-600 font-medium">{index + 1}</td>
-                                                            <td className="p-4">
-                                                                <div className="text-gray-800 font-medium">
-                                                                    {account.name}
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <div className="text-gray-600">
-                                                                    {account.remark}
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-4 text-right">
-                                                                <a
-                                                                    href={`/view-capital-account-ledger?account_id=${account.account_id}`}
-                                                                    className={`inline-flex items-center justify-center text-sm font-semibold px-3 py-1.5 rounded-lg min-w-[80px] hover:opacity-90 transition-colors ${isNegativeBalance
-                                                                            ? 'bg-red-50 text-red-700 hover:bg-red-100'
-                                                                            : 'bg-green-50 text-green-700 hover:bg-green-100'
-                                                                        }`}
-                                                                >
-                                                                    ₹{formatCurrency(account.balance)}
-                                                                </a>
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <div className="dropdown-container relative flex justify-center">
-                                                                    <button
-                                                                        className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group-hover:bg-gray-200"
-                                                                        onClick={() => toggleRowDropdown(account.account_id)}
-                                                                    >
-                                                                        <FiMenu className="w-4 h-4" />
-                                                                    </button>
-                                                                    {isDropdownOpen && (
-                                                                        <motion.div
-                                                                            initial={{ opacity: 0, y: -10 }}
-                                                                            animate={{ opacity: 1, y: 0 }}
-                                                                            className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
-                                                                        >
-                                                                            <div className="py-1">
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        handleEditClick(account);
-                                                                                        setActiveRowDropdown(null);
-                                                                                    }}
-                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-                                                                                >
-                                                                                    <FiEdit className="w-4 h-4 mr-3" />
-                                                                                    Edit Account
-                                                                                </button>
-                                                                                <a
-                                                                                    href={`/view-capital-account-ledger?account_id=${account.account_id}`}
-                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-                                                                                    onClick={() => setActiveRowDropdown(null)}
-                                                                                >
-                                                                                    <FiFileText className="w-4 h-4 mr-3" />
-                                                                                    View Ledger
-                                                                                </a>
-                                                                            </div>
-                                                                        </motion.div>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })
-                                            )}
-                                        </tbody>
-                                    </table>
+                                    {/* Add Account Button */}
+                                    <motion.button
+                                        onClick={() => setShowAddModal(true)}
+                                        className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <FiPlus className="w-4 h-4" />
+                                        Add Account
+                                    </motion.button>
                                 </div>
                             </div>
                         </div>
+
+                        {/* Table Container */}
+                        <div className="w-full">
+                            <table className="w-full text-xs table-fixed">
+                                <thead>
+                                    <tr className="bg-gradient-to-r from-slate-50 to-slate-100">
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider w-[5%]">
+                                            Sl No
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider w-[30%]">
+                                            Account Name
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider w=[30%]">
+                                            Remark
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider w=[20%]">
+                                            Balance
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider w=[15%]">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-100">
+                                    {accounts.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="5" className="text-center py-8 text-slate-500">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="p-3 bg-slate-100 rounded-full mb-3">
+                                                        <FiTrendingUp className="w-8 h-8 text-slate-400" />
+                                                    </div>
+                                                    <p className="text-slate-600 text-sm font-medium mb-1">No capital accounts found</p>
+                                                    <p className="text-slate-500 text-xs mb-4">Start by creating your first capital account</p>
+                                                    <motion.button
+                                                        onClick={() => setShowAddModal(true)}
+                                                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-xs font-semibold hover:shadow transition-all duration-200"
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                    >
+                                                        Create Your First Capital Account
+                                                    </motion.button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        accounts.map((account, index) => {
+                                            const isDropdownOpen = activeRowDropdown === account.account_id;
+                                            const isNegativeBalance = Number(account.balance) < 0;
+
+                                            return (
+                                                <motion.tr
+                                                    key={account.account_id}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    transition={{ duration: 0.15 }}
+                                                    className="hover:bg-blue-50/20 transition-colors duration-150"
+                                                >
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="text-slate-700 font-medium text-xs">
+                                                            {index + 1}
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="px-2">
+                                                            <div className="text-slate-800 font-semibold text-xs truncate">
+                                                                {account.name}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="px-2">
+                                                            <div className="text-slate-500 text-[10px] italic truncate">
+                                                                "{account.remark}"
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <a
+                                                            href={`/view-capital-account-ledger?account_id=${account.account_id}`}
+                                                            className={`inline-flex items-center justify-center text-green-800 font-bold px-3 py-1.5 rounded text-xs cursor-pointer hover:shadow transition-all duration-150 ${isNegativeBalance ? 'bg-gradient-to-r from-red-50 to-red-100 text-red-800' : 'bg-gradient-to-r from-green-50 to-green-100 text-green-800'}`}
+                                                        >
+                                                            ₹{formatCurrency(account.balance)}
+                                                        </a>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="dropdown-container relative flex justify-center">
+                                                            <motion.button
+                                                                className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
+                                                                onClick={() => toggleRowDropdown(account.account_id)}
+                                                                whileHover={{ scale: 1.05 }}
+                                                                whileTap={{ scale: 0.95 }}
+                                                            >
+                                                                <FiMenu className="w-3.5 h-3.5" />
+                                                            </motion.button>
+                                                            <AnimatePresence>
+                                                                {isDropdownOpen && (
+                                                                    <motion.div
+                                                                        initial={{ opacity: 0, y: 5 }}
+                                                                        animate={{ opacity: 1, y: 0 }}
+                                                                        exit={{ opacity: 0, y: 5 }}
+                                                                        className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
+                                                                    >
+                                                                        <div className="py-1">
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    handleEditClick(account);
+                                                                                    setActiveRowDropdown(null);
+                                                                                }}
+                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                            >
+                                                                                <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                    <FiEdit className="w-3 h-3 text-blue-500" />
+                                                                                </div>
+                                                                                <div className="text-left">
+                                                                                    <div className="font-medium">Edit Account</div>
+                                                                                </div>
+                                                                            </button>
+                                                                            <div className="border-t border-slate-100 mt-1 pt-1">
+                                                                                <a
+                                                                                    href={`/view-capital-account-ledger?account_id=${account.account_id}`}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    onClick={() => setActiveRowDropdown(null)}
+                                                                                >
+                                                                                    <div className="p-1 bg-green-50 rounded mr-2">
+                                                                                        <FiFileText className="w-3 h-3 text-green-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">View Ledger</div>
+                                                                                    </div>
+                                                                                </a>
+                                                                                <button
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    onClick={() => handleExport('print', account)}
+                                                                                >
+                                                                                    <div className="p-1 bg-slate-50 rounded mr-2">
+                                                                                        <FiPrinter className="w-3 h-3 text-slate-600" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">Print</div>
+                                                                                    </div>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
+                                                        </div>
+                                                    </td>
+                                                </motion.tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Table Footer - Fixed */}
+                        {/* <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-white shrink-0">
+                            <table className="w-full text-sm">
+                                <tfoot>
+                                    <tr>
+                                        <td className="text-right p-4 font-bold text-slate-800 text-xs uppercase tracking-wider" colSpan="3">
+                                            Total Capital
+                                        </td>
+                                        <td className="text-center p-4">
+                                            <span className="inline-flex items-center justify-center bg-gradient-to-r from-green-100 to-green-200 text-green-800 text-sm font-bold px-4 py-2 rounded-lg min-w-[100px]">
+                                                ₹{formatCurrency(totalCapital)}
+                                            </span>
+                                        </td>
+                                        <td className="p-4"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div> */}
                     </motion.div>
                 </div>
             </div>
@@ -799,32 +943,43 @@ const CapitalAccounts = () => {
             />
 
             {/* Export Confirmation Modal */}
-            {exportModal.open && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <AnimatePresence>
+                {exportModal.open && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-lg p-6 max-w-sm w-full mx-auto"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
                     >
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <PiExportBold className="w-8 h-8 text-green-600" />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="bg-white rounded-xl p-6 max-w-sm w-full mx-auto shadow-xl"
+                        >
+                            <div className="text-center">
+                                <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <PiExportBold className="w-8 h-8 text-blue-600" />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-2">
+                                    Exporting {exportModal.type.toUpperCase()}
+                                </h3>
+                                <p className="text-slate-600 mb-6 text-sm">
+                                    Your {exportModal.type} export is being processed...
+                                </p>
+                                <div className="flex justify-center space-x-2 mb-6">
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce"></div>
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                    This will only take a moment...
+                                </div>
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                                Exporting {exportModal.type.toUpperCase()}
-                            </h3>
-                            <p className="text-gray-600 mb-6">
-                                Your {exportModal.type} export is being processed...
-                            </p>
-                            <div className="flex justify-center space-x-3">
-                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"></div>
-                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                            </div>
-                        </div>
+                        </motion.div>
                     </motion.div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 };
