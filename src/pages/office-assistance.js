@@ -28,7 +28,7 @@ const OfficeAssistance = () => {
         };
     }, [mobileMenuOpen]);
 
-    // Office assistance cards data
+    // Office assistance cards data with professional color schemes
     const assistanceCards = [
         {
             title: "DSC Register",
@@ -42,7 +42,9 @@ const OfficeAssistance = () => {
                 </svg>
             ),
             link: "/dsc-report",
-            color: "bg-blue-100"
+            gradient: "from-blue-500 to-cyan-500",
+            bgGradient: "from-blue-50 to-blue-100/30",
+            shadowColor: "hover:shadow-blue-100/50"
         },
         {
             title: "File Index",
@@ -57,7 +59,9 @@ const OfficeAssistance = () => {
                 </svg>
             ),
             link: "/file-index",
-            color: "bg-blue-100"
+            gradient: "from-emerald-500 to-teal-500",
+            bgGradient: "from-emerald-50 to-emerald-100/30",
+            shadowColor: "hover:shadow-emerald-100/50"
         },
         {
             title: "Password Groups",
@@ -79,7 +83,9 @@ const OfficeAssistance = () => {
                 </svg>
             ),
             link: "/password-groups",
-            color: "bg-blue-100"
+            gradient: "from-indigo-500 to-purple-500",
+            bgGradient: "from-indigo-50 to-indigo-100/30",
+            shadowColor: "hover:shadow-indigo-100/50"
         },
         {
             title: "Important Links",
@@ -93,7 +99,9 @@ const OfficeAssistance = () => {
                 </svg>
             ),
             link: "/important-links",
-            color: "bg-blue-100"
+            gradient: "from-amber-500 to-orange-500",
+            bgGradient: "from-amber-50 to-amber-100/30",
+            shadowColor: "hover:shadow-amber-100/50"
         },
         {
             title: "Services",
@@ -109,7 +117,9 @@ const OfficeAssistance = () => {
                 </svg>
             ),
             link: "/services",
-            color: "bg-blue-100"
+            gradient: "from-rose-500 to-pink-500",
+            bgGradient: "from-rose-50 to-rose-100/30",
+            shadowColor: "hover:shadow-rose-100/50"
         },
         {
             title: "Recurring Group",
@@ -124,7 +134,9 @@ const OfficeAssistance = () => {
                 </svg>
             ),
             link: "/recurring-groups",
-            color: "bg-blue-100"
+            gradient: "from-violet-500 to-purple-600",
+            bgGradient: "from-violet-50 to-violet-100/30",
+            shadowColor: "hover:shadow-violet-100/50"
         },
         {
             title: "User Group",
@@ -141,7 +153,9 @@ const OfficeAssistance = () => {
                 </svg>
             ),
             link: "/firm-groups",
-            color: "bg-blue-100"
+            gradient: "from-cyan-500 to-blue-500",
+            bgGradient: "from-cyan-50 to-cyan-100/30",
+            shadowColor: "hover:shadow-cyan-100/50"
         },
         {
             title: "Inactive Client",
@@ -156,7 +170,9 @@ const OfficeAssistance = () => {
                 </svg>
             ),
             link: "/inactive-client",
-            color: "bg-blue-100"
+            gradient: "from-slate-600 to-slate-700",
+            bgGradient: "from-slate-50 to-slate-100/30",
+            shadowColor: "hover:shadow-slate-100/50"
         },
         {
             title: "CA List",
@@ -173,7 +189,9 @@ const OfficeAssistance = () => {
                 </svg>
             ),
             link: "/ca-list",
-            color: "bg-blue-100"
+            gradient: "from-purple-500 to-indigo-600",
+            bgGradient: "from-purple-50 to-purple-100/30",
+            shadowColor: "hover:shadow-purple-100/50"
         },
         {
             title: "Auto Payment Reminder",
@@ -188,12 +206,45 @@ const OfficeAssistance = () => {
                 </svg>
             ),
             link: "/auto-reminder",
-            color: "bg-blue-100"
+            gradient: "from-orange-500 to-red-500",
+            bgGradient: "from-orange-50 to-orange-100/30",
+            shadowColor: "hover:shadow-orange-100/50"
         }
     ];
 
+    // Animation variants
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.08,
+                delayChildren: 0.1
+            }
+        }
+    };
+
+    const cardVariants = {
+        hidden: { opacity: 0, y: 30 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+                duration: 0.5,
+                ease: [0.22, 1, 0.36, 1]
+            }
+        },
+        hover: {
+            y: -12,
+            transition: {
+                duration: 0.3,
+                ease: "easeOut"
+            }
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-slate-50 overflow-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/20 to-gray-50 overflow-hidden">
             {/* Fixed Header */}
             <Header
                 mobileMenuOpen={mobileMenuOpen}
@@ -211,40 +262,230 @@ const OfficeAssistance = () => {
             />
 
             {/* Main Content Area - Scrollable */}
-            <div className={`pt-16 transition-all duration-300 ease-in-out h-screen overflow-hidden ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
-                <div className="h-full overflow-y-auto p-3">
+            <div className={`pt-20 transition-all duration-300 ease-in-out h-screen overflow-hidden ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
+                <div className="h-full overflow-y-auto px-4 md:px-8 py-6">
                     <div className="max-w-7xl mx-auto">
+                        {/* Premium Header Section */}
+                        <motion.div 
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, ease: "easeOut" }}
+                            className="mb-10"
+                        >
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                                <line x1="8" y1="21" x2="16" y2="21"></line>
+                                                <line x1="12" y1="17" x2="12" y2="21"></line>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+                                                Office Assistance
+                                            </h1>
+                                            <p className="text-sm text-gray-500 font-medium mt-1">
+                                                Professional tools for efficient office management
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Stats Card */}
+                                <motion.div 
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/70 px-5 py-4 shadow-sm"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="text-center">
+                                            <div className="text-2xl font-bold text-gray-900">{assistanceCards.length}</div>
+                                            <div className="text-xs font-medium text-gray-500">Total Tools</div>
+                                        </div>
+                                        <div className="h-10 w-px bg-gradient-to-b from-gray-200 to-gray-100"></div>
+                                        <div className="text-center">
+                                            <div className="text-2xl font-bold text-gray-900">10+</div>
+                                            <div className="text-xs font-medium text-gray-500">Categories</div>
+                                        </div>
+                                        <div className="h-10 w-px bg-gradient-to-b from-gray-200 to-gray-100"></div>
+                                        <div className="text-center">
+                                            <div className="text-2xl font-bold text-gray-900">24/7</div>
+                                            <div className="text-xs font-medium text-gray-500">Available</div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </div>
+                            
+                            {/* Filter/Search Bar */}
+                            <div className="mt-8 flex flex-col sm:flex-row gap-4 items-center">
+                                <div className="relative flex-1 max-w-md">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search tools and features..."
+                                        className="pl-10 pr-4 py-3 w-full bg-white/80 backdrop-blur-sm border border-gray-200/70 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 outline-none transition-all duration-300 shadow-sm"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button className="px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300 transform hover:-translate-y-0.5">
+                                        All Tools
+                                    </button>
+                                    <button className="px-4 py-3 bg-white/80 backdrop-blur-sm border border-gray-200/70 text-gray-700 font-medium rounded-xl hover:bg-white hover:shadow-md transition-all duration-300">
+                                        Categories
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+
                         {/* Office Assistance Cards Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                        <motion.div
+                            variants={containerVariants}
+                            initial="hidden"
+                            animate="visible"
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 md:gap-6"
+                        >
                             {assistanceCards.map((card, index) => (
                                 <motion.div
                                     key={index}
+                                    variants={cardVariants}
+                                    whileHover="hover"
+                                    whileTap={{ scale: 0.97 }}
                                     onClick={() => navigate(`.${card.link}`)}
-                                    className="block transition-all cursor-pointer"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    className="group cursor-pointer relative"
                                 >
-                                    <div className="bg-white rounded-lg border border-slate-200 p-3 hover:border-slate-300 transition-all duration-200 h-full">
-                                        <div className="flex items-center space-x-3">
-                                            <div className={`${card.color} rounded-lg p-2 flex-shrink-0`}>
-                                                {card.icon}
+                                    {/* Enhanced Glow Effect with Light Blue Shadow */}
+                                    <div className={`absolute -inset-1 bg-gradient-to-r ${card.gradient} opacity-0 group-hover:opacity-10 blur-xl transition-opacity duration-500 rounded-2xl ${card.shadowColor}`}></div>
+                                    <div className={`absolute inset-0 bg-gradient-to-r from-blue-200/20 via-blue-100/10 to-cyan-200/20 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 rounded-2xl ${card.shadowColor}`}></div>
+                                    
+                                    {/* Main Card */}
+                                    <div className={`relative bg-white/95 backdrop-blur-sm rounded-2xl border border-gray-200/60 p-6 transition-all duration-500 group-hover:border-transparent h-full shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 ${card.shadowColor}`}>
+                                        {/* Card Content */}
+                                        <div className="flex flex-col h-full">
+                                            {/* Icon Badge */}
+                                            <div className="mb-5">
+                                                <div className="relative">
+                                                    <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-20 rounded-xl`}></div>
+                                                    <div className={`relative w-16 h-16 rounded-xl bg-gradient-to-br ${card.bgGradient} border border-gray-100/50 flex items-center justify-center shadow-lg`}>
+                                                        <div className={`bg-gradient-to-br ${card.gradient} bg-clip-text text-transparent`}>
+                                                            {card.icon}
+                                                        </div>
+                                                    </div>
+                                                    <div className={`absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gradient-to-br ${card.gradient} flex items-center justify-center shadow-lg`}>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h6 className="text-sm font-semibold text-slate-800 truncate mb-0.5">
+                                            
+                                            {/* Content */}
+                                            <div className="flex-1">
+                                                <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-gray-800 transition-colors">
                                                     {card.title}
-                                                </h6>
-                                                <p className="text-xs text-slate-500 truncate">
+                                                </h3>
+                                                <p className="text-sm text-gray-600 mb-4 leading-relaxed">
                                                     {card.description}
                                                 </p>
                                             </div>
+                                            
+                                            {/* Action Footer */}
+                                            <div className="flex items-center justify-between pt-5 mt-4 border-t border-gray-100/70 group-hover:border-gray-200/50 transition-colors">
+                                                <span className="text-xs font-semibold text-gray-400 group-hover:text-gray-600 transition-colors tracking-wide uppercase">
+                                                    Access Tool
+                                                </span>
+                                                <div className="relative">
+                                                    <div className={`absolute inset-0 bg-gradient-to-r ${card.gradient} opacity-0 group-hover:opacity-20 rounded-full blur transition-opacity duration-300`}></div>
+                                                    <div className={`relative w-10 h-10 rounded-full bg-gradient-to-br ${card.gradient} flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300 shadow-md group-hover:shadow-lg ${card.shadowColor}`}>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fillRule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Professional Corner Accent */}
+                                        <div className={`absolute top-0 right-0 w-16 h-16 overflow-hidden rounded-tr-2xl`}>
+                                            <div className={`absolute -top-8 -right-8 w-16 h-16 bg-gradient-to-br ${card.gradient} opacity-5 group-hover:opacity-10 transition-opacity duration-500 rotate-45`}></div>
                                         </div>
                                     </div>
                                 </motion.div>
                             ))}
-                        </div>
+                        </motion.div>
+
+                        {/* Premium Footer */}
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.8, duration: 0.5 }}
+                            className="mt-12 pt-8 border-t border-gray-200/50"
+                        >
+                            <div className="bg-gradient-to-r from-blue-50/50 to-gray-50/50 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-8 shadow-sm">
+                                <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+                                    <div className="flex-1">
+                                        <h3 className="text-xl font-bold text-gray-900 mb-3">
+                                            Need Professional Assistance?
+                                        </h3>
+                                        <p className="text-gray-600 text-sm max-w-2xl">
+                                            Our comprehensive suite of office tools is designed to streamline your workflow. 
+                                            Each module is built with professional-grade features to ensure maximum productivity 
+                                            and efficiency in your daily operations.
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300 transform hover:-translate-y-0.5">
+                                            Get Support
+                                        </button>
+                                        <button className="px-6 py-3 bg-white/80 backdrop-blur-sm border border-gray-200/70 text-gray-700 font-medium rounded-xl hover:bg-white hover:shadow-md transition-all duration-300">
+                                            View Documentation
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
                     </div>
                 </div>
             </div>
+
+            {/* Ultra-Professional Background Effects */}
+            <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+                {/* Main Gradient Mesh */}
+                <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-blue-50/10 to-gray-50"></div>
+                
+                {/* Subtle Grid Pattern */}
+                <div className="absolute inset-0 opacity-5" style={{
+                    backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(0, 0, 0, 0.1) 1px, transparent 0)',
+                    backgroundSize: '40px 40px'
+                }}></div>
+                
+                {/* Floating Orbs */}
+                <div className="absolute top-1/4 -left-32 w-96 h-96 bg-gradient-to-br from-blue-200/20 to-blue-100/10 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-gradient-to-br from-cyan-200/20 to-blue-100/10 rounded-full blur-3xl"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-gray-100/10 to-gray-50/5 rounded-full blur-3xl"></div>
+                
+                {/* Corner Accents */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-blue-500/5 to-transparent"></div>
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-blue-500/5 to-transparent"></div>
+            </div>
+
+            {/* Floating Action Button */}
+            <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 1, duration: 0.5 }}
+                className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-br from-blue-600 to-cyan-500 text-white rounded-full flex items-center justify-center shadow-xl hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-1 z-40"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+            </motion.button>
         </div>
     );
 };

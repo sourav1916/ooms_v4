@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo, useCallback } from 'react';
 import {
     FiRefreshCw,
     FiUser,
@@ -15,10 +15,59 @@ import {
     FiX,
     FiEye,
     FiEdit,
-    FiTrash2
+    FiTrash2,
+    FiTrendingUp,
+    FiUsers,
+    FiChevronRight,
+    FiChevronDown,
+    FiChevronUp,
+    FiChevronLeft,
+    FiChevronRight as FiChevronRightIcon
 } from 'react-icons/fi';
 import { IoTrash } from "react-icons/io5";
+import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../components/header';
+
+// Memoized ModalWrapper component
+const ModalWrapper = memo(({ isOpen, onClose, title, children, size = 'max-w-4xl' }) => {
+    if (!isOpen) return null;
+
+    return (
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                onClick={(e) => {
+                    if (e.target === e.currentTarget) onClose();
+                }}
+            >
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                    className={`relative w-full ${size} bg-white rounded-xl shadow-2xl flex flex-col max-h-[90vh]`}
+                >
+                    <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-xl">
+                        <h2 className="text-xl font-bold">{title}</h2>
+                        <button
+                            onClick={onClose}
+                            className="text-blue-200 hover:text-white p-1.5 rounded-lg transition-colors hover:bg-blue-800/50"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    {children}
+                </motion.div>
+            </motion.div>
+        </AnimatePresence>
+    );
+});
+
+ModalWrapper.displayName = 'ModalWrapper';
 
 const StaffReport = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -28,10 +77,16 @@ const StaffReport = () => {
     });
     const [loading, setLoading] = useState(false);
     const [taskData, setTaskData] = useState([]);
+    const [filteredTaskData, setFilteredTaskData] = useState([]);
     const [services, setServices] = useState([]);
     const [selectedService, setSelectedService] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [taskModal, setTaskModal] = useState({ open: false, type: '', staff: null, tasks: [] });
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
+    const [showAll, setShowAll] = useState(false);
 
     // Mock services data
     const mockServices = [
@@ -113,6 +168,76 @@ const StaffReport = () => {
             WIP: 4,
             PFC: 1,
             PFD: 3
+        },
+        {
+            username: 'staff006',
+            name: 'Emily Davis',
+            guardian_name: 'Thomas Davis',
+            mobile: '+91 9876543215',
+            email: 'emily.d@company.com',
+            OD: 6,
+            DT: 3,
+            D7: 9,
+            FT: 15,
+            WIP: 8,
+            PFC: 2,
+            PFD: 5
+        },
+        {
+            username: 'staff007',
+            name: 'David Wilson',
+            guardian_name: 'Richard Wilson',
+            mobile: '+91 9876543216',
+            email: 'david.w@company.com',
+            OD: 4,
+            DT: 2,
+            D7: 6,
+            FT: 9,
+            WIP: 5,
+            PFC: 1,
+            PFD: 4
+        },
+        {
+            username: 'staff008',
+            name: 'Lisa Anderson',
+            guardian_name: 'Charles Anderson',
+            mobile: '+91 9876543217',
+            email: 'lisa.a@company.com',
+            OD: 2,
+            DT: 1,
+            D7: 3,
+            FT: 6,
+            WIP: 3,
+            PFC: 0,
+            PFD: 2
+        },
+        {
+            username: 'staff009',
+            name: 'Kevin Martinez',
+            guardian_name: 'Joseph Martinez',
+            mobile: '+91 9876543218',
+            email: 'kevin.m@company.com',
+            OD: 7,
+            DT: 3,
+            D7: 8,
+            FT: 13,
+            WIP: 6,
+            PFC: 2,
+            PFD: 6
+        },
+        {
+            username: 'staff010',
+            name: 'Amanda Taylor',
+            guardian_name: 'Christopher Taylor',
+            mobile: '+91 9876543219',
+            email: 'amanda.t@company.com',
+            OD: 3,
+            DT: 1,
+            D7: 4,
+            FT: 8,
+            WIP: 4,
+            PFC: 1,
+            PFD: 3
         }
     ];
 
@@ -159,33 +284,54 @@ const StaffReport = () => {
         };
     }, [mobileMenuOpen]);
 
-    // Initialize data
+    // Initialize data - runs only once on mount
     useEffect(() => {
         fetchServices();
-        fetchTaskData();
+        fetchInitialTaskData();
     }, []);
 
-    // Fetch services data
+    // Fetch services data - runs only once
     const fetchServices = async () => {
         setTimeout(() => {
             setServices(mockServices);
         }, 500);
     };
 
-    // Fetch task summary data
-    const fetchTaskData = async () => {
+    // Fetch initial task data - runs only once
+    const fetchInitialTaskData = async () => {
         setLoading(true);
+        setTimeout(() => {
+            setTaskData(mockTaskData);
+            setFilteredTaskData(mockTaskData);
+            setLoading(false);
+        }, 1000);
+    };
 
+    // Handle service filter change - only updates state, doesn't trigger fetch
+    const handleServiceChange = (e) => {
+        setSelectedService(e.target.value);
+        // Reset to page 1 when filter changes
+        setCurrentPage(1);
+        setShowAll(false);
+    };
+
+    // Apply filters without re-fetching data
+    const applyFilters = useCallback(() => {
+        setLoading(true);
+        
+        // Simulate API call delay
         setTimeout(() => {
             let filteredData = mockTaskData;
             
+            // Apply service filter
             if (selectedService) {
                 filteredData = mockTaskData.filter(item => 
                     item.username.includes(selectedService)
                 );
             }
 
-            if (searchQuery) {
+            // Apply search filter
+            if (searchQuery.trim()) {
                 filteredData = filteredData.filter(item =>
                     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     item.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -193,19 +339,14 @@ const StaffReport = () => {
                 );
             }
             
-            setTaskData(filteredData);
+            setFilteredTaskData(filteredData);
             setLoading(false);
-        }, 1000);
-    };
+        }, 300);
+    }, [selectedService, searchQuery]);
 
-    // Handle service filter change
-    const handleServiceChange = (e) => {
-        setSelectedService(e.target.value);
-    };
-
-    // Handle search
+    // Handle search - applies filters
     const handleSearch = () => {
-        fetchTaskData();
+        applyFilters();
     };
 
     // Handle key press in search input
@@ -215,9 +356,17 @@ const StaffReport = () => {
         }
     };
 
-    // Reload data
+    // Reload only table data without refreshing the whole page
     const handleReload = () => {
-        fetchTaskData();
+        setLoading(true);
+        // Reset pagination
+        setCurrentPage(1);
+        setShowAll(false);
+        
+        // Simulate API refresh
+        setTimeout(() => {
+            applyFilters();
+        }, 500);
     };
 
     // Open task modal
@@ -236,33 +385,41 @@ const StaffReport = () => {
         setTaskModal({ open: false, type: '', staff: null, tasks: [] });
     };
 
-    // Effect to refetch when service filter changes
+    // Apply filters when selectedService or searchQuery changes
     useEffect(() => {
-        fetchTaskData();
-    }, [selectedService]);
+        applyFilters();
+    }, [applyFilters]);
+
+    // Clear all filters
+    const handleClearFilters = () => {
+        setSelectedService('');
+        setSearchQuery('');
+        setCurrentPage(1);
+        setShowAll(false);
+    };
 
     // Get badge color based on task type and count
     const getBadgeClass = (count, type) => {
-        if (count === 0) return 'text-gray-400 cursor-default';
+        if (count === 0) return 'text-slate-400 cursor-default';
         
-        const baseClasses = 'inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold cursor-pointer transition-all hover:scale-110';
+        const baseClasses = 'inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold cursor-pointer transition-all hover:scale-110 shadow-sm';
         
         switch (type) {
             case 'OD': // Overdue
-                return `${baseClasses} bg-red-100 text-red-800 border border-red-200 hover:bg-red-200`;
+                return `${baseClasses} bg-gradient-to-r from-red-100 to-red-50 text-red-800 border border-red-200 hover:from-red-200 hover:to-red-100`;
             case 'DT': // Due Today
-                return `${baseClasses} bg-orange-100 text-orange-800 border border-orange-200 hover:bg-orange-200`;
+                return `${baseClasses} bg-gradient-to-r from-orange-100 to-orange-50 text-orange-800 border border-orange-200 hover:from-orange-200 hover:to-orange-100`;
             case 'D7': // Due in 7 days
-                return `${baseClasses} bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200`;
+                return `${baseClasses} bg-gradient-to-r from-blue-100 to-blue-50 text-blue-800 border border-blue-200 hover:from-blue-200 hover:to-blue-100`;
             case 'FT': // Future Tasks
-                return `${baseClasses} bg-green-100 text-green-800 border border-green-200 hover:bg-green-200`;
+                return `${baseClasses} bg-gradient-to-r from-green-100 to-green-50 text-green-800 border border-green-200 hover:from-green-200 hover:to-green-100`;
             case 'WIP': // Work in Progress
-                return `${baseClasses} bg-purple-100 text-purple-800 border border-purple-200 hover:bg-purple-200`;
+                return `${baseClasses} bg-gradient-to-r from-purple-100 to-purple-50 text-purple-800 border border-purple-200 hover:from-purple-200 hover:to-purple-100`;
             case 'PFC': // Pending from Client
             case 'PFD': // Pending from Department
-                return `${baseClasses} bg-yellow-100 text-yellow-800 border border-yellow-200 hover:bg-yellow-200`;
+                return `${baseClasses} bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-800 border border-yellow-200 hover:from-yellow-200 hover:to-yellow-100`;
             default:
-                return `${baseClasses} bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-200`;
+                return `${baseClasses} bg-gradient-to-r from-slate-100 to-slate-50 text-slate-800 border border-slate-200 hover:from-slate-200 hover:to-slate-100`;
         }
     };
 
@@ -294,9 +451,9 @@ const StaffReport = () => {
         }
     };
 
-    // Calculate totals
+    // Calculate totals from filtered data
     const calculateTotals = () => {
-        return taskData.reduce((acc, staff) => ({
+        return filteredTaskData.reduce((acc, staff) => ({
             OD: acc.OD + staff.OD,
             DT: acc.DT + staff.DT,
             D7: acc.D7 + staff.D7,
@@ -310,67 +467,41 @@ const StaffReport = () => {
 
     const totals = calculateTotals();
 
+    // Get current items based on pagination
+    const indexOfLastItem = showAll ? filteredTaskData.length : currentPage * itemsPerPage;
+    const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
+    const currentItems = filteredTaskData.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredTaskData.length / itemsPerPage);
+
     // Skeleton loader component
     const SkeletonRow = () => (
-        <tr className="border-b border-gray-100 animate-pulse">
+        <tr className="border-b border-slate-100 animate-pulse">
             <td className="p-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                    <div className="w-10 h-10 bg-slate-200 rounded-full"></div>
                     <div className="space-y-2">
-                        <div className="h-4 bg-gray-200 rounded w-32"></div>
-                        <div className="h-3 bg-gray-200 rounded w-24"></div>
+                        <div className="h-4 bg-slate-200 rounded w-32"></div>
+                        <div className="h-3 bg-slate-200 rounded w-24"></div>
                     </div>
                 </div>
             </td>
             <td className="p-4">
                 <div className="space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-28"></div>
-                    <div className="h-3 bg-gray-200 rounded w-32"></div>
+                    <div className="h-4 bg-slate-200 rounded w-28"></div>
+                    <div className="h-3 bg-slate-200 rounded w-32"></div>
                 </div>
             </td>
             {Array.from({ length: 7 }).map((_, index) => (
                 <td key={index} className="p-4">
-                    <div className="h-8 bg-gray-200 rounded w-8 mx-auto"></div>
+                    <div className="h-8 bg-slate-200 rounded w-8 mx-auto"></div>
                 </td>
             ))}
         </tr>
     );
 
-    // Professional Modal Wrapper Component
-    const ModalWrapper = ({ isOpen, onClose, title, children, size = 'max-w-4xl' }) => {
-        if (!isOpen) return null;
-
-        return (
-            <div className="fixed inset-0 z-50 overflow-y-auto">
-                <div className="flex items-center justify-center min-h-screen p-4">
-                    {/* Overlay */}
-                    <div
-                        className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                        onClick={onClose}
-                    />
-                    {/* Professional Modal panel */}
-                    <div className={`relative w-full ${size} bg-white rounded-xl shadow-2xl flex flex-col max-h-[90vh]`}>
-                        {/* Professional Header */}
-                        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-300 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-xl">
-                            <h2 className="text-xl font-bold">{title}</h2>
-                            <button
-                                onClick={onClose}
-                                className="text-blue-200 hover:text-white p-1 rounded-lg transition-colors"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                        {children}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    return (
-        <div className="min-h-screen bg-gray-50">
+    // Skeleton Loading Component for full page
+    const SkeletonLoader = () => (
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -384,210 +515,342 @@ const StaffReport = () => {
                 setIsMinimized={setIsMinimized}
             />
 
-            {/* Main content */}
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    <div className="mb-6">
-                        <h1 className="text-2xl font-bold text-gray-800">Pending Task List</h1>
-                        <p className="text-gray-600 mt-1">
-                            Staff-wise task summary and tracking
-                        </p>
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                        <div className="border-b border-slate-200 px-6 py-4">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div>
+                                    <div className="h-6 bg-gray-200 rounded w-48 mb-2"></div>
+                                    <div className="h-4 bg-gray-200 rounded w-32"></div>
+                                </div>
+                                <div className="flex gap-3">
+                                    <div className="h-10 bg-gray-200 rounded w-40"></div>
+                                    <div className="h-10 bg-gray-200 rounded w-40"></div>
+                                    <div className="h-10 bg-gray-200 rounded w-32"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="overflow-hidden">
+                            <div className="border-b border-slate-200">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                                        <tr>
+                                            {[...Array(9)].map((_, i) => (
+                                                <th key={i} className="p-4">
+                                                    <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+
+                            <div className="p-4">
+                                {[...Array(6)].map((_, index) => (
+                                    <div key={index} className="mb-4">
+                                        <div className="h-12 bg-gray-100 rounded"></div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    // Show skeleton while loading
+    if (loading && currentItems.length === 0) {
+        return <SkeletonLoader />;
+    }
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+            <Header
+                mobileMenuOpen={mobileMenuOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+                isMinimized={isMinimized}
+                setIsMinimized={setIsMinimized}
+            />
+            
+            <Sidebar
+                mobileMenuOpen={mobileMenuOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+                isMinimized={isMinimized}
+                setIsMinimized={setIsMinimized}
+            />
+
+            <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
+                <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    {/* Header Stats Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-blue-100 text-xs font-medium">Total Staff</p>
+                                    <h3 className="text-lg font-bold mt-1">{filteredTaskData.length} Members</h3>
+                                </div>
+                                <FiUsers className="w-5 h-5 opacity-80" />
+                            </div>
+                        </motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: 0.1 }}
+                            className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg p-4 text-white shadow-md"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-emerald-100 text-xs font-medium">Total Tasks</p>
+                                    <h3 className="text-lg font-bold mt-1">{totals.total} Tasks</h3>
+                                </div>
+                                <FiTrendingUp className="w-5 h-5 opacity-80" />
+                            </div>
+                        </motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: 0.2 }}
+                            className="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-4 text-white shadow-md"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-red-100 text-xs font-medium">Overdue Tasks</p>
+                                    <h3 className="text-lg font-bold mt-1">{totals.OD} Tasks</h3>
+                                </div>
+                                <FiAlertTriangle className="w-5 h-5 opacity-80" />
+                            </div>
+                        </motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: 0.3 }}
+                            className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white shadow-md"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-purple-100 text-xs font-medium">In Progress</p>
+                                    <h3 className="text-lg font-bold mt-1">{totals.WIP} Tasks</h3>
+                                </div>
+                                <FiArchive className="w-5 h-5 opacity-80" />
+                            </div>
+                        </motion.div>
                     </div>
 
-                    <div className="h-full flex flex-col">
-                        {/* Main Card - Full height with scrolling */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-full">
-                            {/* Card Header - Fixed */}
-                            <div className="border-b border-gray-200 px-6 py-4">
-                                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                                    <div>
-                                        <h5 className="text-xl font-bold text-gray-800 mb-1">
+                    {/* Main Card */}
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="bg-white rounded-xl shadow-lg border border-slate-200"
+                    >
+                        {/* Card Header */}
+                        <div className="border-b border-slate-200 px-6 py-4 bg-gradient-to-r from-slate-50 to-white sticky top-0 z-10">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className="p-1.5 bg-blue-100 rounded-lg">
+                                            <FiTrendingUp className="w-4 h-4 text-blue-600" />
+                                        </div>
+                                        <h5 className="text-lg font-bold text-slate-800">
                                             Pending Task Summary
                                         </h5>
-                                        <p className="text-gray-500 text-sm">
-                                            Staff-wise task tracking and management
-                                        </p>
                                     </div>
+                                    <p className="text-slate-500 text-xs font-medium">
+                                        Staff-wise task tracking and management
+                                    </p>
+                                </div>
 
-                                    <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
-                                        <div className="flex gap-2">
-                                            {/* Search Input */}
-                                            <div className="relative">
-                                                <input
-                                                    type="text"
-                                                    value={searchQuery}
-                                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                                    onKeyPress={handleKeyPress}
-                                                    placeholder="Search staff..."
-                                                    className="pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none transition-colors w-full lg:w-64"
-                                                />
-                                                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            </div>
-
-                                            {/* Service Filter */}
-                                            <div className="relative">
-                                                <select
-                                                    value={selectedService}
-                                                    onChange={handleServiceChange}
-                                                    className="pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none transition-colors appearance-none w-full lg:w-48"
-                                                >
-                                                    <option value="">All Services</option>
-                                                    {services.map(service => (
-                                                        <option key={service.service_id} value={service.service_id}>
-                                                            {service.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            </div>
-
-                                            {/* Action Buttons */}
-                                            <button
-                                                onClick={handleReload}
-                                                disabled={loading}
-                                                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm disabled:opacity-50"
-                                            >
-                                                <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                                                Refresh
-                                            </button>
+                                <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+                                    <div className="flex gap-2">
+                                        {/* Search Input */}
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                onKeyPress={handleKeyPress}
+                                                placeholder="Search staff..."
+                                                className="pl-10 pr-4 py-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none transition-colors w-full lg:w-64 shadow-sm"
+                                            />
+                                            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
                                         </div>
+
+                                        {/* Service Filter */}
+                                        <div className="relative">
+                                            <select
+                                                value={selectedService}
+                                                onChange={handleServiceChange}
+                                                className="pl-10 pr-4 py-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white outline-none transition-colors appearance-none w-full lg:w-48 shadow-sm"
+                                            >
+                                                <option value="">All Services</option>
+                                                {services.map(service => (
+                                                    <option key={service.service_id} value={service.service_id}>
+                                                        {service.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        </div>
+
+                                        {/* Clear Filters Button */}
+                                        {(selectedService || searchQuery) && (
+                                            <motion.button
+                                                onClick={handleClearFilters}
+                                                className="px-4 py-2.5 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                                whileHover={{ scale: 1.02 }}
+                                                whileTap={{ scale: 0.98 }}
+                                            >
+                                                <FiX className="w-4 h-4" />
+                                                Clear
+                                            </motion.button>
+                                        )}
+
+                                        {/* Action Buttons */}
+                                        <motion.button
+                                            onClick={handleReload}
+                                            disabled={loading}
+                                            className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow disabled:opacity-50"
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                        >
+                                            <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                                            Refresh
+                                        </motion.button>
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Table Container with Fixed Header and Footer */}
-                            <div className="flex-1 flex flex-col overflow-hidden">
-                                {/* Table Header - Fixed */}
-                                <div className="border-b border-gray-200">
-                                    <table className="w-full text-sm">
-                                        <colgroup>
-                                            <col className="w-[25%]" /> {/* Staff Details */}
-                                            <col className="w-[20%]" /> {/* Contact Info */}
-                                            <col className="w-[8%]" /> {/* OD */}
-                                            <col className="w-[8%]" /> {/* DT */}
-                                            <col className="w-[8%]" /> {/* D7 */}
-                                            <col className="w-[8%]" /> {/* FT */}
-                                            <col className="w-[8%]" /> {/* WIP */}
-                                            <col className="w-[8%]" /> {/* PFC */}
-                                            <col className="w-[8%]" /> {/* PFD */}
-                                        </colgroup>
-                                        <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                                            <tr>
-                                                <th className="text-left p-4 font-semibold text-gray-700 align-middle">STAFF DETAILS</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700 align-middle">CONTACT INFO</th>
-                                                <th className="text-center p-4 font-semibold text-gray-700 align-middle" title="Overdue Tasks">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <span className="text-sm">OD</span>
-                                                        <span className="text-xs font-normal text-gray-500 mt-1">Overdue</span>
+                        {/* Table Container */}
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="bg-gradient-to-r from-slate-50 to-slate-100">
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[200px]">
+                                            STAFF DETAILS
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[150px]">
+                                            CONTACT INFO
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]" title="Overdue Tasks">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="text-xs">OD</span>
+                                                <span className="text-[10px] font-normal text-slate-500 mt-0.5">Overdue</span>
+                                            </div>
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]" title="Due Today">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="text-xs">DT</span>
+                                                <span className="text-[10px] font-normal text-slate-500 mt-0.5">Due Today</span>
+                                            </div>
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]" title="Due in 7 Days">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="text-xs">D7</span>
+                                                <span className="text-[10px] font-normal text-slate-500 mt-0.5">7 Days</span>
+                                            </div>
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]" title="Future Tasks">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="text-xs">FT</span>
+                                                <span className="text-[10px] font-normal text-slate-500 mt-0.5">Future</span>
+                                            </div>
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]" title="Work in Progress">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="text-xs">WIP</span>
+                                                <span className="text-[10px] font-normal text-slate-500 mt-0.5">In Progress</span>
+                                            </div>
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]" title="Pending from Client">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="text-xs">PFC</span>
+                                                <span className="text-[10px] font-normal text-slate-500 mt-0.5">From Client</span>
+                                            </div>
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]" title="Pending from Department">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="text-xs">PFD</span>
+                                                <span className="text-[10px] font-normal text-slate-500 mt-0.5">From Dept</span>
+                                            </div>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-100">
+                                    {filteredTaskData.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="9" className="text-center py-8 text-slate-500">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="p-3 bg-slate-100 rounded-full mb-3">
+                                                        <FiUser className="w-8 h-8 text-slate-400" />
                                                     </div>
-                                                </th>
-                                                <th className="text-center p-4 font-semibold text-gray-700 align-middle" title="Due Today">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <span className="text-sm">DT</span>
-                                                        <span className="text-xs font-normal text-gray-500 mt-1">Due Today</span>
-                                                    </div>
-                                                </th>
-                                                <th className="text-center p-4 font-semibold text-gray-700 align-middle" title="Due in 7 Days">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <span className="text-sm">D7</span>
-                                                        <span className="text-xs font-normal text-gray-500 mt-1">7 Days</span>
-                                                    </div>
-                                                </th>
-                                                <th className="text-center p-4 font-semibold text-gray-700 align-middle" title="Future Tasks">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <span className="text-sm">FT</span>
-                                                        <span className="text-xs font-normal text-gray-500 mt-1">Future</span>
-                                                    </div>
-                                                </th>
-                                                <th className="text-center p-4 font-semibold text-gray-700 align-middle" title="Work in Progress">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <span className="text-sm">WIP</span>
-                                                        <span className="text-xs font-normal text-gray-500 mt-1">In Progress</span>
-                                                    </div>
-                                                </th>
-                                                <th className="text-center p-4 font-semibold text-gray-700 align-middle" title="Pending from Client">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <span className="text-sm">PFC</span>
-                                                        <span className="text-xs font-normal text-gray-500 mt-1">From Client</span>
-                                                    </div>
-                                                </th>
-                                                <th className="text-center p-4 font-semibold text-gray-700 align-middle" title="Pending from Department">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <span className="text-sm">PFD</span>
-                                                        <span className="text-xs font-normal text-gray-500 mt-1">From Dept</span>
-                                                    </div>
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                    </table>
-                                </div>
-
-                                {/* Scrollable Table Body */}
-                                <div className="flex-1 overflow-y-auto">
-                                    <table className="w-full text-sm">
-                                        <colgroup>
-                                            <col className="w-[25%]" />
-                                            <col className="w-[20%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                        </colgroup>
-                                        <tbody className="bg-white">
-                                            {loading ? (
-                                                // Skeleton Loaders
-                                                Array.from({ length: 6 }).map((_, index) => (
-                                                    <SkeletonRow key={index} />
-                                                ))
-                                            ) : taskData.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="9" className="text-center py-8 text-gray-500">
-                                                        <div className="flex flex-col items-center justify-center">
-                                                            <FiUser className="w-12 h-12 text-gray-300 mb-3" />
-                                                            <p className="text-gray-500">No task records found</p>
-                                                            <p className="text-gray-400 text-sm mt-1">
-                                                                Try adjusting your search or filters
-                                                            </p>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                taskData.map((staff, index) => (
-                                                    <tr 
-                                                        key={staff.username}
-                                                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors group"
+                                                    <p className="text-slate-600 text-sm font-medium mb-1">No task records found</p>
+                                                    <p className="text-slate-500 text-xs mb-4">Try adjusting your search or filters</p>
+                                                    <button
+                                                        onClick={handleClearFilters}
+                                                        className="px-4 py-2 text-xs font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors"
                                                     >
-                                                        <td className="p-4 align-middle">
-                                                            <div className="flex items-start gap-3">
-                                                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                                        Clear Filters
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        <>
+                                            {/* Show skeleton rows when loading with existing data */}
+                                            {loading && [...Array(3)].map((_, index) => (
+                                                <SkeletonRow key={`skeleton-${index}`} />
+                                            ))}
+                                            
+                                            {/* Show actual data when not loading */}
+                                            {!loading && currentItems.map((staff, index) => {
+                                                const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
+
+                                                return (
+                                                    <motion.tr
+                                                        key={staff.username}
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        transition={{ duration: 0.15 }}
+                                                        className="hover:bg-blue-50/20 transition-colors duration-150"
+                                                    >
+                                                        <td className="text-center p-3 align-middle">
+                                                            <div className="flex flex-col items-center">
+                                                                <div className="w-10 h-10 bg-gradient-to-r from-blue-100 to-blue-50 rounded-full flex items-center justify-center mb-2">
                                                                     <FiUser className="w-5 h-5 text-blue-600" />
                                                                 </div>
-                                                                <div>
-                                                                    <div className="font-semibold text-gray-800">{staff.name}</div>
-                                                                    <div className="text-gray-500 text-sm mt-1">
-                                                                        C/O: {staff.guardian_name}
-                                                                    </div>
+                                                                <div className="font-semibold text-slate-800 text-sm">{staff.name}</div>
+                                                                <div className="text-slate-500 text-xs mt-0.5">
+                                                                    C/O: {staff.guardian_name}
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td className="p-4 align-middle">
-                                                            <div className="space-y-2">
-                                                                <div className="flex items-center gap-2 text-gray-800 font-medium">
-                                                                    <FiPhone className="w-3 h-3" />
+                                                        <td className="text-center p-3 align-middle">
+                                                            <div className="flex flex-col items-center">
+                                                                <div className="flex items-center gap-2 text-slate-800 font-medium text-xs">
+                                                                    <FiPhone className="w-3 h-3 text-blue-500" />
                                                                     {staff.mobile}
                                                                 </div>
-                                                                <div className="flex items-center gap-2 text-gray-500 text-sm">
-                                                                    <FiMail className="w-3 h-3" />
+                                                                <div className="flex items-center gap-2 text-slate-500 text-xs mt-1">
+                                                                    <FiMail className="w-3 h-3 text-blue-400" />
                                                                     {staff.email}
                                                                 </div>
                                                             </div>
                                                         </td>
                                                         {/* Task Count Cells - All aligned center */}
                                                         {['OD', 'DT', 'D7', 'FT', 'WIP', 'PFC', 'PFD'].map((type) => (
-                                                            <td key={type} className="p-4 align-middle text-center">
+                                                            <td key={type} className="text-center p-3 align-middle">
                                                                 {staff[type] > 0 ? (
                                                                     <button
                                                                         onClick={() => openTaskModal(type, staff)}
@@ -598,56 +861,101 @@ const StaffReport = () => {
                                                                         {staff[type]}
                                                                     </button>
                                                                 ) : (
-                                                                    <span className="text-gray-400 text-sm">-</span>
+                                                                    <span className="text-slate-400 text-xs">-</span>
                                                                 )}
                                                             </td>
                                                         ))}
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                    </motion.tr>
+                                                );
+                                            })}
+                                        </>
+                                    )}
+                                </tbody>
+                            </table>
 
-                                {/* Table Footer - Fixed */}
-                                <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                                    <table className="w-full text-sm">
-                                        <colgroup>
-                                            <col className="w-[45%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                            <col className="w-[8%]" />
-                                        </colgroup>
-                                        <tfoot>
-                                            <tr>
-                                                <td className="p-4 font-bold text-gray-800 align-middle" colSpan="2">
-                                                    Total Staff: {taskData.length} | Total Tasks: {totals.total}
-                                                </td>
-                                                {['OD', 'DT', 'D7', 'FT', 'WIP', 'PFC', 'PFD'].map((type) => (
-                                                    <td key={type} className="p-4 text-center align-middle">
-                                                        <span className={`inline-flex items-center justify-center text-sm font-bold px-3 py-1.5 rounded-lg border ${
-                                                            type === 'OD' ? 'bg-red-100 text-red-800 border-red-200' :
-                                                            type === 'DT' ? 'bg-orange-100 text-orange-800 border-orange-200' :
-                                                            type === 'D7' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                                                            type === 'FT' ? 'bg-green-100 text-green-800 border-green-200' :
-                                                            type === 'WIP' ? 'bg-purple-100 text-purple-800 border-purple-200' :
-                                                            'bg-yellow-100 text-yellow-800 border-yellow-200'
-                                                        }`}>
-                                                            {totals[type]}
-                                                        </span>
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        </tfoot>
-                                    </table>
+                            {/* Pagination Controls */}
+                            {filteredTaskData.length > itemsPerPage && !showAll && !loading && (
+                                <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                                    <div className="flex flex-col sm:flex-row justify-between items-center px-4 py-3 gap-3">
+                                        <div className="text-xs text-slate-600">
+                                            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredTaskData.length)} of {filteredTaskData.length} staff members
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                disabled={currentPage === 1}
+                                                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                                            >
+                                                <FiChevronLeft className="w-3 h-3" />
+                                                Previous
+                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                                    let pageNumber;
+                                                    if (totalPages <= 5) {
+                                                        pageNumber = i + 1;
+                                                    } else if (currentPage <= 3) {
+                                                        pageNumber = i + 1;
+                                                    } else if (currentPage >= totalPages - 2) {
+                                                        pageNumber = totalPages - 4 + i;
+                                                    } else {
+                                                        pageNumber = currentPage - 2 + i;
+                                                    }
+                                                    
+                                                    return (
+                                                        <button
+                                                            key={pageNumber}
+                                                            onClick={() => setCurrentPage(pageNumber)}
+                                                            className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
+                                                                currentPage === pageNumber
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
+                                                            }`}
+                                                        >
+                                                            {pageNumber}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <button
+                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                                disabled={currentPage === totalPages}
+                                                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                                            >
+                                                Next
+                                                <FiChevronRightIcon className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowAll(true)}
+                                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors"
+                                        >
+                                            Show All
+                                            <FiChevronDown className="w-3 h-3" />
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* Show Less Button when showing all */}
+                            {showAll && filteredTaskData.length > itemsPerPage && (
+                                <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                                    <div className="flex justify-center px-4 py-3">
+                                        <button
+                                            onClick={() => {
+                                                setShowAll(false);
+                                                setCurrentPage(1);
+                                            }}
+                                            className="flex items-center gap-1 px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors shadow-sm"
+                                        >
+                                            Show Less
+                                            <FiChevronUp className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
 
@@ -661,47 +969,47 @@ const StaffReport = () => {
                 <div className="flex-1 flex flex-col p-6">
                     {/* Staff Info Header */}
                     {taskModal.staff && (
-                        <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-200">
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-6 border border-blue-200 shadow-sm">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full flex items-center justify-center shadow-sm">
                                         <FiUser className="w-6 h-6 text-blue-600" />
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-gray-800">{taskModal.staff.name}</h3>
-                                        <p className="text-gray-600 text-sm">
+                                        <h3 className="font-semibold text-slate-800 text-sm">{taskModal.staff.name}</h3>
+                                        <p className="text-slate-600 text-xs">
                                             {taskModal.staff.mobile} • {taskModal.staff.email}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <div className="text-2xl font-bold text-blue-600">{taskModal.tasks.length}</div>
-                                    <div className="text-gray-600 text-sm">{getTaskTypeName(taskModal.type)}</div>
+                                    <div className="text-slate-600 text-xs">{getTaskTypeName(taskModal.type)}</div>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {/* Tasks Card with Scrollable Table */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col flex-1">
+                    <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col flex-1">
                         {/* Card Header */}
-                        <div className="border-b border-gray-200 px-6 py-4 bg-gray-50 rounded-t-lg">
-                            <h4 className="text-lg font-semibold text-gray-800">Task Details</h4>
+                        <div className="border-b border-slate-200 px-6 py-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-t-lg">
+                            <h4 className="text-lg font-semibold text-slate-800">Task Details</h4>
                         </div>
 
                         {/* Scrollable Table Container */}
                         <div className="flex-1 overflow-hidden flex flex-col">
                             {/* Table Header - Fixed */}
-                            <div className="border-b border-gray-200">
+                            <div className="border-b border-slate-200">
                                 <table className="w-full text-sm">
-                                    <thead className="bg-gray-50">
+                                    <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
                                         <tr>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">TASK NAME</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">CLIENT</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">DUE DATE</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 align-middle">PRIORITY</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 align-middle">STATUS</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 align-middle">ACTIONS</th>
+                                            <th className="text-left p-4 font-semibold text-slate-700 text-xs align-middle">TASK NAME</th>
+                                            <th className="text-left p-4 font-semibold text-slate-700 text-xs align-middle">CLIENT</th>
+                                            <th className="text-left p-4 font-semibold text-slate-700 text-xs align-middle">DUE DATE</th>
+                                            <th className="text-center p-4 font-semibold text-slate-700 text-xs align-middle">PRIORITY</th>
+                                            <th className="text-center p-4 font-semibold text-slate-700 text-xs align-middle">STATUS</th>
+                                            <th className="text-center p-4 font-semibold text-slate-700 text-xs align-middle">ACTIONS</th>
                                         </tr>
                                     </thead>
                                 </table>
@@ -713,11 +1021,13 @@ const StaffReport = () => {
                                     <tbody className="bg-white">
                                         {taskModal.tasks.length === 0 ? (
                                             <tr>
-                                                <td colSpan="6" className="text-center py-8 text-gray-500">
+                                                <td colSpan="6" className="text-center py-8 text-slate-500">
                                                     <div className="flex flex-col items-center justify-center">
-                                                        <FiHelpCircle className="w-12 h-12 text-gray-300 mb-3" />
-                                                        <p className="text-gray-500">No tasks found</p>
-                                                        <p className="text-gray-400 text-sm mt-1">
+                                                        <div className="p-3 bg-slate-100 rounded-full mb-3">
+                                                            <FiHelpCircle className="w-8 h-8 text-slate-400" />
+                                                        </div>
+                                                        <p className="text-slate-600 text-sm font-medium mb-1">No tasks found</p>
+                                                        <p className="text-slate-500 text-xs">
                                                             No {getTaskTypeName(taskModal.type).toLowerCase()} for this staff member
                                                         </p>
                                                     </div>
@@ -725,43 +1035,43 @@ const StaffReport = () => {
                                             </tr>
                                         ) : (
                                             taskModal.tasks.map((task) => (
-                                                <tr key={task.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                                <tr key={task.id} className="border-b border-slate-100 hover:bg-blue-50/20 transition-colors">
                                                     <td className="p-4 align-middle">
-                                                        <div className="font-medium text-gray-800">{task.task_name}</div>
+                                                        <div className="font-medium text-slate-800 text-xs">{task.task_name}</div>
                                                     </td>
                                                     <td className="p-4 align-middle">
-                                                        <div className="text-gray-600">{task.client}</div>
+                                                        <div className="text-slate-600 text-xs">{task.client}</div>
                                                     </td>
                                                     <td className="p-4 align-middle">
-                                                        <div className="text-gray-600">{task.due_date}</div>
+                                                        <div className="text-slate-600 text-xs">{task.due_date}</div>
                                                     </td>
                                                     <td className="p-4 align-middle text-center">
-                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                            task.priority === 'High' ? 'bg-red-100 text-red-800' :
-                                                            task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                                                            'bg-green-100 text-green-800'
+                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-medium ${
+                                                            task.priority === 'High' ? 'bg-gradient-to-r from-red-100 to-red-50 text-red-800 border border-red-200' :
+                                                            task.priority === 'Medium' ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-800 border border-yellow-200' :
+                                                            'bg-gradient-to-r from-green-100 to-green-50 text-green-800 border border-green-200'
                                                         }`}>
                                                             {task.priority}
                                                         </span>
                                                     </td>
                                                     <td className="p-4 align-middle text-center">
-                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                            task.status === 'Overdue' ? 'bg-red-100 text-red-800' :
-                                                            task.status === 'Due Today' ? 'bg-orange-100 text-orange-800' :
-                                                            'bg-blue-100 text-blue-800'
+                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-medium ${
+                                                            task.status === 'Overdue' ? 'bg-gradient-to-r from-red-100 to-red-50 text-red-800 border border-red-200' :
+                                                            task.status === 'Due Today' ? 'bg-gradient-to-r from-orange-100 to-orange-50 text-orange-800 border border-orange-200' :
+                                                            'bg-gradient-to-r from-blue-100 to-blue-50 text-blue-800 border border-blue-200'
                                                         }`}>
                                                             {task.status}
                                                         </span>
                                                     </td>
                                                     <td className="p-4 align-middle text-center">
                                                         <div className="flex items-center justify-center gap-2">
-                                                            <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="View Details">
+                                                            <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors hover:scale-110" title="View Details">
                                                                 <FiEye className="w-4 h-4" />
                                                             </button>
-                                                            <button className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors" title="Edit Task">
+                                                            <button className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors hover:scale-110" title="Edit Task">
                                                                 <FiEdit className="w-4 h-4" />
                                                             </button>
-                                                            <button className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="Delete Task">
+                                                            <button className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors hover:scale-110" title="Delete Task">
                                                                 <FiTrash2 className="w-4 h-4" />
                                                             </button>
                                                         </div>
@@ -776,17 +1086,17 @@ const StaffReport = () => {
                     </div>
                 </div>
 
-                <div className="flex-shrink-0 border-t border-gray-200 bg-white p-6 rounded-b-xl shadow-sm">
+                <div className="flex-shrink-0 border-t border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 p-6 rounded-b-xl">
                     <div className="flex justify-end gap-3">
                         <button
                             onClick={closeTaskModal}
-                            className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
+                            className="px-6 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors shadow-sm"
                         >
                             Close
                         </button>
                         <button
                             onClick={() => {/* Handle bulk action */}}
-                            className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                            className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 border border-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors shadow-sm"
                         >
                             Export Tasks
                         </button>
