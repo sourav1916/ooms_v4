@@ -12,13 +12,26 @@ import {
     FiMail as FiEmailIcon,
     FiCalendar,
     FiClock,
-    FiX
+    FiX,
+    FiChevronRight,
+    FiChevronDown,
+    FiCheck,
+    FiInfo,
+    FiDollarSign,
+    FiTrendingUp,
+    FiCreditCard,
+    FiFilter,
+    FiChevronLeft,
+    FiChevronRight as FiChevronRightIcon,
+    FiChevronUp,
+    FiUsers,
+    FiExternalLink
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
 import { AiOutlineMail } from "react-icons/ai";
 import { FaWhatsapp } from "react-icons/fa6";
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
 import DateFilter from '../../components/DateFilter';
 import moment from 'moment';
@@ -72,7 +85,12 @@ const ViewDSCRegister = () => {
         password: ''
     });
 
-    // Mock DSC data
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
+    const [showAll, setShowAll] = useState(false);
+
+    // Mock DSC data - FIXED: Made each dsc_id unique
     const mockDscData = [
         {
             dsc_id: 'dsc001',
@@ -91,10 +109,40 @@ const ViewDSCRegister = () => {
         },
         {
             dsc_id: 'dsc002',
+            username: 'user001',
+            name: 'Surajit Doe',
+            guardian_name: 'Robert Doe',
+            mobile: '+91 9876543211',
+            email: 'surajit.doe@company.com',
+            company: 'Tech Solutions Inc.',
+            issue_date: '2024-01-15',
+            expire_date: '2025-01-14',
+            duration: 1,
+            password: 'encrypted123',
+            status: 1,
+            user_type: 'user'
+        },
+        {
+            dsc_id: 'dsc003',
+            username: 'user002',
+            name: 'Michael Smith',
+            guardian_name: 'William Smith',
+            mobile: '+91 9876543212',
+            email: 'michael.smith@company.com',
+            company: 'Digital Innovations',
+            issue_date: '2024-01-15',
+            expire_date: '2025-01-14',
+            duration: 1,
+            password: 'encrypted456',
+            status: 1,
+            user_type: 'user'
+        },
+        {
+            dsc_id: 'dsc004',
             username: 'ca001',
             name: 'Jane Smith',
             guardian_name: 'William Smith',
-            mobile: '+91 9876543211',
+            mobile: '+91 9876543213',
             email: 'jane.smith@ca.com',
             company: 'Financial Advisors Ltd.',
             issue_date: '2023-11-20',
@@ -105,11 +153,11 @@ const ViewDSCRegister = () => {
             user_type: 'ca'
         },
         {
-            dsc_id: 'dsc003',
+            dsc_id: 'dsc005',
             username: 'agent001',
             name: 'Mike Johnson',
             guardian_name: 'David Johnson',
-            mobile: '+91 9876543212',
+            mobile: '+91 9876543214',
             email: 'mike.johnson@agent.com',
             company: 'Insurance Partners',
             issue_date: '2024-03-10',
@@ -120,11 +168,11 @@ const ViewDSCRegister = () => {
             user_type: 'agent'
         },
         {
-            dsc_id: 'dsc004',
+            dsc_id: 'dsc006',
             username: 'emp001',
             name: 'Sarah Wilson',
             guardian_name: 'James Wilson',
-            mobile: '+91 9876543213',
+            mobile: '+91 9876543215',
             email: 'sarah.wilson@company.com',
             company: 'Corporate Solutions',
             issue_date: '2024-02-01',
@@ -397,16 +445,16 @@ const ViewDSCRegister = () => {
     // Get status badge class
     const getStatusBadgeClass = (status) => {
         return status === 1 
-            ? 'bg-green-100 text-green-800 border border-green-200'
-            : 'bg-red-100 text-red-800 border border-red-200';
+            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+            : 'bg-rose-100 text-rose-700 border border-rose-200';
     };
 
     // Get urgency badge class
     const getUrgencyBadgeClass = (daysLeft) => {
-        if (daysLeft < 0) return 'bg-red-100 text-red-800 border border-red-200';
-        if (daysLeft <= 30) return 'bg-orange-100 text-orange-800 border border-orange-200';
-        if (daysLeft <= 90) return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
-        return 'bg-green-100 text-green-800 border border-green-200';
+        if (daysLeft < 0) return 'bg-rose-100 text-rose-700 border border-rose-200';
+        if (daysLeft <= 30) return 'bg-amber-100 text-amber-700 border border-amber-200';
+        if (daysLeft <= 90) return 'bg-yellow-100 text-yellow-700 border border-yellow-200';
+        return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
     };
 
     // Format date
@@ -435,9 +483,55 @@ const ViewDSCRegister = () => {
         };
     }, []);
 
-    // Skeleton Loading Component
+    // Get current items based on pagination
+    const indexOfLastItem = showAll ? dscData.length : currentPage * itemsPerPage;
+    const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
+    const currentItems = dscData.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(dscData.length / itemsPerPage);
+
+    // Handle user profile click
+    const handleUserProfileClick = (e, dsc) => {
+        e.preventDefault();
+        const profileLink = getUserProfileLink(dsc);
+        console.log('Navigating to profile:', profileLink);
+        // You can use router.push(profileLink) if using Next.js router
+        // or window.location.href = profileLink for standard navigation
+        window.open(profileLink, '_blank');
+    };
+
+    // Skeleton loader component
+    const SkeletonRow = () => (
+        <tr className="border-b border-slate-100 animate-pulse">
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-6 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="flex items-center justify-center">
+                    <div className="h-8 w-8 bg-slate-200 rounded-full mr-2"></div>
+                    <div className="h-4 bg-slate-200 rounded w-32"></div>
+                </div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-24 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-32 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-40 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-16 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-10 mx-auto"></div>
+            </td>
+        </tr>
+    );
+
+    // Skeleton Loading Component for full page
     const SkeletonLoader = () => (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -453,37 +547,44 @@ const ViewDSCRegister = () => {
 
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    {/* Header Skeleton */}
-                    <div className="mb-6 animate-pulse">
-                        <div className="h-8 bg-gray-200 rounded w-48 mb-2"></div>
-                        <div className="h-4 bg-gray-200 rounded w-64"></div>
-                    </div>
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                        {/* Skeleton Header */}
+                        <div className="border-b border-slate-200 px-6 py-4">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div>
+                                    <div className="h-6 bg-gray-200 rounded w-48 mb-2"></div>
+                                    <div className="h-4 bg-gray-200 rounded w-32"></div>
+                                </div>
+                                <div className="flex gap-3">
+                                    <div className="h-10 bg-gray-200 rounded w-40"></div>
+                                    <div className="h-10 bg-gray-200 rounded w-32"></div>
+                                </div>
+                            </div>
+                        </div>
 
-                    {/* Controls Skeleton */}
-                    <div className="flex flex-col lg:flex-row gap-4 mb-6">
-                        <div className="flex-1">
-                            <div className="h-10 bg-gray-200 rounded"></div>
-                        </div>
-                        <div className="w-48">
-                            <div className="h-10 bg-gray-200 rounded"></div>
-                        </div>
-                        <div className="w-32">
-                            <div className="h-10 bg-gray-200 rounded"></div>
-                        </div>
-                    </div>
+                        {/* Skeleton Table */}
+                        <div className="overflow-hidden">
+                            <div className="border-b border-slate-200">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                                        <tr>
+                                            {[...Array(7)].map((_, i) => (
+                                                <th key={i} className="text-center p-3">
+                                                    <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
 
-                    {/* Table Skeleton */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm animate-pulse">
-                        <div className="border-b border-gray-200">
-                            <div className="h-12 bg-gray-100 rounded-t-lg"></div>
-                        </div>
-                        <div className="p-4">
-                            {[...Array(5)].map((_, i) => (
-                                <div key={i} className="h-16 bg-gray-100 rounded mb-2"></div>
-                            ))}
-                        </div>
-                        <div className="border-t border-gray-200">
-                            <div className="h-16 bg-gray-100 rounded-b-lg"></div>
+                            <div className="p-4">
+                                {[...Array(6)].map((_, index) => (
+                                    <div key={index} className="mb-4">
+                                        <div className="h-12 bg-gray-100 rounded"></div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -491,71 +592,13 @@ const ViewDSCRegister = () => {
         </div>
     );
 
-    // Skeleton row for table
-    const SkeletonRow = () => (
-        <tr className="border-b border-gray-100 animate-pulse">
-            <td className="p-4 align-middle">
-                <div className="h-4 bg-gray-200 rounded w-8"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-4 bg-gray-200 rounded w-40"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-4 bg-gray-200 rounded w-24"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-6 bg-gray-200 rounded w-16 ml-auto"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-6 bg-gray-200 rounded w-8 ml-auto"></div>
-            </td>
-        </tr>
-    );
-
-    // Professional Modal Wrapper Component
-    const ModalWrapper = ({ isOpen, onClose, title, children, size = 'max-w-2xl' }) => {
-        if (!isOpen) return null;
-
-        return (
-            <div className="fixed inset-0 z-50 overflow-y-auto">
-                <div className="flex items-center justify-center min-h-screen p-4">
-                    {/* Overlay */}
-                    <div
-                        className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                        onClick={onClose}
-                    />
-                    {/* Professional Modal panel */}
-                    <div className={`relative w-full ${size} bg-white rounded-lg shadow-xl flex flex-col max-h-[90vh]`}>
-                        {/* Professional Header */}
-                        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-t-lg">
-                            <h2 className="text-xl font-bold">{title}</h2>
-                            <button
-                                onClick={onClose}
-                                className="text-indigo-200 hover:text-white p-1 rounded-lg transition-colors"
-                            >
-                                <FiX className="w-6 h-6" />
-                            </button>
-                        </div>
-                        {children}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
     // Show skeleton while loading
     if (loading && dscData.length === 0) {
         return <SkeletonLoader />;
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -570,94 +613,203 @@ const ViewDSCRegister = () => {
             />
 
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    {/* Main Card - Full height with scrolling */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full">
+                <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    {/* Header Stats Cards - Professional Compact Design */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Total Records</p>
+                                    <h3 className="text-xl font-bold text-slate-800 mt-1">{dscData.length}</h3>
+                                </div>
+                                <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg">
+                                    <FiUsers className="w-5 h-5 text-blue-600" />
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100">
+                                <span className="text-[10px] text-slate-500 font-medium">All DSC certificates</span>
+                            </div>
+                        </motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: 0.1 }}
+                            className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Active</p>
+                                    <h3 className="text-xl font-bold text-slate-800 mt-1">{dscData.filter(d => d.status === 1).length}</h3>
+                                </div>
+                                <div className="p-2 bg-gradient-to-r from-emerald-100 to-emerald-200 rounded-lg">
+                                    <FiCheck className="w-5 h-5 text-emerald-600" />
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100">
+                                <span className="text-[10px] text-slate-500 font-medium">Currently valid certificates</span>
+                            </div>
+                        </motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: 0.2 }}
+                            className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Expiring Soon</p>
+                                    <h3 className="text-xl font-bold text-slate-800 mt-1">
+                                        {dscData.filter(d => {
+                                            const daysLeft = getDaysLeft(d.expire_date);
+                                            return daysLeft <= 30 && daysLeft > 0;
+                                        }).length}
+                                    </h3>
+                                </div>
+                                <div className="p-2 bg-gradient-to-r from-amber-100 to-amber-200 rounded-lg">
+                                    <FiClock className="w-5 h-5 text-amber-600" />
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100">
+                                <span className="text-[10px] text-slate-500 font-medium">Within 30 days expiry</span>
+                            </div>
+                        </motion.div>
+                    </div>
+
+                    {/* Main Card */}
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="bg-white rounded-xl shadow-lg border border-slate-200"
+                    >
                         {/* Card Header */}
-                        <div className="border-b border-gray-200 px-6 py-4">
+                        <div className="border-b border-slate-200 px-6 py-4 bg-gradient-to-r from-slate-50 to-white sticky top-0 z-10">
                             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                                 <div>
-                                    <h5 className="text-xl font-bold text-gray-800 mb-1">
-                                        DSC Register
-                                    </h5>
-                                    {fromToDate && (
-                                        <p className="text-gray-500 text-xs mt-1">
-                                            {fromToDate}
-                                        </p>
-                                    )}
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg">
+                                            <FiCreditCard className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h5 className="text-lg font-bold text-slate-800">
+                                                DSC Register
+                                            </h5>
+                                            {fromToDate && (
+                                                <div className="flex items-center gap-1 text-slate-600">
+                                                    <FiCalendar className="w-3 h-3" />
+                                                    <p className="text-xs font-medium">
+                                                        {fromToDate}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+                                    {/* Search Input */}
+                                    <div className="relative">
+                                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            onKeyPress={handleKeyPress}
+                                            placeholder="Search by name, mobile, email..."
+                                            className="pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full lg:w-64"
+                                        />
+                                    </div>
+
                                     {/* Date Filter Component */}
-                                    <DateFilter onChange={handleDateFilterChange} />
+                                    <div className="w-full lg:w-auto">
+                                        <DateFilter onChange={handleDateFilterChange} />
+                                    </div>
 
                                     <div className="flex gap-2">
-                                        {/* Search Input */}
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                                onKeyPress={handleKeyPress}
-                                                placeholder="Search DSC records..."
-                                                className="pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-colors w-full lg:w-64"
-                                            />
-                                            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                        </div>
-
                                         {/* Export Dropdown */}
                                         <div className="dropdown-container relative">
                                             <motion.button
                                                 onClick={() => setShowAddDropdown(!showAddDropdown)}
-                                                className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
+                                                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                                whileHover={{ scale: 1.02 }}
+                                                whileTap={{ scale: 0.98 }}
                                             >
                                                 <PiExportBold className="w-4 h-4" />
                                                 Export
+                                                <FiChevronRight className={`w-3 h-3 transition-transform ${showAddDropdown ? 'rotate-90' : ''}`} />
                                             </motion.button>
 
-                                            {showAddDropdown && (
-                                                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
-                                                    <div className="py-1">
-                                                        <button
-                                                            onClick={() => handleExport('pdf')}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-                                                        >
-                                                            <PiFilePdfDuotone className="w-4 h-4 mr-3 text-red-500" />
-                                                            Export as PDF
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleExport('excel')}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-                                                        >
-                                                            <PiMicrosoftExcelLogoDuotone className="w-4 h-4 mr-3 text-green-500" />
-                                                            Export as Excel
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setWhatsappModalOpen(true)}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-                                                        >
-                                                            <FaWhatsapp className="w-4 h-4 mr-3 text-green-500" />
-                                                            Share via WhatsApp
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setIsEmailModalOpen(true)}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-                                                        >
-                                                            <AiOutlineMail className="w-4 h-4 mr-3 text-blue-500" />
-                                                            Share via Email
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
+                                            <AnimatePresence>
+                                                {showAddDropdown && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 5 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: 5 }}
+                                                        className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
+                                                    >
+                                                        <div className="py-1">
+                                                            <button
+                                                                onClick={() => handleExport('pdf')}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-red-50 rounded mr-2 group-hover:bg-red-100 transition-colors">
+                                                                    <PiFilePdfDuotone className="w-3.5 h-3.5 text-red-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Export as PDF</div>
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleExport('excel')}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-green-50 rounded mr-2 group-hover:bg-green-100 transition-colors">
+                                                                    <PiMicrosoftExcelLogoDuotone className="w-3.5 h-3.5 text-green-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Export as Excel</div>
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setWhatsappModalOpen(true)}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-green-50 rounded mr-2 group-hover:bg-green-100 transition-colors">
+                                                                    <FaWhatsapp className="w-3.5 h-3.5 text-green-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Share via WhatsApp</div>
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setIsEmailModalOpen(true)}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-blue-50 rounded mr-2 group-hover:bg-blue-100 transition-colors">
+                                                                    <AiOutlineMail className="w-3.5 h-3.5 text-blue-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Share via Email</div>
+                                                                </div>
+                                                            </button>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
 
                                         <motion.button
                                             onClick={() => setShowCreateModal(true)}
-                                            className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
+                                            className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
                                         >
                                             <FiPlus className="w-4 h-4" />
                                             Add DSC
@@ -667,531 +819,746 @@ const ViewDSCRegister = () => {
                             </div>
                         </div>
 
-                        {/* Table Container with Fixed Header and Footer */}
-                        <div className="flex-1 flex flex-col overflow-hidden">
-                            {/* Table Header - Fixed */}
-                            <div className="border-b border-gray-200">
-                                <table className="w-full text-sm">
-                                    <colgroup>
-                                        <col className="w-[5%]" />  {/* # */}
-                                        <col className="w-[25%]" /> {/* USER DETAILS */}
-                                        <col className="w-[20%]" /> {/* CONTACT INFO */}
-                                        <col className="w-[15%]" /> {/* COMPANY */}
-                                        <col className="w-[20%]" /> {/* VALIDITY PERIOD */}
-                                        <col className="w-[10%]" /> {/* STATUS */}
-                                        <col className="w-[5%]" />  {/* ACTIONS */}
-                                    </colgroup>
-                                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                        {/* Table Container */}
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="bg-gradient-to-r from-slate-50 to-slate-100">
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[60px]">
+                                            Sl No
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[180px]">
+                                            User Details
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
+                                            Contact Info
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
+                                            Company
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[140px]">
+                                            Validity Period
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
+                                            Status
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-100">
+                                    {dscData.length === 0 ? (
                                         <tr>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">#</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">USER DETAILS</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">CONTACT INFO</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">COMPANY</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">VALIDITY PERIOD</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">STATUS</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 align-middle">ACTIONS</th>
-                                        </tr>
-                                    </thead>
-                                </table>
-                            </div>
-
-                            {/* Scrollable Table Body */}
-                            <div className="flex-1 overflow-y-auto">
-                                <table className="w-full text-sm">
-                                    <colgroup>
-                                        <col className="w-[5%]" />
-                                        <col className="w-[25%]" />
-                                        <col className="w-[20%]" />
-                                        <col className="w-[15%]" />
-                                        <col className="w-[20%]" />
-                                        <col className="w-[10%]" />
-                                        <col className="w-[5%]" />
-                                    </colgroup>
-                                    <tbody className="bg-white">
-                                        {loading ? (
-                                            // Skeleton Loaders
-                                            Array.from({ length: 6 }).map((_, index) => (
-                                                <SkeletonRow key={index} />
-                                            ))
-                                        ) : dscData.length === 0 ? (
-                                            <tr>
-                                                <td colSpan="7" className="text-center py-8 text-gray-500 align-middle">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <FiUser className="w-12 h-12 text-gray-300 mb-3" />
-                                                        <p className="text-gray-500">No DSC records found</p>
-                                                        <motion.button
-                                                            onClick={() => setShowCreateModal(true)}
-                                                            className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
-                                                            whileHover={{ scale: 1.05 }}
-                                                            whileTap={{ scale: 0.95 }}
-                                                        >
-                                                            Add Your First DSC
-                                                        </motion.button>
+                                            <td colSpan="7" className="text-center py-8 text-slate-500">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="p-3 bg-slate-100 rounded-full mb-3">
+                                                        <FiUser className="w-8 h-8 text-slate-400" />
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            dscData.map((dsc, index) => {
-                                                const isDropdownOpen = activeRowDropdown === dsc.dsc_id;
-                                                const daysLeft = getDaysLeft(dsc.expire_date);
-
-                                                return (
-                                                    <tr
-                                                        key={dsc.dsc_id}
-                                                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors group"
+                                                    <p className="text-slate-600 text-sm font-medium mb-1">No DSC records found</p>
+                                                    <p className="text-slate-500 text-xs mb-4">Start by creating your first DSC entry</p>
+                                                    <motion.button
+                                                        onClick={() => setShowCreateModal(true)}
+                                                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-xs font-semibold hover:shadow transition-all duration-200"
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
                                                     >
-                                                        <td className="p-4 text-gray-600 font-medium align-middle">
-                                                            {index + 1}
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            <a
-                                                                href={getUserProfileLink(dsc)}
-                                                                className="text-indigo-600 hover:text-indigo-800 font-medium block"
-                                                            >
-                                                                <div className="flex items-start gap-3">
-                                                                    <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                                                        <FiUser className="w-5 h-5 text-indigo-600" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className="font-semibold text-gray-800">{dsc.name}</div>
-                                                                        <div className="text-gray-500 text-sm mt-1">
-                                                                            C/O: {dsc.guardian_name}
-                                                                        </div>
-                                                                        <div className="text-indigo-600 text-xs font-medium mt-1 bg-indigo-50 px-2 py-1 rounded-full inline-block">
-                                                                            {dsc.user_type.toUpperCase()}
-                                                                        </div>
-                                                                    </div>
+                                                        Create Your First DSC
+                                                    </motion.button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        currentItems.map((dsc, index) => {
+                                            const isDropdownOpen = activeRowDropdown === dsc.dsc_id;
+                                            const daysLeft = getDaysLeft(dsc.expire_date);
+                                            const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
+                                            const profileLink = getUserProfileLink(dsc);
+
+                                            return (
+                                                <motion.tr
+                                                    key={dsc.dsc_id}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    transition={{ duration: 0.15 }}
+                                                    className="hover:bg-blue-50/20 transition-colors duration-150"
+                                                >
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="text-slate-700 font-medium text-xs">
+                                                            {actualIndex + 1}
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <motion.a
+                                                            href={profileLink}
+                                                            onClick={(e) => handleUserProfileClick(e, dsc)}
+                                                            className="inline-flex items-center justify-center gap-2 group cursor-pointer no-underline"
+                                                            whileHover={{ scale: 1.01 }}
+                                                            whileTap={{ scale: 0.99 }}
+                                                        >
+                                                            <div className="relative">
+                                                                <div className="w-8 h-8 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full flex items-center justify-center flex-shrink-0 group-hover:from-blue-200 group-hover:to-blue-300 transition-colors">
+                                                                    <FiUser className="w-4 h-4 text-blue-600" />
                                                                 </div>
-                                                            </a>
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            <div className="space-y-2">
-                                                                <div className="flex items-center gap-2 text-gray-800 font-medium">
-                                                                    <FiPhone className="w-3 h-3" />
-                                                                    {dsc.mobile}
-                                                                </div>
-                                                                <div className="flex items-center gap-2 text-gray-500 text-sm">
-                                                                    <FiEmailIcon className="w-3 h-3" />
-                                                                    {dsc.email}
+                                                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-xs">
+                                                                    <FiExternalLink className="w-2.5 h-2.5 text-blue-500" />
                                                                 </div>
                                                             </div>
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            <span className="text-gray-800 font-medium">
-                                                                {dsc.company}
-                                                            </span>
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            <div className="space-y-2">
-                                                                <div className="flex items-center gap-2 text-gray-600">
-                                                                    <FiCalendar className="w-3 h-3" />
-                                                                    {formatDate(dsc.issue_date)} - {formatDate(dsc.expire_date)}
+                                                            <div className="text-left">
+                                                                <div className="text-slate-800 font-semibold text-xs group-hover:text-blue-600 transition-colors">
+                                                                    {dsc.name}
                                                                 </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-indigo-600 text-sm font-medium">
-                                                                        ({dsc.duration} Year)
+                                                                <div className="text-slate-600 text-[10px] mt-0.5">
+                                                                    C/O: {dsc.guardian_name}
+                                                                </div>
+                                                                <div className="mt-1">
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${
+                                                                        dsc.user_type === 'user' ? 'bg-blue-100 text-blue-700 group-hover:bg-blue-200' :
+                                                                        dsc.user_type === 'ca' ? 'bg-purple-100 text-purple-700 group-hover:bg-purple-200' :
+                                                                        dsc.user_type === 'agent' ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' :
+                                                                        'bg-slate-100 text-slate-700 group-hover:bg-slate-200'
+                                                                    } transition-colors`}>
+                                                                        {dsc.user_type}
                                                                     </span>
-                                                                    {daysLeft <= 90 && (
-                                                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getUrgencyBadgeClass(daysLeft)}`}>
-                                                                            <FiClock className="w-2 h-2 mr-1" />
-                                                                            {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
-                                                                        </span>
-                                                                    )}
                                                                 </div>
                                                             </div>
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(dsc.status)}`}>
-                                                                {dsc.status === 1 ? 'Active' : 'Inactive'}
+                                                        </motion.a>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="space-y-1.5">
+                                                            <div className="flex items-center justify-center gap-1 text-slate-700 text-xs">
+                                                                <FiPhone className="w-3 h-3 text-slate-500" />
+                                                                {dsc.mobile}
+                                                            </div>
+                                                            <div className="flex items-center justify-center gap-1 text-slate-600 text-[10px]">
+                                                                <FiEmailIcon className="w-3 h-3 text-slate-500" />
+                                                                {dsc.email}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <span className="inline-flex items-center justify-center bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded text-xs border border-slate-300/50 shadow-xs max-w-[120px] truncate">
+                                                            {dsc.company}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="space-y-2">
+                                                            <span className="inline-flex items-center justify-center bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 font-bold px-3 py-1.5 rounded text-xs min-w-[120px] shadow-xs">
+                                                                {formatDate(dsc.issue_date)} - {formatDate(dsc.expire_date)}
                                                             </span>
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            <div className="dropdown-container relative flex justify-center">
-                                                                <motion.button
-                                                                    className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group-hover:bg-gray-200"
-                                                                    onClick={() => toggleRowDropdown(dsc.dsc_id)}
-                                                                    whileHover={{ scale: 1.1 }}
-                                                                    whileTap={{ scale: 0.9 }}
-                                                                >
-                                                                    <FiMenu className="w-4 h-4" />
-                                                                </motion.button>
+                                                            <div className="text-indigo-600 text-[10px] font-semibold">
+                                                                ({dsc.duration} Year{dsc.duration > 1 ? 's' : ''})
+                                                            </div>
+                                                            {daysLeft <= 90 && (
+                                                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold ${getUrgencyBadgeClass(daysLeft)}`}>
+                                                                    <FiClock className="w-2.5 h-2.5" />
+                                                                    {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold ${getStatusBadgeClass(dsc.status)}`}>
+                                                            {dsc.status === 1 ? (
+                                                                <>
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                                                    Active
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                                                                    Inactive
+                                                                </>
+                                                            )}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="dropdown-container relative flex justify-center">
+                                                            <motion.button
+                                                                className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
+                                                                onClick={() => toggleRowDropdown(dsc.dsc_id)}
+                                                                whileHover={{ scale: 1.05 }}
+                                                                whileTap={{ scale: 0.95 }}
+                                                            >
+                                                                <FiMenu className="w-3.5 h-3.5" />
+                                                            </motion.button>
+                                                            <AnimatePresence>
                                                                 {isDropdownOpen && (
-                                                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+                                                                    <motion.div
+                                                                        initial={{ opacity: 0, y: 5 }}
+                                                                        animate={{ opacity: 1, y: 0 }}
+                                                                        exit={{ opacity: 0, y: 5 }}
+                                                                        className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
+                                                                    >
                                                                         <div className="py-1">
                                                                             <button
                                                                                 onClick={() => {
                                                                                     setActiveRowDropdown(null);
                                                                                     handleEditClick(dsc);
                                                                                 }}
-                                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                             >
-                                                                                <FiEdit className="w-4 h-4 mr-3" />
-                                                                                Edit DSC
+                                                                                <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                    <FiEdit className="w-3 h-3 text-blue-500" />
+                                                                                </div>
+                                                                                <div className="text-left">
+                                                                                    <div className="font-medium">Edit DSC</div>
+                                                                                </div>
                                                                             </button>
-                                                                            <div className="border-t border-gray-100 mt-1 pt-1">
+                                                                            <a
+                                                                                href={profileLink}
+                                                                                onClick={(e) => {
+                                                                                    setActiveRowDropdown(null);
+                                                                                    handleUserProfileClick(e, dsc);
+                                                                                }}
+                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                            >
+                                                                                <div className="p-1 bg-emerald-50 rounded mr-2">
+                                                                                    <FiUser className="w-3 h-3 text-emerald-500" />
+                                                                                </div>
+                                                                                <div className="text-left">
+                                                                                    <div className="font-medium">View Profile</div>
+                                                                                </div>
+                                                                            </a>
+                                                                            <div className="border-t border-slate-100 mt-1 pt-1">
                                                                                 <button
                                                                                     onClick={() => handleExport('print', dsc)}
-                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                 >
-                                                                                    <FiPrinter className="w-4 h-4 mr-3" />
-                                                                                    Print
+                                                                                    <div className="p-1 bg-slate-50 rounded mr-2">
+                                                                                        <FiPrinter className="w-3 h-3 text-slate-600" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">Print</div>
+                                                                                    </div>
                                                                                 </button>
                                                                                 <button
                                                                                     onClick={() => handleExport('whatsapp', dsc)}
-                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                 >
-                                                                                    <FiMessageSquare className="w-4 h-4 mr-3" />
-                                                                                    WhatsApp
+                                                                                    <div className="p-1 bg-green-50 rounded mr-2">
+                                                                                        <FiMessageSquare className="w-3 h-3 text-green-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">WhatsApp</div>
+                                                                                    </div>
                                                                                 </button>
                                                                                 <button
                                                                                     onClick={() => handleExport('email', dsc)}
-                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                 >
-                                                                                    <FiMail className="w-4 h-4 mr-3" />
-                                                                                    Email
+                                                                                    <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                        <FiMail className="w-3 h-3 text-blue-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">Email</div>
+                                                                                    </div>
                                                                                 </button>
                                                                             </div>
                                                                         </div>
-                                                                    </div>
+                                                                    </motion.div>
                                                                 )}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                            </AnimatePresence>
+                                                        </div>
+                                                    </td>
+                                                </motion.tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
 
-                            {/* Table Footer - Fixed */}
-                            <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                                <table className="w-full text-sm">
-                                    <colgroup>
-                                        <col className="w-[65%]" />
-                                        <col className="w-[10%]" />
-                                        <col className="w-[5%]" />
-                                    </colgroup>
-                                    <tfoot>
-                                        <tr>
-                                            <td className="text-right p-4 font-bold text-gray-800 align-middle" colSpan="5">
-                                                Total DSC Records: {dscData.length}
-                                            </td>
-                                            <td className="p-4 align-middle">
-                                                <div className="flex gap-2">
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                                                        Active: {dscData.filter(d => d.status === 1).length}
-                                                    </span>
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                                                        Inactive: {dscData.filter(d => d.status === 0).length}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="p-4 align-middle"></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                            {/* Pagination Controls */}
+                            {dscData.length > itemsPerPage && !showAll && (
+                                <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                                    <div className="flex flex-col sm:flex-row justify-between items-center px-4 py-3 gap-3">
+                                        <div className="text-xs text-slate-600">
+                                            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, dscData.length)} of {dscData.length} entries
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                disabled={currentPage === 1}
+                                                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                                            >
+                                                <FiChevronLeft className="w-3 h-3" />
+                                                Previous
+                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                                    let pageNumber;
+                                                    if (totalPages <= 5) {
+                                                        pageNumber = i + 1;
+                                                    } else if (currentPage <= 3) {
+                                                        pageNumber = i + 1;
+                                                    } else if (currentPage >= totalPages - 2) {
+                                                        pageNumber = totalPages - 4 + i;
+                                                    } else {
+                                                        pageNumber = currentPage - 2 + i;
+                                                    }
+                                                    
+                                                    return (
+                                                        <button
+                                                            key={pageNumber}
+                                                            onClick={() => setCurrentPage(pageNumber)}
+                                                            className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
+                                                                currentPage === pageNumber
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
+                                                            }`}
+                                                        >
+                                                            {pageNumber}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <button
+                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                                disabled={currentPage === totalPages}
+                                                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                                            >
+                                                Next
+                                                <FiChevronRightIcon className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowAll(true)}
+                                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors"
+                                        >
+                                            Show All
+                                            <FiChevronDown className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
-            {/* Create DSC Modal */}
-            <ModalWrapper
-                isOpen={showCreateModal}
-                onClose={() => {
-                    setShowCreateModal(false);
-                    setCreateForm({
-                        username: '',
-                        company: '',
-                        duration: '1',
-                        issue_date: '',
-                        expire_date: '',
-                        password: ''
-                    });
-                }}
-                title="Create DSC Register"
-                size="max-w-2xl"
-            >
-                <div className="flex-1 overflow-y-auto p-6">
-                    <form onSubmit={handleCreateSubmit}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Select User <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={createForm.username}
-                                    onChange={(e) => handleCreateChange('username', e.target.value)}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-colors"
-                                    required
-                                >
-                                    <option value="">Select User</option>
-                                    {users.map(user => (
-                                        <option key={user.username} value={user.username}>
-                                            Name: {user.name} | C/O: {user.guardian_name} | Mobile: {user.mobile} | Type: {user.user_type.toUpperCase()}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            {/* Show Less Button when showing all */}
+                            {showAll && dscData.length > itemsPerPage && (
+                                <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                                    <div className="flex justify-center px-4 py-3">
+                                        <button
+                                            onClick={() => {
+                                                setShowAll(false);
+                                                setCurrentPage(1);
+                                            }}
+                                            className="flex items-center gap-1 px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors shadow-sm"
+                                        >
+                                            Show Less
+                                            <FiChevronUp className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Company <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={createForm.company}
-                                    onChange={(e) => handleCreateChange('company', e.target.value)}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-colors"
-                                    placeholder="Enter company name"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Duration <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={createForm.duration}
-                                    onChange={(e) => handleCreateChange('duration', e.target.value)}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-colors"
-                                    required
-                                >
-                                    <option value="1">1 Year</option>
-                                    <option value="2">2 Years</option>
-                                    <option value="3">3 Years</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Issue Date <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={createForm.issue_date}
-                                    onChange={(e) => handleCreateChange('issue_date', e.target.value)}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-colors"
-                                    placeholder="DD/MM/YYYY"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Expire Date
-                                </label>
-                                <input
-                                    type="text"
-                                    value={createForm.expire_date}
-                                    readOnly
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-50 outline-none"
-                                    placeholder="DD/MM/YYYY"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Password
-                                </label>
-                                <input
-                                    type="text"
-                                    value={createForm.password}
-                                    onChange={(e) => handleCreateChange('password', e.target.value)}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-colors"
-                                    placeholder="DSC Password"
-                                />
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                <div className="flex-shrink-0 border-t border-gray-200 bg-white p-6 rounded-b-lg shadow-sm">
-                    <div className="flex justify-end gap-3">
-                        <motion.button
-                            type="button"
-                            onClick={() => {
-                                setShowCreateModal(false);
-                                setCreateForm({
-                                    username: '',
-                                    company: '',
-                                    duration: '1',
-                                    issue_date: '',
-                                    expire_date: '',
-                                    password: ''
-                                });
-                            }}
-                            className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            Cancel
-                        </motion.button>
-                        <motion.button
-                            type="submit"
-                            onClick={handleCreateSubmit}
-                            className="px-6 py-2.5 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            Create DSC
-                        </motion.button>
-                    </div>
-                </div>
-            </ModalWrapper>
-
-            {/* Edit DSC Modal */}
-            <ModalWrapper
-                isOpen={showEditModal}
-                onClose={() => {
-                    setShowEditModal(false);
-                    setSelectedDsc(null);
-                }}
-                title="Update DSC Register"
-                size="max-w-2xl"
-            >
-                <div className="flex-1 overflow-y-auto p-6">
-                    <form onSubmit={handleEditSubmit}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    User Information
-                                </label>
-                                <input
-                                    type="text"
-                                    value={selectedDsc ? `Name: ${selectedDsc.name} | C/O: ${selectedDsc.guardian_name} | Mobile: ${selectedDsc.mobile} | Type: ${selectedDsc.user_type.toUpperCase()}` : ''}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-50 outline-none"
-                                    disabled
-                                    readOnly
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Company <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editForm.company}
-                                    onChange={(e) => handleEditChange('company', e.target.value)}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-colors"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Duration <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={editForm.duration}
-                                    onChange={(e) => handleEditChange('duration', e.target.value)}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-colors"
-                                    required
-                                >
-                                    <option value="1">1 Year</option>
-                                    <option value="2">2 Years</option>
-                                    <option value="3">3 Years</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Issue Date <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editForm.issue_date}
-                                    onChange={(e) => handleEditChange('issue_date', e.target.value)}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-colors"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Expire Date
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editForm.expire_date}
-                                    readOnly
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-50 outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Password
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editForm.password}
-                                    onChange={(e) => handleEditChange('password', e.target.value)}
-                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-colors"
-                                />
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                <div className="flex-shrink-0 border-t border-gray-200 bg-white p-6 rounded-b-lg shadow-sm">
-                    <div className="flex justify-end gap-3">
-                        <motion.button
-                            type="button"
-                            onClick={() => {
-                                setShowEditModal(false);
-                                setSelectedDsc(null);
-                            }}
-                            className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            Cancel
-                        </motion.button>
-                        <motion.button
-                            type="submit"
-                            onClick={handleEditSubmit}
-                            className="px-6 py-2.5 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            Update DSC
-                        </motion.button>
-                    </div>
-                </div>
-            </ModalWrapper>
-
-            {/* Export Confirmation Modal */}
-            {exportModal.open && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-lg p-6 max-w-sm w-full mx-auto"
-                    >
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <PiExportBold className="w-8 h-8 text-green-600" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                                Exporting {exportModal.type.toUpperCase()}
-                            </h3>
-                            <p className="text-gray-600 mb-6">
-                                Your {exportModal.type} export is being processed...
-                            </p>
-                            <div className="flex justify-center space-x-3">
-                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce"></div>
-                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                            {/* Footer Summary */}
+                            <div className="border-t border-slate-200">
+                                <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-white">
+                                    <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                                        <div className="text-xs text-slate-600">
+                                            <span className="font-semibold text-slate-800">Summary:</span> Total {dscData.length} DSC records • 
+                                            <span className="text-emerald-600 font-medium ml-2">Active: {dscData.filter(d => d.status === 1).length}</span> • 
+                                            <span className="text-rose-600 font-medium ml-2">Inactive: {dscData.filter(d => d.status === 0).length}</span>
+                                        </div>
+                                        <div className="text-xs text-slate-600">
+                                            Data updated: {moment().format('DD/MM/YYYY HH:mm')}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </motion.div>
                 </div>
-            )}
+            </div>
+
+            {/* Create DSC Modal */}
+            <AnimatePresence>
+                {showCreateModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="bg-white rounded-xl p-6 max-w-2xl w-full mx-auto shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto"
+                        >
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 sticky top-0 bg-white">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-gradient-to-r from-emerald-100 to-emerald-200 rounded-lg">
+                                        <FiPlus className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-800">Create New DSC</h3>
+                                        <p className="text-slate-600 text-xs mt-1">Fill in the details to create a new DSC register entry</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowCreateModal(false);
+                                        setCreateForm({
+                                            username: '',
+                                            company: '',
+                                            duration: '1',
+                                            issue_date: '',
+                                            expire_date: '',
+                                            password: ''
+                                        });
+                                    }}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-150 text-slate-500 hover:text-slate-700"
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleCreateSubmit}>
+                                <div className="space-y-5">
+                                    {/* User Selection */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Select User <span className="text-rose-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                value={createForm.username}
+                                                onChange={(e) => handleCreateChange('username', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                                required
+                                            >
+                                                <option value="" className="text-slate-500">Select a user...</option>
+                                                {users.map(user => (
+                                                    <option key={user.username} value={user.username} className="text-slate-700">
+                                                        {user.name} • {user.user_type.toUpperCase()} • {user.mobile}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        {/* Company */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Company <span className="text-rose-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={createForm.company}
+                                                onChange={(e) => handleCreateChange('company', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                placeholder="Enter company name"
+                                                required
+                                            />
+                                        </div>
+
+                                        {/* Duration */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Duration <span className="text-rose-500">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <select
+                                                    value={createForm.duration}
+                                                    onChange={(e) => handleCreateChange('duration', e.target.value)}
+                                                    className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                                    required
+                                                >
+                                                    <option value="1">1 Year</option>
+                                                    <option value="2">2 Years</option>
+                                                    <option value="3">3 Years</option>
+                                                </select>
+                                                <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                            </div>
+                                        </div>
+
+                                        {/* Issue Date */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Issue Date <span className="text-rose-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={createForm.issue_date}
+                                                onChange={(e) => handleCreateChange('issue_date', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                placeholder="DD/MM/YYYY"
+                                                required
+                                            />
+                                        </div>
+
+                                        {/* Expire Date */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Expire Date
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={createForm.expire_date}
+                                                readOnly
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg bg-slate-50 outline-none cursor-not-allowed"
+                                                placeholder="Auto-calculated"
+                                            />
+                                        </div>
+
+                                        {/* Password */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Password
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={createForm.password}
+                                                onChange={(e) => handleCreateChange('password', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                placeholder="DSC Password"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 sticky bottom-0 bg-white">
+                                    <motion.button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowCreateModal(false);
+                                            setCreateForm({
+                                                username: '',
+                                                company: '',
+                                                duration: '1',
+                                                issue_date: '',
+                                                expire_date: '',
+                                                password: ''
+                                            });
+                                        }}
+                                        className="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        Cancel
+                                    </motion.button>
+                                    <motion.button
+                                        type="submit"
+                                        onClick={handleCreateSubmit}
+                                        className="px-5 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg hover:shadow transition-all duration-200"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        Create DSC
+                                    </motion.button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit DSC Modal */}
+            <AnimatePresence>
+                {showEditModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="bg-white rounded-xl p-6 max-w-2xl w-full mx-auto shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto"
+                        >
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 sticky top-0 bg-white">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg">
+                                        <FiEdit className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-800">Update DSC Register</h3>
+                                        <p className="text-slate-600 text-xs mt-1">Modify the details of the selected DSC</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowEditModal(false);
+                                        setSelectedDsc(null);
+                                    }}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-150 text-slate-500 hover:text-slate-700"
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleEditSubmit}>
+                                <div className="space-y-5">
+                                    {/* User Info Display */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            User Information
+                                        </label>
+                                        <div className="px-4 py-3 border border-slate-300 rounded-lg bg-slate-50">
+                                            {selectedDsc && (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full flex items-center justify-center flex-shrink-0">
+                                                        <FiUser className="w-5 h-5 text-blue-600" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium text-slate-900 text-sm">{selectedDsc.name}</div>
+                                                        <div className="text-slate-600 text-xs">C/O: {selectedDsc.guardian_name}</div>
+                                                        <div className="text-slate-600 text-xs">Mobile: {selectedDsc.mobile}</div>
+                                                        <div className="text-slate-600 text-xs">Type: {selectedDsc.user_type.toUpperCase()}</div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        {/* Company */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Company <span className="text-rose-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={editForm.company}
+                                                onChange={(e) => handleEditChange('company', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                required
+                                            />
+                                        </div>
+
+                                        {/* Duration */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Duration <span className="text-rose-500">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <select
+                                                    value={editForm.duration}
+                                                    onChange={(e) => handleEditChange('duration', e.target.value)}
+                                                    className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                                    required
+                                                >
+                                                    <option value="1">1 Year</option>
+                                                    <option value="2">2 Years</option>
+                                                    <option value="3">3 Years</option>
+                                                </select>
+                                                <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                            </div>
+                                        </div>
+
+                                        {/* Issue Date */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Issue Date <span className="text-rose-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={editForm.issue_date}
+                                                onChange={(e) => handleEditChange('issue_date', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                required
+                                            />
+                                        </div>
+
+                                        {/* Expire Date */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Expire Date
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={editForm.expire_date}
+                                                readOnly
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg bg-slate-50 outline-none cursor-not-allowed"
+                                            />
+                                        </div>
+
+                                        {/* Password */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Password
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={editForm.password}
+                                                onChange={(e) => handleEditChange('password', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 sticky bottom-0 bg-white">
+                                    <motion.button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowEditModal(false);
+                                            setSelectedDsc(null);
+                                        }}
+                                        className="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        Cancel
+                                    </motion.button>
+                                    <motion.button
+                                        type="submit"
+                                        onClick={handleEditSubmit}
+                                        className="px-5 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:shadow transition-all duration-200"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        Update DSC
+                                    </motion.button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Export Confirmation Modal */}
+            <AnimatePresence>
+                {exportModal.open && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="bg-white rounded-xl p-6 max-w-sm w-full mx-auto shadow-xl"
+                        >
+                            <div className="text-center">
+                                <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <PiExportBold className="w-8 h-8 text-blue-600" />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-2">
+                                    Exporting {exportModal.type.toUpperCase()}
+                                </h3>
+                                <p className="text-slate-600 mb-6 text-sm">
+                                    Your {exportModal.type} export is being processed...
+                                </p>
+                                <div className="flex justify-center space-x-2 mb-6">
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce"></div>
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                    This will only take a moment...
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

@@ -11,13 +11,28 @@ import {
     FiPhone,
     FiMail as FiEmailIcon,
     FiFileText,
-    FiX
+    FiX,
+    FiChevronRight,
+    FiChevronDown,
+    FiCheck,
+    FiInfo,
+    FiDollarSign,
+    FiTrendingUp,
+    FiCreditCard,
+    FiFilter,
+    FiChevronLeft,
+    FiChevronRight as FiChevronRightIcon,
+    FiChevronUp,
+    FiUsers,
+    FiExternalLink,
+    FiCalendar,
+    FiClock
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
 import { AiOutlineMail } from "react-icons/ai";
 import { FaWhatsapp } from "react-icons/fa6";
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
 import DateFilter from '../../components/DateFilter';
 import moment from 'moment';
@@ -68,6 +83,11 @@ const ViewFileIndex = () => {
         income_tax: '',
         other: ''
     });
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
+    const [showAll, setShowAll] = useState(false);
 
     // Mock File Index data
     const mockFileData = [
@@ -126,6 +146,34 @@ const ViewFileIndex = () => {
             other: 'MISC/2024/004',
             user_type: 'employee',
             created_date: '2024-02-10'
+        },
+        {
+            index_id: 'index005',
+            username: 'user002',
+            name: 'Robert Brown',
+            guardian_name: 'Thomas Brown',
+            mobile: '+91 9876543214',
+            email: 'robert.brown@company.com',
+            gst: 'GST/2024/005',
+            audit: 'AUD/2024/005',
+            income_tax: 'ITR/2024/005',
+            other: 'MISC/2024/005',
+            user_type: 'user',
+            created_date: '2024-02-15'
+        },
+        {
+            index_id: 'index006',
+            username: 'user003',
+            name: 'Emily Davis',
+            guardian_name: 'Michael Davis',
+            mobile: '+91 9876543215',
+            email: 'emily.davis@company.com',
+            gst: 'GST/2024/006',
+            audit: 'AUD/2024/006',
+            income_tax: 'ITR/2024/006',
+            other: 'MISC/2024/006',
+            user_type: 'user',
+            created_date: '2024-02-20'
         }
     ];
 
@@ -368,19 +416,19 @@ const ViewFileIndex = () => {
 
     // Get file badge class
     const getFileBadgeClass = (fileType) => {
-        const baseClasses = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border';
+        const baseClasses = 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border shadow-xs';
         
         switch (fileType) {
             case 'gst':
-                return `${baseClasses} bg-blue-100 text-blue-800 border-blue-200`;
+                return `${baseClasses} bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 border-blue-200`;
             case 'audit':
-                return `${baseClasses} bg-green-100 text-green-800 border-green-200`;
+                return `${baseClasses} bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 border-emerald-200`;
             case 'income_tax':
-                return `${baseClasses} bg-purple-100 text-purple-800 border-purple-200`;
+                return `${baseClasses} bg-gradient-to-r from-purple-50 to-purple-100 text-purple-800 border-purple-200`;
             case 'other':
-                return `${baseClasses} bg-orange-100 text-orange-800 border-orange-200`;
+                return `${baseClasses} bg-gradient-to-r from-amber-50 to-amber-100 text-amber-800 border-amber-200`;
             default:
-                return `${baseClasses} bg-gray-100 text-gray-800 border-gray-200`;
+                return `${baseClasses} bg-gradient-to-r from-slate-50 to-slate-100 text-slate-800 border-slate-200`;
         }
     };
 
@@ -404,9 +452,56 @@ const ViewFileIndex = () => {
         };
     }, []);
 
-    // Skeleton Loading Component
+    // Handle user profile click
+    const handleUserProfileClick = (e, file) => {
+        e.preventDefault();
+        const profileLink = getUserProfileLink(file);
+        console.log('Navigating to profile:', profileLink);
+        window.open(profileLink, '_blank');
+    };
+
+    // Get current items based on pagination
+    const indexOfLastItem = showAll ? fileData.length : currentPage * itemsPerPage;
+    const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
+    const currentItems = fileData.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(fileData.length / itemsPerPage);
+
+    // Skeleton loader component
+    const SkeletonRow = () => (
+        <tr className="border-b border-slate-100 animate-pulse">
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-6 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="flex items-center justify-center">
+                    <div className="h-8 w-8 bg-slate-200 rounded-full mr-2"></div>
+                    <div className="h-4 bg-slate-200 rounded w-32"></div>
+                </div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-24 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-10 mx-auto"></div>
+            </td>
+        </tr>
+    );
+
+    // Skeleton Loading Component for full page
     const SkeletonLoader = () => (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -422,37 +517,44 @@ const ViewFileIndex = () => {
 
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    {/* Header Skeleton */}
-                    <div className="mb-6 animate-pulse">
-                        <div className="h-8 bg-gray-200 rounded w-48 mb-2"></div>
-                        <div className="h-4 bg-gray-200 rounded w-64"></div>
-                    </div>
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                        {/* Skeleton Header */}
+                        <div className="border-b border-slate-200 px-6 py-4">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div>
+                                    <div className="h-6 bg-gray-200 rounded w-48 mb-2"></div>
+                                    <div className="h-4 bg-gray-200 rounded w-32"></div>
+                                </div>
+                                <div className="flex gap-3">
+                                    <div className="h-10 bg-gray-200 rounded w-40"></div>
+                                    <div className="h-10 bg-gray-200 rounded w-32"></div>
+                                </div>
+                            </div>
+                        </div>
 
-                    {/* Controls Skeleton */}
-                    <div className="flex flex-col lg:flex-row gap-4 mb-6">
-                        <div className="flex-1">
-                            <div className="h-10 bg-gray-200 rounded"></div>
-                        </div>
-                        <div className="w-48">
-                            <div className="h-10 bg-gray-200 rounded"></div>
-                        </div>
-                        <div className="w-32">
-                            <div className="h-10 bg-gray-200 rounded"></div>
-                        </div>
-                    </div>
+                        {/* Skeleton Table */}
+                        <div className="overflow-hidden">
+                            <div className="border-b border-slate-200">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                                        <tr>
+                                            {[...Array(8)].map((_, i) => (
+                                                <th key={i} className="text-center p-3">
+                                                    <div className="h-4 bg-gray-200 rounded w-16 mx-auto"></div>
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
 
-                    {/* Table Skeleton */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm animate-pulse">
-                        <div className="border-b border-gray-200">
-                            <div className="h-12 bg-gray-100 rounded-t-lg"></div>
-                        </div>
-                        <div className="p-4">
-                            {[...Array(5)].map((_, i) => (
-                                <div key={i} className="h-16 bg-gray-100 rounded mb-2"></div>
-                            ))}
-                        </div>
-                        <div className="border-t border-gray-200">
-                            <div className="h-16 bg-gray-100 rounded-b-lg"></div>
+                            <div className="p-4">
+                                {[...Array(6)].map((_, index) => (
+                                    <div key={index} className="mb-4">
+                                        <div className="h-12 bg-gray-100 rounded"></div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -460,74 +562,13 @@ const ViewFileIndex = () => {
         </div>
     );
 
-    // Skeleton row for table
-    const SkeletonRow = () => (
-        <tr className="border-b border-gray-100 animate-pulse">
-            <td className="p-4 align-middle">
-                <div className="h-4 bg-gray-200 rounded w-8"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-4 bg-gray-200 rounded w-40"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-6 bg-gray-200 rounded w-20"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-6 bg-gray-200 rounded w-20"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-6 bg-gray-200 rounded w-20"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-6 bg-gray-200 rounded w-20"></div>
-            </td>
-            <td className="p-4 align-middle">
-                <div className="h-6 bg-gray-200 rounded w-8 ml-auto"></div>
-            </td>
-        </tr>
-    );
-
-    // Professional Modal Wrapper Component
-    const ModalWrapper = ({ isOpen, onClose, title, children, size = 'max-w-2xl' }) => {
-        if (!isOpen) return null;
-
-        return (
-            <div className="fixed inset-0 z-50 overflow-y-auto">
-                <div className="flex items-center justify-center min-h-screen p-4">
-                    {/* Overlay */}
-                    <div
-                        className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                        onClick={onClose}
-                    />
-                    {/* Professional Modal panel */}
-                    <div className={`relative w-full ${size} bg-white rounded-lg shadow-xl flex flex-col max-h-[90vh]`}>
-                        {/* Professional Header */}
-                        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-t-lg">
-                            <h2 className="text-xl font-bold">{title}</h2>
-                            <button
-                                onClick={onClose}
-                                className="text-indigo-200 hover:text-white p-1 rounded-lg transition-colors"
-                            >
-                                <FiX className="w-6 h-6" />
-                            </button>
-                        </div>
-                        {children}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
     // Show skeleton while loading
     if (loading && fileData.length === 0) {
         return <SkeletonLoader />;
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -542,94 +583,198 @@ const ViewFileIndex = () => {
             />
 
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    {/* Main Card - Full height with scrolling */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full">
+                <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    {/* Header Stats Cards - Professional Compact Design */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Total Records</p>
+                                    <h3 className="text-xl font-bold text-slate-800 mt-1">{fileData.length}</h3>
+                                </div>
+                                <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg">
+                                    <FiFileText className="w-5 h-5 text-blue-600" />
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100">
+                                <span className="text-[10px] text-slate-500 font-medium">All file index entries</span>
+                            </div>
+                        </motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: 0.1 }}
+                            className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">GST Files</p>
+                                    <h3 className="text-xl font-bold text-slate-800 mt-1">{fileData.filter(f => f.gst).length}</h3>
+                                </div>
+                                <div className="p-2 bg-gradient-to-r from-emerald-100 to-emerald-200 rounded-lg">
+                                    <FiCheck className="w-5 h-5 text-emerald-600" />
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100">
+                                <span className="text-[10px] text-slate-500 font-medium">Active GST registrations</span>
+                            </div>
+                        </motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: 0.2 }}
+                            className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Audit Files</p>
+                                    <h3 className="text-xl font-bold text-slate-800 mt-1">{fileData.filter(f => f.audit).length}</h3>
+                                </div>
+                                <div className="p-2 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg">
+                                    <FiDollarSign className="w-5 h-5 text-purple-600" />
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100">
+                                <span className="text-[10px] text-slate-500 font-medium">Audit filings completed</span>
+                            </div>
+                        </motion.div>
+                    </div>
+
+                    {/* Main Card */}
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="bg-white rounded-xl shadow-lg border border-slate-200"
+                    >
                         {/* Card Header */}
-                        <div className="border-b border-gray-200 px-6 py-4">
+                        <div className="border-b border-slate-200 px-6 py-4 bg-gradient-to-r from-slate-50 to-white sticky top-0 z-10">
                             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                                 <div>
-                                    <h5 className="text-xl font-bold text-gray-800 mb-1">
-                                        File Index Register
-                                    </h5>
-                                    {fromToDate && (
-                                        <p className="text-gray-500 text-xs mt-1">
-                                            {fromToDate}
-                                        </p>
-                                    )}
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <div className="p-2 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg">
+                                            <FiFileText className="w-5 h-5 text-purple-600" />
+                                        </div>
+                                        <div>
+                                            <h5 className="text-lg font-bold text-slate-800">
+                                                File Index Register
+                                            </h5>
+                                            {fromToDate && (
+                                                <div className="flex items-center gap-1 text-slate-600">
+                                                    <FiCalendar className="w-3 h-3" />
+                                                    <p className="text-xs font-medium">
+                                                        {fromToDate}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+                                    {/* Search Input */}
+                                    <div className="relative">
+                                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            onKeyPress={handleKeyPress}
+                                            placeholder="Search file index..."
+                                            className="pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full lg:w-64"
+                                        />
+                                    </div>
+
                                     {/* Date Filter Component */}
-                                    <DateFilter onChange={handleDateFilterChange} />
+                                    <div className="w-full lg:w-auto">
+                                        <DateFilter onChange={handleDateFilterChange} />
+                                    </div>
 
                                     <div className="flex gap-2">
-                                        {/* Search Input */}
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                                onKeyPress={handleKeyPress}
-                                                placeholder="Search file index..."
-                                                className="pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-colors w-full lg:w-64"
-                                            />
-                                            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                        </div>
-
                                         {/* Export Dropdown */}
                                         <div className="dropdown-container relative">
                                             <motion.button
                                                 onClick={() => setShowAddDropdown(!showAddDropdown)}
-                                                className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
+                                                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                                whileHover={{ scale: 1.02 }}
+                                                whileTap={{ scale: 0.98 }}
                                             >
                                                 <PiExportBold className="w-4 h-4" />
                                                 Export
+                                                <FiChevronRight className={`w-3 h-3 transition-transform ${showAddDropdown ? 'rotate-90' : ''}`} />
                                             </motion.button>
 
-                                            {showAddDropdown && (
-                                                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
-                                                    <div className="py-1">
-                                                        <button
-                                                            onClick={() => handleExport('pdf')}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-                                                        >
-                                                            <PiFilePdfDuotone className="w-4 h-4 mr-3 text-red-500" />
-                                                            Export as PDF
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleExport('excel')}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-                                                        >
-                                                            <PiMicrosoftExcelLogoDuotone className="w-4 h-4 mr-3 text-green-500" />
-                                                            Export as Excel
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setWhatsappModalOpen(true)}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-                                                        >
-                                                            <FaWhatsapp className="w-4 h-4 mr-3 text-green-500" />
-                                                            Share via WhatsApp
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setIsEmailModalOpen(true)}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-                                                        >
-                                                            <AiOutlineMail className="w-4 h-4 mr-3 text-blue-500" />
-                                                            Share via Email
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
+                                            <AnimatePresence>
+                                                {showAddDropdown && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 5 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: 5 }}
+                                                        className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
+                                                    >
+                                                        <div className="py-1">
+                                                            <button
+                                                                onClick={() => handleExport('pdf')}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-red-50 rounded mr-2 group-hover:bg-red-100 transition-colors">
+                                                                    <PiFilePdfDuotone className="w-3.5 h-3.5 text-red-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Export as PDF</div>
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleExport('excel')}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-green-50 rounded mr-2 group-hover:bg-green-100 transition-colors">
+                                                                    <PiMicrosoftExcelLogoDuotone className="w-3.5 h-3.5 text-green-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Export as Excel</div>
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setWhatsappModalOpen(true)}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-green-50 rounded mr-2 group-hover:bg-green-100 transition-colors">
+                                                                    <FaWhatsapp className="w-3.5 h-3.5 text-green-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Share via WhatsApp</div>
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setIsEmailModalOpen(true)}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-blue-50 rounded mr-2 group-hover:bg-blue-100 transition-colors">
+                                                                    <AiOutlineMail className="w-3.5 h-3.5 text-blue-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Share via Email</div>
+                                                                </div>
+                                                            </button>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
 
                                         <motion.button
                                             onClick={() => setShowCreateModal(true)}
-                                            className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
+                                            className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
                                         >
                                             <FiPlus className="w-4 h-4" />
                                             Add File Index
@@ -639,467 +784,699 @@ const ViewFileIndex = () => {
                             </div>
                         </div>
 
-                        {/* Table Container with Fixed Header and Footer */}
-                        <div className="flex-1 flex flex-col overflow-hidden">
-                            {/* Table Header - Fixed */}
-                            <div className="border-b border-gray-200">
-                                <table className="w-full text-sm">
-                                    <colgroup>
-                                        <col className="w-[5%]" />  {/* # */}
-                                        <col className="w-[25%]" /> {/* USER DETAILS */}
-                                        <col className="w-[20%]" /> {/* CONTACT INFO */}
-                                        <col className="w-[12%]" /> {/* GST */}
-                                        <col className="w-[12%]" /> {/* AUDIT */}
-                                        <col className="w-[12%]" /> {/* INCOME TAX */}
-                                        <col className="w-[12%]" /> {/* OTHER */}
-                                        <col className="w-[5%]" />  {/* ACTIONS */}
-                                    </colgroup>
-                                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                        {/* Table Container */}
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="bg-gradient-to-r from-slate-50 to-slate-100">
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[60px]">
+                                            #
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[180px]">
+                                            User Details
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
+                                            Contact Info
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
+                                            GST File
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
+                                            Audit File
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
+                                            Income Tax
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
+                                            Other File
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-100">
+                                    {fileData.length === 0 ? (
                                         <tr>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">#</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">USER DETAILS</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">CONTACT INFO</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">GST FILE</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">AUDIT FILE</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">INCOME TAX</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700 align-middle">OTHER FILE</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700 align-middle">ACTIONS</th>
-                                        </tr>
-                                    </thead>
-                                </table>
-                            </div>
-
-                            {/* Scrollable Table Body */}
-                            <div className="flex-1 overflow-y-auto">
-                                <table className="w-full text-sm">
-                                    <colgroup>
-                                        <col className="w-[5%]" />
-                                        <col className="w-[25%]" />
-                                        <col className="w-[20%]" />
-                                        <col className="w-[12%]" />
-                                        <col className="w-[12%]" />
-                                        <col className="w-[12%]" />
-                                        <col className="w-[12%]" />
-                                        <col className="w-[5%]" />
-                                    </colgroup>
-                                    <tbody className="bg-white">
-                                        {loading ? (
-                                            // Skeleton Loaders
-                                            Array.from({ length: 6 }).map((_, index) => (
-                                                <SkeletonRow key={index} />
-                                            ))
-                                        ) : fileData.length === 0 ? (
-                                            <tr>
-                                                <td colSpan="8" className="text-center py-8 text-gray-500 align-middle">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <FiFileText className="w-12 h-12 text-gray-300 mb-3" />
-                                                        <p className="text-gray-500">No file index records found</p>
-                                                        <motion.button
-                                                            onClick={() => setShowCreateModal(true)}
-                                                            className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
-                                                            whileHover={{ scale: 1.05 }}
-                                                            whileTap={{ scale: 0.95 }}
-                                                        >
-                                                            Add Your First File Index
-                                                        </motion.button>
+                                            <td colSpan="8" className="text-center py-8 text-slate-500">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="p-3 bg-slate-100 rounded-full mb-3">
+                                                        <FiFileText className="w-8 h-8 text-slate-400" />
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            fileData.map((file, index) => {
-                                                const isDropdownOpen = activeRowDropdown === file.index_id;
-
-                                                return (
-                                                    <tr
-                                                        key={file.index_id}
-                                                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors group"
+                                                    <p className="text-slate-600 text-sm font-medium mb-1">No file index records found</p>
+                                                    <p className="text-slate-500 text-xs mb-4">Start by creating your first file index entry</p>
+                                                    <motion.button
+                                                        onClick={() => setShowCreateModal(true)}
+                                                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-xs font-semibold hover:shadow transition-all duration-200"
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
                                                     >
-                                                        <td className="p-4 text-gray-600 font-medium align-middle">
-                                                            {index + 1}
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            <a
-                                                                href={getUserProfileLink(file)}
-                                                                className="text-indigo-600 hover:text-indigo-800 font-medium block"
-                                                            >
-                                                                <div className="flex items-start gap-3">
-                                                                    <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                                                        <FiUser className="w-5 h-5 text-indigo-600" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className="font-semibold text-gray-800">{file.name}</div>
-                                                                        <div className="text-gray-500 text-sm mt-1">
-                                                                            C/O: {file.guardian_name}
-                                                                        </div>
-                                                                        <div className="text-indigo-600 text-xs font-medium mt-1 bg-indigo-50 px-2 py-1 rounded-full inline-block">
-                                                                            {file.user_type.toUpperCase()}
-                                                                        </div>
-                                                                    </div>
+                                                        Create Your First File Index
+                                                    </motion.button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        currentItems.map((file, index) => {
+                                            const isDropdownOpen = activeRowDropdown === file.index_id;
+                                            const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
+                                            const profileLink = getUserProfileLink(file);
+
+                                            return (
+                                                <motion.tr
+                                                    key={file.index_id}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    transition={{ duration: 0.15 }}
+                                                    className="hover:bg-blue-50/20 transition-colors duration-150"
+                                                >
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="text-slate-700 font-medium text-xs">
+                                                            {actualIndex + 1}
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <motion.a
+                                                            href={profileLink}
+                                                            onClick={(e) => handleUserProfileClick(e, file)}
+                                                            className="inline-flex items-center justify-center gap-2 group cursor-pointer no-underline"
+                                                            whileHover={{ scale: 1.01 }}
+                                                            whileTap={{ scale: 0.99 }}
+                                                        >
+                                                            <div className="relative">
+                                                                <div className="w-8 h-8 bg-gradient-to-r from-purple-100 to-purple-200 rounded-full flex items-center justify-center flex-shrink-0 group-hover:from-purple-200 group-hover:to-purple-300 transition-colors">
+                                                                    <FiUser className="w-4 h-4 text-purple-600" />
                                                                 </div>
-                                                            </a>
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            <div className="space-y-2">
-                                                                <div className="flex items-center gap-2 text-gray-800 font-medium">
-                                                                    <FiPhone className="w-3 h-3" />
-                                                                    {file.mobile}
-                                                                </div>
-                                                                <div className="flex items-center gap-2 text-gray-500 text-sm">
-                                                                    <FiEmailIcon className="w-3 h-3" />
-                                                                    {file.email}
+                                                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-xs">
+                                                                    <FiExternalLink className="w-2.5 h-2.5 text-purple-500" />
                                                                 </div>
                                                             </div>
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            {file.gst && (
-                                                                <span className={getFileBadgeClass('gst')}>
-                                                                    {file.gst}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            {file.audit && (
-                                                                <span className={getFileBadgeClass('audit')}>
-                                                                    {file.audit}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            {file.income_tax && (
-                                                                <span className={getFileBadgeClass('income_tax')}>
-                                                                    {file.income_tax}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            {file.other && (
-                                                                <span className={getFileBadgeClass('other')}>
-                                                                    {file.other}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="p-4 align-middle">
-                                                            <div className="dropdown-container relative flex justify-center">
-                                                                <motion.button
-                                                                    className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group-hover:bg-gray-200"
-                                                                    onClick={() => toggleRowDropdown(file.index_id)}
-                                                                    whileHover={{ scale: 1.1 }}
-                                                                    whileTap={{ scale: 0.9 }}
-                                                                >
-                                                                    <FiMenu className="w-4 h-4" />
-                                                                </motion.button>
+                                                            <div className="text-left">
+                                                                <div className="text-slate-800 font-semibold text-xs group-hover:text-purple-600 transition-colors">
+                                                                    {file.name}
+                                                                </div>
+                                                                <div className="text-slate-600 text-[10px] mt-0.5">
+                                                                    C/O: {file.guardian_name}
+                                                                </div>
+                                                                <div className="mt-1">
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${
+                                                                        file.user_type === 'user' ? 'bg-blue-100 text-blue-700 group-hover:bg-blue-200' :
+                                                                        file.user_type === 'ca' ? 'bg-purple-100 text-purple-700 group-hover:bg-purple-200' :
+                                                                        file.user_type === 'agent' ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' :
+                                                                        'bg-slate-100 text-slate-700 group-hover:bg-slate-200'
+                                                                    } transition-colors`}>
+                                                                        {file.user_type}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </motion.a>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="space-y-1.5">
+                                                            <div className="flex items-center justify-center gap-1 text-slate-700 text-xs">
+                                                                <FiPhone className="w-3 h-3 text-slate-500" />
+                                                                {file.mobile}
+                                                            </div>
+                                                            <div className="flex items-center justify-center gap-1 text-slate-600 text-[10px]">
+                                                                <FiEmailIcon className="w-3 h-3 text-slate-500" />
+                                                                {file.email}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        {file.gst && (
+                                                            <span className={getFileBadgeClass('gst')}>
+                                                                {file.gst}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        {file.audit && (
+                                                            <span className={getFileBadgeClass('audit')}>
+                                                                {file.audit}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        {file.income_tax && (
+                                                            <span className={getFileBadgeClass('income_tax')}>
+                                                                {file.income_tax}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        {file.other && (
+                                                            <span className={getFileBadgeClass('other')}>
+                                                                {file.other}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="dropdown-container relative flex justify-center">
+                                                            <motion.button
+                                                                className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
+                                                                onClick={() => toggleRowDropdown(file.index_id)}
+                                                                whileHover={{ scale: 1.05 }}
+                                                                whileTap={{ scale: 0.95 }}
+                                                            >
+                                                                <FiMenu className="w-3.5 h-3.5" />
+                                                            </motion.button>
+                                                            <AnimatePresence>
                                                                 {isDropdownOpen && (
-                                                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+                                                                    <motion.div
+                                                                        initial={{ opacity: 0, y: 5 }}
+                                                                        animate={{ opacity: 1, y: 0 }}
+                                                                        exit={{ opacity: 0, y: 5 }}
+                                                                        className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
+                                                                    >
                                                                         <div className="py-1">
                                                                             <button
                                                                                 onClick={() => {
                                                                                     setActiveRowDropdown(null);
                                                                                     handleEditClick(file);
                                                                                 }}
-                                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                             >
-                                                                                <FiEdit className="w-4 h-4 mr-3" />
-                                                                                Edit File Index
+                                                                                <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                    <FiEdit className="w-3 h-3 text-blue-500" />
+                                                                                </div>
+                                                                                <div className="text-left">
+                                                                                    <div className="font-medium">Edit File Index</div>
+                                                                                </div>
                                                                             </button>
-                                                                            <div className="border-t border-gray-100 mt-1 pt-1">
+                                                                            <a
+                                                                                href={profileLink}
+                                                                                onClick={(e) => {
+                                                                                    setActiveRowDropdown(null);
+                                                                                    handleUserProfileClick(e, file);
+                                                                                }}
+                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                            >
+                                                                                <div className="p-1 bg-emerald-50 rounded mr-2">
+                                                                                    <FiUser className="w-3 h-3 text-emerald-500" />
+                                                                                </div>
+                                                                                <div className="text-left">
+                                                                                    <div className="font-medium">View Profile</div>
+                                                                                </div>
+                                                                            </a>
+                                                                            <div className="border-t border-slate-100 mt-1 pt-1">
                                                                                 <button
                                                                                     onClick={() => handleExport('print', file)}
-                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                 >
-                                                                                    <FiPrinter className="w-4 h-4 mr-3" />
-                                                                                    Print
+                                                                                    <div className="p-1 bg-slate-50 rounded mr-2">
+                                                                                        <FiPrinter className="w-3 h-3 text-slate-600" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">Print</div>
+                                                                                    </div>
                                                                                 </button>
                                                                                 <button
                                                                                     onClick={() => handleExport('whatsapp', file)}
-                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                 >
-                                                                                    <FiMessageSquare className="w-4 h-4 mr-3" />
-                                                                                    WhatsApp
+                                                                                    <div className="p-1 bg-green-50 rounded mr-2">
+                                                                                        <FiMessageSquare className="w-3 h-3 text-green-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">WhatsApp</div>
+                                                                                    </div>
                                                                                 </button>
                                                                                 <button
                                                                                     onClick={() => handleExport('email', file)}
-                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                 >
-                                                                                    <FiMail className="w-4 h-4 mr-3" />
-                                                                                    Email
+                                                                                    <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                        <FiMail className="w-3 h-3 text-blue-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">Email</div>
+                                                                                    </div>
                                                                                 </button>
                                                                             </div>
                                                                         </div>
-                                                                    </div>
+                                                                    </motion.div>
                                                                 )}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                            </AnimatePresence>
+                                                        </div>
+                                                    </td>
+                                                </motion.tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
 
-                            {/* Table Footer - Fixed */}
-                            <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                                <table className="w-full text-sm">
-                                    <colgroup>
-                                        <col className="w-[50%]" />
-                                        <col className="w-[50%]" />
-                                    </colgroup>
-                                    <tfoot>
-                                        <tr>
-                                            <td className="text-right p-4 font-bold text-gray-800 align-middle" colSpan="6">
-                                                Total File Index Records: {fileData.length}
-                                            </td>
-                                            <td className="p-4 align-middle" colSpan="2">
-                                                <div className="flex gap-2 justify-end">
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                                                        GST: {fileData.filter(f => f.gst).length}
-                                                    </span>
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                                                        Audit: {fileData.filter(f => f.audit).length}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                            {/* Pagination Controls */}
+                            {fileData.length > itemsPerPage && !showAll && (
+                                <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                                    <div className="flex flex-col sm:flex-row justify-between items-center px-4 py-3 gap-3">
+                                        <div className="text-xs text-slate-600">
+                                            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, fileData.length)} of {fileData.length} entries
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                disabled={currentPage === 1}
+                                                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                                            >
+                                                <FiChevronLeft className="w-3 h-3" />
+                                                Previous
+                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                                    let pageNumber;
+                                                    if (totalPages <= 5) {
+                                                        pageNumber = i + 1;
+                                                    } else if (currentPage <= 3) {
+                                                        pageNumber = i + 1;
+                                                    } else if (currentPage >= totalPages - 2) {
+                                                        pageNumber = totalPages - 4 + i;
+                                                    } else {
+                                                        pageNumber = currentPage - 2 + i;
+                                                    }
+                                                    
+                                                    return (
+                                                        <button
+                                                            key={pageNumber}
+                                                            onClick={() => setCurrentPage(pageNumber)}
+                                                            className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
+                                                                currentPage === pageNumber
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
+                                                            }`}
+                                                        >
+                                                            {pageNumber}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <button
+                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                                disabled={currentPage === totalPages}
+                                                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                                            >
+                                                Next
+                                                <FiChevronRightIcon className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowAll(true)}
+                                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors"
+                                        >
+                                            Show All
+                                            <FiChevronDown className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Show Less Button when showing all */}
+                            {showAll && fileData.length > itemsPerPage && (
+                                <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                                    <div className="flex justify-center px-4 py-3">
+                                        <button
+                                            onClick={() => {
+                                                setShowAll(false);
+                                                setCurrentPage(1);
+                                            }}
+                                            className="flex items-center gap-1 px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors shadow-sm"
+                                        >
+                                            Show Less
+                                            <FiChevronUp className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Footer Summary */}
+                            <div className="border-t border-slate-200">
+                                <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-white">
+                                    <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                                        <div className="text-xs text-slate-600">
+                                            <span className="font-semibold text-slate-800">Summary:</span> Total {fileData.length} file index records • 
+                                            <span className="text-blue-600 font-medium ml-2">GST: {fileData.filter(f => f.gst).length}</span> • 
+                                            <span className="text-emerald-600 font-medium ml-2">Audit: {fileData.filter(f => f.audit).length}</span> • 
+                                            <span className="text-purple-600 font-medium ml-2">Income Tax: {fileData.filter(f => f.income_tax).length}</span>
+                                        </div>
+                                        <div className="text-xs text-slate-600">
+                                            Data updated: {moment().format('DD/MM/YYYY HH:mm')}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
 
-            {/* Create Modal */}
-            <ModalWrapper
-                isOpen={showCreateModal}
-                onClose={() => {
-                    setShowCreateModal(false);
-                    setCreateForm({
-                        username: '',
-                        gst: '',
-                        audit: '',
-                        income_tax: '',
-                        other: ''
-                    });
-                }}
-                title="Create File Index"
-                size="max-w-2xl"
-            >
-                <div className="flex-1 overflow-y-auto p-6">
-                    <form onSubmit={handleCreateSubmit}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div className="col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    View User <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={createForm.username}
-                                    onChange={(e) => handleCreateChange('username', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none"
-                                    required
+            {/* Create File Index Modal */}
+            <AnimatePresence>
+                {showCreateModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="bg-white rounded-xl p-6 max-w-2xl w-full mx-auto shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto"
+                        >
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 sticky top-0 bg-white">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-gradient-to-r from-emerald-100 to-emerald-200 rounded-lg">
+                                        <FiPlus className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-800">Create File Index</h3>
+                                        <p className="text-slate-600 text-xs mt-1">Add new file index entry for a user</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowCreateModal(false);
+                                        setCreateForm({
+                                            username: '',
+                                            gst: '',
+                                            audit: '',
+                                            income_tax: '',
+                                            other: ''
+                                        });
+                                    }}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-150 text-slate-500 hover:text-slate-700"
                                 >
-                                    <option value="">Select User</option>
-                                    {users.map(user => (
-                                        <option key={user.username} value={user.username}>
-                                            Name: {user.name} | C/O: {user.guardian_name} | Mobile: {user.mobile} | Type: {user.user_type.toUpperCase()}
-                                        </option>
-                                    ))}
-                                </select>
+                                    <FiX className="w-5 h-5" />
+                                </button>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    GST
-                                </label>
-                                <input
-                                    type="text"
-                                    value={createForm.gst}
-                                    onChange={(e) => handleCreateChange('gst', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none"
-                                    placeholder="GST file no"
-                                />
-                            </div>
+                            <form onSubmit={handleCreateSubmit}>
+                                <div className="space-y-5">
+                                    {/* User Selection */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Select User <span className="text-rose-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                value={createForm.username}
+                                                onChange={(e) => handleCreateChange('username', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                                required
+                                            >
+                                                <option value="" className="text-slate-500">Select a user...</option>
+                                                {users.map(user => (
+                                                    <option key={user.username} value={user.username} className="text-slate-700">
+                                                        {user.name} • {user.user_type.toUpperCase()} • {user.mobile}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        </div>
+                                    </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Audit
-                                </label>
-                                <input
-                                    type="text"
-                                    value={createForm.audit}
-                                    onChange={(e) => handleCreateChange('audit', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none"
-                                    placeholder="Audit file no"
-                                />
-                            </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        {/* GST */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                GST File Number
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={createForm.gst}
+                                                onChange={(e) => handleCreateChange('gst', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                placeholder="Enter GST file number"
+                                            />
+                                        </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Income Tax
-                                </label>
-                                <input
-                                    type="text"
-                                    value={createForm.income_tax}
-                                    onChange={(e) => handleCreateChange('income_tax', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none"
-                                    placeholder="Income Tax file no"
-                                />
-                            </div>
+                                        {/* Audit */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Audit File Number
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={createForm.audit}
+                                                onChange={(e) => handleCreateChange('audit', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                placeholder="Enter audit file number"
+                                            />
+                                        </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Other
-                                </label>
-                                <input
-                                    type="text"
-                                    value={createForm.other}
-                                    onChange={(e) => handleCreateChange('other', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none"
-                                    placeholder="Other file no"
-                                />
-                            </div>
-                        </div>
-                    </form>
-                </div>
+                                        {/* Income Tax */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Income Tax File
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={createForm.income_tax}
+                                                onChange={(e) => handleCreateChange('income_tax', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                placeholder="Enter income tax file number"
+                                            />
+                                        </div>
 
-                <div className="flex-shrink-0 border-t border-gray-200 bg-white p-6 rounded-b-lg shadow-sm">
-                    <div className="flex justify-end gap-3">
-                        <motion.button
-                            type="button"
-                            onClick={() => {
-                                setShowCreateModal(false);
-                                setCreateForm({
-                                    username: '',
-                                    gst: '',
-                                    audit: '',
-                                    income_tax: '',
-                                    other: ''
-                                });
-                            }}
-                            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                                        {/* Other */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Other File
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={createForm.other}
+                                                onChange={(e) => handleCreateChange('other', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                placeholder="Enter other file number"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 sticky bottom-0 bg-white">
+                                    <motion.button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowCreateModal(false);
+                                            setCreateForm({
+                                                username: '',
+                                                gst: '',
+                                                audit: '',
+                                                income_tax: '',
+                                                other: ''
+                                            });
+                                        }}
+                                        className="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        Cancel
+                                    </motion.button>
+                                    <motion.button
+                                        type="submit"
+                                        onClick={handleCreateSubmit}
+                                        className="px-5 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg hover:shadow transition-all duration-200"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        Create File Index
+                                    </motion.button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit File Index Modal */}
+            <AnimatePresence>
+                {showEditModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="bg-white rounded-xl p-6 max-w-2xl w-full mx-auto shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto"
                         >
-                            Cancel
-                        </motion.button>
-                        <motion.button
-                            type="submit"
-                            onClick={handleCreateSubmit}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 sticky top-0 bg-white">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg">
+                                        <FiEdit className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-800">Update File Index</h3>
+                                        <p className="text-slate-600 text-xs mt-1">Modify file index details</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowEditModal(false);
+                                        setSelectedFile(null);
+                                    }}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-150 text-slate-500 hover:text-slate-700"
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleEditSubmit}>
+                                <div className="space-y-5">
+                                    {/* User Info Display */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            User Information
+                                        </label>
+                                        <div className="px-4 py-3 border border-slate-300 rounded-lg bg-slate-50">
+                                            {selectedFile && (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-gradient-to-r from-purple-100 to-purple-200 rounded-full flex items-center justify-center flex-shrink-0">
+                                                        <FiUser className="w-5 h-5 text-purple-600" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium text-slate-900 text-sm">{selectedFile.name}</div>
+                                                        <div className="text-slate-600 text-xs">C/O: {selectedFile.guardian_name}</div>
+                                                        <div className="text-slate-600 text-xs">Mobile: {selectedFile.mobile}</div>
+                                                        <div className="text-slate-600 text-xs">Type: {selectedFile.user_type.toUpperCase()}</div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        {/* GST */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                GST File Number
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={editForm.gst}
+                                                onChange={(e) => handleEditChange('gst', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                placeholder="Enter GST file number"
+                                            />
+                                        </div>
+
+                                        {/* Audit */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Audit File Number
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={editForm.audit}
+                                                onChange={(e) => handleEditChange('audit', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                placeholder="Enter audit file number"
+                                            />
+                                        </div>
+
+                                        {/* Income Tax */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Income Tax File
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={editForm.income_tax}
+                                                onChange={(e) => handleEditChange('income_tax', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                placeholder="Enter income tax file number"
+                                            />
+                                        </div>
+
+                                        {/* Other */}
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Other File
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={editForm.other}
+                                                onChange={(e) => handleEditChange('other', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                placeholder="Enter other file number"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 sticky bottom-0 bg-white">
+                                    <motion.button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowEditModal(false);
+                                            setSelectedFile(null);
+                                        }}
+                                        className="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        Cancel
+                                    </motion.button>
+                                    <motion.button
+                                        type="submit"
+                                        onClick={handleEditSubmit}
+                                        className="px-5 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:shadow transition-all duration-200"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        Update File Index
+                                    </motion.button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Export Confirmation Modal */}
+            <AnimatePresence>
+                {exportModal.open && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="bg-white rounded-xl p-6 max-w-sm w-full mx-auto shadow-xl"
                         >
-                            Submit
-                        </motion.button>
-                    </div>
-                </div>
-            </ModalWrapper>
-
-            {/* Edit Modal */}
-            <ModalWrapper
-                isOpen={showEditModal}
-                onClose={() => {
-                    setShowEditModal(false);
-                    setSelectedFile(null);
-                }}
-                title="Update File Index"
-                size="max-w-2xl"
-            >
-                <div className="flex-1 overflow-y-auto p-6">
-                    <form onSubmit={handleEditSubmit}>
-                        <input type="hidden" name="index_id" value={editForm.index_id} />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div className="col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    View User
-                                </label>
-                                <input
-                                    type="text"className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 outline-none"
-                                    disabled
-                                    readOnly
-                                />
+                            <div className="text-center">
+                                <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <PiExportBold className="w-8 h-8 text-blue-600" />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-2">
+                                    Exporting {exportModal.type.toUpperCase()}
+                                </h3>
+                                <p className="text-slate-600 mb-6 text-sm">
+                                    Your {exportModal.type} export is being processed...
+                                </p>
+                                <div className="flex justify-center space-x-2 mb-6">
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce"></div>
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                    This will only take a moment...
+                                </div>
                             </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    GST
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editForm.gst}
-                                    onChange={(e) => handleEditChange('gst', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none"
-                                    placeholder="GST file no"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Audit
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editForm.audit}
-                                    onChange={(e) => handleEditChange('audit', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none"
-                                    placeholder="Audit file no"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Income Tax
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editForm.income_tax}
-                                    onChange={(e) => handleEditChange('income_tax', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none"
-                                    placeholder="Income Tax file no"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Other
-                                </label>
-                                <input
-                                    type="text"
-                                    value={editForm.other}
-                                    onChange={(e) => handleEditChange('other', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none"
-                                    placeholder="Other file no"
-                                />
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                <div className="flex-shrink-0 border-t border-gray-200 bg-white p-6 rounded-b-lg shadow-sm">
-                    <div className="flex justify-end gap-3">
-                        <motion.button
-                            type="button"
-                            onClick={() => {
-                                setShowEditModal(false);
-                                setSelectedFile(null);
-                            }}
-                            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            Cancel
-                        </motion.button>
-                        <motion.button
-                            type="submit"
-                            onClick={handleEditSubmit}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            Submit
-                        </motion.button>
-                    </div>
-                </div>
-            </ModalWrapper>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

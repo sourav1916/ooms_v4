@@ -1,8 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit, FiCheck, FiX, FiSearch } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+    FiSearch,
+    FiPlus,
+    FiEdit,
+    FiMenu,
+    FiPrinter,
+    FiMail,
+    FiMessageSquare,
+    FiUser,
+    FiPhone,
+    FiMail as FiEmailIcon,
+    FiCalendar,
+    FiClock,
+    FiX,
+    FiChevronRight,
+    FiChevronDown,
+    FiCheck,
+    FiInfo,
+    FiDollarSign,
+    FiTrendingUp,
+    FiCreditCard,
+    FiFilter,
+    FiChevronLeft,
+    FiChevronRight as FiChevronRightIcon,
+    FiChevronUp,
+    FiUsers,
+    FiExternalLink,
+    FiCheckCircle,
+    FiXCircle,
+    FiPercent
+} from 'react-icons/fi';
+import { PiExportBold } from "react-icons/pi";
+import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
+import { AiOutlineMail } from "react-icons/ai";
+import { FaWhatsapp } from "react-icons/fa6";
+import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
 import DateFilter from '../../components/DateFilter';
+import moment from 'moment';
 
 const CAList = () => {
     // Header/Sidebar states
@@ -15,15 +50,26 @@ const CAList = () => {
     // Main states
     const [loading, setLoading] = useState(false);
     const [caList, setCaList] = useState([]);
-    const [filteredCaList, setFilteredCaList] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [dateRange, setDateRange] = useState('');
+    const [fromToDate, setFromToDate] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedCA, setSelectedCA] = useState(null);
     const [states, setStates] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [genders, setGenders] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [dateRange, setDateRange] = useState('');
+
+    // State for dropdown menus
+    const [showAddDropdown, setShowAddDropdown] = useState(false);
+    const [activeRowDropdown, setActiveRowDropdown] = useState(null);
+    const [exportModal, setExportModal] = useState({ open: false, type: '', data: null });
+
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+    const [selectedEmail, setSelectedEmail] = useState('');
+
+    const [isWhatsappModalOpen, setWhatsappModalOpen] = useState(false);
+    const [selectedWhatsapp, setSelectedWhatsapp] = useState('');
 
     // Form states
     const [createForm, setCreateForm] = useState({
@@ -57,7 +103,12 @@ const CAList = () => {
         address_line_2: ''
     });
 
-    // Mock CA data with dates
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
+    const [showAll, setShowAll] = useState(false);
+
+    // Mock CA data
     const mockCAData = [
         {
             username: 'ca001',
@@ -215,16 +266,28 @@ const CAList = () => {
         };
     }, [mobileMenuOpen]);
 
-    // Initial data load
+    // Initialize with current month date range
     useEffect(() => {
-        fetchCAData();
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = today;
+
+        const formatDate = (date) => {
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            }).replace(/\//g, '/');
+        };
+
+        const from = formatDate(firstDay);
+        const to = formatDate(lastDay);
+
+        setDateRange(`${from} - ${to}`);
+        setFromToDate(`From ${from} to ${to}`);
+        fetchCAData(true);
         loadStatesAndGenders();
     }, []);
-
-    // Filter CA list when search term or date range changes
-    useEffect(() => {
-        filterCAList();
-    }, [searchTerm, dateRange, caList]);
 
     // Load states and genders
     const loadStatesAndGenders = () => {
@@ -255,44 +318,113 @@ const CAList = () => {
     };
 
     // Simulate API call to fetch CA data
-    const fetchCAData = async () => {
+    const fetchCAData = async (from = '', to = '') => {
         setLoading(true);
 
-        // Simulate API delay
         setTimeout(() => {
-            setCaList(mockCAData);
-            setFilteredCaList(mockCAData);
+            let filteredData = mockCAData;
+
+            // Filter by date range if provided
+            if (from && to) {
+                filteredData = mockCAData.filter(item => {
+                    const createdDate = moment(item.created_date);
+                    const fromDate = moment(from, 'DD/MM/YYYY');
+                    const toDate = moment(to, 'DD/MM/YYYY');
+                    return createdDate.isBetween(fromDate, toDate, null, '[]');
+                });
+            }
+
+            // Filter by search query
+            if (searchQuery) {
+                filteredData = filteredData.filter(item =>
+                    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    item.mobile.includes(searchQuery) ||
+                    item.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    item.designation.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            }
+
+            setCaList(filteredData);
             setLoading(false);
         }, 1000);
     };
 
-    // Filter CA list based on search term and date range
-    const filterCAList = () => {
-        let filtered = caList;
+    // Handle search
+    const handleSearch = () => {
+        const [from, to] = dateRange.split(' - ');
+        fetchCAData(from, to);
+    };
 
-        // Filter by search term
-        if (searchTerm) {
-            filtered = filtered.filter(ca =>
-                ca.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                ca.mobile.includes(searchTerm) ||
-                ca.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                ca.designation.toLowerCase().includes(searchTerm.toLowerCase())
-            );
+    // Handle search input change with debounce
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery !== '') {
+                handleSearch();
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Handle key press in search input
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
         }
+    };
 
-        // Filter by date range
-        if (dateRange) {
-            const [from, to] = dateRange.split(' - ');
-            const fromDate = new Date(from.split('/').reverse().join('-'));
-            const toDate = new Date(to.split('/').reverse().join('-'));
-            
-            filtered = filtered.filter(ca => {
-                const caDate = new Date(ca.created_date);
-                return caDate >= fromDate && caDate <= toDate;
-            });
+    // Handle date filter change
+    const handleDateFilterChange = (filter) => {
+        console.log('Selected filter:', filter);
+        if (filter.range) {
+            setDateRange(filter.range);
+            const [from, to] = filter.range.split(' - ');
+            setFromToDate(`From ${from} to ${to}`);
+            fetchCAData(from, to);
         }
+    };
 
-        setFilteredCaList(filtered);
+    // Handle export
+    const handleExport = (type, data = null) => {
+        setExportModal({ open: true, type, data });
+
+        setTimeout(() => {
+            setExportModal({ open: false, type: '', data: null });
+            alert(`${type.toUpperCase()} export completed successfully!`);
+        }, 1500);
+    };
+
+    const handleEmailSubmit = (email) => {
+        setSelectedEmail(email);
+        setIsEmailModalOpen(false);
+        console.log('Selected email:', email);
+    };
+
+    const handleWhatsappSubmit = (number) => {
+        setSelectedWhatsapp(number);
+        setWhatsappModalOpen(false);
+        console.log('Selected number:', number);
+    };
+
+    // Handle edit button click
+    const handleEditClick = (ca) => {
+        setSelectedCA(ca);
+        setEditForm({
+            username: ca.username,
+            name: ca.name,
+            guardian_name: ca.guardian_name,
+            mobile: ca.mobile,
+            email: ca.email,
+            dob: '',
+            gender: 'male',
+            state: states[0]?.state || '',
+            dist: districts[0] || '',
+            town: '',
+            pincode: '',
+            address_line_1: '',
+            address_line_2: ''
+        });
+        setShowEditModal(true);
     };
 
     // Handle create form submit
@@ -320,6 +452,8 @@ const CAList = () => {
         // Close modal and reset form
         setShowCreateModal(false);
         resetCreateForm();
+        const [from, to] = dateRange.split(' - ');
+        fetchCAData(from, to);
     };
 
     // Handle edit form submit
@@ -343,27 +477,8 @@ const CAList = () => {
         
         // Close modal
         setShowEditModal(false);
-    };
-
-    // Handle edit button click
-    const handleEditClick = (ca) => {
-        setSelectedCA(ca);
-        setEditForm({
-            username: ca.username,
-            name: ca.name,
-            guardian_name: ca.guardian_name,
-            mobile: ca.mobile,
-            email: ca.email,
-            dob: '',
-            gender: 'male',
-            state: states[0]?.state || '',
-            dist: districts[0] || '',
-            town: '',
-            pincode: '',
-            address_line_1: '',
-            address_line_2: ''
-        });
-        setShowEditModal(true);
+        const [from, to] = dateRange.split(' - ');
+        fetchCAData(from, to);
     };
 
     // Handle status change
@@ -419,17 +534,28 @@ const CAList = () => {
         });
     };
 
-    // Handle date filter change
-    const handleDateFilterChange = (filter) => {
-        console.log('Selected filter:', filter);
-        if (filter.range) {
-            setDateRange(filter.range);
-        }
+    // Get user profile link
+    const getUserProfileLink = (ca) => {
+        return `/view-ca-profile?username=${ca.username}`;
     };
 
-    // Handle search
-    const handleSearch = () => {
-        filterCAList();
+    // Get ledger link
+    const getLedgerLink = (ca) => {
+        return `/view-ca-profile-ledger?username=${ca.username}`;
+    };
+
+    // Get status badge class
+    const getStatusBadgeClass = (status) => {
+        return status === 1 
+            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+            : 'bg-rose-100 text-rose-700 border border-rose-200';
+    };
+
+    // Get balance badge class
+    const getBalanceBadgeClass = (balance) => {
+        return balance < 0 
+            ? 'bg-rose-100 text-rose-700 border border-rose-200'
+            : 'bg-emerald-100 text-emerald-700 border border-emerald-200';
     };
 
     // Format currency
@@ -446,17 +572,89 @@ const CAList = () => {
         return date.toLocaleDateString('en-GB');
     };
 
-    // Calculate summary
-    const summary = {
-        totalCA: filteredCaList.length,
-        activeCA: filteredCaList.filter(ca => ca.status === 1).length,
-        totalBalance: filteredCaList.reduce((sum, ca) => sum + ca.balance, 0),
-        totalLoan: filteredCaList.reduce((sum, ca) => sum + ca.loan, 0)
+    // Toggle row dropdown
+    const toggleRowDropdown = (caId) => {
+        setActiveRowDropdown(activeRowDropdown === caId ? null : caId);
     };
 
-    // Skeleton Loading Component
+    // Close all dropdowns when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (!event.target.closest('.dropdown-container')) {
+                setShowAddDropdown(false);
+                setActiveRowDropdown(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    // Get current items based on pagination
+    const indexOfLastItem = showAll ? caList.length : currentPage * itemsPerPage;
+    const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
+    const currentItems = caList.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(caList.length / itemsPerPage);
+
+    // Handle user profile click
+    const handleUserProfileClick = (e, ca) => {
+        e.preventDefault();
+        const profileLink = getUserProfileLink(ca);
+        console.log('Navigating to profile:', profileLink);
+        window.open(profileLink, '_blank');
+    };
+
+    // Handle ledger click
+    const handleLedgerClick = (e, ca) => {
+        e.preventDefault();
+        const ledgerLink = getLedgerLink(ca);
+        console.log('Navigating to ledger:', ledgerLink);
+        window.open(ledgerLink, '_blank');
+    };
+
+    // Calculate summary
+    const summary = {
+        totalCA: caList.length,
+        activeCA: caList.filter(ca => ca.status === 1).length,
+        totalBalance: caList.reduce((sum, ca) => sum + ca.balance, 0),
+        totalLoan: caList.reduce((sum, ca) => sum + ca.loan, 0)
+    };
+
+    // Skeleton loader component
+    const SkeletonRow = () => (
+        <tr className="border-b border-slate-100 animate-pulse">
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-6 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="flex items-center justify-center">
+                    <div className="h-8 w-8 bg-slate-200 rounded-full mr-2"></div>
+                    <div className="h-4 bg-slate-200 rounded w-32"></div>
+                </div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-24 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-4 bg-slate-200 rounded w-32 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-16 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-10 mx-auto"></div>
+            </td>
+            <td className="p-3 text-center">
+                <div className="h-6 bg-slate-200 rounded w-8 mx-auto"></div>
+            </td>
+        </tr>
+    );
+
+    // Skeleton Loading Component for full page
     const SkeletonLoader = () => (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -472,69 +670,49 @@ const CAList = () => {
 
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    {/* Header Skeleton */}
-                    <div className="mb-6 animate-pulse">
-                        <div className="h-8 bg-gray-200 rounded w-48 mb-2"></div>
-                        <div className="h-4 bg-gray-200 rounded w-64"></div>
-                    </div>
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                        {/* Skeleton Header */}
+                        <div className="border-b border-slate-200 px-6 py-4">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div>
+                                    <div className="h-6 bg-gray-200 rounded w-48 mb-2"></div>
+                                    <div className="h-4 bg-gray-200 rounded w-32"></div>
+                                </div>
+                                <div className="flex gap-3">
+                                    <div className="h-10 bg-gray-200 rounded w-40"></div>
+                                    <div className="h-10 bg-gray-200 rounded w-32"></div>
+                                </div>
+                            </div>
+                        </div>
 
-                    {/* Controls Skeleton */}
-                    <div className="flex flex-col lg:flex-row gap-4 mb-6">
-                        <div className="flex-1">
-                            <div className="h-10 bg-gray-200 rounded"></div>
-                        </div>
-                        <div className="w-48">
-                            <div className="h-10 bg-gray-200 rounded"></div>
-                        </div>
-                        <div className="w-32">
-                            <div className="h-10 bg-gray-200 rounded"></div>
-                        </div>
-                    </div>
+                        {/* Skeleton Table */}
+                        <div className="overflow-hidden">
+                            <div className="border-b border-slate-200">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                                        <tr>
+                                            {[...Array(7)].map((_, i) => (
+                                                <th key={i} className="text-center p-3">
+                                                    <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
 
-                    {/* Table Skeleton */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm animate-pulse">
-                        <div className="border-b border-gray-200">
-                            <div className="h-12 bg-gray-100 rounded-t-lg"></div>
-                        </div>
-                        <div className="p-4">
-                            {[...Array(5)].map((_, i) => (
-                                <div key={i} className="h-16 bg-gray-100 rounded mb-2"></div>
-                            ))}
-                        </div>
-                        <div className="border-t border-gray-200">
-                            <div className="h-16 bg-gray-100 rounded-b-lg"></div>
+                            <div className="p-4">
+                                {[...Array(6)].map((_, index) => (
+                                    <div key={index} className="mb-4">
+                                        <div className="h-12 bg-gray-100 rounded"></div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    );
-
-    // Skeleton row for table
-    const SkeletonRow = () => (
-        <tr className="border-b border-gray-100 animate-pulse">
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-8"></div>
-            </td>
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
-            </td>
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-20"></div>
-            </td>
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-40"></div>
-            </td>
-            <td className="p-4">
-                <div className="h-6 bg-gray-200 rounded w-16"></div>
-            </td>
-            <td className="p-4">
-                <div className="h-6 bg-gray-200 rounded w-12"></div>
-            </td>
-            <td className="p-4">
-                <div className="h-6 bg-gray-200 rounded w-8 mx-auto"></div>
-            </td>
-        </tr>
     );
 
     // Show skeleton while loading
@@ -543,7 +721,7 @@ const CAList = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -558,142 +736,384 @@ const CAList = () => {
             />
 
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    {/* Main Card - Full height with scrolling */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full">
+                <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    {/* Header Stats Cards - Professional Compact Design */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Total CA</p>
+                                    <h3 className="text-xl font-bold text-slate-800 mt-1">{summary.totalCA}</h3>
+                                </div>
+                                <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg">
+                                    <FiUsers className="w-5 h-5 text-blue-600" />
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100">
+                                <span className="text-[10px] text-slate-500 font-medium">All Chartered Accountants</span>
+                            </div>
+                        </motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: 0.1 }}
+                            className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Active</p>
+                                    <h3 className="text-xl font-bold text-slate-800 mt-1">{summary.activeCA}</h3>
+                                </div>
+                                <div className="p-2 bg-gradient-to-r from-emerald-100 to-emerald-200 rounded-lg">
+                                    <FiCheckCircle className="w-5 h-5 text-emerald-600" />
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100">
+                                <span className="text-[10px] text-slate-500 font-medium">Currently active accounts</span>
+                            </div>
+                        </motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: 0.2 }}
+                            className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Total Balance</p>
+                                    <h3 className="text-xl font-bold text-slate-800 mt-1">
+                                        ₹{formatCurrency(summary.totalBalance)}
+                                    </h3>
+                                </div>
+                                <div className="p-2 bg-gradient-to-r from-emerald-100 to-emerald-200 rounded-lg">
+                                    <FiDollarSign className="w-5 h-5 text-emerald-600" />
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100">
+                                <span className="text-[10px] text-slate-500 font-medium">Overall account balance</span>
+                            </div>
+                        </motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: 0.3 }}
+                            className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Total Loan</p>
+                                    <h3 className="text-xl font-bold text-slate-800 mt-1">
+                                        ₹{formatCurrency(summary.totalLoan)}
+                                    </h3>
+                                </div>
+                                <div className="p-2 bg-gradient-to-r from-amber-100 to-amber-200 rounded-lg">
+                                    <FiTrendingUp className="w-5 h-5 text-amber-600" />
+                                </div>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100">
+                                <span className="text-[10px] text-slate-500 font-medium">Outstanding loan amount</span>
+                            </div>
+                        </motion.div>
+                    </div>
+
+                    {/* Main Card */}
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="bg-white rounded-xl shadow-lg border border-slate-200"
+                    >
                         {/* Card Header */}
-                        <div className="border-b border-gray-200 px-6 py-4">
+                        <div className="border-b border-slate-200 px-6 py-4 bg-gradient-to-r from-slate-50 to-white sticky top-0 z-10">
                             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                                 <div>
-                                    <h5 className="text-xl font-bold text-gray-800 mb-1">
-                                        Chartered Accountants
-                                    </h5>
-                                    <p className="text-gray-500 text-xs mt-1">
-                                        Manage CA profiles and information
-                                    </p>
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg">
+                                            <FiUser className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h5 className="text-lg font-bold text-slate-800">
+                                                Chartered Accountants
+                                            </h5>
+                                            {fromToDate && (
+                                                <div className="flex items-center gap-1 text-slate-600">
+                                                    <FiCalendar className="w-3 h-3" />
+                                                    <p className="text-xs font-medium">
+                                                        {fromToDate}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
-                                    {/* Search Box */}
+                                    {/* Search Input */}
                                     <div className="relative">
+                                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
                                         <input
                                             type="text"
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                                            placeholder="Search CAs..."
-                                            className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all w-full lg:w-64"
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            onKeyPress={handleKeyPress}
+                                            placeholder="Search by name, mobile, email..."
+                                            className="pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full lg:w-64"
                                         />
-                                        <FiSearch className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                                     </div>
 
                                     {/* Date Filter Component */}
-                                    <DateFilter onChange={handleDateFilterChange} />
+                                    <div className="w-full lg:w-auto">
+                                        <DateFilter onChange={handleDateFilterChange} />
+                                    </div>
 
-                                    <motion.button
-                                        onClick={() => setShowCreateModal(true)}
-                                        className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <FiPlus className="w-4 h-4" />
-                                        Add CA
-                                    </motion.button>
+                                    <div className="flex gap-2">
+                                        {/* Export Dropdown */}
+                                        <div className="dropdown-container relative">
+                                            <motion.button
+                                                onClick={() => setShowAddDropdown(!showAddDropdown)}
+                                                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                                whileHover={{ scale: 1.02 }}
+                                                whileTap={{ scale: 0.98 }}
+                                            >
+                                                <PiExportBold className="w-4 h-4" />
+                                                Export
+                                                <FiChevronRight className={`w-3 h-3 transition-transform ${showAddDropdown ? 'rotate-90' : ''}`} />
+                                            </motion.button>
+
+                                            <AnimatePresence>
+                                                {showAddDropdown && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 5 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: 5 }}
+                                                        className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
+                                                    >
+                                                        <div className="py-1">
+                                                            <button
+                                                                onClick={() => handleExport('pdf')}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-red-50 rounded mr-2 group-hover:bg-red-100 transition-colors">
+                                                                    <PiFilePdfDuotone className="w-3.5 h-3.5 text-red-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Export as PDF</div>
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleExport('excel')}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-green-50 rounded mr-2 group-hover:bg-green-100 transition-colors">
+                                                                    <PiMicrosoftExcelLogoDuotone className="w-3.5 h-3.5 text-green-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Export as Excel</div>
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setWhatsappModalOpen(true)}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-green-50 rounded mr-2 group-hover:bg-green-100 transition-colors">
+                                                                    <FaWhatsapp className="w-3.5 h-3.5 text-green-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Share via WhatsApp</div>
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setIsEmailModalOpen(true)}
+                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                            >
+                                                                <div className="p-1.5 bg-blue-50 rounded mr-2 group-hover:bg-blue-100 transition-colors">
+                                                                    <AiOutlineMail className="w-3.5 h-3.5 text-blue-500" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <div className="font-medium text-xs">Share via Email</div>
+                                                                </div>
+                                                            </button>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+
+                                        <motion.button
+                                            onClick={() => setShowCreateModal(true)}
+                                            className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                        >
+                                            <FiPlus className="w-4 h-4" />
+                                           
+                                        </motion.button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Table Container with Fixed Header and Footer */}
-                        <div className="flex-1 flex flex-col overflow-hidden">
-                            {/* Table Header - Fixed */}
-                            <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                                <table className="w-full text-sm">
-                                    <thead>
+                        {/* Table Container */}
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="bg-gradient-to-r from-slate-50 to-slate-100">
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[60px]">
+                                            Sl No
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[180px]">
+                                            CA Details
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
+                                            Contact Info
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
+                                            Account
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[140px]">
+                                            Balance
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
+                                            Status
+                                        </th>
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-100">
+                                    {caList.length === 0 ? (
                                         <tr>
-                                            <th className="text-left p-4 font-semibold text-gray-700">#</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700">Name</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700">Mobile</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700">Email</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700">Balance</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700">Status</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700">Actions</th>
-                                        </tr>
-                                    </thead>
-                                </table>
-                            </div>
-
-                            {/* Scrollable Table Body */}
-                            <div className="flex-1 overflow-y-auto">
-                                <table className="w-full text-sm">
-                                    <tbody className="bg-white">
-                                        {loading ? (
-                                            // Skeleton Loaders
-                                            Array.from({ length: 8 }).map((_, index) => (
-                                                <SkeletonRow key={index} />
-                                            ))
-                                        ) : filteredCaList.length === 0 ? (
-                                            <tr>
-                                                <td colSpan="7" className="text-center py-8 text-gray-500">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <FiEdit className="w-12 h-12 text-gray-300 mb-3" />
-                                                        <p className="text-gray-500">
-                                                            {caList.length === 0 ? 'No CA records found' : 'No CAs match your search criteria'}
-                                                        </p>
-                                                        <motion.button
-                                                            onClick={() => setShowCreateModal(true)}
-                                                            className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
-                                                            whileHover={{ scale: 1.05 }}
-                                                            whileTap={{ scale: 0.95 }}
-                                                        >
-                                                            Add Your First CA
-                                                        </motion.button>
+                                            <td colSpan="7" className="text-center py-8 text-slate-500">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="p-3 bg-slate-100 rounded-full mb-3">
+                                                        <FiUser className="w-8 h-8 text-slate-400" />
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            filteredCaList.map((ca, index) => (
-                                                <tr
+                                                    <p className="text-slate-600 text-sm font-medium mb-1">No CA records found</p>
+                                                    <p className="text-slate-500 text-xs mb-4">Start by creating your first CA entry</p>
+                                                    <motion.button
+                                                        onClick={() => setShowCreateModal(true)}
+                                                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-xs font-semibold hover:shadow transition-all duration-200"
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                    >
+                                                        Create Your First CA
+                                                    </motion.button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        currentItems.map((ca, index) => {
+                                            const isDropdownOpen = activeRowDropdown === ca.username;
+                                            const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
+                                            const profileLink = getUserProfileLink(ca);
+                                            const ledgerLink = getLedgerLink(ca);
+
+                                            return (
+                                                <motion.tr
                                                     key={ca.username}
-                                                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors group"
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    transition={{ duration: 0.15 }}
+                                                    className="hover:bg-blue-50/20 transition-colors duration-150"
                                                 >
-                                                    <td className="p-4 text-gray-600 font-medium">
-                                                        {index + 1}
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <div className="text-gray-800 font-medium">
-                                                            <a
-                                                                href={`/view-ca-profile?username=${ca.username}`}
-                                                                className="text-indigo-600 hover:text-indigo-800 transition-colors"
-                                                            >
-                                                                {ca.name}
-                                                            </a>
-                                                        </div>
-                                                        <div className="text-gray-500 text-sm mt-1">
-                                                            {ca.designation}
-                                                        </div>
-                                                        <div className="text-gray-500 text-xs mt-1">
-                                                            Created: {formatDate(ca.created_date)}
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="text-slate-700 font-medium text-xs">
+                                                            {actualIndex + 1}
                                                         </div>
                                                     </td>
-                                                    <td className="p-4 text-gray-600">
-                                                        {ca.mobile}
-                                                    </td>
-                                                    <td className="p-4 text-gray-600">
-                                                        {ca.email}
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <a
-                                                            href={`/view-ca-profile-ledger?username=${ca.username}`}
-                                                            className={`inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold rounded-lg min-w-[80px] ${
-                                                                ca.balance < 0 
-                                                                    ? 'bg-red-100 text-red-800 hover:bg-red-200' 
-                                                                    : 'bg-green-100 text-green-800 hover:bg-green-200'
-                                                            } transition-colors`}
+                                                    <td className="text-center p-3 align-middle">
+                                                        <motion.a
+                                                            href={profileLink}
+                                                            onClick={(e) => handleUserProfileClick(e, ca)}
+                                                            className="inline-flex items-center justify-center gap-2 group cursor-pointer no-underline"
+                                                            whileHover={{ scale: 1.01 }}
+                                                            whileTap={{ scale: 0.99 }}
                                                         >
-                                                            ₹{formatCurrency(Math.abs(ca.balance))}
-                                                        </a>
+                                                            <div className="relative">
+                                                                <div className="w-8 h-8 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full flex items-center justify-center flex-shrink-0 group-hover:from-blue-200 group-hover:to-blue-300 transition-colors">
+                                                                    <FiUser className="w-4 h-4 text-blue-600" />
+                                                                </div>
+                                                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-xs">
+                                                                    <FiExternalLink className="w-2.5 h-2.5 text-blue-500" />
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <div className="text-slate-800 font-semibold text-xs group-hover:text-blue-600 transition-colors">
+                                                                    {ca.name}
+                                                                </div>
+                                                                <div className="text-slate-600 text-[10px] mt-0.5">
+                                                                    C/O: {ca.guardian_name}
+                                                                </div>
+                                                                <div className="mt-1">
+                                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 text-purple-700 group-hover:bg-purple-200 transition-colors">
+                                                                        {ca.designation}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </motion.a>
                                                     </td>
-                                                    <td className="p-4 text-center">
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="space-y-1.5">
+                                                            <div className="flex items-center justify-center gap-1 text-slate-700 text-xs">
+                                                                <FiPhone className="w-3 h-3 text-slate-500" />
+                                                                {ca.mobile}
+                                                            </div>
+                                                            <div className="flex items-center justify-center gap-1 text-slate-600 text-[10px]">
+                                                                <FiEmailIcon className="w-3 h-3 text-slate-500" />
+                                                                {ca.email}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="space-y-2">
+                                                            <div className="text-slate-700 text-xs">
+                                                                <div className="flex items-center justify-center gap-1">
+                                                                    <FiCalendar className="w-3 h-3 text-slate-500" />
+                                                                    Created: {formatDate(ca.created_date)}
+                                                                </div>
+                                                            </div>
+                                                            <motion.a
+                                                                href={ledgerLink}
+                                                                onClick={(e) => handleLedgerClick(e, ca)}
+                                                                className="inline-flex items-center justify-center bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded text-xs border border-slate-300/50 shadow-xs hover:from-slate-200 hover:to-slate-300 transition-all duration-200 group cursor-pointer"
+                                                                whileHover={{ scale: 1.02 }}
+                                                                whileTap={{ scale: 0.98 }}
+                                                            >
+                                                                <FiPercent className="w-3 h-3 mr-1 group-hover:rotate-12 transition-transform" />
+                                                                View Ledger
+                                                            </motion.a>
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="space-y-2">
+                                                            <motion.a
+                                                                href={ledgerLink}
+                                                                onClick={(e) => handleLedgerClick(e, ca)}
+                                                                className={`inline-flex items-center justify-center px-3 py-1.5 text-xs font-bold rounded-lg min-w-[100px] shadow-xs hover:shadow transition-all duration-200 ${getBalanceBadgeClass(ca.balance)} cursor-pointer`}
+                                                                whileHover={{ scale: 1.02 }}
+                                                                whileTap={{ scale: 0.98 }}
+                                                            >
+                                                                ₹{formatCurrency(Math.abs(ca.balance))}
+                                                                {ca.balance < 0 && <FiTrendingUp className="w-3 h-3 ml-1" />}
+                                                            </motion.a>
+                                                            {/* {ca.loan > 0 && (
+                                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">
+                                                                    <FiCreditCard className="w-2.5 h-2.5" />
+                                                                    ₹{formatCurrency(ca.loan)} Loan
+                                                                </span>
+                                                            )} */}
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center p-3 align-middle">
                                                         <label className="relative inline-flex items-center cursor-pointer justify-center">
                                                             <input
                                                                 type="checkbox"
@@ -701,490 +1121,745 @@ const CAList = () => {
                                                                 onChange={() => handleStatusChange(ca)}
                                                                 className="sr-only peer"
                                                             />
-                                                            <div className={`w-12 h-6 rounded-full peer ${ca.status === 1 ? 'bg-indigo-600' : 'bg-gray-300'} peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all after:border after:border-gray-300`}>
+                                                            <div className={`w-14 h-7 rounded-full peer ${ca.status === 1 ? 'bg-emerald-500' : 'bg-slate-300'} peer-checked:after:translate-x-7 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:border after:border-slate-300`}>
                                                                 {ca.status === 1 ? (
-                                                                    <FiCheck className="absolute left-1 top-0.5 w-3 h-3 text-white z-10" />
+                                                                    <FiCheck className="absolute left-1.5 top-1.5 w-3 h-3 text-white z-10" />
                                                                 ) : (
-                                                                    <FiX className="absolute right-1 top-0.5 w-3 h-3 text-gray-500 z-10" />
+                                                                    <FiX className="absolute right-1.5 top-1.5 w-3 h-3 text-slate-500 z-10" />
                                                                 )}
                                                             </div>
                                                         </label>
                                                     </td>
-                                                    <td className="p-4">
-                                                        <div className="flex justify-center">
+                                                    <td className="text-center p-3 align-middle">
+                                                        <div className="dropdown-container relative flex justify-center">
                                                             <motion.button
-                                                                onClick={() => handleEditClick(ca)}
-                                                                className="p-2 text-indigo-600 hover:text-indigo-800 rounded-lg hover:bg-indigo-50 transition-colors cursor-pointer group-hover:bg-indigo-100"
-                                                                whileHover={{ scale: 1.1 }}
-                                                                whileTap={{ scale: 0.9 }}
+                                                                className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
+                                                                onClick={() => toggleRowDropdown(ca.username)}
+                                                                whileHover={{ scale: 1.05 }}
+                                                                whileTap={{ scale: 0.95 }}
                                                             >
-                                                                <FiEdit className="w-4 h-4" />
+                                                                <FiMenu className="w-3.5 h-3.5" />
                                                             </motion.button>
+                                                            <AnimatePresence>
+                                                                {isDropdownOpen && (
+                                                                    <motion.div
+                                                                        initial={{ opacity: 0, y: 5 }}
+                                                                        animate={{ opacity: 1, y: 0 }}
+                                                                        exit={{ opacity: 0, y: 5 }}
+                                                                        className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
+                                                                    >
+                                                                        <div className="py-1">
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setActiveRowDropdown(null);
+                                                                                    handleEditClick(ca);
+                                                                                }}
+                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                            >
+                                                                                <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                    <FiEdit className="w-3 h-3 text-blue-500" />
+                                                                                </div>
+                                                                                <div className="text-left">
+                                                                                    <div className="font-medium">Edit CA</div>
+                                                                                </div>
+                                                                            </button>
+                                                                            <a
+                                                                                href={profileLink}
+                                                                                onClick={(e) => {
+                                                                                    setActiveRowDropdown(null);
+                                                                                    handleUserProfileClick(e, ca);
+                                                                                }}
+                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                            >
+                                                                                <div className="p-1 bg-emerald-50 rounded mr-2">
+                                                                                    <FiUser className="w-3 h-3 text-emerald-500" />
+                                                                                </div>
+                                                                                <div className="text-left">
+                                                                                    <div className="font-medium">View Profile</div>
+                                                                                </div>
+                                                                            </a>
+                                                                            <a
+                                                                                href={ledgerLink}
+                                                                                onClick={(e) => {
+                                                                                    setActiveRowDropdown(null);
+                                                                                    handleLedgerClick(e, ca);
+                                                                                }}
+                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                            >
+                                                                                <div className="p-1 bg-purple-50 rounded mr-2">
+                                                                                    <FiPercent className="w-3 h-3 text-purple-500" />
+                                                                                </div>
+                                                                                <div className="text-left">
+                                                                                    <div className="font-medium">View Ledger</div>
+                                                                                </div>
+                                                                            </a>
+                                                                            <div className="border-t border-slate-100 mt-1 pt-1">
+                                                                                <button
+                                                                                    onClick={() => handleExport('print', ca)}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                >
+                                                                                    <div className="p-1 bg-slate-50 rounded mr-2">
+                                                                                        <FiPrinter className="w-3 h-3 text-slate-600" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">Print</div>
+                                                                                    </div>
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleExport('whatsapp', ca)}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                >
+                                                                                    <div className="p-1 bg-green-50 rounded mr-2">
+                                                                                        <FiMessageSquare className="w-3 h-3 text-green-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">WhatsApp</div>
+                                                                                    </div>
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleExport('email', ca)}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                >
+                                                                                    <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                        <FiMail className="w-3 h-3 text-blue-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">Email</div>
+                                                                                    </div>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
                                                         </div>
                                                     </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                </motion.tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
 
-                            {/* Table Footer - Fixed */}
-                            <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                                <table className="w-full text-sm">
-                                    <tfoot>
-                                        <tr>
-                                            <td className="text-left p-4 font-bold text-gray-800" colSpan="2">
-                                                Summary
-                                            </td>
-                                            <td className="text-left p-4">
-                                                <span className="inline-flex items-center justify-center bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1.5 rounded-lg">
-                                                    {summary.totalCA} CAs
-                                                </span>
-                                            </td>
-                                            <td className="text-left p-4">
-                                                <span className="inline-flex items-center justify-center bg-green-100 text-green-800 text-sm font-bold px-3 py-1.5 rounded-lg">
-                                                    {summary.activeCA} Active
-                                                </span>
-                                            </td>
-                                            <td className="text-left p-4">
-                                                <span className="inline-flex items-center justify-center bg-purple-100 text-purple-800 text-sm font-bold px-3 py-1.5 rounded-lg min-w-[80px]">
-                                                    ₹{formatCurrency(summary.totalBalance)}
-                                                </span>
-                                            </td>
-                                            <td className="text-center p-4">
-                                                <span className="inline-flex items-center justify-center bg-orange-100 text-orange-800 text-sm font-bold px-3 py-1.5 rounded-lg">
-                                                    ₹{formatCurrency(summary.totalLoan)} Loan
-                                                </span>
-                                            </td>
-                                            <td className="p-4"></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                            {/* Pagination Controls */}
+                            {caList.length > itemsPerPage && !showAll && (
+                                <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                                    <div className="flex flex-col sm:flex-row justify-between items-center px-4 py-3 gap-3">
+                                        <div className="text-xs text-slate-600">
+                                            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, caList.length)} of {caList.length} entries
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                disabled={currentPage === 1}
+                                                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                                            >
+                                                <FiChevronLeft className="w-3 h-3" />
+                                                Previous
+                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                                    let pageNumber;
+                                                    if (totalPages <= 5) {
+                                                        pageNumber = i + 1;
+                                                    } else if (currentPage <= 3) {
+                                                        pageNumber = i + 1;
+                                                    } else if (currentPage >= totalPages - 2) {
+                                                        pageNumber = totalPages - 4 + i;
+                                                    } else {
+                                                        pageNumber = currentPage - 2 + i;
+                                                    }
+                                                    
+                                                    return (
+                                                        <button
+                                                            key={pageNumber}
+                                                            onClick={() => setCurrentPage(pageNumber)}
+                                                            className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
+                                                                currentPage === pageNumber
+                                                                    ? 'bg-blue-600 text-white'
+                                                                    : 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
+                                                            }`}
+                                                        >
+                                                            {pageNumber}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <button
+                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                                disabled={currentPage === totalPages}
+                                                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                                            >
+                                                Next
+                                                <FiChevronRightIcon className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowAll(true)}
+                                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors"
+                                        >
+                                            Show All
+                                            <FiChevronDown className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Show Less Button when showing all */}
+                            {showAll && caList.length > itemsPerPage && (
+                                <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                                    <div className="flex justify-center px-4 py-3">
+                                        <button
+                                            onClick={() => {
+                                                setShowAll(false);
+                                                setCurrentPage(1);
+                                            }}
+                                            className="flex items-center gap-1 px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors shadow-sm"
+                                        >
+                                            Show Less
+                                            <FiChevronUp className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Footer Summary */}
+                            <div className="border-t border-slate-200">
+                                <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-white">
+                                    <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                                        <div className="text-xs text-slate-600">
+                                            <span className="font-semibold text-slate-800">Summary:</span> Total {summary.totalCA} CAs • 
+                                            <span className="text-emerald-600 font-medium ml-2">Active: {summary.activeCA}</span> • 
+                                            <span className="text-rose-600 font-medium ml-2">Inactive: {summary.totalCA - summary.activeCA}</span> • 
+                                            <span className="text-emerald-600 font-medium ml-2">Balance: ₹{formatCurrency(summary.totalBalance)}</span> • 
+                                            <span className="text-amber-600 font-medium ml-2">Loan: ₹{formatCurrency(summary.totalLoan)}</span>
+                                        </div>
+                                        <div className="text-xs text-slate-600">
+                                            Data updated: {moment().format('DD/MM/YYYY HH:mm')}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
 
             {/* Create CA Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto max-h-[90vh] overflow-y-auto"
+            <AnimatePresence>
+                {showCreateModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
                     >
-                        <div className="border-b border-gray-200 px-6 py-4">
-                            <div className="flex justify-between items-center">
-                                <h5 className="text-lg font-semibold text-gray-800">Create CA</h5>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="bg-white rounded-xl p-6 max-w-4xl w-full mx-auto shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto"
+                        >
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 sticky top-0 bg-white">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-gradient-to-r from-emerald-100 to-emerald-200 rounded-lg">
+                                        <FiPlus className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-800">Create New CA</h3>
+                                        <p className="text-slate-600 text-xs mt-1">Fill in the details to create a new Chartered Accountant entry</p>
+                                    </div>
+                                </div>
                                 <button
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                    onClick={() => {
+                                        setShowCreateModal(false);
+                                        resetCreateForm();
+                                    }}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-150 text-slate-500 hover:text-slate-700"
                                 >
-                                    ×
+                                    <FiX className="w-5 h-5" />
                                 </button>
                             </div>
-                        </div>
-                        <div className="p-6">
+
                             <form onSubmit={handleCreateSubmit}>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Name
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Name <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             value={createForm.name}
                                             onChange={(e) => handleCreateChange('name', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Enter Name"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Guardian's Name
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Guardian's Name <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             value={createForm.guardian_name}
                                             onChange={(e) => handleCreateChange('guardian_name', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Enter Father's Name"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Mobile Number
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Mobile Number <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="tel"
                                             value={createForm.mobile}
                                             onChange={(e) => handleCreateChange('mobile', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Enter Mobile Number"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             Date of Birth
                                         </label>
                                         <input
                                             type="date"
                                             value={createForm.dob}
                                             onChange={(e) => handleCreateChange('dob', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             Gender
                                         </label>
-                                        <select
-                                            value={createForm.gender}
-                                            onChange={(e) => handleCreateChange('gender', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                        >
-                                            {genders.map(gender => (
-                                                <option key={gender.value} value={gender.value}>
-                                                    {gender.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={createForm.gender}
+                                                onChange={(e) => handleCreateChange('gender', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                            >
+                                                {genders.map(gender => (
+                                                    <option key={gender.value} value={gender.value}>
+                                                        {gender.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Email
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Email <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="email"
                                             value={createForm.email}
                                             onChange={(e) => handleCreateChange('email', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="example@gmail.com"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             State
                                         </label>
-                                        <select
-                                            value={createForm.state}
-                                            onChange={(e) => handleCreateChange('state', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                        >
-                                            {states.map(state => (
-                                                <option key={state.state} value={state.state}>
-                                                    {state.state}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={createForm.state}
+                                                onChange={(e) => handleCreateChange('state', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                            >
+                                                {states.map(state => (
+                                                    <option key={state.state} value={state.state}>
+                                                        {state.state}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             District
                                         </label>
-                                        <select
-                                            value={createForm.dist}
-                                            onChange={(e) => handleCreateChange('dist', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                        >
-                                            {districts.map(district => (
-                                                <option key={district} value={district}>
-                                                    {district}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={createForm.dist}
+                                                onChange={(e) => handleCreateChange('dist', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                            >
+                                                {districts.map(district => (
+                                                    <option key={district} value={district}>
+                                                        {district}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Village/Town
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Village/Town <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             value={createForm.town}
                                             onChange={(e) => handleCreateChange('town', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Village/Town"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Pin Code
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Pin Code <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="tel"
                                             value={createForm.pincode}
                                             onChange={(e) => handleCreateChange('pincode', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Pin code"
                                             required
                                         />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             Address Line 1
                                         </label>
                                         <input
                                             type="text"
                                             value={createForm.address_line_1}
                                             onChange={(e) => handleCreateChange('address_line_1', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Address Line 1"
                                         />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             Address Line 2
                                         </label>
                                         <input
                                             type="text"
                                             value={createForm.address_line_2}
                                             onChange={(e) => handleCreateChange('address_line_2', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Address Line 2"
                                         />
                                     </div>
                                 </div>
-                                <div className="flex justify-end gap-3">
+
+                                <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 sticky bottom-0 bg-white">
                                     <motion.button
                                         type="button"
-                                        onClick={() => setShowCreateModal(false)}
-                                        className="px-4 py-2.5 text-gray-600 hover:text-gray-800 rounded-lg text-sm font-medium transition-colors"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => {
+                                            setShowCreateModal(false);
+                                            resetCreateForm();
+                                        }}
+                                        className="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
                                     >
                                         Cancel
                                     </motion.button>
                                     <motion.button
                                         type="submit"
-                                        className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        className="px-5 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-lg hover:shadow transition-all duration-200"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
                                     >
                                         Create CA
                                     </motion.button>
                                 </div>
                             </form>
-                        </div>
+                        </motion.div>
                     </motion.div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
 
             {/* Edit CA Modal */}
-            {showEditModal && selectedCA && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto max-h-[90vh] overflow-y-auto"
+            <AnimatePresence>
+                {showEditModal && selectedCA && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
                     >
-                        <div className="border-b border-gray-200 px-6 py-4">
-                            <div className="flex justify-between items-center">
-                                <h5 className="text-lg font-semibold text-gray-800">Update CA</h5>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="bg-white rounded-xl p-6 max-w-4xl w-full mx-auto shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto"
+                        >
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 sticky top-0 bg-white">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg">
+                                        <FiEdit className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-800">Update CA</h3>
+                                        <p className="text-slate-600 text-xs mt-1">Modify the details of the selected Chartered Accountant</p>
+                                    </div>
+                                </div>
                                 <button
-                                    onClick={() => setShowEditModal(false)}
-                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                    onClick={() => {
+                                        setShowEditModal(false);
+                                        setSelectedCA(null);
+                                    }}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-150 text-slate-500 hover:text-slate-700"
                                 >
-                                    ×
+                                    <FiX className="w-5 h-5" />
                                 </button>
                             </div>
-                        </div>
-                        <div className="p-6">
+
                             <form onSubmit={handleEditSubmit}>
                                 <input type="hidden" name="username" value={editForm.username} />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Name
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Name <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             value={editForm.name}
                                             onChange={(e) => handleEditChange('name', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Enter Name"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Guardian's Name
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Guardian's Name <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             value={editForm.guardian_name}
                                             onChange={(e) => handleEditChange('guardian_name', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Enter Father's Name"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Mobile Number
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Mobile Number <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="tel"
                                             value={editForm.mobile}
                                             onChange={(e) => handleEditChange('mobile', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Enter Mobile Number"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             Date of Birth
                                         </label>
                                         <input
                                             type="date"
                                             value={editForm.dob}
                                             onChange={(e) => handleEditChange('dob', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             Gender
                                         </label>
-                                        <select
-                                            value={editForm.gender}
-                                            onChange={(e) => handleEditChange('gender', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                        >
-                                            {genders.map(gender => (
-                                                <option key={gender.value} value={gender.value}>
-                                                    {gender.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={editForm.gender}
+                                                onChange={(e) => handleEditChange('gender', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                            >
+                                                {genders.map(gender => (
+                                                    <option key={gender.value} value={gender.value}>
+                                                        {gender.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Email
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Email <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="email"
                                             value={editForm.email}
                                             onChange={(e) => handleEditChange('email', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="example@gmail.com"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             State
                                         </label>
-                                        <select
-                                            value={editForm.state}
-                                            onChange={(e) => handleEditChange('state', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                        >
-                                            {states.map(state => (
-                                                <option key={state.state} value={state.state}>
-                                                    {state.state}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={editForm.state}
+                                                onChange={(e) => handleEditChange('state', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                            >
+                                                {states.map(state => (
+                                                    <option key={state.state} value={state.state}>
+                                                        {state.state}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             District
                                         </label>
-                                        <select
-                                            value={editForm.dist}
-                                            onChange={(e) => handleEditChange('dist', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                        >
-                                            {districts.map(district => (
-                                                <option key={district} value={district}>
-                                                    {district}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={editForm.dist}
+                                                onChange={(e) => handleEditChange('dist', e.target.value)}
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                            >
+                                                {districts.map(district => (
+                                                    <option key={district} value={district}>
+                                                        {district}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Village/Town
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Village/Town <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             value={editForm.town}
                                             onChange={(e) => handleEditChange('town', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Village/Town"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Pin Code
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                            Pin Code <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="tel"
                                             value={editForm.pincode}
                                             onChange={(e) => handleEditChange('pincode', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Pin code"
                                             required
                                         />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             Address Line 1
                                         </label>
                                         <input
                                             type="text"
                                             value={editForm.address_line_1}
                                             onChange={(e) => handleEditChange('address_line_1', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Address Line 1"
                                         />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             Address Line 2
                                         </label>
                                         <input
                                             type="text"
                                             value={editForm.address_line_2}
                                             onChange={(e) => handleEditChange('address_line_2', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                             placeholder="Address Line 2"
                                         />
                                     </div>
                                 </div>
-                                <div className="flex justify-end gap-3">
+
+                                <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-200 sticky bottom-0 bg-white">
                                     <motion.button
                                         type="button"
-                                        onClick={() => setShowEditModal(false)}
-                                        className="px-4 py-2.5 text-gray-600 hover:text-gray-800 rounded-lg text-sm font-medium transition-colors"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => {
+                                            setShowEditModal(false);
+                                            setSelectedCA(null);
+                                        }}
+                                        className="px-5 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
                                     >
                                         Cancel
                                     </motion.button>
                                     <motion.button
                                         type="submit"
-                                        className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        className="px-5 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:shadow transition-all duration-200"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
                                     >
                                         Update CA
                                     </motion.button>
                                 </div>
                             </form>
-                        </div>
+                        </motion.div>
                     </motion.div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
+
+            {/* Export Confirmation Modal */}
+            <AnimatePresence>
+                {exportModal.open && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                            className="bg-white rounded-xl p-6 max-w-sm w-full mx-auto shadow-xl"
+                        >
+                            <div className="text-center">
+                                <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <PiExportBold className="w-8 h-8 text-blue-600" />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-2">
+                                    Exporting {exportModal.type.toUpperCase()}
+                                </h3>
+                                <p className="text-slate-600 mb-6 text-sm">
+                                    Your {exportModal.type} export is being processed...
+                                </p>
+                                <div className="flex justify-center space-x-2 mb-6">
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce"></div>
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                    <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                    This will only take a moment...
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

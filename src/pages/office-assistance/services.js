@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit, FiSettings, FiMoreVertical, FiSearch } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { FiPlus, FiEdit, FiSettings, FiMoreVertical, FiSearch, FiFilter, FiDollarSign, FiPercent, FiCheckCircle, FiXCircle, FiCalendar, FiX } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
 import DateFilter from '../../components/DateFilter';
 
@@ -346,11 +346,6 @@ const Services = () => {
         }
     };
 
-    // Handle search
-    const handleSearch = () => {
-        filterServices();
-    };
-
     // Format date
     const formatDate = (dateString) => {
         const date = new Date(dateString);
@@ -373,35 +368,47 @@ const Services = () => {
         totalGST: filteredServices.reduce((sum, service) => sum + service.gst, 0)
     };
 
+    // Clear search
+    const clearSearch = () => {
+        setSearchTerm('');
+        setDateRange('');
+    };
+
     // Skeleton loader component
     const SkeletonRow = () => (
-        <tr className="border-b border-gray-200 animate-pulse">
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-8"></div>
+        <tr className="border-b border-gray-100 animate-pulse">
+            <td className="p-3 text-center">
+                <div className="h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-6 mx-auto"></div>
             </td>
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
+            <td className="p-3 text-center">
+                <div className="space-y-1.5 mx-auto max-w-xs">
+                    <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-36 mx-auto"></div>
+                    <div className="h-3 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-20 mx-auto"></div>
+                </div>
             </td>
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-16"></div>
+            <td className="p-3 text-center">
+                <div className="h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-20 mx-auto"></div>
             </td>
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-20"></div>
+            <td className="p-3 text-center">
+                <div className="h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-24 mx-auto"></div>
             </td>
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-24"></div>
+            <td className="p-3 text-center">
+                <div className="space-y-1 mx-auto max-w-xs">
+                    <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-20 mx-auto"></div>
+                    <div className="h-3 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-16 mx-auto"></div>
+                </div>
             </td>
-            <td className="p-4">
-                <div className="h-6 bg-gray-200 rounded w-16"></div>
+            <td className="p-3 text-center">
+                <div className="h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-20 mx-auto"></div>
             </td>
-            <td className="p-4">
-                <div className="h-6 bg-gray-200 rounded w-8 mx-auto"></div>
+            <td className="p-3 text-center">
+                <div className="h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-8 mx-auto"></div>
             </td>
         </tr>
     );
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-blue-50">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -419,207 +426,357 @@ const Services = () => {
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-full mx-auto px-4 sm:px-6 md:px-8 py-6">
                     <div className="h-full flex flex-col">
-                        {/* Main Card - Full height with scrolling */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full">
-                            {/* Card Header */}
-                            <div className="border-b border-gray-200 px-6 py-4">
-                                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                                    <div>
-                                        <h5 className="text-xl font-bold text-gray-800 mb-1">
-                                            Services
-                                        </h5>
-                                        <p className="text-gray-500 text-xs mt-1">
-                                            Manage your services and pricing
-                                        </p>
-                                    </div>
+                        {/* Header with Stats */}
+                        <div className="mb-6">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+                                <div>
+                                    <h5 className="text-2xl font-bold text-gray-800 mb-2">
+                                        Services Management
+                                    </h5>
+                                    <p className="text-gray-600 text-sm">
+                                        Manage and track all your services in one place
+                                    </p>
+                                </div>
 
-                                    <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
-                                        {/* Search Box */}
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                value={searchTerm}
-                                                onChange={(e) => setSearchTerm(e.target.value)}
-                                                placeholder="Search services..."
-                                                className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all w-full lg:w-64"
-                                            />
-                                            <FiSearch className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                                <motion.button
+                                    onClick={() => setShowCreateModal(true)}
+                                    className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-600/40"
+                                    whileHover={{ scale: 1.02, y: -2 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    <FiPlus className="w-4 h-4" />
+                                    Add New Service
+                                </motion.button>
+                            </div>
+
+                            {/* Stats Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Total Services</p>
+                                            <h3 className="text-2xl font-bold text-gray-800">{summary.totalServices}</h3>
                                         </div>
+                                        <div className="p-3 bg-indigo-50 rounded-lg">
+                                            <FiSettings className="w-6 h-6 text-indigo-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Active Services</p>
+                                            <h3 className="text-2xl font-bold text-green-600">{summary.activeServices}</h3>
+                                        </div>
+                                        <div className="p-3 bg-green-50 rounded-lg">
+                                            <FiCheckCircle className="w-6 h-6 text-green-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Total Revenue</p>
+                                            <h3 className="text-2xl font-bold text-gray-800">₹{formatCurrency(summary.totalRevenue)}</h3>
+                                        </div>
+                                        <div className="p-3 bg-blue-50 rounded-lg">
+                                            <FiDollarSign className="w-6 h-6 text-blue-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Total GST</p>
+                                            <h3 className="text-2xl font-bold text-orange-600">₹{formatCurrency(summary.totalGST)}</h3>
+                                        </div>
+                                        <div className="p-3 bg-orange-50 rounded-lg">
+                                            <FiPercent className="w-6 h-6 text-orange-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                        {/* Date Filter Component */}
-                                        <DateFilter onChange={handleDateFilterChange} />
-
-                                        <motion.button
-                                            onClick={() => setShowCreateModal(true)}
-                                            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
-                                        >
-                                            <FiPlus className="w-4 h-4" />
-                                            Add Service
-                                        </motion.button>
+                        {/* Main Card */}
+                        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 flex flex-col h-full overflow-hidden">
+                            {/* Filters Bar - Compact Design */}
+                            <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
+                                    {/* Search Input - Compact */}
+                                    <div className="relative flex-1 min-w-0">
+                                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            placeholder="Search by name or SAC code"
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all text-sm"
+                                        />
+                                    </div>
+                                    
+                                    {/* Date Filter - Compact */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-300 rounded-lg bg-white min-w-[140px]">
+                                            <FiCalendar className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                                            <DateFilter 
+                                                onChange={handleDateFilterChange}
+                                                className="text-sm w-full bg-transparent border-none outline-none"
+                                            />
+                                        </div>
+                                        
+                                        {/* Active Filters Badge */}
+                                        {(searchTerm || dateRange) && (
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm">
+                                                    {searchTerm && (
+                                                        <span className="flex items-center">
+                                                            Search: "{searchTerm}"
+                                                        </span>
+                                                    )}
+                                                    {dateRange && (
+                                                        <span className="flex items-center ml-2">
+                                                            <FiCalendar className="w-3 h-3 mr-1" />
+                                                            {dateRange}
+                                                        </span>
+                                                    )}
+                                                    <button
+                                                        onClick={clearSearch}
+                                                        className="ml-2 p-1 hover:bg-indigo-100 rounded-full transition-colors"
+                                                    >
+                                                        <FiX className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Results Count - Compact */}
+                                    <div className="text-sm text-gray-600 whitespace-nowrap sm:ml-auto">
+                                        <span className="font-semibold">{filteredServices.length}</span> of <span className="font-semibold">{services.length}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Table Container with Fixed Header and Footer */}
+                            {/* Table Container */}
                             <div className="flex-1 flex flex-col overflow-hidden">
-                                {/* Table Header - Fixed */}
-                                <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr>
-                                                <th className="text-left p-4 font-semibold text-gray-700">#</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700">Service Name</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700">SAC Code</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700">Fees</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700">GST</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700">Status</th>
-                                                <th className="text-center p-4 font-semibold text-gray-700">Actions</th>
-                                            </tr>
-                                        </thead>
-                                    </table>
+                                {/* Table Header - Perfectly aligned */}
+                                <div className="bg-gradient-to-r from-gray-50 to-indigo-50">
+                                    <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-gray-200">
+                                        <div className="col-span-1">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                #
+                                            </div>
+                                        </div>
+                                        <div className="col-span-3">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Service Details
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                SAC Code
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Fees
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                GST Details
+                                            </div>
+                                        </div>
+                                        <div className="col-span-1">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Status
+                                            </div>
+                                        </div>
+                                        <div className="col-span-1">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Actions
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Scrollable Table Body */}
                                 <div className="flex-1 overflow-y-auto">
-                                    <table className="w-full text-sm">
-                                        <tbody className="bg-white">
-                                            {loading ? (
-                                                // Skeleton Loaders
-                                                Array.from({ length: 8 }).map((_, index) => (
-                                                    <SkeletonRow key={index} />
-                                                ))
-                                            ) : filteredServices.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="7" className="text-center py-8 text-gray-500">
-                                                        <div className="flex flex-col items-center justify-center">
-                                                            <FiSettings className="w-12 h-12 text-gray-300 mb-3" />
-                                                            <p className="text-gray-500">
-                                                                {services.length === 0 ? 'No services found' : 'No services match your search criteria'}
-                                                            </p>
-                                                            <button
-                                                                onClick={() => setShowCreateModal(true)}
-                                                                className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
-                                                            >
-                                                                Create Your First Service
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                filteredServices.map((service, index) => {
-                                                    const isDropdownOpen = activeDropdown === service.service_id;
+                                    {loading ? (
+                                        <div className="p-5">
+                                            {Array.from({ length: 8 }).map((_, index) => (
+                                                <SkeletonRow key={index} />
+                                            ))}
+                                        </div>
+                                    ) : filteredServices.length === 0 ? (
+                                        <div className="text-center py-12">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="p-4 bg-gray-100 rounded-full mb-4">
+                                                    <FiSettings className="w-12 h-12 text-gray-400" />
+                                                </div>
+                                                <p className="text-gray-500 text-lg font-medium mb-2">
+                                                    {services.length === 0 ? 'No services available' : 'No matching services found'}
+                                                </p>
+                                                <p className="text-gray-400 text-sm mb-4">
+                                                    {services.length === 0 
+                                                        ? 'Get started by creating your first service' 
+                                                        : 'Try adjusting your search or filter criteria'}
+                                                </p>
+                                                <motion.button
+                                                    onClick={() => setShowCreateModal(true)}
+                                                    className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm"
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                >
+                                                    Create Your First Service
+                                                </motion.button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-5">
+                                            {filteredServices.map((service, index) => {
+                                                const isDropdownOpen = activeDropdown === service.service_id;
 
-                                                    return (
-                                                        <tr
-                                                            key={service.service_id}
-                                                            className="border-b border-gray-100 hover:bg-gray-50 transition-colors group"
-                                                        >
-                                                            <td className="p-4 text-gray-600 font-medium">
+                                                return (
+                                                    <motion.div
+                                                        key={service.service_id}
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className="grid grid-cols-12 gap-2 py-3 border-b border-gray-100 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 transition-all duration-200 group"
+                                                    >
+                                                        {/* # Column */}
+                                                        <div className="col-span-1 flex items-center justify-center">
+                                                            <span className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 text-gray-700 font-semibold rounded-lg">
                                                                 {index + 1}
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <div className="text-gray-800 font-medium">
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Service Details Column */}
+                                                        <div className="col-span-3 flex flex-col items-center justify-center text-center">
+                                                            <div className="mb-2">
+                                                                <div className="text-gray-800 font-semibold text-sm mb-1">
                                                                     {service.name}
-                                                                    {service.has_ay === 1 && (
-                                                                        <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                                                                            Assessment Year
-                                                                        </span>
-                                                                    )}
                                                                 </div>
-                                                                <div className="text-gray-500 text-xs mt-1">
-                                                                    Created: {formatDate(service.created_date)}
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-4 text-gray-600 font-mono">
-                                                                {service.sac_code}
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <span className="inline-flex items-center justify-center bg-green-50 text-green-700 text-sm font-semibold px-3 py-1.5 rounded-lg min-w-[80px]">
-                                                                    ₹{formatCurrency(service.fees)}
-                                                                </span>
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <div className="text-gray-600">
-                                                                    <div className="font-medium">₹{formatCurrency(service.gst)}</div>
-                                                                    <div className="text-xs text-gray-500">({service.gst_rate}%)</div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-4">
-                                                                {service.status === 1 ? (
-                                                                    <span className="inline-flex items-center justify-center bg-green-100 text-green-800 text-sm font-semibold px-3 py-1.5 rounded-lg">
-                                                                        Active
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="inline-flex items-center justify-center bg-red-100 text-red-800 text-sm font-semibold px-3 py-1.5 rounded-lg">
-                                                                        Inactive
+                                                                {service.has_ay === 1 && (
+                                                                    <span className="text-xs bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-2 py-1 rounded-full border border-green-200">
+                                                                        Has AY
                                                                     </span>
                                                                 )}
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <div className="dropdown-container relative flex justify-center">
-                                                                    <button
-                                                                        className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group-hover:bg-gray-200"
-                                                                        onClick={() => toggleDropdown(service.service_id)}
-                                                                    >
-                                                                        <FiMoreVertical className="w-4 h-4" />
-                                                                    </button>
+                                                            </div>
+                                                            <div className="text-gray-500 text-xs">
+                                                                Created: {formatDate(service.created_date)}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* SAC Code Column */}
+                                                        <div className="col-span-2 flex items-center justify-center">
+                                                            <span className="inline-flex items-center justify-center bg-gray-100 text-gray-800 font-mono text-sm px-3 py-2 rounded-lg min-w-[100px]">
+                                                                {service.sac_code}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Fees Column */}
+                                                        <div className="col-span-2 flex items-center justify-center">
+                                                            <span className="inline-flex items-center justify-center bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-bold text-sm px-3 py-2 rounded-lg border border-green-100 min-w-[110px]">
+                                                                <FiDollarSign className="w-3 h-3 mr-1" />
+                                                                ₹{formatCurrency(service.fees)}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* GST Details Column */}
+                                                        <div className="col-span-2 flex flex-col items-center justify-center">
+                                                            <div className="mb-1">
+                                                                <span className="inline-flex items-center justify-center bg-gradient-to-r from-orange-50 to-amber-50 text-orange-700 font-bold text-sm px-3 py-1.5 rounded-lg border border-orange-100 min-w-[100px]">
+                                                                    ₹{formatCurrency(service.gst)}
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                                                {service.gst_rate}% Rate
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Status Column */}
+                                                        <div className="col-span-1 flex items-center justify-center">
+                                                            {service.status === 1 ? (
+                                                                <span className="inline-flex items-center justify-center bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-semibold text-sm px-3 py-1.5 rounded-lg border border-green-200 min-w-[80px]">
+                                                                    <FiCheckCircle className="w-3 h-3 mr-1" />
+                                                                    Active
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center justify-center bg-gradient-to-r from-red-50 to-pink-50 text-red-700 font-semibold text-sm px-3 py-1.5 rounded-lg border border-red-200 min-w-[80px]">
+                                                                    <FiXCircle className="w-3 h-3 mr-1" />
+                                                                    Inactive
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Actions Column */}
+                                                        <div className="col-span-1 flex items-center justify-center">
+                                                            <div className="dropdown-container relative">
+                                                                <motion.button
+                                                                    className="p-2 text-gray-500 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all duration-200 group-hover:bg-indigo-100/50"
+                                                                    onClick={() => toggleDropdown(service.service_id)}
+                                                                    whileHover={{ scale: 1.1 }}
+                                                                    whileTap={{ scale: 0.9 }}
+                                                                >
+                                                                    <FiMoreVertical className="w-5 h-5" />
+                                                                </motion.button>
+                                                                <AnimatePresence>
                                                                     {isDropdownOpen && (
-                                                                        <div className="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                                                            transition={{ duration: 0.15 }}
+                                                                            className="absolute right-0 mt-1 w-40 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                                                        >
                                                                             <div className="py-1">
                                                                                 <button
                                                                                     onClick={() => handleEditClick(service)}
-                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-200"
                                                                                 >
                                                                                     <FiEdit className="w-4 h-4 mr-3" />
-                                                                                    Edit
+                                                                                    Edit Service
                                                                                 </button>
                                                                             </div>
-                                                                        </div>
+                                                                        </motion.div>
                                                                     )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })
-                                            )}
-                                        </tbody>
-                                    </table>
+                                                                </AnimatePresence>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Table Footer - Fixed */}
+                                {/* Table Footer */}
                                 <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                                    <table className="w-full text-sm">
-                                        <tfoot>
-                                            <tr>
-                                                <td className="text-left p-4 font-bold text-gray-800" colSpan="2">
-                                                    Summary
-                                                </td>
-                                                <td className="text-left p-4">
-                                                    <span className="inline-flex items-center justify-center bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1.5 rounded-lg">
-                                                        {summary.totalServices} Services
-                                                    </span>
-                                                </td>
-                                                <td className="text-left p-4">
-                                                    <span className="inline-flex items-center justify-center bg-green-100 text-green-800 text-sm font-bold px-3 py-1.5 rounded-lg">
-                                                        ₹{formatCurrency(summary.totalRevenue)}
-                                                    </span>
-                                                </td>
-                                                <td className="text-left p-4">
-                                                    <span className="inline-flex items-center justify-center bg-orange-100 text-orange-800 text-sm font-bold px-3 py-1.5 rounded-lg">
-                                                        ₹{formatCurrency(summary.totalGST)}
-                                                    </span>
-                                                </td>
-                                                <td className="text-left p-4">
-                                                    <span className="inline-flex items-center justify-center bg-green-100 text-green-800 text-sm font-bold px-3 py-1.5 rounded-lg">
-                                                        {summary.activeServices} Active
-                                                    </span>
-                                                </td>
-                                                <td className="p-4"></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
+                                    <div className="px-5 py-3">
+                                        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                                            <div className="text-sm text-gray-600">
+                                                Showing <span className="font-semibold">{filteredServices.length}</span> of{" "}
+                                                <span className="font-semibold">{services.length}</span> services
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-sm">
+                                                    <span className="text-gray-600">Active: </span>
+                                                    <span className="font-semibold text-green-600">{summary.activeServices}</span>
+                                                </div>
+                                                <div className="text-sm">
+                                                    <span className="text-gray-600">Revenue: </span>
+                                                    <span className="font-semibold text-gray-800">₹{formatCurrency(summary.totalRevenue)}</span>
+                                                </div>
+                                                <div className="text-sm">
+                                                    <span className="text-gray-600">GST: </span>
+                                                    <span className="font-semibold text-orange-600">₹{formatCurrency(summary.totalGST)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -630,105 +787,126 @@ const Services = () => {
             {/* Create Service Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto transform transition-all duration-300 max-h-[90vh] overflow-y-auto">
-                        <div className="border-b border-gray-200 px-6 py-4">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-auto max-h-[90vh] overflow-y-auto"
+                    >
+                        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
                             <div className="flex justify-between items-center">
-                                <h5 className="text-lg font-semibold text-gray-800">Create Service</h5>
+                                <div>
+                                    <h5 className="text-xl font-bold text-gray-800">Create New Service</h5>
+                                    <p className="text-gray-600 text-sm mt-1">Add a new service to your catalog</p>
+                                </div>
                                 <button
                                     onClick={() => setShowCreateModal(false)}
-                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
-                                    ×
+                                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
                         <div className="p-6">
                             <form onSubmit={handleCreateSubmit}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Service Name
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Service Name *
                                         </label>
                                         <input
                                             type="text"
                                             value={createForm.name}
                                             onChange={(e) => handleCreateChange('name', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            placeholder="Enter service name"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            placeholder="e.g., GST Registration"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            SAC Code
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            SAC Code *
                                         </label>
                                         <input
                                             type="text"
                                             value={createForm.sac_code}
                                             onChange={(e) => handleCreateChange('sac_code', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            placeholder="Enter SAC code"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            placeholder="e.g., 998311"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Fees
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Service Fees (₹) *
                                         </label>
-                                        <input
-                                            type="text"
-                                            value={createForm.fees}
-                                            onChange={(e) => handleCreateChange('fees', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            placeholder="Enter service fees"
-                                            required
-                                        />
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-3 text-gray-500">₹</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={createForm.fees}
+                                                onChange={(e) => handleCreateChange('fees', e.target.value)}
+                                                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                                placeholder="0.00"
+                                                required
+                                            />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            GST Rate (%)
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            GST Rate (%) *
                                         </label>
-                                        <input
-                                            type="text"
-                                            value={createForm.gst_rate}
-                                            onChange={(e) => handleCreateChange('gst_rate', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            placeholder="Enter GST rate"
-                                            required
-                                        />
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={createForm.gst_rate}
+                                                onChange={(e) => handleCreateChange('gst_rate', e.target.value)}
+                                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                                placeholder="18.00"
+                                                required
+                                            />
+                                            <span className="absolute right-3 top-3 text-gray-500">%</span>
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            GST Amount
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            GST Amount (₹)
                                         </label>
-                                        <input
-                                            type="text"
-                                            value={createForm.gst}
-                                            readOnly
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-gray-50 outline-none transition-all"
-                                            required
-                                        />
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-3 text-gray-500">₹</span>
+                                            <input
+                                                type="text"
+                                                value={createForm.gst}
+                                                readOnly
+                                                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 font-medium outline-none"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-2">Calculated automatically based on fees and GST rate</p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Assessment Applicable
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Assessment Year Applicable
                                         </label>
                                         <select
                                             value={createForm.has_ay}
                                             onChange={(e) => handleCreateChange('has_ay', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
                                             required
                                         >
-                                            <option value="1">Yes</option>
-                                            <option value="0">No</option>
+                                            <option value="1">Yes, applicable</option>
+                                            <option value="0">No, not applicable</option>
                                         </select>
                                     </div>
                                 </div>
-                                <div className="flex justify-end gap-3">
+                                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
                                     <motion.button
                                         type="button"
                                         onClick={() => setShowCreateModal(false)}
-                                        className="px-4 py-2.5 text-gray-600 hover:text-gray-800 rounded-lg text-sm font-medium transition-colors"
+                                        className="px-5 py-2.5 text-gray-600 hover:text-gray-800 rounded-xl text-sm font-medium transition-colors border border-gray-300 hover:bg-gray-50"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
@@ -736,8 +914,8 @@ const Services = () => {
                                     </motion.button>
                                     <motion.button
                                         type="submit"
-                                        className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center gap-2"
-                                        whileHover={{ scale: 1.02 }}
+                                        className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all text-sm font-medium flex items-center gap-2 shadow-md"
+                                        whileHover={{ scale: 1.02, y: -1 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
                                         <FiPlus className="w-4 h-4" />
@@ -746,127 +924,163 @@ const Services = () => {
                                 </div>
                             </form>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
 
             {/* Edit Service Modal */}
             {showEditModal && selectedService && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto transform transition-all duration-300 max-h-[90vh] overflow-y-auto">
-                        <div className="border-b border-gray-200 px-6 py-4">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-auto max-h-[90vh] overflow-y-auto"
+                    >
+                        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
                             <div className="flex justify-between items-center">
-                                <h5 className="text-lg font-semibold text-gray-800">Edit Service</h5>
+                                <div>
+                                    <h5 className="text-xl font-bold text-gray-800">Edit Service</h5>
+                                    <p className="text-gray-600 text-sm mt-1">Update service details for {selectedService.name}</p>
+                                </div>
                                 <button
                                     onClick={() => setShowEditModal(false)}
-                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
-                                    ×
+                                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
                         <div className="p-6">
                             <form onSubmit={handleEditSubmit}>
                                 <input type="hidden" name="service_id" value={editForm.service_id} />
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Service Name
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Service Name *
                                         </label>
                                         <input
                                             type="text"
                                             value={editForm.name}
                                             onChange={(e) => handleEditChange('name', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            placeholder="Enter service name"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            SAC Code
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            SAC Code *
                                         </label>
                                         <input
                                             type="text"
                                             value={editForm.sac_code}
                                             onChange={(e) => handleEditChange('sac_code', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            placeholder="Enter SAC code"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Fees
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Service Fees (₹) *
                                         </label>
-                                        <input
-                                            type="text"
-                                            value={editForm.fees}
-                                            onChange={(e) => handleEditChange('fees', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            placeholder="Enter service fees"
-                                            required
-                                        />
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-3 text-gray-500">₹</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={editForm.fees}
+                                                onChange={(e) => handleEditChange('fees', e.target.value)}
+                                                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                                required
+                                            />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            GST Rate (%)
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            GST Rate (%) *
                                         </label>
-                                        <input
-                                            type="text"
-                                            value={editForm.gst_rate}
-                                            onChange={(e) => handleEditChange('gst_rate', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            placeholder="Enter GST rate"
-                                            required
-                                        />
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={editForm.gst_rate}
+                                                onChange={(e) => handleEditChange('gst_rate', e.target.value)}
+                                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                                required
+                                            />
+                                            <span className="absolute right-3 top-3 text-gray-500">%</span>
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            GST Amount
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            GST Amount (₹)
                                         </label>
-                                        <input
-                                            type="text"
-                                            value={editForm.gst}
-                                            readOnly
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-gray-50 outline-none transition-all"
-                                            required
-                                        />
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-3 text-gray-500">₹</span>
+                                            <input
+                                                type="text"
+                                                value={editForm.gst}
+                                                readOnly
+                                                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 font-medium outline-none"
+                                            />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Assessment Applicable
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Assessment Year
                                         </label>
                                         <select
                                             value={editForm.has_ay}
                                             onChange={(e) => handleEditChange('has_ay', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            required
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
                                         >
-                                            <option value="1">Yes</option>
-                                            <option value="0">No</option>
+                                            <option value="1">Applicable</option>
+                                            <option value="0">Not Applicable</option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
                                             Status
                                         </label>
-                                        <select
-                                            value={editForm.status}
-                                            onChange={(e) => handleEditChange('status', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            required
-                                        >
-                                            <option value="1">Active</option>
-                                            <option value="0">Inactive</option>
-                                        </select>
+                                        <div className="flex gap-4">
+                                            <label className="flex items-center">
+                                                <input
+                                                    type="radio"
+                                                    name="status"
+                                                    value="1"
+                                                    checked={editForm.status === '1'}
+                                                    onChange={(e) => handleEditChange('status', e.target.value)}
+                                                    className="mr-2"
+                                                />
+                                                <span className="flex items-center">
+                                                    <FiCheckCircle className="w-4 h-4 text-green-600 mr-1" />
+                                                    Active
+                                                </span>
+                                            </label>
+                                            <label className="flex items-center">
+                                                <input
+                                                    type="radio"
+                                                    name="status"
+                                                    value="0"
+                                                    checked={editForm.status === '0'}
+                                                    onChange={(e) => handleEditChange('status', e.target.value)}
+                                                    className="mr-2"
+                                                />
+                                                <span className="flex items-center">
+                                                    <FiXCircle className="w-4 h-4 text-red-600 mr-1" />
+                                                    Inactive
+                                                </span>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex justify-end gap-3">
+                                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
                                     <motion.button
                                         type="button"
                                         onClick={() => setShowEditModal(false)}
-                                        className="px-4 py-2.5 text-gray-600 hover:text-gray-800 rounded-lg text-sm font-medium transition-colors"
+                                        className="px-5 py-2.5 text-gray-600 hover:text-gray-800 rounded-xl text-sm font-medium transition-colors border border-gray-300 hover:bg-gray-50"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
@@ -874,8 +1088,8 @@ const Services = () => {
                                     </motion.button>
                                     <motion.button
                                         type="submit"
-                                        className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-                                        whileHover={{ scale: 1.02 }}
+                                        className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all text-sm font-medium shadow-md"
+                                        whileHover={{ scale: 1.02, y: -1 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
                                         Update Service
@@ -883,7 +1097,7 @@ const Services = () => {
                                 </div>
                             </form>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
         </div>
