@@ -6,9 +6,15 @@ import {
     FiMoreVertical,
     FiCheck,
     FiX,
-    FiSearch
+    FiSearch,
+    FiFilter,
+    FiCalendar,
+    FiUsers,
+    FiCheckCircle,
+    FiXCircle,
+    FiFolder
 } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
 import DateFilter from '../../components/DateFilter';
 
@@ -250,11 +256,6 @@ const FirmGroups = () => {
         }
     };
 
-    // Handle search
-    const handleSearch = () => {
-        filterGroups();
-    };
-
     // Format date
     const formatDate = (dateString) => {
         const date = new Date(dateString);
@@ -327,54 +328,26 @@ const FirmGroups = () => {
     // Skeleton row for table
     const SkeletonRow = () => (
         <tr className="border-b border-gray-100 animate-pulse">
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-8"></div>
+            <td className="p-4 text-center">
+                <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-6 mx-auto"></div>
             </td>
             <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
+                <div className="space-y-1.5">
+                    <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-32"></div>
+                    <div className="h-3 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-24"></div>
+                </div>
             </td>
             <td className="p-4 text-center">
-                <div className="h-6 bg-gray-200 rounded w-16 mx-auto"></div>
+                <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-16 mx-auto"></div>
             </td>
-            <td className="p-4">
-                <div className="h-6 bg-gray-200 rounded w-12"></div>
+            <td className="p-4 text-center">
+                <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-12 mx-auto"></div>
             </td>
-            <td className="p-4">
-                <div className="h-6 bg-gray-200 rounded w-8 mx-auto"></div>
+            <td className="p-4 text-center">
+                <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-8 mx-auto"></div>
             </td>
         </tr>
     );
-
-    // Professional Modal Wrapper Component
-    const ModalWrapper = ({ isOpen, onClose, title, children, size = 'max-w-md' }) => {
-        if (!isOpen) return null;
-
-        return (
-            <div className="fixed inset-0 z-50 overflow-y-auto">
-                <div className="flex items-center justify-center min-h-screen p-4">
-                    {/* Overlay */}
-                    <div
-                        className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                        onClick={onClose}
-                    />
-                    {/* Professional Modal panel */}
-                    <div className={`relative w-full ${size} bg-white rounded-lg shadow-xl flex flex-col max-h-[90vh]`}>
-                        {/* Professional Header */}
-                        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-t-lg">
-                            <h2 className="text-xl font-bold">{title}</h2>
-                            <button
-                                onClick={onClose}
-                                className="text-indigo-200 hover:text-white p-1 rounded-lg transition-colors"
-                            >
-                                ×
-                            </button>
-                        </div>
-                        {children}
-                    </div>
-                </div>
-            </div>
-        );
-    };
 
     // Show skeleton while loading
     if (loading && groups.length === 0) {
@@ -382,7 +355,7 @@ const FirmGroups = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-blue-50">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -397,202 +370,319 @@ const FirmGroups = () => {
             />
 
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    {/* Main Card - Full height with scrolling */}
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full">
-                        {/* Card Header */}
-                        <div className="border-b border-gray-200 px-6 py-4">
-                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div className="max-w-full mx-auto px-4 sm:px-6 md:px-8 py-6">
+                    <div className="h-full flex flex-col">
+                        {/* Header with Stats */}
+                        <div className="mb-6">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
                                 <div>
-                                    <h5 className="text-xl font-bold text-gray-800 mb-1">
-                                        Firm Groups
+                                    <h5 className="text-2xl font-bold text-gray-800 mb-2">
+                                        Firm Groups Management
                                     </h5>
-                                    <p className="text-gray-500 text-xs mt-1">
-                                        Manage your client groups and firms
+                                    <p className="text-gray-600 text-sm">
+                                        Organize and manage your client groups efficiently
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
-                                    {/* Search Box */}
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                                            placeholder="Search groups..."
-                                            className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all w-full lg:w-64"
-                                        />
-                                        <FiSearch className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                                <motion.button
+                                    onClick={() => setShowCreateModal(true)}
+                                    className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-600/40"
+                                    whileHover={{ scale: 1.02, y: -2 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    <FiPlus className="w-4 h-4" />
+                                    Add New Group
+                                </motion.button>
+                            </div>
+
+                            {/* Stats Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Total Groups</p>
+                                            <h3 className="text-2xl font-bold text-gray-800">{summary.totalGroups}</h3>
+                                        </div>
+                                        <div className="p-3 bg-indigo-50 rounded-lg">
+                                            <FiFolder className="w-6 h-6 text-indigo-600" />
+                                        </div>
                                     </div>
-
-                                    {/* Date Filter Component */}
-                                    <DateFilter onChange={handleDateFilterChange} />
-
-                                    <motion.button
-                                        onClick={() => setShowCreateModal(true)}
-                                        className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <FiPlus className="w-4 h-4" />
-                                        Add Group
-                                    </motion.button>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Active Groups</p>
+                                            <h3 className="text-2xl font-bold text-green-600">{summary.activeGroups}</h3>
+                                        </div>
+                                        <div className="p-3 bg-green-50 rounded-lg">
+                                            <FiCheckCircle className="w-6 h-6 text-green-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Total Firms</p>
+                                            <h3 className="text-2xl font-bold text-blue-600">{summary.totalFirms}</h3>
+                                        </div>
+                                        <div className="p-3 bg-blue-50 rounded-lg">
+                                            <FiUsers className="w-6 h-6 text-blue-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Inactive Groups</p>
+                                            <h3 className="text-2xl font-bold text-red-600">{summary.totalGroups - summary.activeGroups}</h3>
+                                        </div>
+                                        <div className="p-3 bg-red-50 rounded-lg">
+                                            <FiXCircle className="w-6 h-6 text-red-600" />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Table Container with Fixed Header and Footer */}
-                        <div className="flex-1 flex flex-col overflow-hidden">
-                            {/* Table Header - Fixed */}
-                            <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr>
-                                            <th className="text-left p-4 font-semibold text-gray-700">#</th>
-                                            <th className="text-left p-4 font-semibold text-gray-700">Group Name</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700">Number Of Firms</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700">Status</th>
-                                            <th className="text-center p-4 font-semibold text-gray-700">Actions</th>
-                                        </tr>
-                                    </thead>
-                                </table>
+                        {/* Main Card */}
+                        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 flex flex-col h-full overflow-hidden">
+                            {/* Filters Bar */}
+                            <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
+                                    {/* Search Input */}
+                                    <div className="relative flex-1 min-w-0">
+                                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            placeholder="Search groups by name or remark"
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all text-sm"
+                                        />
+                                    </div>
+                                    
+                                    {/* Date Filter */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-300 rounded-lg bg-white min-w-[140px]">
+                                            <FiCalendar className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                                            <DateFilter 
+                                                onChange={handleDateFilterChange}
+                                                className="text-sm w-full bg-transparent border-none outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Results Count */}
+                                    <div className="text-sm text-gray-600 whitespace-nowrap sm:ml-auto">
+                                        <span className="font-semibold">{filteredGroups.length}</span> of <span className="font-semibold">{groups.length}</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Scrollable Table Body */}
-                            <div className="flex-1 overflow-y-auto">
-                                <table className="w-full text-sm">
-                                    <tbody className="bg-white">
-                                        {loading ? (
-                                            // Skeleton Loaders
-                                            Array.from({ length: 8 }).map((_, index) => (
+                            {/* Table Container */}
+                            <div className="flex-1 flex flex-col overflow-hidden">
+                                {/* Table Header */}
+                                <div className="bg-gradient-to-r from-gray-50 to-indigo-50">
+                                    <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-gray-200">
+                                        <div className="col-span-1">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                #
+                                            </div>
+                                        </div>
+                                        <div className="col-span-5">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Group Details
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Number Of Firms
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Status
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Actions
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Scrollable Table Body */}
+                                <div className="flex-1 overflow-y-auto">
+                                    {loading ? (
+                                        <div className="p-5">
+                                            {Array.from({ length: 8 }).map((_, index) => (
                                                 <SkeletonRow key={index} />
-                                            ))
-                                        ) : filteredGroups.length === 0 ? (
-                                            <tr>
-                                                <td colSpan="5" className="text-center py-8 text-gray-500">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <FiSettings className="w-12 h-12 text-gray-300 mb-3" />
-                                                        <p className="text-gray-500">
-                                                            {groups.length === 0 ? 'No firm groups found' : 'No groups match your search criteria'}
-                                                        </p>
-                                                        <motion.button
-                                                            onClick={() => setShowCreateModal(true)}
-                                                            className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
-                                                            whileHover={{ scale: 1.05 }}
-                                                            whileTap={{ scale: 0.95 }}
-                                                        >
-                                                            Create Your First Group
-                                                        </motion.button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            filteredGroups.map((group, index) => {
+                                            ))}
+                                        </div>
+                                    ) : filteredGroups.length === 0 ? (
+                                        <div className="text-center py-12">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="p-4 bg-gray-100 rounded-full mb-4">
+                                                    <FiFolder className="w-12 h-12 text-gray-400" />
+                                                </div>
+                                                <p className="text-gray-500 text-lg font-medium mb-2">
+                                                    {groups.length === 0 ? 'No firm groups available' : 'No matching groups found'}
+                                                </p>
+                                                <p className="text-gray-400 text-sm mb-4">
+                                                    {groups.length === 0 
+                                                        ? 'Get started by creating your first firm group' 
+                                                        : 'Try adjusting your search or filter criteria'}
+                                                </p>
+                                                <motion.button
+                                                    onClick={() => setShowCreateModal(true)}
+                                                    className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm"
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                >
+                                                    Create Your First Group
+                                                </motion.button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-5">
+                                            {filteredGroups.map((group, index) => {
                                                 const isDropdownOpen = activeDropdown === group.group_id;
 
                                                 return (
-                                                    <tr
+                                                    <motion.div
                                                         key={group.group_id}
-                                                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors group"
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className="grid grid-cols-12 gap-2 py-3 border-b border-gray-100 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 transition-all duration-200 group"
                                                     >
-                                                        <td className="p-4 text-gray-600 font-medium">
-                                                            {index + 1}
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <div className="text-gray-800 font-medium">
-                                                                {group.name}
-                                                            </div>
-                                                            {group.remark && (
-                                                                <div className="text-gray-500 text-sm mt-1">
-                                                                    {group.remark}
+                                                        {/* # Column */}
+                                                        <div className="col-span-1 flex items-center justify-center">
+                                                            <span className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 text-gray-700 font-semibold rounded-lg">
+                                                                {index + 1}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Group Details Column */}
+                                                        <div className="col-span-5 flex flex-col items-center justify-center text-center">
+                                                            <div className="mb-2">
+                                                                <div className="text-gray-800 font-semibold text-sm mb-1">
+                                                                    {group.name}
                                                                 </div>
-                                                            )}
-                                                            <div className="text-gray-500 text-xs mt-1">
+                                                                {group.remark && (
+                                                                    <div className="text-gray-500 text-xs max-w-xs">
+                                                                        {group.remark}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-gray-500 text-xs">
                                                                 Created: {formatDate(group.created_date)}
                                                             </div>
-                                                        </td>
-                                                        <td className="p-4 text-center">
+                                                        </div>
+
+                                                        {/* Number Of Firms Column */}
+                                                        <div className="col-span-2 flex items-center justify-center">
                                                             <a
                                                                 href={`/view-group-firms?group_id=${group.group_id}`}
-                                                                className="inline-flex items-center justify-center px-3 py-1.5 bg-indigo-100 text-indigo-800 text-sm font-semibold rounded-lg hover:bg-indigo-200 transition-colors min-w-[60px]"
+                                                                className="inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-700 font-semibold text-sm rounded-lg border border-indigo-200 hover:from-indigo-100 hover:to-blue-100 transition-all min-w-[80px] shadow-sm"
                                                             >
+                                                                <FiUsers className="w-3 h-3 mr-1" />
                                                                 {group.count}
                                                             </a>
-                                                        </td>
-                                                        <td className="p-4 text-center">
-                                                            <label className="relative inline-flex items-center cursor-pointer justify-center">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={group.status === 1}
-                                                                    onChange={() => handleStatusChange(group)}
-                                                                    className="sr-only peer"
-                                                                />
-                                                                <div className={`w-12 h-6 rounded-full peer ${group.status === 1 ? 'bg-indigo-600' : 'bg-gray-300'} peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all after:border after:border-gray-300`}>
-                                                                    {group.status === 1 ? (
-                                                                        <FiCheck className="absolute left-1 top-0.5 w-3 h-3 text-white z-10" />
-                                                                    ) : (
-                                                                        <FiX className="absolute right-1 top-0.5 w-3 h-3 text-gray-500 z-10" />
-                                                                    )}
-                                                                </div>
-                                                            </label>
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <div className="dropdown-container relative flex justify-center">
+                                                        </div>
+
+                                                        {/* Status Column */}
+                                                     {/* Status Column */}
+<div className="col-span-2 flex items-center justify-center">
+    <button
+        onClick={() => handleStatusChange(group)}
+        className="relative inline-flex items-center cursor-pointer focus:outline-none"
+    >
+        <input
+            type="checkbox"
+            checked={group.status === 1}
+            readOnly
+            className="sr-only"
+        />
+        <div className={`w-14 h-7 rounded-full transition-colors duration-300 ease-in-out ${group.status === 1 ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-gray-300 to-gray-400'}`}>
+            <div className={`absolute top-0.5 ${group.status === 1 ? 'left-7' : 'left-0.5'} bg-white rounded-full h-6 w-6 transition-all duration-300 ease-in-out border border-gray-300 shadow-sm`}></div>
+        </div>
+        {group.status === 1 ? (
+            <span className="absolute left-1.5 top-1 text-xs text-white z-10 font-medium">ON</span>
+        ) : (
+            <span className="absolute right-1.5 top-1 text-xs text-gray-600 z-10 font-medium">OFF</span>
+        )}
+    </button>
+</div>
+
+                                                        {/* Actions Column */}
+                                                        <div className="col-span-2 flex items-center justify-center">
+                                                            <div className="dropdown-container relative">
                                                                 <motion.button
-                                                                    className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group-hover:bg-gray-200"
+                                                                    className="p-2 text-gray-500 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all duration-200 group-hover:bg-indigo-100/50"
                                                                     onClick={() => toggleDropdown(group.group_id)}
                                                                     whileHover={{ scale: 1.1 }}
                                                                     whileTap={{ scale: 0.9 }}
                                                                 >
-                                                                    <FiMoreVertical className="w-4 h-4" />
+                                                                    <FiMoreVertical className="w-5 h-5" />
                                                                 </motion.button>
-                                                                {isDropdownOpen && (
-                                                                    <div className="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
-                                                                        <div className="py-1">
-                                                                            <a
-                                                                                href={`/view-group-firms?group_id=${group.group_id}`}
-                                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
-                                                                                onClick={() => setActiveDropdown(null)}
-                                                                            >
-                                                                                <FiEye className="w-4 h-4 mr-3" />
-                                                                                View
-                                                                            </a>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
+                                                                <AnimatePresence>
+                                                                    {isDropdownOpen && (
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                                                            transition={{ duration: 0.15 }}
+                                                                            className="absolute right-0 mt-1 w-40 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                                                        >
+                                                                            <div className="py-1">
+                                                                                <a
+                                                                                    href={`/view-group-firms?group_id=${group.group_id}`}
+                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-200"
+                                                                                    onClick={() => setActiveDropdown(null)}
+                                                                                >
+                                                                                    <FiEye className="w-4 h-4 mr-3" />
+                                                                                    View Firms
+                                                                                </a>
+                                                                            </div>
+                                                                        </motion.div>
+                                                                    )}
+                                                                </AnimatePresence>
                                                             </div>
-                                                        </td>
-                                                    </tr>
+                                                        </div>
+                                                    </motion.div>
                                                 );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
 
-                            {/* Table Footer - Fixed */}
-                            <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                                <table className="w-full text-sm">
-                                    <tfoot>
-                                        <tr>
-                                            <td className="text-left p-4 font-bold text-gray-800" colSpan="2">
-                                                Summary
-                                            </td>
-                                            <td className="text-center p-4">
-                                                <span className="inline-flex items-center justify-center bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1.5 rounded-lg min-w-[60px]">
-                                                    {summary.totalFirms}
-                                                </span>
-                                            </td>
-                                            <td className="text-center p-4">
-                                                <span className="inline-flex items-center justify-center bg-green-100 text-green-800 text-sm font-bold px-3 py-1.5 rounded-lg">
-                                                    {summary.activeGroups}/{summary.totalGroups}
-                                                </span>
-                                            </td>
-                                            <td className="p-4"></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                                {/* Table Footer */}
+                                <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+                                    <div className="px-5 py-3">
+                                        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                                            <div className="text-sm text-gray-600">
+                                                Showing <span className="font-semibold">{filteredGroups.length}</span> of{" "}
+                                                <span className="font-semibold">{groups.length}</span> groups
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-sm">
+                                                    <span className="text-gray-600">Active: </span>
+                                                    <span className="font-semibold text-green-600">{summary.activeGroups}</span>
+                                                </div>
+                                                <div className="text-sm">
+                                                    <span className="text-gray-600">Firms: </span>
+                                                    <span className="font-semibold text-blue-600">{summary.totalFirms}</span>
+                                                </div>
+                                                <div className="text-sm">
+                                                    <span className="text-gray-600">Inactive: </span>
+                                                    <span className="font-semibold text-red-600">{summary.totalGroups - summary.activeGroups}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -600,79 +690,90 @@ const FirmGroups = () => {
             </div>
 
             {/* Create Group Modal */}
-            <ModalWrapper
-                isOpen={showCreateModal}
-                onClose={() => {
-                    setShowCreateModal(false);
-                    setCreateForm({
-                        name: '',
-                        remark: ''
-                    });
-                }}
-                title="Add Group"
-                size="max-w-md"
-            >
-                <div className="flex-1 overflow-y-auto p-6">
-                    <form onSubmit={handleCreateSubmit}>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Group Name <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={createForm.name}
-                                    onChange={(e) => handleCreateChange('name', e.target.value)}
-                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                    placeholder="Enter Group Name"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Remark
-                                </label>
-                                <input
-                                    type="text"
-                                    value={createForm.remark}
-                                    onChange={(e) => handleCreateChange('remark', e.target.value)}
-                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                    placeholder="Enter Group Remark"
-                                />
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto max-h-[90vh] overflow-y-auto"
+                    >
+                        <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-b border-indigo-200 px-6 py-4 z-10">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h5 className="text-xl font-bold">Create New Group</h5>
+                                    <p className="text-indigo-200 text-sm mt-1">Add a new firm group</p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowCreateModal(false);
+                                        setCreateForm({ name: '', remark: '' });
+                                    }}
+                                    className="p-2 hover:bg-indigo-700 rounded-lg transition-colors"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
                             </div>
                         </div>
-                    </form>
+                        <div className="p-6">
+                            <form onSubmit={handleCreateSubmit}>
+                                <div className="space-y-6 mb-8">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Group Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={createForm.name}
+                                            onChange={(e) => handleCreateChange('name', e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            placeholder="e.g., GST Clients"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Remark
+                                        </label>
+                                        <textarea
+                                            value={createForm.remark}
+                                            onChange={(e) => handleCreateChange('remark', e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all min-h-[100px] resize-none"
+                                            placeholder="Enter description for this group"
+                                            rows="3"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                                    <motion.button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowCreateModal(false);
+                                            setCreateForm({ name: '', remark: '' });
+                                        }}
+                                        className="px-5 py-2.5 text-gray-600 hover:text-gray-800 rounded-xl text-sm font-medium transition-colors border border-gray-300 hover:bg-gray-50"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        Cancel
+                                    </motion.button>
+                                    <motion.button
+                                        type="submit"
+                                        className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all text-sm font-medium flex items-center gap-2 shadow-md"
+                                        whileHover={{ scale: 1.02, y: -1 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <FiPlus className="w-4 h-4" />
+                                        Create Group
+                                    </motion.button>
+                                </div>
+                            </form>
+                        </div>
+                    </motion.div>
                 </div>
-
-                <div className="flex-shrink-0 border-t border-gray-200 bg-white p-6 rounded-b-lg shadow-sm">
-                    <div className="flex justify-end gap-3">
-                        <motion.button
-                            type="button"
-                            onClick={() => {
-                                setShowCreateModal(false);
-                                setCreateForm({
-                                    name: '',
-                                    remark: ''
-                                });
-                            }}
-                            className="px-4 py-2.5 text-gray-600 hover:text-gray-800 rounded-lg text-sm font-medium transition-colors"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            Cancel
-                        </motion.button>
-                        <motion.button
-                            type="submit"
-                            onClick={handleCreateSubmit}
-                            className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            Add Group
-                        </motion.button>
-                    </div>
-                </div>
-            </ModalWrapper>
+            )}
         </div>
     );
 };

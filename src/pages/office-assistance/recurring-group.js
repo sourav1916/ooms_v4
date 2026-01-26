@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit, FiSettings, FiMoreVertical, FiSearch } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { FiPlus, FiEdit, FiSettings, FiMoreVertical, FiSearch, FiFilter, FiCalendar, FiUsers, FiCheckCircle, FiXCircle, FiDollarSign, FiClock } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
 import DateFilter from '../../components/DateFilter';
 
@@ -400,11 +400,6 @@ const RecurringGroups = () => {
         }
     };
 
-    // Handle search
-    const handleSearch = () => {
-        filterGroups();
-    };
-
     // Format date
     const formatDate = (dateString) => {
         const date = new Date(dateString);
@@ -611,36 +606,42 @@ const RecurringGroups = () => {
 
     // Skeleton loader component
     const SkeletonRow = () => (
-        <tr className="border-b border-gray-200 animate-pulse">
-            <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-8"></div>
+        <tr className="border-b border-gray-100 animate-pulse">
+            <td className="p-4 text-center">
+                <div className="h-5 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-6 mx-auto"></div>
             </td>
             <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
+                <div className="space-y-1.5">
+                    <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-32"></div>
+                    <div className="h-3 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-20"></div>
+                </div>
             </td>
             <td className="p-4">
-                <div className="h-4 bg-gray-200 rounded w-24"></div>
+                <div className="space-y-1">
+                    <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-24"></div>
+                    <div className="h-3 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-16"></div>
+                </div>
             </td>
             <td className="p-4">
-                <div className="space-y-2">
-                    <div className="h-3 bg-gray-200 rounded w-20"></div>
-                    <div className="h-3 bg-gray-200 rounded w-16"></div>
+                <div className="space-y-1">
+                    <div className="h-3 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-20"></div>
+                    <div className="h-3 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-16"></div>
                 </div>
             </td>
             <td className="p-4 text-center">
-                <div className="h-6 bg-gray-200 rounded w-12 mx-auto"></div>
+                <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-12 mx-auto"></div>
             </td>
-            <td className="p-4">
-                <div className="h-6 bg-gray-200 rounded w-12"></div>
+            <td className="p-4 text-center">
+                <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-16 mx-auto"></div>
             </td>
-            <td className="p-4">
-                <div className="h-6 bg-gray-200 rounded w-8 mx-auto"></div>
+            <td className="p-4 text-center">
+                <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-8 mx-auto"></div>
             </td>
         </tr>
     );
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-blue-50">
             <Header
                 mobileMenuOpen={mobileMenuOpen}
                 setMobileMenuOpen={setMobileMenuOpen}
@@ -658,38 +659,101 @@ const RecurringGroups = () => {
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-full mx-auto px-4 sm:px-6 md:px-8 py-6">
                     <div className="h-full flex flex-col">
-                        {/* Main Card - Full height with scrolling */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full">
-                            {/* Card Header */}
-                            <div className="border-b border-gray-200 px-6 py-4">
-                                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                                    <div>
-                                        <h5 className="text-xl font-bold text-gray-800 mb-1">
-                                            Recurring Groups
-                                        </h5>
-                                        <p className="text-gray-500 text-xs mt-1">
-                                            Manage your recurring service groups and schedules
-                                        </p>
-                                    </div>
+                        {/* Header with Stats */}
+                        <div className="mb-6">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+                                <div>
+                                    <h5 className="text-2xl font-bold text-gray-800 mb-2">
+                                        Recurring Groups Management
+                                    </h5>
+                                    <p className="text-gray-600 text-sm">
+                                        Manage recurring service groups and schedules
+                                    </p>
+                                </div>
 
-                                    <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
-                                        {/* Search Box */}
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                value={searchTerm}
-                                                onChange={(e) => setSearchTerm(e.target.value)}
-                                                placeholder="Search groups..."
-                                                className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all w-full lg:w-64"
-                                            />
-                                            <FiSearch className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                                <motion.button
+                                    onClick={() => setShowCreateModal(true)}
+                                    className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-600/40"
+                                    whileHover={{ scale: 1.02, y: -2 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    <FiPlus className="w-4 h-4" />
+                                    Add New Group
+                                </motion.button>
+                            </div>
+
+                            {/* Stats Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Total Groups</p>
+                                            <h3 className="text-2xl font-bold text-gray-800">{summary.totalGroups}</h3>
                                         </div>
+                                        <div className="p-3 bg-indigo-50 rounded-lg">
+                                            <FiSettings className="w-6 h-6 text-indigo-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Active Groups</p>
+                                            <h3 className="text-2xl font-bold text-green-600">{summary.activeGroups}</h3>
+                                        </div>
+                                        <div className="p-3 bg-green-50 rounded-lg">
+                                            <FiCheckCircle className="w-6 h-6 text-green-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Total Firms</p>
+                                            <h3 className="text-2xl font-bold text-blue-600">{summary.totalFirms}</h3>
+                                        </div>
+                                        <div className="p-3 bg-blue-50 rounded-lg">
+                                            <FiUsers className="w-6 h-6 text-blue-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-600 mb-1">Monthly Groups</p>
+                                            <h3 className="text-2xl font-bold text-purple-600">{summary.monthlyGroups}</h3>
+                                        </div>
+                                        <div className="p-3 bg-purple-50 rounded-lg">
+                                            <FiClock className="w-6 h-6 text-purple-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                                        {/* Service Filter */}
+                        {/* Main Card */}
+                        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 flex flex-col h-full overflow-hidden">
+                            {/* Filters Bar */}
+                            <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
+                                    {/* Search Input */}
+                                    <div className="relative flex-1 min-w-0">
+                                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            placeholder="Search groups by name or service"
+                                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all text-sm"
+                                        />
+                                    </div>
+                                    
+                                    {/* Service Filter */}
+                                    <div className="flex items-center gap-2">
                                         <select 
                                             value={selectedService}
                                             onChange={(e) => setSelectedService(e.target.value)}
-                                            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all text-sm min-w-[160px]"
                                         >
                                             <option value="">All Services</option>
                                             {services.map(service => (
@@ -699,190 +763,245 @@ const RecurringGroups = () => {
                                             ))}
                                         </select>
 
-                                        {/* Date Filter Component */}
-                                        <DateFilter onChange={handleDateFilterChange} />
-
-                                        <motion.button
-                                            onClick={() => setShowCreateModal(true)}
-                                            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm"
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
-                                        >
-                                            <FiPlus className="w-4 h-4" />
-                                            Add Group
-                                        </motion.button>
+                                        {/* Date Filter */}
+                                        <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-300 rounded-lg bg-white min-w-[140px]">
+                                            <FiCalendar className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                                            <DateFilter 
+                                                onChange={handleDateFilterChange}
+                                                className="text-sm w-full bg-transparent border-none outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Results Count */}
+                                    <div className="text-sm text-gray-600 whitespace-nowrap sm:ml-auto">
+                                        <span className="font-semibold">{filteredGroups.length}</span> of <span className="font-semibold">{groups.length}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Table Container with Fixed Header and Footer */}
+                            {/* Table Container */}
                             <div className="flex-1 flex flex-col overflow-hidden">
-                                {/* Table Header - Fixed */}
-                                <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr>
-                                                <th className="text-left p-4 font-semibold text-gray-700">#</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700">Group Name</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700">Service</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700">Dates</th>
-                                                <th className="text-center p-4 font-semibold text-gray-700">Firms</th>
-                                                <th className="text-left p-4 font-semibold text-gray-700">Status</th>
-                                                <th className="text-center p-4 font-semibold text-gray-700">Actions</th>
-                                            </tr>
-                                        </thead>
-                                    </table>
+                                {/* Table Header */}
+                                <div className="bg-gradient-to-r from-gray-50 to-indigo-50">
+                                    <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-gray-200">
+                                        <div className="col-span-1">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                #
+                                            </div>
+                                        </div>
+                                        <div className="col-span-3">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Group Details
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Service Info
+                                            </div>
+                                        </div>
+                                        <div className="col-span-3">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Schedule Dates
+                                            </div>
+                                        </div>
+                                        <div className="col-span-1">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Firms
+                                            </div>
+                                        </div>
+                                        <div className="col-span-1">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Status
+                                            </div>
+                                        </div>
+                                        <div className="col-span-1">
+                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                                                Actions
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Scrollable Table Body */}
                                 <div className="flex-1 overflow-y-auto">
-                                    <table className="w-full text-sm">
-                                        <tbody className="bg-white">
-                                            {loading ? (
-                                                // Skeleton Loaders
-                                                Array.from({ length: 8 }).map((_, index) => (
-                                                    <SkeletonRow key={index} />
-                                                ))
-                                            ) : filteredGroups.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="7" className="text-center py-8 text-gray-500">
-                                                        <div className="flex flex-col items-center justify-center">
-                                                            <FiSettings className="w-12 h-12 text-gray-300 mb-3" />
-                                                            <p className="text-gray-500">
-                                                                {groups.length === 0 ? 'No recurring groups found' : 'No groups match your search criteria'}
-                                                            </p>
-                                                            <button
-                                                                onClick={() => setShowCreateModal(true)}
-                                                                className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition-colors"
-                                                            >
-                                                                Create Your First Group
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                filteredGroups.map((group, index) => {
-                                                    const isDropdownOpen = activeDropdown === group.group_id;
+                                    {loading ? (
+                                        <div className="p-5">
+                                            {Array.from({ length: 6 }).map((_, index) => (
+                                                <SkeletonRow key={index} />
+                                            ))}
+                                        </div>
+                                    ) : filteredGroups.length === 0 ? (
+                                        <div className="text-center py-12">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="p-4 bg-gray-100 rounded-full mb-4">
+                                                    <FiSettings className="w-12 h-12 text-gray-400" />
+                                                </div>
+                                                <p className="text-gray-500 text-lg font-medium mb-2">
+                                                    {groups.length === 0 ? 'No recurring groups available' : 'No matching groups found'}
+                                                </p>
+                                                <p className="text-gray-400 text-sm mb-4">
+                                                    {groups.length === 0 
+                                                        ? 'Get started by creating your first recurring group' 
+                                                        : 'Try adjusting your search or filter criteria'}
+                                                </p>
+                                                <motion.button
+                                                    onClick={() => setShowCreateModal(true)}
+                                                    className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm"
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                >
+                                                    Create Your First Group
+                                                </motion.button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-5">
+                                            {filteredGroups.map((group, index) => {
+                                                const isDropdownOpen = activeDropdown === group.group_id;
 
-                                                    return (
-                                                        <tr
-                                                            key={group.group_id}
-                                                            className="border-b border-gray-100 hover:bg-gray-50 transition-colors group"
-                                                        >
-                                                            <td className="p-4 text-gray-600 font-medium">
+                                                return (
+                                                    <motion.div
+                                                        key={group.group_id}
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className="grid grid-cols-12 gap-2 py-3 border-b border-gray-100 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 transition-all duration-200 group"
+                                                    >
+                                                        {/* # Column */}
+                                                        <div className="col-span-1 flex items-center justify-center">
+                                                            <span className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 text-gray-700 font-semibold rounded-lg">
                                                                 {index + 1}
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <div className="text-gray-800 font-medium">
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Group Details Column */}
+                                                        <div className="col-span-3 flex flex-col items-center justify-center text-center">
+                                                            <div className="mb-2">
+                                                                <div className="text-gray-800 font-semibold text-sm mb-1">
                                                                     {group.name}
                                                                 </div>
-                                                                <div className="text-gray-500 text-xs mt-1 flex items-center gap-1">
-                                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                                        group.period === 'monthly' ? 'bg-indigo-100 text-indigo-800' :
-                                                                        group.period === 'quarterly' ? 'bg-green-100 text-green-800' :
-                                                                        group.period === 'half yearly' ? 'bg-orange-100 text-orange-800' :
-                                                                        'bg-purple-100 text-purple-800'
-                                                                    }`}>
-                                                                        {group.period.toUpperCase()}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="text-gray-500 text-xs mt-1">
-                                                                    Created: {formatDate(group.created_date)}
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <div className="text-gray-800 font-medium">
-                                                                    {group.service_name}
-                                                                </div>
-                                                                <div className="text-indigo-600 text-xs mt-1">
-                                                                    Fees: {group.fees}
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-4">
+                                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                                    group.period === 'monthly' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
+                                                                    group.period === 'quarterly' ? 'bg-green-100 text-green-800 border border-green-200' :
+                                                                    group.period === 'half yearly' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                                                                    'bg-purple-100 text-purple-800 border border-purple-200'
+                                                                }`}>
+                                                                    {group.period.toUpperCase()}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-gray-500 text-xs">
+                                                                Created: {formatDate(group.created_date)}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Service Info Column */}
+                                                        <div className="col-span-2 flex flex-col items-center justify-center text-center">
+                                                            <div className="text-gray-800 font-medium text-sm mb-1">
+                                                                {group.service_name}
+                                                            </div>
+                                                            <div className="inline-flex items-center justify-center bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-bold text-xs px-2 py-1 rounded-lg border border-green-100">
+                                                                <FiDollarSign className="w-2 h-2 mr-1" />
+                                                                {group.fees}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Schedule Dates Column */}
+                                                        <div className="col-span-3 flex items-center justify-center">
+                                                            <div className="text-xs bg-gray-50 p-2 rounded-lg border border-gray-200 w-full">
                                                                 {renderDateDisplay(group)}
-                                                            </td>
-                                                            <td className="p-4 text-center">
-                                                                <a
-                                                                    href={`/view-recurring-group-firms?group_id=${group.group_id}`}
-                                                                    className="inline-flex items-center justify-center px-3 py-1.5 bg-indigo-100 text-indigo-800 text-sm font-semibold rounded-lg hover:bg-indigo-200 transition-colors min-w-[60px]"
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Firms Column */}
+                                                        <div className="col-span-1 flex items-center justify-center">
+                                                            <a
+                                                                href={`/view-recurring-group-firms?group_id=${group.group_id}`}
+                                                                className="inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-700 font-semibold text-sm rounded-lg border border-indigo-200 hover:from-indigo-100 hover:to-blue-100 transition-all min-w-[60px] shadow-sm"
+                                                            >
+                                                                <FiUsers className="w-3 h-3 mr-1" />
+                                                                {group.count}
+                                                            </a>
+                                                        </div>
+
+                                                        {/* Status Column */}
+                                                        <div className="col-span-1 flex items-center justify-center">
+                                                            <div className="relative inline-flex items-center cursor-pointer">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={group.status === 1}
+                                                                    onChange={() => handleStatusChange(group)}
+                                                                    className="sr-only peer"
+                                                                />
+                                                                <div className={`w-14 h-7 rounded-full peer ${group.status === 1 ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-gray-300 to-gray-400'} peer-checked:after:translate-x-7 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:border after:border-gray-300 after:shadow-sm`}></div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Actions Column */}
+                                                        <div className="col-span-1 flex items-center justify-center">
+                                                            <div className="dropdown-container relative">
+                                                                <motion.button
+                                                                    className="p-2 text-gray-500 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all duration-200 group-hover:bg-indigo-100/50"
+                                                                    onClick={() => toggleDropdown(group.group_id)}
+                                                                    whileHover={{ scale: 1.1 }}
+                                                                    whileTap={{ scale: 0.9 }}
                                                                 >
-                                                                    {group.count}
-                                                                </a>
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <label className="relative inline-flex items-center cursor-pointer">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={group.status === 1}
-                                                                        onChange={() => handleStatusChange(group)}
-                                                                        className="sr-only peer"
-                                                                    />
-                                                                    <div className={`w-12 h-6 rounded-full peer ${group.status === 1 ? 'bg-indigo-600' : 'bg-gray-300'} peer-checked:after:translate-x-6 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all after:border after:border-gray-300`}></div>
-                                                                </label>
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <div className="dropdown-container relative flex justify-center">
-                                                                    <button
-                                                                        className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group-hover:bg-gray-200"
-                                                                        onClick={() => toggleDropdown(group.group_id)}
-                                                                    >
-                                                                        <FiMoreVertical className="w-4 h-4" />
-                                                                    </button>
+                                                                    <FiMoreVertical className="w-5 h-5" />
+                                                                </motion.button>
+                                                                <AnimatePresence>
                                                                     {isDropdownOpen && (
-                                                                        <div className="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                                                            transition={{ duration: 0.15 }}
+                                                                            className="absolute right-0 mt-1 w-40 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                                                        >
                                                                             <div className="py-1">
                                                                                 <button
                                                                                     onClick={() => handleEditClick(group)}
-                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-200"
                                                                                 >
                                                                                     <FiEdit className="w-4 h-4 mr-3" />
-                                                                                    Edit
+                                                                                    Edit Group
                                                                                 </button>
                                                                             </div>
-                                                                        </div>
+                                                                        </motion.div>
                                                                     )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })
-                                            )}
-                                        </tbody>
-                                    </table>
+                                                                </AnimatePresence>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Table Footer - Fixed */}
+                                {/* Table Footer */}
                                 <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                                    <table className="w-full text-sm">
-                                        <tfoot>
-                                            <tr>
-                                                <td className="text-left p-4 font-bold text-gray-800" colSpan="2">
-                                                    Summary
-                                                </td>
-                                                <td className="text-left p-4">
-                                                    <span className="inline-flex items-center justify-center bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1.5 rounded-lg">
-                                                        {summary.totalGroups} Groups
-                                                    </span>
-                                                </td>
-                                                <td className="text-left p-4">
-                                                    <span className="inline-flex items-center justify-center bg-green-100 text-green-800 text-sm font-bold px-3 py-1.5 rounded-lg">
-                                                        {summary.monthlyGroups} Monthly
-                                                    </span>
-                                                </td>
-                                                <td className="text-center p-4">
-                                                    <span className="inline-flex items-center justify-center bg-purple-100 text-purple-800 text-sm font-bold px-3 py-1.5 rounded-lg min-w-[60px]">
-                                                        {summary.totalFirms}
-                                                    </span>
-                                                </td>
-                                                <td className="text-left p-4">
-                                                    <span className="inline-flex items-center justify-center bg-green-100 text-green-800 text-sm font-bold px-3 py-1.5 rounded-lg">
-                                                        {summary.activeGroups} Active
-                                                    </span>
-                                                </td>
-                                                <td className="p-4"></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
+                                    <div className="px-5 py-3">
+                                        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                                            <div className="text-sm text-gray-600">
+                                                Showing <span className="font-semibold">{filteredGroups.length}</span> of{" "}
+                                                <span className="font-semibold">{groups.length}</span> groups
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-sm">
+                                                    <span className="text-gray-600">Active: </span>
+                                                    <span className="font-semibold text-green-600">{summary.activeGroups}</span>
+                                                </div>
+                                                <div className="text-sm">
+                                                    <span className="text-gray-600">Firms: </span>
+                                                    <span className="font-semibold text-blue-600">{summary.totalFirms}</span>
+                                                </div>
+                                                <div className="text-sm">
+                                                    <span className="text-gray-600">Monthly: </span>
+                                                    <span className="font-semibold text-purple-600">{summary.monthlyGroups}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -893,42 +1012,52 @@ const RecurringGroups = () => {
             {/* Create Group Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto transform transition-all duration-300 max-h-[90vh] overflow-y-auto">
-                        <div className="border-b border-gray-200 px-6 py-4">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-auto max-h-[90vh] overflow-y-auto"
+                    >
+                        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
                             <div className="flex justify-between items-center">
-                                <h5 className="text-lg font-semibold text-gray-800">Create Recurring Group</h5>
+                                <div>
+                                    <h5 className="text-xl font-bold text-gray-800">Create New Recurring Group</h5>
+                                    <p className="text-gray-600 text-sm mt-1">Add a new recurring service group</p>
+                                </div>
                                 <button
                                     onClick={() => setShowCreateModal(false)}
-                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
-                                    ×
+                                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
                         <div className="p-6">
                             <form onSubmit={handleCreateSubmit}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Group Name
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Group Name *
                                         </label>
                                         <input
                                             type="text"
                                             value={createForm.name}
                                             onChange={(e) => handleCreateChange('name', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            placeholder="Enter group name"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            placeholder="e.g., GST Filing - Monthly"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Service
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Service *
                                         </label>
                                         <select
                                             value={createForm.service_id}
                                             onChange={(e) => handleCreateChange('service_id', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
                                             required
                                         >
                                             <option value="">Select Service</option>
@@ -940,13 +1069,13 @@ const RecurringGroups = () => {
                                         </select>
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Period
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Recurring Period *
                                         </label>
                                         <select
                                             value={createForm.period}
                                             onChange={(e) => handleCreateChange('period', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
                                             required
                                         >
                                             <option value="monthly">Monthly</option>
@@ -956,14 +1085,17 @@ const RecurringGroups = () => {
                                         </select>
                                     </div>
                                     <div className="md:col-span-2">
-                                        {renderDateFields(createForm, false)}
+                                        <div className="bg-gray-50 p-4 rounded-xl mb-4">
+                                            <h6 className="text-sm font-semibold text-gray-700 mb-3">Schedule Dates</h6>
+                                            {renderDateFields(createForm, false)}
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex justify-end gap-3">
+                                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
                                     <motion.button
                                         type="button"
                                         onClick={() => setShowCreateModal(false)}
-                                        className="px-4 py-2.5 text-gray-600 hover:text-gray-800 rounded-lg text-sm font-medium transition-colors"
+                                        className="px-5 py-2.5 text-gray-600 hover:text-gray-800 rounded-xl text-sm font-medium transition-colors border border-gray-300 hover:bg-gray-50"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
@@ -971,8 +1103,8 @@ const RecurringGroups = () => {
                                     </motion.button>
                                     <motion.button
                                         type="submit"
-                                        className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center gap-2"
-                                        whileHover={{ scale: 1.02 }}
+                                        className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all text-sm font-medium flex items-center gap-2 shadow-md"
+                                        whileHover={{ scale: 1.02, y: -1 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
                                         <FiPlus className="w-4 h-4" />
@@ -981,50 +1113,59 @@ const RecurringGroups = () => {
                                 </div>
                             </form>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
 
             {/* Edit Group Modal */}
             {showEditModal && selectedGroup && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto transform transition-all duration-300 max-h-[90vh] overflow-y-auto">
-                        <div className="border-b border-gray-200 px-6 py-4">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-auto max-h-[90vh] overflow-y-auto"
+                    >
+                        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
                             <div className="flex justify-between items-center">
-                                <h5 className="text-lg font-semibold text-gray-800">Edit Recurring Group</h5>
+                                <div>
+                                    <h5 className="text-xl font-bold text-gray-800">Edit Recurring Group</h5>
+                                    <p className="text-gray-600 text-sm mt-1">Update group details for {selectedGroup.name}</p>
+                                </div>
                                 <button
                                     onClick={() => setShowEditModal(false)}
-                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
-                                    ×
+                                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
                         <div className="p-6">
                             <form onSubmit={handleEditSubmit}>
                                 <input type="hidden" name="group_id" value={editForm.group_id} />
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Group Name
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Group Name *
                                         </label>
                                         <input
                                             type="text"
                                             value={editForm.name}
                                             onChange={(e) => handleEditChange('name', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                            placeholder="Enter group name"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Service
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Service *
                                         </label>
                                         <select
                                             value={editForm.service_id}
                                             onChange={(e) => handleEditChange('service_id', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
                                             required
                                         >
                                             <option value="">Select Service</option>
@@ -1036,13 +1177,13 @@ const RecurringGroups = () => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Period
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Period *
                                         </label>
                                         <select
                                             value={editForm.period}
                                             onChange={(e) => handleEditChange('period', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
                                             required
                                         >
                                             <option value="monthly">Monthly</option>
@@ -1052,13 +1193,13 @@ const RecurringGroups = () => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
                                             Status
                                         </label>
                                         <select
                                             value={editForm.status}
                                             onChange={(e) => handleEditChange('status', e.target.value)}
-                                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
                                             required
                                         >
                                             <option value="1">Active</option>
@@ -1066,14 +1207,17 @@ const RecurringGroups = () => {
                                         </select>
                                     </div>
                                     <div className="md:col-span-2">
-                                        {renderDateFields(editForm, true)}
+                                        <div className="bg-gray-50 p-4 rounded-xl mb-4">
+                                            <h6 className="text-sm font-semibold text-gray-700 mb-3">Schedule Dates</h6>
+                                            {renderDateFields(editForm, true)}
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex justify-end gap-3">
+                                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
                                     <motion.button
                                         type="button"
                                         onClick={() => setShowEditModal(false)}
-                                        className="px-4 py-2.5 text-gray-600 hover:text-gray-800 rounded-lg text-sm font-medium transition-colors"
+                                        className="px-5 py-2.5 text-gray-600 hover:text-gray-800 rounded-xl text-sm font-medium transition-colors border border-gray-300 hover:bg-gray-50"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
@@ -1081,8 +1225,8 @@ const RecurringGroups = () => {
                                     </motion.button>
                                     <motion.button
                                         type="submit"
-                                        className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-                                        whileHover={{ scale: 1.02 }}
+                                        className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all text-sm font-medium shadow-md"
+                                        whileHover={{ scale: 1.02, y: -1 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
                                         Update Group
@@ -1090,7 +1234,7 @@ const RecurringGroups = () => {
                                 </div>
                             </form>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
         </div>
