@@ -2,7 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import reportWebVitals from './reportWebVitals';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+// Import components
 import Login from './pages/login';
 import PageNotFound from './pages/error/page-not-found';
 import Dashboard from './pages/dashboard';
@@ -62,69 +64,386 @@ import ExpenseDetails from './pages/expense-details';
 import DiscountVoucherDetails from './pages/discount';
 import MyProfile from './components/myProfile';
 
+// Authentication wrapper component
+const ProtectedRoute = ({ children }) => {
+  const isAuthenticated = () => {
+    // Check for both possible token keys (for compatibility)
+    const token = localStorage.getItem('token') || localStorage.getItem('user_token');
+    const username = localStorage.getItem('username') || localStorage.getItem('user_username');
+    
+    return !!(token && username);
+  };
+
+  return isAuthenticated() ? children : <Navigate to="/login" replace />;
+};
+
+const PublicRoute = ({ children }) => {
+  const isAuthenticated = () => {
+    const token = localStorage.getItem('token') || localStorage.getItem('user_token');
+    const username = localStorage.getItem('username') || localStorage.getItem('user_username');
+    return !!(token && username);
+  };
+
+  // If user is already authenticated and tries to access login/register, redirect to dashboard
+  return isAuthenticated() ? <Navigate to="/" replace /> : children;
+};
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <BrowserRouter>
     <Routes>
-      <Route path='/' element={<Dashboard />}></Route>
-      <Route path='*' element={<Dashboard />}></Route>
-      <Route path='login' element={<Login />}></Route>
-      <Route path='/my-profile' element={<MyProfile />}></Route>
-      <Route path='register' element={<Register />}></Route>
-      <Route path='task/create' element={<TaskCreate />}></Route>
-      <Route path='task/view' element={<TaskDisplay />}></Route>
-      <Route path='task/profile' element={<TaskProfile />}></Route>
-      <Route path='client/create' element={<CreateClient />}></Route>
-      <Route path='client/view' element={<ViewClients />}></Route>
-      <Route path='client/profile' element={<ClientProfile />}></Route>
-      <Route path='billing' element={<BillDisplay />}></Route>
-      <Route path='finance/voucher' element={<FinanceEntry />}></Route>
-      <Route path='finance/voucher/bank-list' element={<BankList />}></Route>
-      <Route path='finance/voucher/capital-account' element={<CapitalAccounts />}></Route>
-      <Route path='finance/voucher/sales' element={<ViewSales />}></Route>
-      <Route path='finance/voucher/purchase' element={<ViewPurchase />}></Route>
-      <Route path='finance/voucher/received' element={<ViewReceived />}></Route>
-      <Route path='finance/voucher/payment' element={<ViewPayments />}></Route>
-      <Route path='finance/voucher/contra' element={<ViewContra />}></Route>
-      <Route path='finance/voucher/journal' element={<ViewJournal />}></Route>
-      <Route path='finance/voucher/expense' element={<ViewExpenses />}></Route>
-      <Route path='finance/voucher/expense-details' element={<ExpenseDetails />}></Route>
-      <Route path='finance/voucher/ledger-group' element={<LedgerGroup />}></Route>
-      <Route path='finance/voucher/discount' element={<DiscountVoucherDetails />}></Route>
-      <Route path='staff/view' element={<ViewStaff />}></Route>
-      <Route path='staff/team-report' element={<StaffReport />}></Route>
-      <Route path='staff/attendance' element={<ManageAttendance />}></Route>
-      <Route path='staff/office-assistance' element={<OfficeAssistance />}></Route>
-      <Route path='staff/office-assistance/dsc-report' element={<ViewDSCRegister />}></Route>
-      <Route path='staff/office-assistance/file-index' element={<ViewFileIndex />}></Route>
-      <Route path='staff/office-assistance/password-groups' element={<PasswordGroups />}></Route>
-      <Route path='staff/office-assistance/important-links' element={<ImportantLinks />}></Route>
-      <Route path='staff/office-assistance/services' element={<Services />}></Route>
-      <Route path='staff/office-assistance/recurring-groups' element={<RecurringGroups />}></Route>
-      <Route path='staff/office-assistance/firm-groups' element={<FirmGroups />}></Route>
-      <Route path='staff/office-assistance/inactive-client' element={<ViewInactiveClients />}></Route>
-      <Route path='staff/office-assistance/ca-list' element={<CAList />}></Route>
-      <Route path='staff/office-assistance/auto-reminder' element={<AutoReminder />}></Route>
-      <Route path='broadcast' element={<Broadcast />}></Route>
-      <Route path='broadcast/text-message/ooms' element={<TextMessageOoms />}></Route>
-      <Route path='broadcast/whatsapp/ooms' element={<WhatsAppOoms />}></Route>
-      <Route path='broadcast/push-notification' element={<PushNotification />}></Route>
-      <Route path='broadcast/report' element={<BroadcastReport />}></Route>
-      <Route path='settings' element={<Settings />}></Route>
-      <Route path='settings/staff-list' element={<StaffList />}></Route>
-      <Route path='settings/permissions' element={<PermissionList />}></Route>
-      <Route path='settings/invoice-setting' element={<InvoiceSettings />}></Route>
-      <Route path='settings/app-setting' element={<AppSettings />}></Route>
-      <Route path='settings/email-setting' element={<EmailConfig />}></Route>
-      <Route path='settings/daterange-setting' element={<DefaultDaterange />}></Route>
-      <Route path='settings/google-auth' element={<GoogleAuthentication />}></Route>
-      <Route path='settings/gateway-setting' element={<GatewayConfig />}></Route>
-      <Route path='settings/branch' element={<ViewBranch />}></Route>
-      <Route path='settings/admin' element={<ViewAdmins />}></Route>
-      <Route path='settings/website' element={<WebsiteSettings />}></Route>
-      <Route path='settings/widget' element={<WidgetSettings />}></Route>
-      <Route path='subscription' element={<Subscription />}></Route>
+      {/* Public Routes */}
+      <Route path="/login" element={
+     
+          <Login />
+        
+      } />
+      
+      <Route path="/register" element={
+        <PublicRoute>
+          <Register />
+        </PublicRoute>
+      } />
+
+      {/* Protected Routes */}
+      <Route path="/" element={
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/my-profile" element={
+        <ProtectedRoute>
+          <MyProfile />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/task/create" element={
+        <ProtectedRoute>
+          <TaskCreate />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/task/view" element={
+        <ProtectedRoute>
+          <TaskDisplay />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/task/profile" element={
+        <ProtectedRoute>
+          <TaskProfile />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/client/create" element={
+        <ProtectedRoute>
+          <CreateClient />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/client/view" element={
+        <ProtectedRoute>
+          <ViewClients />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/client/profile" element={
+        <ProtectedRoute>
+          <ClientProfile />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/billing" element={
+        <ProtectedRoute>
+          <BillDisplay />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher" element={
+        <ProtectedRoute>
+          <FinanceEntry />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/bank-list" element={
+        <ProtectedRoute>
+          <BankList />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/capital-account" element={
+        <ProtectedRoute>
+          <CapitalAccounts />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/sales" element={
+        <ProtectedRoute>
+          <ViewSales />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/purchase" element={
+        <ProtectedRoute>
+          <ViewPurchase />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/received" element={
+        <ProtectedRoute>
+          <ViewReceived />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/payment" element={
+        <ProtectedRoute>
+          <ViewPayments />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/contra" element={
+        <ProtectedRoute>
+          <ViewContra />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/journal" element={
+        <ProtectedRoute>
+          <ViewJournal />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/expense" element={
+        <ProtectedRoute>
+          <ViewExpenses />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/expense-details" element={
+        <ProtectedRoute>
+          <ExpenseDetails />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/ledger-group" element={
+        <ProtectedRoute>
+          <LedgerGroup />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/finance/voucher/discount" element={
+        <ProtectedRoute>
+          <DiscountVoucherDetails />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/view" element={
+        <ProtectedRoute>
+          <ViewStaff />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/team-report" element={
+        <ProtectedRoute>
+          <StaffReport />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/attendance" element={
+        <ProtectedRoute>
+          <ManageAttendance />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/office-assistance" element={
+        <ProtectedRoute>
+          <OfficeAssistance />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/office-assistance/dsc-report" element={
+        <ProtectedRoute>
+          <ViewDSCRegister />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/office-assistance/file-index" element={
+        <ProtectedRoute>
+          <ViewFileIndex />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/office-assistance/password-groups" element={
+        <ProtectedRoute>
+          <PasswordGroups />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/office-assistance/important-links" element={
+        <ProtectedRoute>
+          <ImportantLinks />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/office-assistance/services" element={
+        <ProtectedRoute>
+          <Services />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/office-assistance/recurring-groups" element={
+        <ProtectedRoute>
+          <RecurringGroups />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/office-assistance/firm-groups" element={
+        <ProtectedRoute>
+          <FirmGroups />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/office-assistance/inactive-client" element={
+        <ProtectedRoute>
+          <ViewInactiveClients />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/office-assistance/ca-list" element={
+        <ProtectedRoute>
+          <CAList />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/staff/office-assistance/auto-reminder" element={
+        <ProtectedRoute>
+          <AutoReminder />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/broadcast" element={
+        <ProtectedRoute>
+          <Broadcast />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/broadcast/text-message/ooms" element={
+        <ProtectedRoute>
+          <TextMessageOoms />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/broadcast/whatsapp/ooms" element={
+        <ProtectedRoute>
+          <WhatsAppOoms />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/broadcast/push-notification" element={
+        <ProtectedRoute>
+          <PushNotification />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/broadcast/report" element={
+        <ProtectedRoute>
+          <BroadcastReport />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <Settings />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/staff-list" element={
+        <ProtectedRoute>
+          <StaffList />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/permissions" element={
+        <ProtectedRoute>
+          <PermissionList />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/invoice-setting" element={
+        <ProtectedRoute>
+          <InvoiceSettings />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/app-setting" element={
+        <ProtectedRoute>
+          <AppSettings />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/email-setting" element={
+        <ProtectedRoute>
+          <EmailConfig />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/daterange-setting" element={
+        <ProtectedRoute>
+          <DefaultDaterange />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/google-auth" element={
+        <ProtectedRoute>
+          <GoogleAuthentication />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/gateway-setting" element={
+        <ProtectedRoute>
+          <GatewayConfig />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/branch" element={
+        <ProtectedRoute>
+          <ViewBranch />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/admin" element={
+        <ProtectedRoute>
+          <ViewAdmins />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/website" element={
+        <ProtectedRoute>
+          <WebsiteSettings />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/settings/widget" element={
+        <ProtectedRoute>
+          <WidgetSettings />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/subscription" element={
+        <ProtectedRoute>
+          <Subscription />
+        </ProtectedRoute>
+      } />
+
+      {/* Catch-all route for 404 */}
+      <Route path="*" element={
+        <ProtectedRoute>
+          <PageNotFound />
+        </ProtectedRoute>
+      } />
     </Routes>
   </BrowserRouter>
 );
+
 reportWebVitals();
