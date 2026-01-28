@@ -15,34 +15,34 @@ import {
     FiCheck
 } from 'react-icons/fi';
 
+const BASE_URL = 'https://api.ooms.in/api/v1';
+
 const Login = () => {
     const [phase, setPhase] = useState(1); // 1: Credentials, 2: OTP
-    const [currentStep, setCurrentStep] = useState(0); // 0: username, 1: app, 2: branch, 3: password
+    const [currentStep, setCurrentStep] = useState(0); // 0: email, 1: password
     const [loading, setLoading] = useState(false);
     const [fullScreenLoading, setFullScreenLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({
-        username: '',
-        app_id: '',
-        branch_id: '',
+        email: '',
         password: '',
         otp: ''
     });
-    const [apps, setApps] = useState([]);
     const [branches, setBranches] = useState([]);
+    const [selectedBranch, setSelectedBranch] = useState('');
     const [completedSteps, setCompletedSteps] = useState([]);
+    const [otpExpireTime, setOtpExpireTime] = useState(null);
+    const [loginResponse, setLoginResponse] = useState(null);
+    const [showBranchSelection, setShowBranchSelection] = useState(false);
+    const [loginSuccess, setLoginSuccess] = useState(false);
 
     const inputRefs = {
-        username: useRef(null),
-        app_id: useRef(null),
-        branch_id: useRef(null),
+        email: useRef(null),
         password: useRef(null)
     };
 
     const steps = [
-        { key: 'username', label: 'Username/Email', icon: FiUser, placeholder: 'Enter your username or email' },
-        { key: 'app_id', label: 'Application', icon: FiBriefcase, placeholder: 'Select your application' },
-        { key: 'branch_id', label: 'Branch', icon: FiGitBranch, placeholder: 'Select your branch' },
+        { key: 'email', label: 'Email', icon: FiMail, placeholder: 'Enter your email address' },
         { key: 'password', label: 'Password', icon: FiLock, placeholder: 'Enter your password', type: 'password' }
     ];
 
@@ -65,12 +65,12 @@ const Login = () => {
 
         // Auto-advance if current field is filled
         if (phase === 1 && name === steps[currentStep].key && value.trim()) {
-            if (name === 'username') {
-                handleUsernameSubmit(value);
-            } else if (name === 'app_id') {
-                handleAppSelect(value);
-            } else if (name === 'branch_id') {
-                setTimeout(() => handleNextStep(), 300);
+            if (name === 'email') {
+                // Validate email format before proceeding
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (emailRegex.test(value)) {
+                    setTimeout(() => handleNextStep(), 300);
+                }
             }
         }
     };
@@ -89,95 +89,39 @@ const Login = () => {
         }
     };
 
-    const handleUsernameSubmit = async (username = formData.username) => {
-        if (!username.trim()) return;
-
-        setFullScreenLoading(true);
-
-        try {
-            const formDataObj = new FormData();
-            formDataObj.append('login_id', username);
-
-            const response = await fetch('https://ooms.in/api/auth?fetch_apps', {
-                method: 'POST',
-                body: formDataObj
-            });
-
-            const result = await response.json();
-
-            if (result.apps && result.apps.length > 0) {
-                setApps(result.apps);
-                handleNextStep();
-            } else {
-                alert('No apps found for this username/email');
-            }
-        } catch (error) {
-            console.error('Error fetching apps:', error);
-            alert('Error fetching apps. Please try again.');
-        } finally {
-            setFullScreenLoading(false);
-        }
-    };
-
-    const handleAppSelect = async (appId = formData.app_id) => {
-        if (!appId) return;
-
-        setLoading(true);
-
-        try {
-            const formDataObj = new FormData();
-            formDataObj.append('app_id', appId);
-            formDataObj.append('login_id', formData.username);
-
-            const response = await fetch('https://ooms.in/api/auth?fetch_branches', {
-                method: 'POST',
-                body: formDataObj
-            });
-
-            const result = await response.json();
-
-            if (result.branches && result.branches.length > 0) {
-                setBranches(result.branches);
-                handleNextStep();
-            } else {
-                alert('No branches found for this app');
-            }
-        } catch (error) {
-            console.error('Error fetching branches:', error);
-            alert('Error fetching branches. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleCredentialsSubmit = async (e) => {
+    const handleSendOtp = async (e) => {
         e.preventDefault();
-        if (!formData.password) {
-            alert('Please enter password');
+        
+        if (!formData.email || !formData.password) {
+            alert('Please enter both email and password');
             return;
         }
 
         setLoading(true);
 
         try {
-            const formDataObj = new FormData();
-            formDataObj.append('login_id', formData.username);
-            formDataObj.append('app_id', formData.app_id);
-            formDataObj.append('branch_id', formData.branch_id);
-            formDataObj.append('password', formData.password);
-
-            const response = await fetch('https://ooms.in/api/auth?send_login_otp', {
+            const response = await fetch(`${BASE_URL}/auth/login/send-otp`, {
                 method: 'POST',
-                body: formDataObj
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password
+                })
             });
 
             const result = await response.json();
 
-            if (result.msg === "OTP generated successfully") {
+            if (result.success) {
                 setPhase(2);
-                setCompletedSteps([0, 1, 2, 3]); // Mark all steps as completed
+                setOtpExpireTime(result.expire);
+                setCompletedSteps([0, 1]); // Mark both steps as completed
+                
+                // Show success message
+                alert(result.message);
             } else {
-                alert(result.error || 'Error generating OTP');
+                alert(result.message || 'Error sending OTP');
             }
         } catch (error) {
             console.error('Error sending OTP:', error);
@@ -189,6 +133,7 @@ const Login = () => {
 
     const handleOtpSubmit = async (e) => {
         e.preventDefault();
+        
         if (formData.otp.length !== 6) {
             alert('Please enter 6-digit OTP');
             return;
@@ -197,26 +142,43 @@ const Login = () => {
         setLoading(true);
 
         try {
-            const formDataObj = new FormData();
-            formDataObj.append('login_id', formData.username);
-            formDataObj.append('app_id', formData.app_id);
-            formDataObj.append('branch_id', formData.branch_id);
-            formDataObj.append('password', formData.password);
-            formDataObj.append('otp', formData.otp);
-
-            const response = await fetch('https://ooms.in/api/auth?application_login', {
+            const response = await fetch(`${BASE_URL}/auth/login/email`, {
                 method: 'POST',
-                body: formDataObj
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password,
+                    otp: parseInt(formData.otp)
+                    // Note: According to your API, branch_id is NOT in the payload
+                })
             });
 
             const result = await response.json();
 
-            if (result.msg) {
-                alert('Login successful!');
-                // Handle successful login (store tokens, redirect, etc.)
-                console.log('Login successful:', result);
+            if (result.success) {
+                setLoginResponse(result);
+                
+                // Store branches from response
+                if (result.branches && result.branches.length > 0) {
+                    setBranches(result.branches);
+                    
+                    // If only one branch, auto-select it
+                    if (result.branches.length === 1) {
+                        setSelectedBranch(result.branches[0].branch_id);
+                        // Complete login with the single branch
+                        completeLogin(result, result.branches[0].branch_id);
+                    } else {
+                        // If multiple branches, show selection
+                        setShowBranchSelection(true);
+                    }
+                } else {
+                    // No branches in response, just complete login
+                    completeLogin(result, '');
+                }
             } else {
-                alert(result.error || 'Login failed');
+                alert(result.message || 'Login failed');
             }
         } catch (error) {
             console.error('Error verifying OTP:', error);
@@ -226,27 +188,66 @@ const Login = () => {
         }
     };
 
+    const handleBranchSelect = (branchId) => {
+        setSelectedBranch(branchId);
+        // Complete login with selected branch
+        completeLogin(loginResponse, branchId);
+    };
+
+    const completeLogin = (result, branchId) => {
+        // Store user details and token in localStorage
+        localStorage.setItem('user_token', result.token);
+        localStorage.setItem('user_email', formData.email);
+        localStorage.setItem('user_username', result.username);
+        localStorage.setItem('user_branches', JSON.stringify(result.branches || []));
+        localStorage.setItem('token_expire', result.expire_date);
+        
+        if (branchId) {
+            localStorage.setItem('branch_id', branchId);
+            // Also find and store the selected branch name
+            const selectedBranchInfo = result.branches?.find(b => b.branch_id === branchId);
+            if (selectedBranchInfo) {
+                localStorage.setItem('branch_name', selectedBranchInfo.name);
+                localStorage.setItem('branch_owned', selectedBranchInfo.owned ? 'true' : 'false');
+            }
+        }
+        
+        setLoginSuccess(true);
+        setShowBranchSelection(false);
+        
+        // Show success message
+        alert('Login successful!');
+        
+        console.log('Login successful:', result);
+        console.log('Token stored:', result.token);
+        console.log('Selected branch:', branchId);
+        
+        // You can redirect to dashboard or next page here
+        // window.location.href = '/dashboard';
+    };
+
     const handleResendOtp = async () => {
         setLoading(true);
 
         try {
-            const formDataObj = new FormData();
-            formDataObj.append('login_id', formData.username);
-            formDataObj.append('app_id', formData.app_id);
-            formDataObj.append('branch_id', formData.branch_id);
-            formDataObj.append('password', formData.password);
-
-            const response = await fetch('https://ooms.in/api/auth?send_login_otp', {
+            const response = await fetch(`${BASE_URL}/auth/login/send-otp`, {
                 method: 'POST',
-                body: formDataObj
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password
+                })
             });
 
             const result = await response.json();
 
-            if (result.msg === "OTP generated successfully") {
+            if (result.success) {
+                setOtpExpireTime(result.expire);
                 alert('OTP has been resent!');
             } else {
-                alert(result.error || 'Error resending OTP');
+                alert(result.message || 'Error resending OTP');
             }
         } catch (error) {
             console.error('Error resending OTP:', error);
@@ -274,8 +275,8 @@ const Login = () => {
             <div className="min-h-screen bg-blue-600 flex items-center justify-center">
                 <div className="text-center text-white">
                     <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <h2 className="text-xl font-semibold">Loading Apps...</h2>
-                    <p className="text-blue-100 mt-2">Please wait while we fetch your applications</p>
+                    <h2 className="text-xl font-semibold">Loading...</h2>
+                    <p className="text-blue-100 mt-2">Please wait</p>
                 </div>
             </div>
         );
@@ -291,15 +292,19 @@ const Login = () => {
                         <span className="text-white font-bold text-lg">LM</span>
                     </div>
                     <h1 className="text-xl font-bold">
-                        {phase === 1 ? 'Welcome Back' : 'Verify Identity'}
+                        {showBranchSelection ? 'Select Branch' : 
+                         loginSuccess ? 'Login Successful' :
+                         phase === 1 ? 'Welcome Back' : 'Verify Identity'}
                     </h1>
                     <p className="text-blue-100 text-sm mt-1">
-                        {phase === 1 ? 'Enter your credentials to continue' : 'Enter OTP sent to your device'}
+                        {showBranchSelection ? 'Choose your branch to continue' : 
+                         loginSuccess ? 'You have successfully logged in' :
+                         phase === 1 ? 'Enter your credentials to continue' : 'Enter OTP sent to your email'}
                     </p>
                 </div>
 
                 {/* Progress Steps */}
-                {phase === 1 && (
+                {phase === 1 && !showBranchSelection && !loginSuccess && (
                     <div className="px-6 pt-4">
                         <div className="flex justify-between items-center mb-6">
                             {steps.map((step, index) => {
@@ -337,60 +342,25 @@ const Login = () => {
 
                 {/* Form */}
                 <div className="p-6">
-                    {/* Phase 1: Sequential Credentials */}
-                    {phase === 1 && (
-                        <form onSubmit={handleCredentialsSubmit} className="space-y-6">
+                    {/* Phase 1: Email and Password */}
+                    {phase === 1 && !showBranchSelection && !loginSuccess && (
+                        <form onSubmit={handleSendOtp} className="space-y-6">
                             {/* Current Input Field */}
                             <div className="space-y-3">
                                 <label className="block text-sm font-semibold text-gray-700">
                                     {steps[currentStep].label}
                                 </label>
                                 <div className="relative">
-                                    {steps[currentStep].key === 'app_id' ? (
-                                        <select
-                                            ref={inputRefs.app_id}
-                                            name="app_id"
-                                            value={formData.app_id}
-                                            onChange={handleInputChange}
-                                            className="w-full pl-10 pr-4 py-3 border-2 border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200"
-                                            required
-                                        >
-                                            <option value="">Select application...</option>
-                                            {apps.map(app => (
-                                                <option key={app.app_id} value={app.app_id}>
-                                                    {app.name} ({app.app_id})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    ) : steps[currentStep].key === 'branch_id' ? (
-                                        <select
-                                            ref={inputRefs.branch_id}
-                                            name="branch_id"
-                                            value={formData.branch_id}
-                                            onChange={handleInputChange}
-                                            className="w-full pl-10 pr-4 py-3 border-2 border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200"
-                                            disabled={loading || branches.length === 0}
-                                            required
-                                        >
-                                            <option value="">{loading ? 'Loading branches...' : 'Select branch...'}</option>
-                                            {branches.map(branch => (
-                                                <option key={branch.branch_id} value={branch.branch_id}>
-                                                    {branch.name} ({branch.branch_id})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <input
-                                            ref={inputRefs[steps[currentStep].key]}
-                                            type={steps[currentStep].type || 'text'}
-                                            name={steps[currentStep].key}
-                                            value={formData[steps[currentStep].key]}
-                                            onChange={handleInputChange}
-                                            className="w-full pl-10 pr-4 py-3 border-2 border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200"
-                                            placeholder={steps[currentStep].placeholder}
-                                            required
-                                        />
-                                    )}
+                                    <input
+                                        ref={inputRefs[steps[currentStep].key]}
+                                        type={currentStep === 1 ? (showPassword ? 'text' : 'password') : 'email'}
+                                        name={steps[currentStep].key}
+                                        value={formData[steps[currentStep].key]}
+                                        onChange={handleInputChange}
+                                        className="w-full pl-10 pr-4 py-3 border-2 border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all duration-200"
+                                        placeholder={steps[currentStep].placeholder}
+                                        required
+                                    />
 
                                     {/* Icon */}
                                     {React.createElement(steps[currentStep].icon, {
@@ -398,7 +368,7 @@ const Login = () => {
                                     })}
 
                                     {/* Password visibility toggle */}
-                                    {steps[currentStep].key === 'password' && (
+                                    {currentStep === 1 && (
                                         <button
                                             type="button"
                                             onClick={() => setShowPassword(!showPassword)}
@@ -406,11 +376,6 @@ const Login = () => {
                                         >
                                             {showPassword ? <FiEyeOff /> : <FiEye />}
                                         </button>
-                                    )}
-
-                                    {/* Loading indicator for branch select */}
-                                    {steps[currentStep].key === 'branch_id' && loading && (
-                                        <FiRefreshCw className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 animate-spin" />
                                     )}
                                 </div>
                             </div>
@@ -430,7 +395,7 @@ const Login = () => {
                                 {currentStep === steps.length - 1 ? (
                                     <button
                                         type="submit"
-                                        disabled={loading || !formData.password}
+                                        disabled={loading || !formData.email || !formData.password}
                                         className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-200 flex items-center justify-center"
                                     >
                                         {loading ? (
@@ -460,40 +425,106 @@ const Login = () => {
                         </form>
                     )}
 
+                    {/* Branch Selection Screen */}
+                    {showBranchSelection && (
+                        <div className="space-y-6">
+                            <div className="bg-blue-50 rounded-lg p-4 text-center">
+                                <FiCheckCircle className="text-green-600 mx-auto mb-2 text-xl" />
+                                <p className="text-green-800 text-sm font-medium">OTP Verified Successfully!</p>
+                                <p className="text-blue-700 text-xs mt-1">Please select your branch to continue</p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="block text-sm font-semibold text-gray-700">
+                                    Select Branch
+                                </label>
+                                <div className="space-y-2">
+                                    {branches.map((branch) => (
+                                        <button
+                                            key={branch.branch_id}
+                                            type="button"
+                                            onClick={() => handleBranchSelect(branch.branch_id)}
+                                            disabled={loading}
+                                            className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 flex items-center justify-between
+                                                ${selectedBranch === branch.branch_id ? 
+                                                    'border-green-500 bg-green-50' : 
+                                                    'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                                                }`}
+                                        >
+                                            <div>
+                                                <p className="font-medium text-gray-800">{branch.name}</p>
+                                                <p className="text-sm text-gray-600">
+                                                    ID: {branch.branch_id} 
+                                                    {branch.owned && <span className="ml-2 text-green-600">• Owned</span>}
+                                                </p>
+                                            </div>
+                                            {selectedBranch === branch.branch_id && (
+                                                <FiCheckCircle className="text-green-600" />
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex space-x-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowBranchSelection(false);
+                                        setPhase(2);
+                                    }}
+                                    className="flex-1 border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center"
+                                >
+                                    <FiArrowLeft className="mr-2" />
+                                    Back to OTP
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => selectedBranch && handleBranchSelect(selectedBranch)}
+                                    disabled={!selectedBranch || loading}
+                                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-200 flex items-center justify-center"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <FiRefreshCw className="animate-spin mr-2" />
+                                            Continuing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Continue
+                                            <FiArrowRight className="ml-2" />
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Phase 2: OTP Verification */}
-                    {phase === 2 && (
+                    {phase === 2 && !showBranchSelection && !loginSuccess && (
                         <form onSubmit={handleOtpSubmit} className="space-y-6">
                             {/* Success Message */}
                             <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                                 <FiCheckCircle className="text-green-600 mx-auto mb-2 text-xl" />
-                                <p className="text-green-800 text-sm font-medium">Credentials Verified!</p>
-                                <p className="text-green-700 text-xs mt-1">OTP sent to your registered device</p>
+                                <p className="text-green-800 text-sm font-medium">OTP Sent Successfully!</p>
+                                <p className="text-green-700 text-xs mt-1">OTP sent to {formData.email}</p>
+                                {otpExpireTime && (
+                                    <p className="text-green-600 text-xs mt-1">Expires: {otpExpireTime}</p>
+                                )}
                             </div>
 
                             {/* User Info Summary */}
                             <div className="bg-blue-50 rounded-lg p-4 space-y-2">
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Username:</span>
-                                    <span className="font-medium">{formData.username}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">App:</span>
-                                    <span className="font-medium">
-                                        {apps.find(app => app.app_id === formData.app_id)?.name} ({formData.app_id})
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Branch:</span>
-                                    <span className="font-medium">
-                                        {branches.find(branch => branch.branch_id === formData.branch_id)?.name} ({formData.branch_id})
-                                    </span>
+                                    <span className="text-gray-600">Email:</span>
+                                    <span className="font-medium">{formData.email}</span>
                                 </div>
                             </div>
 
                             {/* OTP Input */}
                             <div className="space-y-3">
                                 <label className="block text-sm font-semibold text-gray-700">
-                                    Enter OTP
+                                    Enter 6-digit OTP
                                 </label>
                                 <div className="relative">
                                     <input
@@ -547,7 +578,7 @@ const Login = () => {
                                         </>
                                     ) : (
                                         <>
-                                            Verify & Login
+                                            Verify OTP
                                             <FiCheckCircle className="ml-2" />
                                         </>
                                     )}
@@ -556,15 +587,115 @@ const Login = () => {
                         </form>
                     )}
 
+                    {/* Login Success Display */}
+                    {loginSuccess && (
+                        <div className="space-y-6">
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6 text-center">
+                                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <FiCheckCircle className="text-green-600 text-2xl" />
+                                </div>
+                                <h3 className="font-semibold text-green-800 text-lg">Login Successful!</h3>
+                                <p className="text-green-700 text-sm mt-1">Welcome back, {loginResponse?.username || formData.email}</p>
+                            </div>
+
+                            <div className="bg-blue-50 rounded-lg p-4 space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-600">Email:</span>
+                                    <span className="font-medium">{formData.email}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-600">Username:</span>
+                                    <span className="font-medium">{loginResponse?.username || 'N/A'}</span>
+                                </div>
+                                {selectedBranch && (
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Selected Branch:</span>
+                                        <span className="font-medium">
+                                            {branches.find(b => b.branch_id === selectedBranch)?.name}
+                                        </span>
+                                    </div>
+                                )}
+                                {/* <div className="mt-3 pt-3 border-t border-blue-200">
+                                    <p className="text-gray-600 text-sm">Token stored in localStorage</p>
+                                    <div className="mt-1 p-2 bg-gray-100 rounded text-xs font-mono overflow-x-auto">
+                                        {loginResponse?.token?.substring(0, 30)}...
+                                    </div>
+                                </div> */}
+                            </div>
+
+                            {branches.length > 0 && (
+                                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                    <h4 className="font-medium text-gray-800 mb-2 flex items-center">
+                                        <FiGitBranch className="mr-2" />
+                                        Your Branches
+                                    </h4>
+                                    <div className="space-y-2">
+                                        {branches.map((branch) => (
+                                            <div 
+                                                key={branch.branch_id}
+                                                className={`p-3 rounded border ${selectedBranch === branch.branch_id ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}
+                                            >
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-medium">{branch.name}</span>
+                                                    {selectedBranch === branch.branch_id && (
+                                                        <span className="text-xs bg-green-500 text-white px-2 py-1 rounded">Selected</span>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-gray-600 mt-1">
+                                                    ID: {branch.branch_id}
+                                                    {branch.owned && <span className="ml-2 text-green-600">• Owned</span>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        // Reset for new login
+                                        setLoginSuccess(false);
+                                        setPhase(1);
+                                        setCurrentStep(0);
+                                        setFormData({ email: '', password: '', otp: '' });
+                                        setBranches([]);
+                                        setSelectedBranch('');
+                                        setCompletedSteps([]);
+                                        setLoginResponse(null);
+                                    }}
+                                    className="flex-1 border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center"
+                                >
+                                    <FiUser className="mr-2" />
+                                    Login as Another User
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        // Redirect to dashboard
+                                        window.location.href = '/dashboard';
+                                    }}
+                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-200 flex items-center justify-center"
+                                >
+                                    Go to Dashboard
+                                    <FiArrowRight className="ml-2" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Footer */}
-                    <div className="mt-6 pt-4 border-t border-gray-200 text-center">
-                        <p className="text-gray-600 text-sm">
-                            Don't have an account?{' '}
-                            <button className="text-blue-600 hover:text-blue-700 font-medium">
-                                Sign up
-                            </button>
-                        </p>
-                    </div>
+                    {!loginSuccess && (
+                        <div className="mt-6 pt-4 border-t border-gray-200 text-center">
+                            <p className="text-gray-600 text-sm">
+                                Don't have an account?{' '}
+                                <button className="text-blue-600 hover:text-blue-700 font-medium">
+                                    Sign up
+                                </button>
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
