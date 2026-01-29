@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../components/header';
 import {
@@ -40,8 +40,12 @@ import {
     FiSave,
     FiGlobe,
     FiNavigation,
-    FiGrid
+    FiGrid,
+    FiLoader,
+    FiRefreshCw
 } from 'react-icons/fi';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
 
 // Import other components
 import FirmsTab from "../ClientComponents/FirmsTab";
@@ -55,6 +59,36 @@ import RecurringTab from "../ClientComponents/RecurringTab";
 import DocumentsTab from "../ClientComponents/DocumentsTab";
 import ChattingTab from "../ClientComponents/ChattingTab";
 import AutomationTab from "../ClientComponents/AutomationTab";
+
+// API Configuration
+const API_BASE_URL = 'https://api.ooms.in/api/v1';
+
+// Get headers from localStorage
+const getHeaders = () => {
+    try {
+        const userName = localStorage.getItem('username') || 
+                         localStorage.getItem('user_username') || '';
+        const token = localStorage.getItem('token') || 
+                      localStorage.getItem('user_token') || '';
+        const branchId = localStorage.getItem('branchId') || 
+                         localStorage.getItem('branch_id') || '';
+        
+        if (!userName || !token || !branchId) {
+            console.error('Missing authentication data in localStorage');
+            return null;
+        }
+        
+        return {
+            'Content-Type': 'application/json',
+            'username': userName,
+            'token': token,
+            'branch': branchId
+        };
+    } catch (error) {
+        console.error('Error getting headers from localStorage:', error);
+        return null;
+    }
+};
 
 // Enhanced DetailRow Component with inline editing
 const DetailRow = ({ 
@@ -88,7 +122,6 @@ const DetailRow = ({
                 <span className="font-medium text-gray-700 text-sm min-w-[120px]">{label}</span>
             </div>
             
-            {/* SIMPLIFIED VERSION WITHOUT INDIVIDUAL EDIT BUTTON */}
             <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
                 <span className="text-gray-900 font-medium text-sm sm:text-base truncate">{value}</span>
             </div>
@@ -97,7 +130,7 @@ const DetailRow = ({
 };
 
 // Enhanced BasicDetailsTab Component with bulk edit mode
-const BasicDetailsTab = ({ clientData, onEdit }) => {
+const BasicDetailsTab = ({ clientData, onEdit, loading }) => {
     const [editingField, setEditingField] = useState(null);
     const [editedValue, setEditedValue] = useState('');
     const [isBulkEditMode, setIsBulkEditMode] = useState(false);
@@ -114,7 +147,6 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
         setEditingField(null);
         setEditedValue('');
         
-        // Show success feedback
         setSaveStatus({ type: 'success', message: `${field} updated successfully!` });
         setTimeout(() => setSaveStatus(null), 3000);
     };
@@ -192,7 +224,6 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
         );
     }
 
-    // Always show non-editing version when not in bulk edit mode
     return (
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 hover:bg-gray-50/50 transition-colors duration-200 rounded-lg px-3 -mx-3">
             <div className="flex items-center gap-3 mb-2 sm:mb-0">
@@ -211,6 +242,17 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
     );
 };
 
+    if (loading) {
+        return (
+            <div className="bg-gradient-to-br from-white to-gray-50/30 rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="p-8 flex flex-col items-center justify-center">
+                    <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                    <p className="text-gray-600 font-medium">Loading client details...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -218,7 +260,6 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
             exit={{ opacity: 0, y: -20 }}
             className="bg-gradient-to-br from-white to-gray-50/30 rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
         >
-            {/* Header with Bulk Edit Controls */}
             <div className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
@@ -271,7 +312,6 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
                 </div>
             </div>
 
-            {/* Bulk Edit Mode Banner */}
             {isBulkEditMode && (
                 <motion.div
                     initial={{ opacity: 0, height: 0 }}
@@ -313,10 +353,8 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
                 </motion.div>
             )}
 
-            {/* Content Grid */}
             <div className="p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Personal Information Card */}
                     <motion.div
                         className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
                         whileHover={{ y: -2, transition: { duration: 0.2 } }}
@@ -337,14 +375,14 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
                                 {renderField("Full Name", "name", clientData.name)}
                                 {renderField("Email", "email", clientData.email, "email")}
                                 {renderField("Mobile", "mobile", clientData.mobile, "tel")}
-                                {renderField("Date of Birth", "dob", clientData.dob, "date")}
-                                {renderField("Father's Name", "fatherName", clientData.fatherName)}
+                                {renderField("Date of Birth", "date_of_birth", clientData.date_of_birth, "date")}
+                                {renderField("Guardian Name", "guardian_name", clientData.guardian_name)}
                                 {renderField("Gender", "gender", clientData.gender, "select")}
+                                {renderField("PAN Number", "pan_number", clientData.pan_number)}
                             </div>
                         </div>
                     </motion.div>
 
-                    {/* Address Information Card */}
                     <motion.div
                         className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
                         whileHover={{ y: -2, transition: { duration: 0.2 } }}
@@ -362,14 +400,14 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
                         </div>
                         <div className="p-5">
                             <div className="space-y-1">
-                                {renderField("Address Line 1", "address1", clientData.address1)}
-                                {renderField("Address Line 2", "address2", clientData.address2)}
-                                {renderField("Town/City", "town", clientData.town)}
+                                {renderField("Address Line 1", "address_line_1", clientData.address_line_1)}
+                                {renderField("Address Line 2", "address_line_2", clientData.address_line_2)}
+                                {renderField("Town/Village", "village_town", clientData.village_town)}
                                 {renderField("District", "district", clientData.district)}
                                 {renderField("State", "state", clientData.state)}
+                                {renderField("Pincode", "pincode", clientData.pincode)}
                             </div>
                             
-                            {/* Map Preview (Placeholder) */}
                             <div className="mt-6 pt-6 border-t border-gray-100">
                                 <div className="flex items-center gap-2 mb-3">
                                     <FiGlobe className="w-4 h-4 text-gray-500" />
@@ -378,7 +416,7 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
                                 <div className="h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center border border-gray-300">
                                     <div className="text-center">
                                         <FiMapPin className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                                        <p className="text-sm text-gray-600">{clientData.town}, {clientData.state}</p>
+                                        <p className="text-sm text-gray-600">{clientData.village_town}, {clientData.state}</p>
                                     </div>
                                 </div>
                             </div>
@@ -386,7 +424,6 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
                     </motion.div>
                 </div>
 
-                {/* Quick Stats Footer */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -396,11 +433,21 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
                     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Profile Status</p>
-                                <p className="text-lg font-bold text-gray-900 mt-1">Complete</p>
+                                <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Status</p>
+                                <p className="text-lg font-bold text-gray-900 mt-1">
+                                    {clientData.is_active ? 'Active' : 'Inactive'}
+                                </p>
                             </div>
-                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                                <FiCheck className="w-5 h-5 text-white" />
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                clientData.is_active 
+                                    ? 'bg-gradient-to-r from-emerald-500 to-green-600' 
+                                    : 'bg-gradient-to-r from-red-500 to-rose-600'
+                            }`}>
+                                {clientData.is_active ? (
+                                    <FiCheck className="w-5 h-5 text-white" />
+                                ) : (
+                                    <FiX className="w-5 h-5 text-white" />
+                                )}
                             </div>
                         </div>
                     </div>
@@ -408,11 +455,13 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
                     <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100 rounded-xl p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-xs font-medium text-emerald-700 uppercase tracking-wide">Last Updated</p>
-                                <p className="text-lg font-bold text-gray-900 mt-1">Just Now</p>
+                                <p className="text-xs font-medium text-emerald-700 uppercase tracking-wide">Balance</p>
+                                <p className="text-lg font-bold text-gray-900 mt-1">
+                                    ₹{clientData.balance || '0.00'}
+                                </p>
                             </div>
                             <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
-                                <FiClock className="w-5 h-5 text-white" />
+                                <FiDollarSign className="w-5 h-5 text-white" />
                             </div>
                         </div>
                     </div>
@@ -420,11 +469,11 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
                     <div className="bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-100 rounded-xl p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-xs font-medium text-purple-700 uppercase tracking-wide">Fields Edited</p>
-                                <p className="text-lg font-bold text-gray-900 mt-1">0</p>
+                                <p className="text-xs font-medium text-purple-700 uppercase tracking-wide">Country Code</p>
+                                <p className="text-lg font-bold text-gray-900 mt-1">+{clientData.country_code}</p>
                             </div>
                             <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-violet-600 rounded-lg flex items-center justify-center">
-                                <FiEdit className="w-5 h-5 text-white" />
+                                <FiPhone className="w-5 h-5 text-white" />
                             </div>
                         </div>
                     </div>
@@ -432,11 +481,11 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
                     <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">Data Accuracy</p>
-                                <p className="text-lg font-bold text-gray-900 mt-1">100%</p>
+                                <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">Care Of</p>
+                                <p className="text-lg font-bold text-gray-900 mt-1">{clientData.care_of}</p>
                             </div>
                             <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
-                                <FiTrendingUp className="w-5 h-5 text-white" />
+                                <FiUser className="w-5 h-5 text-white" />
                             </div>
                         </div>
                     </div>
@@ -446,9 +495,6 @@ const BasicDetailsTab = ({ clientData, onEdit }) => {
     );
 };
 
-// Rest of the code remains the same (EditModal, DeleteModal, AddFirmModal, EditFirmModal)...
-
-// Keep all other modal components exactly as they were
 const EditModal = ({ isOpen, onClose, field, value, onSave, type = 'text' }) => {
     const [inputValue, setInputValue] = useState(value);
 
@@ -807,7 +853,7 @@ const EditFirmModal = ({ isOpen, onClose, onSave, firm }) => {
     );
 };
 
-// Main Component - ClientProfile remains exactly the same
+// Main Component - ClientProfile
 const ClientProfile = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(() => {
@@ -817,23 +863,163 @@ const ClientProfile = () => {
     const [activeTab, setActiveTab] = useState('basic');
     const [editModal, setEditModal] = useState({ isOpen: false, field: '', value: '' });
     const [isMobileView, setIsMobileView] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const tabsContainerRef = useRef(null);
+    const [previousUsername, setPreviousUsername] = useState(null);
 
-    // Client data
+    const { username } = useParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    // Client data structure matching API response
     const [clientData, setClientData] = useState({
-        name: "VENKATESH R AND ASSOCIATES",
-        mobile: "9632196321",
-        email: "venkateshrg@gmail.com",
-        dob: "01/06/1994",
-        balance: "100.00",
-        fatherName: "ramappa",
-        gender: "Male",
-        state: "Karnataka",
-        district: "Bengaluru (Bangalore) Urban",
-        town: "NO.17",
-        address1: "BANASHANKARI",
-        address2: "BENGALURU"
+        // Basic info
+        name: "",
+        care_of: "",
+        guardian_name: "",
+        date_of_birth: "",
+        gender: "",
+        mobile: "",
+        country_code: "",
+        email: "",
+        pan_number: "",
+        image: null,
+        is_active: true,
+        
+        // Address info
+        state: "",
+        district: "",
+        city: "",
+        village_town: "",
+        pincode: "",
+        address_line_1: "",
+        address_line_2: "",
+        
+        // Transactional info
+        balance: 0,
+        debit: 0,
+        credit: 0
     });
+
+    // Fetch client data from API
+    const fetchClientData = useCallback(async (currentUsername) => {
+        const usernameToFetch = currentUsername || username;
+        
+        if (!usernameToFetch) {
+            setError('No username provided');
+            setLoading(false);
+            return;
+        }
+
+        const headers = getHeaders();
+        if (!headers) {
+            setError('Authentication headers missing. Please login again.');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+            
+            // console.log('Fetching client data for username:', usernameToFetch);
+            
+            const response = await axios.get(
+                `${API_BASE_URL}/client/details/profile?username=${encodeURIComponent(usernameToFetch)}`,
+                { headers }
+            );
+
+            // console.log('API Response:', response.data);
+
+            if (response.data.success && response.data.data) {
+                const apiData = response.data.data;
+                
+                // Transform API data to match our component structure
+                setClientData({
+                    // Basic info
+                    name: apiData.basic?.name || "",
+                    care_of: apiData.basic?.care_of || "",
+                    guardian_name: apiData.basic?.guardian_name || "",
+                    date_of_birth: apiData.basic?.date_of_birth ? 
+                        new Date(apiData.basic.date_of_birth).toLocaleDateString('en-GB') : "",
+                    gender: apiData.basic?.gender || "",
+                    mobile: apiData.basic?.mobile || "",
+                    country_code: apiData.basic?.country_code || "91",
+                    email: apiData.basic?.email || "",
+                    pan_number: apiData.basic?.pan_number || "",
+                    image: apiData.basic?.image || null,
+                    is_active: apiData.basic?.is_active || false,
+                    
+                    // Address info
+                    state: apiData.basic?.address?.state || "",
+                    district: apiData.basic?.address?.district || "",
+                    city: apiData.basic?.address?.city || "",
+                    village_town: apiData.basic?.address?.village_town || "",
+                    pincode: apiData.basic?.address?.pincode || "",
+                    address_line_1: apiData.basic?.address?.address_line_1 || "",
+                    address_line_2: apiData.basic?.address?.address_line_2 || "",
+                    
+                    // Transactional info
+                    balance: apiData.transactional?.balance || 0,
+                    debit: apiData.transactional?.debit || 0,
+                    credit: apiData.transactional?.credit || 0
+                });
+            } else {
+                setError(response.data.message || 'Failed to fetch client data');
+            }
+        } catch (err) {
+            console.error('Error fetching client data:', err);
+            if (err.response) {
+                if (err.response.status === 401) {
+                    setError('Unauthorized. Please login again.');
+                } else if (err.response.status === 404) {
+                    setError(`Client with username "${usernameToFetch}" not found.`);
+                } else {
+                    setError(`Error ${err.response.status}: ${err.response.data?.message || 'Failed to fetch client data'}`);
+                }
+            } else if (err.request) {
+                setError('No response from server. Please check your connection.');
+            } else {
+                setError(`Error: ${err.message}`);
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, [username]);
+
+    // Watch for URL changes and fetch new data
+    useEffect(() => {
+        // console.log('URL changed to:', location.pathname);
+        // console.log('Username from params:', username);
+        // console.log('Previous username:', previousUsername);
+        
+        // Only fetch if username has changed
+        if (username && username !== previousUsername) {
+            // Reset state for new user
+            setClientData({
+                name: "", care_of: "", guardian_name: "", date_of_birth: "", gender: "",
+                mobile: "", country_code: "", email: "", pan_number: "", image: null,
+                is_active: false, state: "", district: "", city: "", village_town: "",
+                pincode: "", address_line_1: "", address_line_2: "", balance: 0,
+                debit: 0, credit: 0
+            });
+            setActiveTab('basic');
+            setError(null);
+            setPreviousUsername(username);
+            
+            // Fetch new data
+            fetchClientData(username);
+        }
+    }, [username, location.pathname, previousUsername, fetchClientData]);
+
+    // Initial fetch
+    useEffect(() => {
+        if (username && !previousUsername) {
+            setPreviousUsername(username);
+            fetchClientData(username);
+        }
+    }, [username, previousUsername, fetchClientData]);
 
     // Profile tabs data
     const profileTabs = [
@@ -909,7 +1095,7 @@ const ClientProfile = () => {
     // Render content based on active tab
     const renderTabContent = () => {
         const tabComponents = {
-            basic: <BasicDetailsTab clientData={clientData} onEdit={handleEditField} />,
+            basic: <BasicDetailsTab clientData={clientData} onEdit={handleEditField} loading={loading} />,
             firms: <FirmsTab />,
             password: <PasswordTab />,
             quotation: <QuotationTab />,
@@ -924,6 +1110,13 @@ const ClientProfile = () => {
         };
 
         return tabComponents[activeTab];
+    };
+
+    // Format date for display
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB');
     };
 
     return (
@@ -949,180 +1142,256 @@ const ClientProfile = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
                     >
-                        {/* Compact Header Card */}
-                        <motion.div
-                            className="bg-white rounded-xl shadow-md border border-gray-200 p-5 mb-6 relative overflow-hidden"
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <div className="relative">
-                                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
-                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
-                                        <motion.div
-                                            className="relative flex-shrink-0"
-                                            whileHover={{ scale: 1.03 }}
-                                            transition={{ type: "spring", stiffness: 300 }}
-                                        >
-                                            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
-                                                <FiUser className="w-7 h-7 text-white" />
-                                            </div>
-                                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-sm">
-                                                <FiStar className="w-3 h-3 text-white" />
-                                            </div>
-                                        </motion.div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
-                                                <h1 className="text-xl font-bold text-gray-900 truncate">{clientData.name}</h1>
-                                                <span className="px-2.5 py-1 bg-gradient-to-r from-green-100 to-emerald-100 text-emerald-700 rounded-full text-xs font-semibold flex items-center gap-1 w-fit">
-                                                    <FiTrendingUp className="w-3 h-3" />
-                                                    Active
-                                                </span>
-                                            </div>
-                                            
-                                            {/* Mobile - Collapsible Contact Info */}
-                                            <div className={`grid ${isMobileView ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-4'} gap-3`}>
-                                                <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
-                                                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                        <FiPhone className="w-4 h-4 text-blue-600" />
+                        {/* Loading State */}
+                        {loading && (
+                            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-8 mb-6 flex flex-col items-center justify-center">
+                                <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                                <p className="text-gray-600 font-medium">Loading client profile...</p>
+                            </div>
+                        )}
+
+                        {/* Error State */}
+                        {error && !loading && (
+                            <div className="bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-xl p-6 mb-6">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                        <FiX className="w-5 h-5 text-red-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900">Error Loading Profile</h3>
+                                        <p className="text-gray-600 text-sm mt-1">{error}</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => fetchClientData(username)}
+                                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 text-sm flex items-center gap-2"
+                                    >
+                                        <FiRefreshCw className="w-4 h-4" />
+                                        Retry
+                                    </button>
+                                    <button
+                                        onClick={() => navigate(-1)}
+                                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition-all duration-200 text-sm"
+                                    >
+                                        Go Back
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Client Profile Content */}
+                        {!loading && !error && (
+                            <>
+                                {/* Compact Header Card */}
+                                <motion.div
+                                    className="bg-white rounded-xl shadow-md border border-gray-200 p-5 mb-6 relative overflow-hidden"
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    <div className="relative">
+                                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
+                                                <motion.div
+                                                    className="relative flex-shrink-0"
+                                                    whileHover={{ scale: 1.03 }}
+                                                    transition={{ type: "spring", stiffness: 300 }}
+                                                >
+                                                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+                                                        {clientData.image ? (
+                                                            <img 
+                                                                src={clientData.image} 
+                                                                alt={clientData.name}
+                                                                className="w-full h-full rounded-xl object-cover"
+                                                            />
+                                                        ) : (
+                                                            <FiUser className="w-7 h-7 text-white" />
+                                                        )}
                                                     </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-xs font-medium text-gray-500">Mobile</p>
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">{clientData.mobile}</p>
+                                                    <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-sm ${
+                                                        clientData.is_active 
+                                                            ? 'bg-gradient-to-r from-green-400 to-emerald-500' 
+                                                            : 'bg-gradient-to-r from-red-400 to-rose-500'
+                                                    }`}>
+                                                        {clientData.is_active ? (
+                                                            <FiStar className="w-3 h-3 text-white" />
+                                                        ) : (
+                                                            <FiX className="w-3 h-3 text-white" />
+                                                        )}
+                                                    </div>
+                                                </motion.div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
+                                                        <h1 className="text-xl font-bold text-gray-900 truncate">{clientData.name}</h1>
+                                                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 w-fit ${
+                                                            clientData.is_active 
+                                                                ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-emerald-700' 
+                                                                : 'bg-gradient-to-r from-red-100 to-rose-100 text-rose-700'
+                                                        }`}>
+                                                            {clientData.is_active ? (
+                                                                <>
+                                                                    <FiTrendingUp className="w-3 h-3" />
+                                                                    Active
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <FiX className="w-3 h-3" />
+                                                                    Inactive
+                                                                </>
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    {/* Mobile - Collapsible Contact Info */}
+                                                    <div className={`grid ${isMobileView ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-4'} gap-3`}>
+                                                        <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
+                                                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                                <FiPhone className="w-4 h-4 text-blue-600" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-xs font-medium text-gray-500">Mobile</p>
+                                                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                                                    +{clientData.country_code} {clientData.mobile}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
+                                                            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                                <FiMail className="w-4 h-4 text-purple-600" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-xs font-medium text-gray-500">Email</p>
+                                                                <p className="text-sm font-semibold text-gray-900 truncate">{clientData.email}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
+                                                            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                                <FiCalendar className="w-4 h-4 text-amber-600" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-xs font-medium text-gray-500">Date of Birth</p>
+                                                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                                                    {formatDate(clientData.date_of_birth)}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
+                                                            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                                <FiMapPin className="w-4 h-4 text-emerald-600" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-xs font-medium text-gray-500">Location</p>
+                                                                <p className="text-sm font-semibold text-gray-900 truncate">{clientData.state}</p>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
-                                                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                        <FiMail className="w-4 h-4 text-purple-600" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-xs font-medium text-gray-500">Email</p>
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">{clientData.email}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
-                                                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                        <FiCalendar className="w-4 h-4 text-amber-600" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-xs font-medium text-gray-500">Date of Birth</p>
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">{clientData.dob}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
-                                                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                        <FiMapPin className="w-4 h-4 text-emerald-600" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-xs font-medium text-gray-500">Location</p>
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">{clientData.state}</p>
-                                                    </div>
-                                                </div>
                                             </div>
+                                            <motion.div
+                                                className="mt-4 lg:mt-0 flex-shrink-0"
+                                                whileHover={{ scale: 1.02 }}
+                                                transition={{ type: "spring", stiffness: 400 }}
+                                            >
+                                                <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-5 py-3 rounded-lg font-bold text-lg shadow-sm hover:shadow transform hover:-translate-y-0.5 transition-all duration-200 min-w-[180px]">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <FiDollarSign className="w-5 h-5" />
+                                                        <div>
+                                                            <p className="text-xs font-medium text-emerald-100">Balance</p>
+                                                            <p className="text-xl">₹{clientData.balance.toLocaleString()}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
                                         </div>
                                     </div>
-                                    <motion.div
-                                        className="mt-4 lg:mt-0 flex-shrink-0"
-                                        whileHover={{ scale: 1.02 }}
-                                        transition={{ type: "spring", stiffness: 400 }}
-                                    >
-                                        <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-5 py-3 rounded-lg font-bold text-lg shadow-sm hover:shadow transform hover:-translate-y-0.5 transition-all duration-200 min-w-[180px]">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <FiDollarSign className="w-5 h-5" />
-                                                <div>
-                                                    <p className="text-xs font-medium text-emerald-100">Balance</p>
-                                                    <p className="text-xl">₹{clientData.balance}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                </div>
-                            </div>
-                        </motion.div>
+                                </motion.div>
 
-                        {/* Enhanced Profile Tabs - No Underline Version */}
-                        <motion.div
-                            className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6 overflow-hidden"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                        >
-                            <div className="relative">
-                                {/* Gradient overlay for scroll indicators */}
-                                <div className="absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none hidden sm:block"></div>
-                                <div className="absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none hidden sm:block"></div>
-                                
-                                {/* Left scroll button */}
-                                <div className="hidden sm:flex absolute left-0 top-0 bottom-0 items-center z-20">
-                                    <button
-                                        onClick={() => scrollTabs('left')}
-                                        className="h-full px-2 bg-gradient-to-r from-white via-white to-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all"
-                                    >
-                                        <FiChevronLeft className="w-4 h-4" />
-                                    </button>
-                                </div>
-                                
-                                {/* Tabs container - No underline */}
-                                <div 
-                                    ref={tabsContainerRef}
-                                    className="flex overflow-x-auto scrollbar-hide px-2 py-3"
-                                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                                {/* Enhanced Profile Tabs - No Underline Version */}
+                                <motion.div
+                                    className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6 overflow-hidden"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ delay: 0.2 }}
                                 >
-                                    {profileTabs.map((tab) => {
-                                        const Icon = tab.icon;
-                                        const isActive = activeTab === tab.id;
-
-                                        return (
-                                            <motion.button
-                                                key={tab.id}
-                                                onClick={() => setActiveTab(tab.id)}
-                                                className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap mx-1 ${isActive
-                                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
-                                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                                    }`}
-                                                whileHover={{ scale: 1.03, y: -1 }}
-                                                whileTap={{ scale: 0.98 }}
+                                    <div className="relative">
+                                        {/* Gradient overlay for scroll indicators */}
+                                        <div className="absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none hidden sm:block"></div>
+                                        <div className="absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none hidden sm:block"></div>
+                                        
+                                        {/* Left scroll button */}
+                                        <div className="hidden sm:flex absolute left-0 top-0 bottom-0 items-center z-20">
+                                            <button
+                                                onClick={() => scrollTabs('left')}
+                                                className="h-full px-2 bg-gradient-to-r from-white via-white to-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all"
                                             >
-                                                <motion.div
-                                                    animate={{ 
-                                                        rotate: isActive ? [0, 5, 0] : 0,
-                                                        scale: isActive ? 1.1 : 1
-                                                    }}
-                                                    transition={{ duration: 0.2 }}
-                                                >
-                                                    <Icon className="w-4 h-4" />
-                                                </motion.div>
-                                                <span className="font-medium">{tab.name}</span>
-                                            </motion.button>
-                                        );
-                                    })}
-                                </div>
+                                                <FiChevronLeft className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        
+                                        {/* Tabs container - No underline */}
+                                        <div 
+                                            ref={tabsContainerRef}
+                                            className="flex overflow-x-auto scrollbar-hide px-2 py-3"
+                                            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                                        >
+                                            {profileTabs.map((tab) => {
+                                                const Icon = tab.icon;
+                                                const isActive = activeTab === tab.id;
 
-                                {/* Right scroll button */}
-                                <div className="hidden sm:flex absolute right-0 top-0 bottom-0 items-center z-20">
-                                    <button
-                                        onClick={() => scrollTabs('right')}
-                                        className="h-full px-2 bg-gradient-to-l from-white via-white to-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all"
+                                                return (
+                                                    <motion.button
+                                                        key={tab.id}
+                                                        onClick={() => setActiveTab(tab.id)}
+                                                        className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap mx-1 ${isActive
+                                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                                            }`}
+                                                        whileHover={{ scale: 1.03, y: -1 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                    >
+                                                        <motion.div
+                                                            animate={{ 
+                                                                rotate: isActive ? [0, 5, 0] : 0,
+                                                                scale: isActive ? 1.1 : 1
+                                                            }}
+                                                            transition={{ duration: 0.2 }}
+                                                        >
+                                                            <Icon className="w-4 h-4" />
+                                                        </motion.div>
+                                                        <span className="font-medium">{tab.name}</span>
+                                                    </motion.button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Right scroll button */}
+                                        <div className="hidden sm:flex absolute right-0 top-0 bottom-0 items-center z-20">
+                                            <button
+                                                onClick={() => scrollTabs('right')}
+                                                className="h-full px-2 bg-gradient-to-l from-white via-white to-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all"
+                                            >
+                                                <FiChevronRight className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </motion.div>
+
+                                {/* Tab Content with AnimatePresence */}
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={activeTab}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="bg-white rounded-xl border border-gray-200 shadow-sm p-5"
                                     >
-                                        <FiChevronRight className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-
-                        {/* Tab Content with AnimatePresence */}
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={activeTab}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.2 }}
-                                className="bg-white rounded-xl border border-gray-200 shadow-sm p-5"
-                            >
-                                {renderTabContent()}
-                            </motion.div>
-                        </AnimatePresence>
+                                        {renderTabContent()}
+                                    </motion.div>
+                                </AnimatePresence>
+                            </>
+                        )}
                     </motion.div>
                 </div>
             </div>

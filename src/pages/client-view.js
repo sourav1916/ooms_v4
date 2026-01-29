@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar, Header } from '../components/header';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -45,6 +45,7 @@ import { AiOutlineMail } from "react-icons/ai";
 import { FaWhatsapp } from "react-icons/fa6";
 import DeleteConfirmationModal from '../components/delete-confirmation';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 
 // Import DnD Kit
 import {
@@ -65,6 +66,14 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+// // API Configuration
+const API_BASE_URL = 'https://api.ooms.in/api/v1';
+const CLIENT_LIST_API = `${API_BASE_URL}/client/list`;
+
+// export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
+// export const CLIENT_LIST_API = `${API_BASE_URL}/client/list`;
 
 // Status Change Modal Component - NEW: For changing status from dropdown
 const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusChange, statusOptions }) => {
@@ -279,7 +288,7 @@ const ClientTable = ({
                     <div className="flex items-center gap-2">
                         <input
                             type="checkbox"
-                            checked={selectedClients.has(client.username)}
+                            checked={selectedClients.has(client._id)}
                             onChange={() => handleClientSelect(client.username)}
                             className="w-4 h-4 text-blue-600 rounded border-gray-400 focus:ring-blue-500"
                         />
@@ -288,14 +297,14 @@ const ClientTable = ({
                             <FiUser className="w-3.5 h-3.5 text-white" />
                         </div>
                         <div>
-                            <div className="font-semibold text-gray-800 text-sm">{client.name}</div>
-                            <div className="text-xs text-gray-500">@{client.username}</div>
+                            <div className="font-semibold text-gray-800 text-sm">{client.name || 'N/A'}</div>
+                            {/* <div className="text-xs text-gray-500">@{client.username || 'N/A'}</div> */}
                         </div>
                     </div>
                     {/* Vertical 3-dot menu for mobile - Updated to vertical style */}
                     <div className="relative">
                         <motion.button
-                            onClick={() => toggleRowDropdown(client.id)}
+                            onClick={() => toggleRowDropdown(client._id)}
                             className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.95 }}
@@ -309,7 +318,7 @@ const ClientTable = ({
                         
                         {/* Mobile dropdown - UPDATED: Added Change Status option */}
                         <AnimatePresence>
-                            {activeRowDropdown === client.id && (
+                            {activeRowDropdown === client._id && (
                                 <motion.div
                                     className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
                                     initial={{ opacity: 0, y: -8, scale: 0.96 }}
@@ -319,7 +328,7 @@ const ClientTable = ({
                                     {/* NEW: Change Status option */}
                                     <button
                                         onClick={() => {
-                                            openStatusModal(client.id, client.status);
+                                            openStatusModal(client._id, client.status);
                                             setActiveRowDropdown(null);
                                         }}
                                         className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
@@ -333,7 +342,7 @@ const ClientTable = ({
                                     <button
                                         onClick={() => {
                                             setActiveRowDropdown(null);
-                                            navigate(`/client/profile`);
+                                            navigate(`/client/profile/${client.username}`);
                                         }}
                                         className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                     >
@@ -344,7 +353,7 @@ const ClientTable = ({
                                     <button
                                         onClick={() => {
                                             setActiveRowDropdown(null);
-                                            navigate(`/client/edit/${client.id}`);
+                                            navigate(`/client/edit/${client._id}`);
                                         }}
                                         className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                     >
@@ -385,11 +394,11 @@ const ClientTable = ({
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-gray-700 text-sm">
                             <FiPhone className="w-3 h-3 text-gray-400" />
-                            <span>{client.mobile}</span>
+                            <span>{client.mobile || 'N/A'}</span>
                         </div>
                         <div className="flex items-center gap-1">
                             <div className={`text-sm font-semibold ${client.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                ₹{Math.abs(client.balance).toLocaleString()}
+                                ₹{Math.abs(client.balance || 0).toLocaleString()}
                             </div>
                             <motion.button
                                 onClick={() => handleExport('whatsapp', client)}
@@ -405,7 +414,7 @@ const ClientTable = ({
 
                     <div className="flex items-center gap-2 text-gray-700 text-sm">
                         <FiUsers className="w-3 h-3 text-gray-400" />
-                        <span>{client.firm_list.length} firms</span>
+                        <span>{client.firm_list?.length || 0} firms</span>
                     </div>
 
                     {/* NEW: Status as text display in mobile */}
@@ -422,7 +431,7 @@ const ClientTable = ({
                     </div>
 
                     <div className="text-xs text-gray-500">
-                        Guardian: {client.guardian_name}
+                        Guardian: {client.guardian_name || 'N/A'}
                     </div>
                 </div>
             </motion.div>
@@ -431,24 +440,26 @@ const ClientTable = ({
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Table Header - Fixed for desktop only */}
-            <div className="hidden md:block border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-10">
-                <div className="flex items-center min-w-max">
-                    {/* Checkbox Column */}
-                    <div className="w-10 p-3 flex-shrink-0">
-                        <input
-                            type="checkbox"
-                            checked={selectAll}
-                            onChange={handleSelectAll}
-                            className="w-4 h-4 text-blue-600 rounded border-gray-400 focus:ring-blue-500"
-                        />
-                    </div>
+           {/* Table Header - Fixed for desktop only */}
+<div className="hidden md:block border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-10">
+    <div className="flex items-center min-w-max">
+        {/* TOGGLE COLUMN (REPLACED CHECKBOX) */}
+        <div className="w-12 p-3 flex-shrink-0 flex justify-center">
+            <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={selectAll}
+                    onChange={handleSelectAll}
+                />
+                <div className={`w-9 h-5 ${selectAll ? 'bg-blue-600' : 'bg-gray-300'} peer-focus:outline-none rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all ${selectAll ? 'after:translate-x-full' : ''}`}></div>
+            </label>
+        </div>
 
-                    {/* SL No Column - Added */}
-                    <div className="w-10 p-3 font-bold text-gray-700 text-sm flex-shrink-0 text-center">
-                        SL No
-                    </div>
-
+        {/* SL No Column - Added */}
+        <div className="w-10 p-3 font-bold text-gray-700 text-sm flex-shrink-0 text-center">
+            SL No
+        </div>
                     {/* Dynamic Columns - Equal width distribution */}
                     {columnConfig.map(column => (
                         <div
@@ -502,36 +513,39 @@ const ClientTable = ({
                         {/* Mobile view - cards */}
                         <div className="md:hidden px-3 py-1">
                             {clients.map((client, index) => (
-                                <MobileClientCard key={client.id} client={client} index={index} handleExport={() => {}} />
+                                <MobileClientCard key={client._id} client={client} index={index} handleExport={() => {}} />
                             ))}
                         </div>
 
                         {/* Desktop view - table */}
-                        <div className="hidden md:block">
-                            {clients.map((client, index) => (
-                                <motion.div
-                                    key={client.id}
-                                    className="flex items-center border-b border-gray-100 hover:bg-gray-50 transition-colors group"
-                                    initial={{ opacity: 0, y: 5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.03 }}
-                                >
-                                    {/* Checkbox */}
-                                    <div className="w-10 p-3 flex-shrink-0">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedClients.has(client.username)}
-                                            onChange={() => handleClientSelect(client.username)}
-                                            className="w-4 h-4 text-blue-600 rounded border-gray-400 focus:ring-blue-500"
-                                        />
-                                    </div>
+<div className="hidden md:block">
+    {clients.map((client, index) => (
+        <motion.div
+            key={client._id}
+            className="flex items-center border-b border-gray-100 hover:bg-gray-50 transition-colors group"
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.03 }}
+        >
+            {/* TOGGLE (REPLACED CHECKBOX) */}
+            <div className="w-12 p-3 flex-shrink-0 flex justify-center">
+                <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={selectedClients.has(client._id)}
+                        onChange={() => handleClientSelect(client._id)}
+                    />
+                    <div className={`w-9 h-5 ${selectedClients.has(client._id) ? 'bg-blue-600' : 'bg-gray-300'} peer-focus:outline-none rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all ${selectedClients.has(client._id) ? 'after:translate-x-full' : ''}`}></div>
+                </label>
+            </div>
 
-                                    {/* SL No - Bold - Added */}
-                                    <div className="w-10 p-3 flex-shrink-0 text-center">
-                                        <span className="font-bold text-gray-800 text-sm">
-                                            {index + 1}
-                                        </span>
-                                    </div>
+            {/* SL No - Bold - Added */}
+            <div className="w-10 p-3 flex-shrink-0 text-center">
+                <span className="font-bold text-gray-800 text-sm">
+                    {index + 1}
+                </span>
+            </div>
 
                                     {/* Dynamic Columns - Equal width distribution */}
                                     {columnConfig.map(column => (
@@ -598,7 +612,7 @@ const ClientCards = ({
 
     // Format balance
     const formatBalance = (balance) => {
-        return `₹${Math.abs(balance).toLocaleString()}`;
+        return `₹${Math.abs(balance || 0).toLocaleString()}`;
     };
 
     // Skeleton loader
@@ -641,8 +655,8 @@ const ClientCards = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {clients.map((client, index) => (
                         <motion.div
-                            key={client.id}
-                            className={`bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200 overflow-hidden ${selectedClients.has(client.username) ? 'ring-2 ring-blue-500' : ''}`}
+                            key={client._id}
+                            className={`bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200 overflow-hidden ${selectedClients.has(client._id) ? 'ring-2 ring-blue-500' : ''}`}
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: index * 0.05 }}
@@ -654,7 +668,7 @@ const ClientCards = ({
                                         <div className="flex items-center gap-2 mb-1">
                                             <input
                                                 type="checkbox"
-                                                checked={selectedClients.has(client.username)}
+                                                checked={selectedClients.has(client._id)}
                                                 onChange={() => handleClientSelect(client.username)}
                                                 className="w-3.5 h-3.5 text-blue-600 rounded border-gray-400 focus:ring-blue-500 flex-shrink-0"
                                             />
@@ -663,18 +677,18 @@ const ClientCards = ({
                                                 <FiUser className="w-3.5 h-3.5 text-white" />
                                             </div>
                                             <div className="min-w-0">
-                                                <h3 className="font-semibold text-gray-800 text-xs truncate">{client.name}</h3>
-                                                <p className="text-xs text-gray-500 truncate">@{client.username}</p>
+                                                <h3 className="font-semibold text-gray-800 text-xs truncate">{client.name || 'N/A'}</h3>
+                                                {/* <p className="text-xs text-gray-500 truncate">@{client.username || 'N/A'}</p> */}
                                             </div>
                                         </div>
-                                        <h4 className="font-bold text-gray-800 text-sm truncate">{client.guardian_name}</h4>
-                                        <p className="text-gray-600 text-xs truncate">{client.firm_list.length} firms</p>
+                                        <h4 className="font-bold text-gray-800 text-sm truncate">{client.guardian_name || 'N/A'}</h4>
+                                        <p className="text-gray-600 text-xs truncate">{client.firm_list?.length || 0} firms</p>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
                                         {/* Vertical 3-dot menu for cards - Updated to vertical style */}
                                         <div className="relative">
                                             <motion.button
-                                                onClick={() => toggleRowDropdown(`card-${client.id}`)}
+                                                onClick={() => toggleRowDropdown(`card-${client._id}`)}
                                                 className="w-6 h-6 flex flex-col items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors space-y-0.5"
                                                 whileHover={{ scale: 1.1 }}
                                                 whileTap={{ scale: 0.95 }}
@@ -686,7 +700,7 @@ const ClientCards = ({
 
                                             {/* Dropdown for cards - UPDATED: Added Change Status option */}
                                             <AnimatePresence>
-                                                {activeRowDropdown === `card-${client.id}` && (
+                                                {activeRowDropdown === `card-${client._id}` && (
                                                     <motion.div
                                                         className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
                                                         initial={{ opacity: 0, y: -8, scale: 0.96 }}
@@ -696,7 +710,7 @@ const ClientCards = ({
                                                         {/* NEW: Change Status option */}
                                                         <button
                                                             onClick={() => {
-                                                                openStatusModal(client.id, client.status);
+                                                                openStatusModal(client._id, client.status);
                                                                 setActiveRowDropdown(null);
                                                             }}
                                                             className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
@@ -710,7 +724,7 @@ const ClientCards = ({
                                                         <button
                                                             onClick={() => {
                                                                 setActiveRowDropdown(null);
-                                                                navigate(`/client/profile`);
+                                                                navigate(`/client/profile/${client.username}`);
                                                             }}
                                                             className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                                         >
@@ -721,7 +735,7 @@ const ClientCards = ({
                                                         <button
                                                             onClick={() => {
                                                                 setActiveRowDropdown(null);
-                                                                navigate(`/client/edit/${client.id}`);
+                                                                navigate(`/client/edit/${client._id}`);
                                                             }}
                                                             className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                                         >
@@ -765,10 +779,10 @@ const ClientCards = ({
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-1 text-gray-700 text-xs">
                                             <FiPhone className="w-3 h-3 text-gray-400" />
-                                            <span>{client.mobile}</span>
+                                            <span>{client.mobile || 'N/A'}</span>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                            <div className={`text-xs font-semibold ${client.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                            <div className={`text-xs font-semibold ${(client.balance || 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
                                                 {formatBalance(client.balance)}
                                             </div>
                                             <motion.button
@@ -785,10 +799,10 @@ const ClientCards = ({
 
                                     <div className="text-xs text-gray-700">
                                         <div className="font-medium mb-1">Firms:</div>
-                                        {client.firm_list.map((firm, idx) => (
+                                        {client.firm_list?.slice(0, 2).map((firm, idx) => (
                                             <div key={idx} className="text-xs bg-gray-50 rounded p-1 border border-gray-200 mb-1">
-                                                <div className="font-semibold">{firm.firm_name}</div>
-                                                <div className="text-gray-600">PAN: {firm.pan} • File: {firm.file_no}</div>
+                                                <div className="font-semibold">{firm.firm_name || 'N/A'}</div>
+                                                <div className="text-gray-600">PAN: {firm.pan || 'N/A'} • File: {firm.file_no || 'N/A'}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -809,6 +823,102 @@ const ClientCards = ({
                     ))}
                 </div>
             )}
+        </div>
+    );
+};
+
+// Pagination Component
+const Pagination = ({ currentPage, totalPages, onPageChange, itemsPerPage, onItemsPerPageChange }) => {
+    const pageOptions = [5, 10, 15, 20, 25, 50, 100];
+    
+    return (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-gray-50 border-t border-gray-200">
+            <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Show:</span>
+                <select
+                    value={itemsPerPage}
+                    onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                >
+                    {pageOptions.map(option => (
+                        <option key={option} value={option}>
+                            {option}
+                        </option>
+                    ))}
+                </select>
+                <span className="text-sm text-gray-600">per page</span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+                <motion.button
+                    onClick={() => onPageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="p-2 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                >
+                    <FiArrowLeft className="w-4 h-4" />
+                </motion.button>
+                
+                <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }).map((_, idx) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                            pageNum = idx + 1;
+                        } else if (currentPage <= 3) {
+                            pageNum = idx + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + idx;
+                        } else {
+                            pageNum = currentPage - 2 + idx;
+                        }
+                        
+                        return (
+                            <motion.button
+                                key={pageNum}
+                                onClick={() => onPageChange(pageNum)}
+                                className={`w-8 h-8 rounded text-sm font-medium ${
+                                    currentPage === pageNum
+                                        ? 'bg-blue-600 text-white'
+                                        : 'border border-gray-300 text-gray-700 hover:bg-gray-100'
+                                }`}
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                {pageNum}
+                            </motion.button>
+                        );
+                    })}
+                    
+                    {totalPages > 5 && currentPage < totalPages - 2 && (
+                        <>
+                            <span className="text-gray-400">...</span>
+                            <motion.button
+                                onClick={() => onPageChange(totalPages)}
+                                className="w-8 h-8 rounded border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm"
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                {totalPages}
+                            </motion.button>
+                        </>
+                    )}
+                </div>
+                
+                <motion.button
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="p-2 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                >
+                    <FiArrowRight className="w-4 h-4" />
+                </motion.button>
+            </div>
+            
+            <div className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+            </div>
         </div>
     );
 };
@@ -840,6 +950,23 @@ const ViewClients = () => {
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
     const [isMobile, setIsMobile] = useState(false);
     const [statusModal, setStatusModal] = useState({ open: false, clientId: null, currentStatus: '' }); // NEW: Status modal state
+    
+    // Pagination and API states
+    const [clients, setClients] = useState([]);
+    const [clientStats, setClientStats] = useState({
+        total: 0,
+        active: 0,
+        inactive: 0,
+        withBalance: 0
+    });
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: 0,
+        itemsPerPage: 10
+    });
+    const [hasMore, setHasMore] = useState(true);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
 
     // Initialize DnD sensors
     const sensors = useSensors(
@@ -852,6 +979,225 @@ const ViewClients = () => {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
+
+    // Get headers from localStorage
+  const getHeaders = useCallback(() => {
+    try {
+        // Try new keys first, then fallback to old keys
+        const userName = localStorage.getItem('userName') || 
+                         localStorage.getItem('user_username') || '';
+        const token = localStorage.getItem('token') || 
+                      localStorage.getItem('user_token') || '';
+        const branchId = localStorage.getItem('branchId') || 
+                         localStorage.getItem('branch_id') || '';
+        
+       
+        
+        if (!userName || !token || !branchId) {
+            console.error('Missing authentication data in localStorage');
+            // console.log('Available localStorage keys:', Object.keys(localStorage));
+            return null;
+        }
+        
+        return {
+            'Content-Type': 'application/json',
+            'username': userName,
+            'token':token,
+            'branch': branchId
+        };
+    } catch (error) {
+        console.error('Error getting headers from localStorage:', error);
+        return null;
+    }
+}, []); // Empty dependency array
+// Fetch clients from API - keep as is
+// Update the fetchClients function
+const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false) => {
+    const headers = getHeaders();
+    if (!headers) {
+        console.error('Cannot fetch clients: Missing authentication headers');
+        return;
+    }
+
+    try {
+        if (isLoadMore) {
+            setIsFetchingMore(true);
+        } else {
+            setLoading(true);
+        }
+
+        const params = new URLSearchParams({
+            search: searchQuery,
+            page: page.toString(),
+            limit: limit.toString(),
+            ...(selectedStatus && { status: selectedStatus }),
+            ...(selectedGroup && { group: selectedGroup })
+        });
+
+        // console.log('Fetching from:', `${CLIENT_LIST_API}?${params}`);
+        // console.log('Headers:', headers);
+
+        const response = await axios.get(`${CLIENT_LIST_API}?${params}`, {
+            headers: headers,
+            timeout: 10000 // 10 second timeout
+        });
+
+        // console.log('Full API Response:', response);
+        // console.log('Response Data:', response.data);
+
+        if (response.data) {
+            let clientsData = [];
+            let total = 0;
+            let totalPages = 1;
+            
+            // Check different possible response structures
+            if (Array.isArray(response.data)) {
+                // Response is directly an array
+                clientsData = response.data;
+                total = response.data.length;
+            } else if (response.data.data && Array.isArray(response.data.data)) {
+                // Response has data property containing array
+                clientsData = response.data.data;
+                total = response.data.total || response.data.data.length;
+                totalPages = response.data.total_pages || Math.ceil(total / limit);
+            } else if (response.data.clients && Array.isArray(response.data.clients)) {
+                // Response has clients property
+                clientsData = response.data.clients;
+                total = response.data.total || response.data.clients.length;
+                totalPages = response.data.totalPages || Math.ceil(total / limit);
+            } else if (response.data.success && Array.isArray(response.data.data)) {
+                // Response has success: true and data array
+                clientsData = response.data.data;
+                total = response.data.total || response.data.data.length;
+                totalPages = response.data.total_pages || Math.ceil(total / limit);
+            }
+            
+            // console.log('Parsed clients data:', clientsData);
+            // console.log('Total items:', total, 'Total pages:', totalPages);
+
+            // Transform API data to match your expected structure
+            const transformedClients = clientsData.map((client, index) => {
+                // Debug the client object
+                // console.log(`Client ${index}:`, client);
+                
+                return {
+                    _id: client.profile_id || client._id || client.id || `temp-${index}-${Date.now()}`,
+                    id: client.profile_id || client._id || client.id || `temp-${index}-${Date.now()}`,
+                    username: client.username || client.email || client.user_name || `user${index + 1}`,
+                    name: client.name || client.full_name || client.client_name || `Client ${index + 1}`,
+                    guardian_name: client.guardian_name || client.father_name || client.guardian || 'N/A',
+                    mobile: client.mobile || client.phone || client.contact_number || 'N/A',
+                    status: client.status === "1" || client.status === "ACTIVE" || client.active ? "ACTIVE" : "INACTIVE",
+                    balance: parseFloat(client.balance) || parseFloat(client.outstanding) || 0,
+                    firm_list: client.firm_list || (client.firm_id ? [{
+                        firm_id: client.firm_id,
+                        firm_name: client.firm_name || client.business_name || 'N/A',
+                        pan: client.business_pan || client.pan_number || client.pan || 'N/A',
+                        file_no: client.file_number || client.file_no || 'N/A'
+                    }] : []),
+                    firm_count: client.firm_count || (client.firm_list ? client.firm_list.length : (client.firm_id ? 1 : 0))
+                };
+            });
+
+            // console.log('Transformed clients:', transformedClients);
+
+            if (isLoadMore) {
+                setClients(prev => [...prev, ...transformedClients]);
+            } else {
+                setClients(transformedClients);
+            }
+
+            // Update pagination info
+            setPagination(prev => ({
+                ...prev,
+                currentPage: page,
+                totalPages: totalPages,
+                totalItems: total
+            }));
+
+            // Check if there are more pages
+            setHasMore(page < totalPages);
+        } else {
+            console.error('No data in response');
+        }
+    } catch (error) {
+        console.error('Error fetching clients:', error);
+        if (error.response) {
+            // console.error('Response status:', error.response.status);
+            // console.error('Response data:', error.response.data);
+            // console.error('Response headers:', error.response.headers);
+            
+            // Show error to user
+            if (error.response.status === 401) {
+                alert('Session expired. Please login again.');
+                navigate('/login');
+            } else if (error.response.status === 403) {
+                alert('You do not have permission to view clients.');
+            } else {
+                alert(`Error ${error.response.status}: ${error.response.data?.message || 'Failed to fetch clients'}`);
+            }
+        } else if (error.request) {
+            console.error('No response received:', error.request);
+            alert('No response from server. Please check your connection.');
+        } else {
+            console.error('Request setup error:', error.message);
+            alert(`Error: ${error.message}`);
+        }
+        
+        // Use dummy data for testing if API fails
+        const dummyData = [
+            {
+                _id: '1',
+                id: '1',
+                username: 'john_doe',
+                name: 'John Doe',
+                guardian_name: 'Robert Doe',
+                mobile: '9876543210',
+                status: 'ACTIVE',
+                balance: 15000,
+                firm_list: [
+                    {
+                        firm_id: 'f1',
+                        firm_name: 'Doe Enterprises',
+                        pan: 'ABCDE1234F',
+                        file_no: 'FN001'
+                    }
+                ],
+                firm_count: 1
+            },
+            {
+                _id: '2',
+                id: '2',
+                username: 'jane_smith',
+                name: 'Jane Smith',
+                guardian_name: 'William Smith',
+                mobile: '9876543211',
+                status: 'ACTIVE',
+                balance: -5000,
+                firm_list: [
+                    {
+                        firm_id: 'f2',
+                        firm_name: 'Smith & Co',
+                        pan: 'XYZAB5678G',
+                        file_no: 'FN002'
+                    }
+                ],
+                firm_count: 1
+            }
+        ];
+        
+        setClients(dummyData);
+        setPagination(prev => ({
+            ...prev,
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 2
+        }));
+    } finally {
+        setLoading(false);
+        setIsFetchingMore(false);
+    }
+}, [searchQuery, selectedStatus, selectedGroup, pagination.itemsPerPage, getHeaders, navigate]);
 
     // Check if mobile on mount and resize
     useEffect(() => {
@@ -967,80 +1313,6 @@ const ViewClients = () => {
         localStorage.setItem('clientColumnConfig', JSON.stringify(config));
     };
 
-    // Client data
-    const [clients, setClients] = useState([
-        {
-            id: '1',
-            username: 'client001',
-            name: 'John Doe',
-            guardian_name: 'Robert Doe',
-            mobile: '9876543210',
-            balance: -5000,
-            status: 'ACTIVE',
-            firm_list: [
-                { firm_name: 'ABC Corp', pan: 'ABCDE1234F', file_no: 'FN001' },
-                { firm_name: 'Doe Enterprises', pan: 'DOEAB5678G', file_no: 'FN002' }
-            ]
-        },
-        {
-            id: '2',
-            username: 'client002',
-            name: 'Jane Smith',
-            guardian_name: 'William Smith',
-            mobile: '9876543211',
-            balance: 15000,
-            status: 'ACTIVE',
-            firm_list: [
-                { firm_name: 'XYZ Solutions', pan: 'XYZAB9012H', file_no: 'FN003' }
-            ]
-        },
-        {
-            id: '3',
-            username: 'client003',
-            name: 'Mike Johnson',
-            guardian_name: 'Thomas Johnson',
-            mobile: '9876543212',
-            balance: -2500,
-            status: 'INACTIVE',
-            firm_list: [
-                { firm_name: 'Global Tech', pan: 'GLOTI3456J', file_no: 'FN004' }
-            ]
-        },
-        {
-            id: '4',
-            username: 'client004',
-            name: 'Sarah Wilson',
-            guardian_name: 'James Wilson',
-            mobile: '9876543213',
-            balance: 7500,
-            status: 'ACTIVE',
-            firm_list: [
-                { firm_name: 'Wilson & Co', pan: 'WILS5678K', file_no: 'FN005' },
-                { firm_name: 'Tech Innovators', pan: 'TECH9012L', file_no: 'FN006' }
-            ]
-        },
-        {
-            id: '5',
-            username: 'client005',
-            name: 'David Brown',
-            guardian_name: 'Richard Brown',
-            mobile: '9876543214',
-            balance: -12000,
-            status: 'PENDING',
-            firm_list: [
-                { firm_name: 'Brown Industries', pan: 'BRWN3456M', file_no: 'FN007' }
-            ]
-        }
-    ]);
-
-    // Stats data
-    const [clientStats] = useState({
-        total: 156,
-        active: 142,
-        inactive: 14,
-        withBalance: 89
-    });
-
     const [statusOptions] = useState([
         { value: 'ACTIVE', name: 'Active' },
         { value: 'INACTIVE', name: 'Inactive' },
@@ -1052,6 +1324,86 @@ const ViewClients = () => {
         { value: 'itr', name: 'ITR' },
         { value: 'company', name: 'Company' }
     ]);
+
+    // Fetch clients from API
+    // const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false) => {
+    //     const headers = getHeaders();
+    //     if (!headers) {
+    //         console.error('Cannot fetch clients: Missing authentication headers');
+    //         return;
+    //     }
+
+    //     try {
+    //         if (isLoadMore) {
+    //             setIsFetchingMore(true);
+    //         } else {
+    //             setLoading(true);
+    //         }
+
+    //         const params = new URLSearchParams({
+    //             search: searchQuery,
+    //             page: page.toString(),
+    //             limit: limit.toString(),
+    //             ...(selectedStatus && { status: selectedStatus }),
+    //             ...(selectedGroup && { group: selectedGroup })
+    //         });
+
+    //         const response = await axios.get(`${CLIENT_LIST_API}?${params}`, {
+    //             headers: headers
+    //         });
+
+    //         console.log('API Response:', response.data);
+
+    //         if (response.data && response.data.success) {
+    //             const data = response.data.data;
+    //             const clientsData = Array.isArray(data.clients) ? data.clients : [];
+                
+    //             if (isLoadMore) {
+    //                 setClients(prev => [...prev, ...clientsData]);
+    //             } else {
+    //                 setClients(clientsData);
+    //             }
+
+    //             // Update pagination info
+    //             setPagination(prev => ({
+    //                 ...prev,
+    //                 currentPage: page,
+    //                 totalPages: data.totalPages || Math.ceil(data.total / limit),
+    //                 totalItems: data.total || 0
+    //             }));
+
+    //             // Update stats if available
+    //             if (data.stats) {
+    //                 setClientStats({
+    //                     total: data.stats.total || 0,
+    //                     active: data.stats.active || 0,
+    //                     inactive: data.stats.inactive || 0,
+    //                     withBalance: data.stats.withBalance || 0
+    //                 });
+    //             }
+
+    //             // Check if there are more pages
+    //             setHasMore(page < (data.totalPages || Math.ceil(data.total / limit)));
+    //         } else {
+    //             console.error('API Error:', response.data?.message || 'Unknown error');
+    //         }
+    //     } catch (error) {
+    //         console.error('Error fetching clients:', error);
+    //         if (error.response) {
+    //             console.error('Response data:', error.response.data);
+    //             console.error('Response status:', error.response.status);
+    //             console.error('Response headers:', error.response.headers);
+    //         }
+    //     } finally {
+    //         setLoading(false);
+    //         setIsFetchingMore(false);
+    //     }
+    // }, [searchQuery, selectedStatus, selectedGroup]);
+
+    // Initial load and when filters change
+    useEffect(() => {
+        fetchClients(1, pagination.itemsPerPage);
+    }, [searchQuery, selectedStatus, selectedGroup, pagination.itemsPerPage]);
 
     // Handle export
     const handleExport = (type, data = null) => {
@@ -1065,12 +1417,12 @@ const ViewClients = () => {
     };
 
     // Handle client selection
-    const handleClientSelect = (username) => {
+    const handleClientSelect = (clientId) => {
         const newSelected = new Set(selectedClients);
-        if (newSelected.has(username)) {
-            newSelected.delete(username);
+        if (newSelected.has(clientId)) {
+            newSelected.delete(clientId);
         } else {
-            newSelected.add(username);
+            newSelected.add(clientId);
         }
         setSelectedClients(newSelected);
     };
@@ -1080,21 +1432,21 @@ const ViewClients = () => {
         if (selectAll) {
             setSelectedClients(new Set());
         } else {
-            const allUsernames = new Set(filteredClients.map(client => client.username));
-            setSelectedClients(allUsernames);
+            const allClientIds = new Set(filteredClients.map(client => client._id));
+            setSelectedClients(allClientIds);
         }
         setSelectAll(!selectAll);
     };
 
     // Format balance
     const formatBalance = (balance) => {
-        return `₹${Math.abs(balance).toLocaleString()}`;
+        return `₹${Math.abs(balance || 0).toLocaleString()}`;
     };
 
     // Handle status change
     const handleStatusChange = (clientId, newStatus) => {
         setClients(prev => prev.map(client =>
-            client.id === clientId ? { ...client, status: newStatus } : client
+            client._id === clientId ? { ...client, status: newStatus } : client
         ));
     };
 
@@ -1116,14 +1468,14 @@ const ViewClients = () => {
         });
     };
 
-    // Filter clients based on search and filters
+    // Filter clients based on search and filters (client-side filtering if needed)
     const filteredClients = clients.filter(client => {
         const matchesSearch = searchQuery === '' ||
-            client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            client.mobile.includes(searchQuery) ||
-            client.firm_list.some(firm =>
-                firm.firm_name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
+            (client.name && client.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (client.mobile && client.mobile.includes(searchQuery)) ||
+            (client.firm_list && client.firm_list.some(firm =>
+                firm.firm_name && firm.firm_name.toLowerCase().includes(searchQuery.toLowerCase())
+            ));
 
         const matchesStatus = selectedStatus === '' || client.status === selectedStatus;
         const matchesGroup = selectedGroup === ''; // Add group filtering logic if needed
@@ -1152,6 +1504,26 @@ const ViewClients = () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
+
+    // Handle scroll for infinite loading
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || 
+                isFetchingMore || 
+                !hasMore || 
+                loading) {
+                return;
+            }
+            
+            // Load more data when scrolled to bottom
+            if (pagination.currentPage < pagination.totalPages) {
+                fetchClients(pagination.currentPage + 1, pagination.itemsPerPage, true);
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [isFetchingMore, hasMore, loading, pagination, fetchClients]);
 
     // Helper functions for column management
     const addItemToColumn = (columnIndex, fieldId) => {
@@ -1298,18 +1670,17 @@ const ViewClients = () => {
                             <FiUser className="w-3.5 h-3.5 text-white" />
                         </div>
                         <div
-    className="min-w-0 cursor-pointer"
-    onClick={() => navigate(`/client/profile/${client.id}`)}
->
-    <h3 className="font-semibold text-gray-800 text-xs truncate hover:text-blue-600">
-        {client.name}
-    </h3>
-    <p className="text-xs text-gray-500 truncate hover:text-blue-500">
-        @{client.username}
-    </p>
-</div>
+                            className="min-w-0 cursor-pointer"
+                            onClick={() => navigate(`/client/profile/${client.username}`)}
+                        >
+                            <h3 className="font-semibold text-gray-800 text-xs truncate hover:text-blue-600">
+                                {client.name || 'N/A'}
+                            </h3>
+                            <p className="text-xs text-gray-500 truncate hover:text-blue-500">
+                                {/* @{client.username ? (client.username.length > 6 ? `${client.username.substring(0, 6)}...` : client.username) : 'N/A'} */}
+                            </p>
                         </div>
-                  
+                    </div>
                 );
             case 'guardian_name':
                 return (
@@ -1319,25 +1690,26 @@ const ViewClients = () => {
                 );
             case 'username':
                 return (
-                    <span className="text-gray-700 font-medium bg-gray-100 px-2 py-0.5 rounded text-xs">
-                        {client.username}
+                   <span className="text-gray-700 font-medium bg-gray-100 px-2 py-0.5 rounded text-xs">
+            {/* TRUNCATE USERNAME TO 6 CHARACTERS */}
+            {client.username ? (client.username.length > 6 ? `${client.username.substring(0, 6)}...` : client.username) : 'N/A'}
                     </span>
                 );
             case 'mobile':
                 return (
                     <div className="flex items-center gap-2 text-gray-700 font-medium text-sm justify-center">
                         <FiPhone className="w-3 h-3 text-gray-400" />
-                        {client.mobile}
+                        {client.mobile || 'N/A'}
                     </div>
                 );
             case 'balance':
                 return (
                     <div className="flex items-center gap-1 justify-center">
-                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${client.balance < 0
+                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${(client.balance || 0) < 0
                             ? 'bg-red-50 text-red-700 border border-red-200'
                             : 'bg-green-50 text-green-700 border border-green-200'
                             }`}>
-                            {client.balance < 0 ? (
+                            {(client.balance || 0) < 0 ? (
                                 <FiTrendingDown className="w-3 h-3" />
                             ) : (
                                 <FiTrendingUp className="w-3 h-3" />
@@ -1358,27 +1730,27 @@ const ViewClients = () => {
             case 'firm_count':
                 return (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                        {client.firm_list.length} {client.firm_list.length === 1 ? 'firm' : 'firms'}
+                        {client.firm_list?.length || 0} {(client.firm_list?.length || 0) === 1 ? 'firm' : 'firms'}
                     </span>
                 );
             case 'firm_list':
                 return (
                     <div className="space-y-1">
-                        {client.firm_list.slice(0, 2).map((firm, idx) => (
+                        {client.firm_list?.slice(0, 2).map((firm, idx) => (
                             <div key={idx} className="bg-gray-50 rounded p-1 border border-gray-200">
                                 <div className="font-semibold text-gray-800 text-xs">
-                                    {firm.firm_name}
+                                    {firm.firm_name || 'N/A'}
                                 </div>
                                 <div className="text-xs text-gray-600 flex gap-1 mt-0.5">
-                                    <span>PAN: {firm.pan}</span>
+                                    <span>PAN: {firm.pan || 'N/A'}</span>
                                     <span>•</span>
-                                    <span>File: {firm.file_no}</span>
+                                    <span>File: {firm.file_no || 'N/A'}</span>
                                 </div>
                             </div>
                         ))}
-                        {client.firm_list.length > 2 && (
+                        {(client.firm_list?.length || 0) > 2 && (
                             <div className="text-xs text-gray-500 font-medium">
-                                +{client.firm_list.length - 2} more
+                                +{(client.firm_list?.length || 0) - 2} more
                             </div>
                         )}
                     </div>
@@ -1395,7 +1767,7 @@ const ViewClients = () => {
                     <div className="relative dropdown-container flex justify-center">
                         {/* Vertical 3-dot button - Updated to match TaskDisplay */}
                         <motion.button
-                            onClick={() => toggleRowDropdown(client.id)}
+                            onClick={() => toggleRowDropdown(client._id)}
                             className="w-8 h-8 flex flex-col items-center justify-center rounded-full
                            bg-gray-100 hover:bg-gray-200 transition-colors space-y-0.5"
                             whileHover={{ scale: 1.1 }}
@@ -1408,7 +1780,7 @@ const ViewClients = () => {
 
                         {/* Professional Dropdown - Compact - UPDATED: Added Change Status option */}
                         <AnimatePresence>
-                            {activeRowDropdown === client.id && (
+                            {activeRowDropdown === client._id && (
                                 <motion.div
                                     className="absolute right-0 mt-1 w-52 bg-white rounded-lg
                                    shadow-xl border border-gray-200 z-50 overflow-hidden"
@@ -1421,7 +1793,7 @@ const ViewClients = () => {
                                         {/* NEW: Change Status Button */}
                                         <button
                                             onClick={() => {
-                                                openStatusModal(client.id, client.status);
+                                                openStatusModal(client._id, client.status);
                                                 setActiveRowDropdown(null);
                                             }}
                                             className="flex items-center w-full px-3 py-2 text-sm
@@ -1436,7 +1808,7 @@ const ViewClients = () => {
                                         <button
                                             onClick={() => {
                                                 setActiveRowDropdown(null);
-                                                navigate(`/client/profile`);
+                                                navigate(`/client/profile/${client.username}`);
                                             }}
                                             className="flex items-center w-full px-3 py-2 text-sm
                                            text-gray-700 hover:bg-blue-50 transition-colors"
@@ -1448,7 +1820,7 @@ const ViewClients = () => {
                                         <button
                                             onClick={() => {
                                                 setActiveRowDropdown(null);
-                                                navigate(`/client/edit/${client.id}`);
+                                                navigate(`/client/edit/${client._id}`);
                                             }}
                                             className="flex items-center w-full px-3 py-2 text-sm
                                            text-gray-700 hover:bg-green-50 transition-colors"
@@ -1494,6 +1866,21 @@ const ViewClients = () => {
                     </span>
                 );
         }
+    };
+
+    // Handle page change
+    const handlePageChange = (page) => {
+        fetchClients(page, pagination.itemsPerPage);
+    };
+
+    // Handle items per page change
+    const handleItemsPerPageChange = (itemsPerPage) => {
+        setPagination(prev => ({
+            ...prev,
+            itemsPerPage,
+            currentPage: 1
+        }));
+        // fetchClients will be triggered by useEffect
     };
 
     // Settings Modal Component with Drag & Drop - UPDATED: Added column name editing for new columns
@@ -2276,7 +2663,11 @@ const ViewClients = () => {
                                                                     Reset
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => setShowFilterDropdown(false)}
+                                                                    onClick={() => {
+                                                                        setShowFilterDropdown(false);
+                                                                        // Refresh data with new filters
+                                                                        fetchClients(1, pagination.itemsPerPage);
+                                                                    }}
                                                                     className="w-full px-2 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                                                                 >
                                                                     Apply
@@ -2420,51 +2811,24 @@ const ViewClients = () => {
                             )}
                         </div>
 
-                        {/* Footer - Mobile responsive and compact */}
-                        <div className="border-t border-gray-200 px-3 md:px-4 py-2 bg-gradient-to-r from-gray-50 to-gray-100">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                                    <span className="font-semibold text-gray-800 text-sm">
-                                        Showing {filteredClients.length} of {clients.length} clients
-                                    </span>
-                                    <div className="text-sm text-gray-600">
-                                        {selectedClients.size} client(s) selected
-                                    </div>
-                                </div>
-                                
-                                <div className="flex flex-wrap gap-2">
-                                    {/* Action Buttons in Footer - Mobile responsive */}
-                                    <motion.button
-                                        className="px-2 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-xs font-medium transition-all duration-200 hover:from-blue-700 hover:to-blue-800 flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        disabled={selectedClients.size === 0}
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <FiMail className="w-3 h-3" />
-                                        <span className="hidden sm:inline">Send Message</span>
-                                    </motion.button>
-                                    
-                                    <motion.button
-                                        className="px-2 py-1.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-xs font-medium transition-all duration-200 hover:from-green-700 hover:to-green-800 flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        disabled={selectedClients.size === 0}
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <FiDownload className="w-3 h-3" />
-                                        <span className="hidden sm:inline">Export Selected</span>
-                                    </motion.button>
-                                    
-                                    <motion.button
-                                        className="px-2 py-1.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg text-xs font-medium transition-all duration-200 hover:from-purple-700 hover:to-purple-800 flex items-center gap-1 shadow-sm"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <FiPrinter className="w-3 h-3" />
-                                        <span className="hidden sm:inline">Print All</span>
-                                    </motion.button>
+                        {/* Footer with Pagination */}
+                        <Pagination
+                            currentPage={pagination.currentPage}
+                            totalPages={pagination.totalPages}
+                            onPageChange={handlePageChange}
+                            itemsPerPage={pagination.itemsPerPage}
+                            onItemsPerPageChange={handleItemsPerPageChange}
+                        />
+
+                        {/* Loading indicator for infinite scroll */}
+                        {isFetchingMore && (
+                            <div className="py-3 text-center">
+                                <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+                                    <FiLoader className="w-4 h-4 animate-spin" />
+                                    Loading more clients...
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </motion.div>
                 </div>
             </div>
@@ -2485,7 +2849,7 @@ const ViewClients = () => {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => {
-                                    console.log("Send message to:", [...selectedClients]);
+                                    // console.log("Send message to:", [...selectedClients]);
                                 }}
                             >
                                 <FiMail className="w-4 h-4" />
@@ -2561,7 +2925,7 @@ const ViewClients = () => {
                 title="Client Delete"
                 onConfirm={(res) => {
                     SetDeleteModal(false)
-                    console.log("Confirmed:", res);
+                    // console.log("Confirmed:", res);
                 }}
             />
             }

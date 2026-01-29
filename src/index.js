@@ -148,6 +148,12 @@ root.render(
         </ProtectedRoute>
       } />
 
+        <Route path="/client/profile/:username" element={
+  <ProtectedRoute>
+    <ClientProfile />
+  </ProtectedRoute>
+} />
+
       <Route path="/client/profile" element={
         <ProtectedRoute>
           <ClientProfile />
