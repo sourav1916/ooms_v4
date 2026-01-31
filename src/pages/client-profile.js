@@ -1096,13 +1096,13 @@ const ClientProfile = () => {
     const renderTabContent = () => {
         const tabComponents = {
             basic: <BasicDetailsTab clientData={clientData} onEdit={handleEditField} loading={loading} />,
-            firms: <FirmsTab />,
+            firms: <FirmsTab  clientUsername={username} />,
             password: <PasswordTab />,
             quotation: <QuotationTab />,
             task: <TaskTab />,
             billing: <BillingTab />,
             ledger: <LedgerTab />,
-            notes: <NotesTab />,
+            notes: <NotesTab  clientUsername={username} />,
             recurring: <RecurringTab />,
             documents: <DocumentsTab />,
             chatting: <ChattingTab />,

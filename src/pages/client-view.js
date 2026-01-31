@@ -1417,7 +1417,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
     };
 
     // Handle client selection
-    const handleClientSelect = (clientId) => {
+     const handleClientSelect = (clientId) => {
         const newSelected = new Set(selectedClients);
         if (newSelected.has(clientId)) {
             newSelected.delete(clientId);
@@ -1425,7 +1425,14 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             newSelected.add(clientId);
         }
         setSelectedClients(newSelected);
+        
+        // Update selectAll state based on new selection
+        if (clients.length > 0) {
+            const allSelected = newSelected.size === clients.length;
+            setSelectAll(allSelected);
+        }
     };
+
 
     // Handle select all
     const handleSelectAll = () => {
