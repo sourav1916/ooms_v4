@@ -250,7 +250,8 @@ const ClientTable = ({
     setActiveRowDropdown,
     handleStatusChange,
     openStatusModal, // NEW: Added prop for status modal
-    navigate // NEW: Added prop for navigation
+    navigate, // NEW: Added prop for navigation
+    handleExport // ADDED: For WhatsApp functionality
 }) => {
     // Skeleton loader
     const SkeletonRow = () => (
@@ -277,6 +278,22 @@ const ClientTable = ({
 
     // Mobile client card for table view
     const MobileClientCard = ({ client, index, handleExport }) => {
+        // Get the last updated firm
+        const getLastUpdatedFirm = () => {
+            if (!client.firms || client.firms.length === 0) return null;
+            
+            // Sort firms by modify_date or create_date (whichever is available)
+            const sortedFirms = [...client.firms].sort((a, b) => {
+                const dateA = a.modify_date || a.create_date;
+                const dateB = b.modify_date || b.create_date;
+                return new Date(dateB) - new Date(dateA);
+            });
+            
+            return sortedFirms[0];
+        };
+        
+        const lastFirm = getLastUpdatedFirm();
+        
         return (
             <motion.div
                 className="bg-white border border-gray-200 rounded-lg p-3 mb-2 md:hidden"
@@ -414,8 +431,22 @@ const ClientTable = ({
 
                     <div className="flex items-center gap-2 text-gray-700 text-sm">
                         <FiUsers className="w-3 h-3 text-gray-400" />
-                        <span>{client.firm_list?.length || 0} firms</span>
+                        <span>{client.firms?.length || 0} firms</span>
                     </div>
+
+                    {/* Last updated firm display */}
+                    {lastFirm && (
+                        <div className="text-xs text-gray-700 bg-gray-50 rounded p-2 border border-gray-200">
+                            <div className="font-semibold mb-1">Latest Firm:</div>
+                            <div>{lastFirm.firm_name || 'N/A'}</div>
+                            <div className="text-gray-600">
+                                {lastFirm.pan_no && `PAN: ${lastFirm.pan_no}`}
+                                {lastFirm.pan_no && lastFirm.file_no && ' • '}
+                                {lastFirm.file_no && `File: ${lastFirm.file_no}`}
+                                {!lastFirm.pan_no && !lastFirm.file_no && 'No details'}
+                            </div>
+                        </div>
+                    )}
 
                     {/* NEW: Status as text display in mobile */}
                     <div className="flex items-center justify-between">
@@ -513,7 +544,7 @@ const ClientTable = ({
                         {/* Mobile view - cards */}
                         <div className="md:hidden px-3 py-1">
                             {clients.map((client, index) => (
-                                <MobileClientCard key={client._id} client={client} index={index} handleExport={() => {}} />
+                                <MobileClientCard key={client._id} client={client} index={index} handleExport={handleExport} />
                             ))}
                         </div>
 
@@ -615,6 +646,20 @@ const ClientCards = ({
         return `₹${Math.abs(balance || 0).toLocaleString()}`;
     };
 
+    // Get the last updated firm
+    const getLastUpdatedFirm = (firms) => {
+        if (!firms || firms.length === 0) return null;
+        
+        // Sort firms by modify_date or create_date (whichever is available)
+        const sortedFirms = [...firms].sort((a, b) => {
+            const dateA = a.modify_date || a.create_date;
+            const dateB = b.modify_date || b.create_date;
+            return new Date(dateB) - new Date(dateA);
+        });
+        
+        return sortedFirms[0];
+    };
+
     // Skeleton loader
     const SkeletonCard = () => (
         <div className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
@@ -653,7 +698,10 @@ const ClientCards = ({
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {clients.map((client, index) => (
+                    {clients.map((client, index) => {
+                        const lastFirm = getLastUpdatedFirm(client.firms);
+                        
+                        return (
                         <motion.div
                             key={client._id}
                             className={`bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200 overflow-hidden ${selectedClients.has(client._id) ? 'ring-2 ring-blue-500' : ''}`}
@@ -682,7 +730,7 @@ const ClientCards = ({
                                             </div>
                                         </div>
                                         <h4 className="font-bold text-gray-800 text-sm truncate">{client.guardian_name || 'N/A'}</h4>
-                                        <p className="text-gray-600 text-xs truncate">{client.firm_list?.length || 0} firms</p>
+                                        <p className="text-gray-600 text-xs truncate">{client.firms?.length || 0} firms</p>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
                                         {/* Vertical 3-dot menu for cards - Updated to vertical style */}
@@ -797,14 +845,27 @@ const ClientCards = ({
                                         </div>
                                     </div>
 
+                                    {/* Firm Information - Show total count and last updated firm */}
                                     <div className="text-xs text-gray-700">
-                                        <div className="font-medium mb-1">Firms:</div>
-                                        {client.firm_list?.slice(0, 2).map((firm, idx) => (
-                                            <div key={idx} className="text-xs bg-gray-50 rounded p-1 border border-gray-200 mb-1">
-                                                <div className="font-semibold">{firm.firm_name || 'N/A'}</div>
-                                                <div className="text-gray-600">PAN: {firm.pan || 'N/A'} • File: {firm.file_no || 'N/A'}</div>
+                                        <div className="font-medium mb-1">Firms ({client.firms?.length || 0}):</div>
+                                        {lastFirm && (
+                                            <div className="text-xs bg-gray-50 rounded p-1 border border-gray-200 mb-1">
+                                                <div className="font-semibold">{lastFirm.firm_name || 'N/A'}</div>
+                                                <div className="text-gray-600">
+                                                    {lastFirm.pan_no && `PAN: ${lastFirm.pan_no}`}
+                                                    {lastFirm.pan_no && lastFirm.file_no && ' • '}
+                                                    {lastFirm.file_no && `File: ${lastFirm.file_no}`}
+                                                    {!lastFirm.pan_no && !lastFirm.file_no && 'No details'}
+                                                </div>
                                             </div>
-                                        ))}
+                                        )}
+                                        
+                                        {/* Show "+X more" if there are additional firms */}
+                                        {client.firms && client.firms.length > 1 && (
+                                            <div className="text-blue-600 font-medium text-xs mt-1">
+                                                +{client.firms.length - 1} more firm{client.firms.length - 1 > 1 ? 's' : ''}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* NEW: Status Display as Text (not dropdown) */}
@@ -820,7 +881,7 @@ const ClientCards = ({
                                 </div>
                             </div>
                         </motion.div>
-                    ))}
+                    )})}
                 </div>
             )}
         </div>
@@ -1075,7 +1136,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             // console.log('Parsed clients data:', clientsData);
             // console.log('Total items:', total, 'Total pages:', totalPages);
 
-            // Transform API data to match your expected structure
+            // Transform API data to match your expected structure - UPDATED for firms array
             const transformedClients = clientsData.map((client, index) => {
                 // Debug the client object
                 // console.log(`Client ${index}:`, client);
@@ -1089,13 +1150,8 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                     mobile: client.mobile || client.phone || client.contact_number || 'N/A',
                     status: client.status === "1" || client.status === "ACTIVE" || client.active ? "ACTIVE" : "INACTIVE",
                     balance: parseFloat(client.balance) || parseFloat(client.outstanding) || 0,
-                    firm_list: client.firm_list || (client.firm_id ? [{
-                        firm_id: client.firm_id,
-                        firm_name: client.firm_name || client.business_name || 'N/A',
-                        pan: client.business_pan || client.pan_number || client.pan || 'N/A',
-                        file_no: client.file_number || client.file_no || 'N/A'
-                    }] : []),
-                    firm_count: client.firm_count || (client.firm_list ? client.firm_list.length : (client.firm_id ? 1 : 0))
+                    firms: client.firms || [], // Directly use the firms array from API
+                    firm_count: client.firms ? client.firms.length : 0 // Count from firms array
                 };
             });
 
@@ -1155,11 +1211,11 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 mobile: '9876543210',
                 status: 'ACTIVE',
                 balance: 15000,
-                firm_list: [
+                firms: [
                     {
                         firm_id: 'f1',
                         firm_name: 'Doe Enterprises',
-                        pan: 'ABCDE1234F',
+                        pan_no: 'ABCDE1234F',
                         file_no: 'FN001'
                     }
                 ],
@@ -1174,11 +1230,11 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 mobile: '9876543211',
                 status: 'ACTIVE',
                 balance: -5000,
-                firm_list: [
+                firms: [
                     {
                         firm_id: 'f2',
                         firm_name: 'Smith & Co',
-                        pan: 'XYZAB5678G',
+                        pan_no: 'XYZAB5678G',
                         file_no: 'FN002'
                     }
                 ],
@@ -1239,7 +1295,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         { id: 'mobile', label: 'Mobile', type: 'text' },
         { id: 'balance', label: 'Balance', type: 'currency' },
         { id: 'firm_count', label: 'Firm Count', type: 'number' },
-        { id: 'firm_list', label: 'Firms', type: 'array' },
+        { id: 'firms', label: 'Firms', type: 'array' },
         { id: 'pan', label: 'PAN', type: 'text' },
         { id: 'file_no', label: 'File No', type: 'text' },
         { id: 'status', label: 'Status', type: 'status' },
@@ -1268,7 +1324,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             id: '3',
             name: 'Firms',
             items: [
-                { id: 'firm_list', label: 'Firm Details' },
+                { id: 'firms', label: 'Firm Details' },
                 { id: 'firm_count', label: 'Total Firms' }
             ]
         },
@@ -1480,7 +1536,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         const matchesSearch = searchQuery === '' ||
             (client.name && client.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
             (client.mobile && client.mobile.includes(searchQuery)) ||
-            (client.firm_list && client.firm_list.some(firm =>
+            (client.firms && client.firms.some(firm =>
                 firm.firm_name && firm.firm_name.toLowerCase().includes(searchQuery.toLowerCase())
             ));
 
@@ -1667,6 +1723,20 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         }
     };
 
+    // Get last updated firm
+    const getLastUpdatedFirm = (firms) => {
+        if (!firms || firms.length === 0) return null;
+        
+        // Sort firms by modify_date or create_date (whichever is available)
+        const sortedFirms = [...firms].sort((a, b) => {
+            const dateA = a.modify_date || a.create_date;
+            const dateB = b.modify_date || b.create_date;
+            return new Date(dateB) - new Date(dateA);
+        });
+        
+        return sortedFirms[0];
+    };
+
     // Render cell content based on field type - UPDATED for status text display and openStatusModal parameter
     const renderCellContent = (client, fieldId, openStatusModal) => {
         switch (fieldId) {
@@ -1737,27 +1807,43 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             case 'firm_count':
                 return (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                        {client.firm_list?.length || 0} {(client.firm_list?.length || 0) === 1 ? 'firm' : 'firms'}
+                        {client.firms?.length || 0} {(client.firms?.length || 0) === 1 ? 'firm' : 'firms'}
                     </span>
                 );
-            case 'firm_list':
+            case 'firms':
+                // Get last updated firm - UPDATED with proper null checks
+                const lastFirm = getLastUpdatedFirm(client.firms);
+                
                 return (
                     <div className="space-y-1">
-                        {client.firm_list?.slice(0, 2).map((firm, idx) => (
-                            <div key={idx} className="bg-gray-50 rounded p-1 border border-gray-200">
+                        {lastFirm ? (
+                            <div key={lastFirm.firm_id} className="bg-gray-50 rounded p-1 border border-gray-200">
                                 <div className="font-semibold text-gray-800 text-xs">
-                                    {firm.firm_name || 'N/A'}
+                                    {lastFirm.firm_name || 'N/A'}
                                 </div>
                                 <div className="text-xs text-gray-600 flex gap-1 mt-0.5">
-                                    <span>PAN: {firm.pan || 'N/A'}</span>
-                                    <span>•</span>
-                                    <span>File: {firm.file_no || 'N/A'}</span>
+                                    {lastFirm.pan_no ? (
+                                        <span>PAN: {lastFirm.pan_no}</span>
+                                    ) : null}
+                                    {lastFirm.file_no ? (
+                                        <>
+                                            {lastFirm.pan_no && <span>•</span>}
+                                            <span>File: {lastFirm.file_no}</span>
+                                        </>
+                                    ) : null}
+                                    {!lastFirm.pan_no && !lastFirm.file_no && (
+                                        <span className="text-gray-400 italic">No details</span>
+                                    )}
                                 </div>
                             </div>
-                        ))}
-                        {(client.firm_list?.length || 0) > 2 && (
-                            <div className="text-xs text-gray-500 font-medium">
-                                +{(client.firm_list?.length || 0) - 2} more
+                        ) : (
+                            <div className="text-xs text-gray-500 italic">No firms</div>
+                        )}
+                        
+                        {/* Show "+X more" if there are additional firms */}
+                        {client.firms && client.firms.length > 1 && (
+                            <div className="text-xs text-blue-600 font-medium mt-1">
+                                +{client.firms.length - 1} more firm{client.firms.length - 1 > 1 ? 's' : ''}
                             </div>
                         )}
                     </div>
@@ -2795,8 +2881,9 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                     activeRowDropdown={activeRowDropdown}
                                     setActiveRowDropdown={setActiveRowDropdown}
                                     handleStatusChange={handleStatusChange}
-                                    openStatusModal={openStatusModal} // NEW: Pass openStatusModal function
-                                    navigate={navigate} // NEW: Pass navigate function
+                                    openStatusModal={openStatusModal}
+                                    navigate={navigate}
+                                    handleExport={handleExport} // ADDED: Pass handleExport prop
                                 />
                             ) : (
                                 <ClientCards
@@ -2811,9 +2898,9 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                     setActiveRowDropdown={setActiveRowDropdown}
                                     handleStatusChange={handleStatusChange}
                                     statusOptions={statusOptions}
-                                    openStatusModal={openStatusModal} // NEW: Pass openStatusModal function
-                                    navigate={navigate} // NEW: Pass navigate function
-                                    handleExport={handleExport} // Added for WhatsApp functionality
+                                    openStatusModal={openStatusModal}
+                                    navigate={navigate}
+                                    handleExport={handleExport}
                                 />
                             )}
                         </div>

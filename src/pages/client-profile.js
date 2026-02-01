@@ -42,7 +42,8 @@ import {
     FiNavigation,
     FiGrid,
     FiLoader,
-    FiRefreshCw
+    FiRefreshCw,
+    FiInfo 
 } from 'react-icons/fi';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -130,25 +131,139 @@ const DetailRow = ({
 };
 
 // Enhanced BasicDetailsTab Component with bulk edit mode
-const BasicDetailsTab = ({ clientData, onEdit, loading }) => {
+// Enhanced BasicDetailsTab Component with bulk edit mode and API integration
+const BasicDetailsTab = ({ clientData, onEdit, loading, clientUsername }) => {
     const [editingField, setEditingField] = useState(null);
     const [editedValue, setEditedValue] = useState('');
     const [isBulkEditMode, setIsBulkEditMode] = useState(false);
     const [bulkEditData, setBulkEditData] = useState({});
     const [saveStatus, setSaveStatus] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleEditClick = (field, value) => {
         setEditingField(field);
         setEditedValue(value);
     };
 
-    const handleSave = (field, value) => {
-        onEdit(field, value);
-        setEditingField(null);
-        setEditedValue('');
+    // Function to update client profile via API
+    const updateClientProfile = async (updatedData) => {
+        const headers = getHeaders();
+        if (!headers) {
+            setSaveStatus({ type: 'error', message: 'Authentication headers missing. Please login again.' });
+            return false;
+        }
+
+        try {
+            setIsSaving(true);
+            
+            // Prepare the request body according to API specification
+            const requestBody = {
+                username: clientUsername,
+                name: updatedData.name || clientData.name,
+                care_of: updatedData.care_of || clientData.care_of,
+                guardian_name: updatedData.guardian_name || clientData.guardian_name,
+                date_of_birth: updatedData.date_of_birth || clientData.date_of_birth,
+                gender: updatedData.gender || clientData.gender,
+                mobile: updatedData.mobile || clientData.mobile,
+                country_code: updatedData.country_code || clientData.country_code || "91",
+                email: updatedData.email || clientData.email,
+                pan_number: updatedData.pan_number || clientData.pan_number,
+                image: updatedData.image || clientData.image,
+                is_active: updatedData.is_active !== undefined ? updatedData.is_active : clientData.is_active,
+                address: {
+                    state: updatedData.state || clientData.state,
+                    district: updatedData.district || clientData.district,
+                    city: updatedData.city || clientData.city,
+                    village_town: updatedData.village_town || clientData.village_town,
+                    pincode: updatedData.pincode || clientData.pincode,
+                    address_line_1: updatedData.address_line_1 || clientData.address_line_1,
+                    address_line_2: updatedData.address_line_2 || clientData.address_line_2
+                }
+            };
+
+            // Format date to YYYY-MM-DD if it exists
+            if (requestBody.date_of_birth) {
+                const date = new Date(requestBody.date_of_birth);
+                if (!isNaN(date.getTime())) {
+                    requestBody.date_of_birth = date.toISOString().split('T')[0];
+                }
+            }
+
+            // console.log('Updating client profile:', requestBody);
+            
+            const response = await axios.post(
+                `${API_BASE_URL}/client/details/edit-profile`,
+                requestBody,
+                { headers }
+            );
+
+            // console.log('Update response:', response.data);
+
+            if (response.data.success) {
+                // Update local state with the new data
+                onEdit('name', requestBody.name);
+                onEdit('care_of', requestBody.care_of);
+                onEdit('guardian_name', requestBody.guardian_name);
+                onEdit('date_of_birth', requestBody.date_of_birth);
+                onEdit('gender', requestBody.gender);
+                onEdit('mobile', requestBody.mobile);
+                onEdit('country_code', requestBody.country_code);
+                onEdit('email', requestBody.email);
+                onEdit('pan_number', requestBody.pan_number);
+                onEdit('image', requestBody.image);
+                onEdit('is_active', requestBody.is_active);
+                onEdit('state', requestBody.address.state);
+                onEdit('district', requestBody.address.district);
+                onEdit('city', requestBody.address.city);
+                onEdit('village_town', requestBody.address.village_town);
+                onEdit('pincode', requestBody.address.pincode);
+                onEdit('address_line_1', requestBody.address.address_line_1);
+                onEdit('address_line_2', requestBody.address.address_line_2);
+                
+                return true;
+            } else {
+                setSaveStatus({ 
+                    type: 'error', 
+                    message: response.data.message || 'Failed to update profile' 
+                });
+                return false;
+            }
+        } catch (err) {
+            console.error('Error updating client profile:', err);
+            let errorMessage = 'Failed to update profile';
+            
+            if (err.response) {
+                if (err.response.status === 401) {
+                    errorMessage = 'Unauthorized. Please login again.';
+                } else if (err.response.status === 400) {
+                    errorMessage = err.response.data?.message || 'Invalid data provided';
+                } else {
+                    errorMessage = `Error ${err.response.status}: ${err.response.data?.message || 'Update failed'}`;
+                }
+            } else if (err.request) {
+                errorMessage = 'No response from server. Please check your connection.';
+            }
+            
+            setSaveStatus({ type: 'error', message: errorMessage });
+            return false;
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSave = async (field, value) => {
+        const updatedData = { [field]: value };
+        const success = await updateClientProfile(updatedData);
         
-        setSaveStatus({ type: 'success', message: `${field} updated successfully!` });
-        setTimeout(() => setSaveStatus(null), 3000);
+        if (success) {
+            setEditingField(null);
+            setEditedValue('');
+            setSaveStatus({ 
+                type: 'success', 
+                message: `${field.replace('_', ' ')} updated successfully!` 
+            });
+            setTimeout(() => setSaveStatus(null), 3000);
+        }
     };
 
     const handleCancel = () => {
@@ -158,21 +273,59 @@ const BasicDetailsTab = ({ clientData, onEdit, loading }) => {
 
     const handleBulkEditToggle = () => {
         if (!isBulkEditMode) {
-            setBulkEditData({ ...clientData });
+            setBulkEditData({ 
+                ...clientData,
+                // Ensure all fields exist to prevent undefined errors
+                name: clientData.name || '',
+                care_of: clientData.care_of || '',
+                guardian_name: clientData.guardian_name || '',
+                date_of_birth: clientData.date_of_birth || '',
+                gender: clientData.gender || '',
+                mobile: clientData.mobile || '',
+                country_code: clientData.country_code || '91',
+                email: clientData.email || '',
+                pan_number: clientData.pan_number || '',
+                image: clientData.image || '',
+                is_active: clientData.is_active || false,
+                state: clientData.state || '',
+                district: clientData.district || '',
+                city: clientData.city || '',
+                village_town: clientData.village_town || '',
+                pincode: clientData.pincode || '',
+                address_line_1: clientData.address_line_1 || '',
+                address_line_2: clientData.address_line_2 || ''
+            });
         }
         setIsBulkEditMode(!isBulkEditMode);
     };
 
-    const handleBulkSave = () => {
+    const handleBulkSave = async () => {
+        // Compare and prepare only changed data
+        const changedData = {};
         Object.entries(bulkEditData).forEach(([field, value]) => {
             if (value !== clientData[field]) {
-                onEdit(field, value);
+                changedData[field] = value;
             }
         });
+
+        if (Object.keys(changedData).length === 0) {
+            setSaveStatus({ type: 'info', message: 'No changes to save' });
+            setIsBulkEditMode(false);
+            setTimeout(() => setSaveStatus(null), 2000);
+            return;
+        }
+
+        const success = await updateClientProfile(changedData);
         
-        setIsBulkEditMode(false);
-        setSaveStatus({ type: 'success', message: 'All changes saved successfully!' });
-        setTimeout(() => setSaveStatus(null), 3000);
+        if (success) {
+            setIsBulkEditMode(false);
+            setBulkEditData({});
+            setSaveStatus({ 
+                type: 'success', 
+                message: 'All changes saved successfully!' 
+            });
+            setTimeout(() => setSaveStatus(null), 3000);
+        }
     };
 
     const handleBulkCancel = () => {
@@ -187,60 +340,88 @@ const BasicDetailsTab = ({ clientData, onEdit, loading }) => {
         }));
     };
 
-   const renderField = (label, field, value, type = 'text') => {
-    if (isBulkEditMode) {
+    const renderField = (label, field, value, type = 'text') => {
+        if (isBulkEditMode) {
+            return (
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 hover:bg-blue-50/30 transition-colors duration-200 rounded-lg px-3 -mx-3">
+                    <div className="flex items-center gap-3 mb-2 sm:mb-0">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-semibold text-blue-700 uppercase">
+                                {label.charAt(0)}
+                            </span>
+                        </div>
+                        <span className="font-medium text-gray-700 text-sm min-w-[120px]">{label}</span>
+                    </div>
+                    
+                    <div className="w-full sm:w-48">
+                        {type === 'select' ? (
+                            <select
+                                value={bulkEditData[field] || value || ''}
+                                onChange={(e) => handleBulkFieldChange(field, e.target.value)}
+                                className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm bg-white shadow-sm"
+                            >
+                                <option value="">Select Gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        ) : type === 'date' ? (
+                            <input
+                                type="date"
+                                value={bulkEditData[field] || value || ''}
+                                onChange={(e) => handleBulkFieldChange(field, e.target.value)}
+                                className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm bg-white shadow-sm"
+                            />
+                        ) : type === 'checkbox' ? (
+                            <div className="flex items-center h-full">
+                                <input
+                                    type="checkbox"
+                                    checked={bulkEditData[field] || value || false}
+                                    onChange={(e) => handleBulkFieldChange(field, e.target.checked)}
+                                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                                />
+                            </div>
+                        ) : (
+                            <input
+                                type={type}
+                                value={bulkEditData[field] || value || ''}
+                                onChange={(e) => handleBulkFieldChange(field, e.target.value)}
+                                className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm bg-white shadow-sm"
+                                placeholder={`Enter ${label.toLowerCase()}`}
+                            />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
         return (
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 hover:bg-blue-50/30 transition-colors duration-200 rounded-lg px-3 -mx-3">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 hover:bg-gray-50/50 transition-colors duration-200 rounded-lg px-3 -mx-3">
                 <div className="flex items-center gap-3 mb-2 sm:mb-0">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-semibold text-blue-700 uppercase">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-semibold text-blue-600 uppercase">
                             {label.charAt(0)}
                         </span>
                     </div>
                     <span className="font-medium text-gray-700 text-sm min-w-[120px]">{label}</span>
                 </div>
                 
-                <div className="w-full sm:w-48">
-                    {type === 'select' ? (
-                        <select
-                            value={bulkEditData[field] || value}
-                            onChange={(e) => handleBulkFieldChange(field, e.target.value)}
-                            className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm bg-white shadow-sm"
+                <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                    <span className="text-gray-900 font-medium text-sm sm:text-base truncate">
+                        {type === 'checkbox' ? (value ? 'Active' : 'Inactive') : value || 'Not provided'}
+                    </span>
+                    {type !== 'checkbox' && (
+                        <button
+                            onClick={() => handleEditClick(field, value)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    ) : (
-                        <input
-                            type={type}
-                            value={bulkEditData[field] || value}
-                            onChange={(e) => handleBulkFieldChange(field, e.target.value)}
-                            className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm bg-white shadow-sm"
-                        />
+                            {/* <FiEdit className="w-3.5 h-3.5" /> */}
+                        </button>
                     )}
                 </div>
             </div>
         );
-    }
-
-    return (
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 border-b border-gray-100 hover:bg-gray-50/50 transition-colors duration-200 rounded-lg px-3 -mx-3">
-            <div className="flex items-center gap-3 mb-2 sm:mb-0">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-semibold text-blue-600 uppercase">
-                        {label.charAt(0)}
-                    </span>
-                </div>
-                <span className="font-medium text-gray-700 text-sm min-w-[120px]">{label}</span>
-            </div>
-            
-            <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-                <span className="text-gray-900 font-medium text-sm sm:text-base truncate">{value}</span>
-            </div>
-        </div>
-    );
-};
+    };
 
     if (loading) {
         return (
@@ -279,13 +460,26 @@ const BasicDetailsTab = ({ clientData, onEdit, loading }) => {
                             <motion.div
                                 initial={{ opacity: 0, x: 10 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className={`px-4 py-2 rounded-lg ${saveStatus.type === 'success' ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}
+                                className={`px-4 py-2 rounded-lg ${saveStatus.type === 'success' 
+                                    ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200' 
+                                    : saveStatus.type === 'error'
+                                    ? 'bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border border-red-200'
+                                    : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200'}`}
                             >
                                 <div className="flex items-center gap-2">
-                                    <FiCheck className="w-4 h-4" />
+                                    {saveStatus.type === 'success' && <FiCheck className="w-4 h-4" />}
+                                    {saveStatus.type === 'error' && <FiX className="w-4 h-4" />}
+                                    {saveStatus.type === 'info' && <FiInfo className="w-4 h-4" />}
                                     <span className="text-sm font-medium">{saveStatus.message}</span>
                                 </div>
                             </motion.div>
+                        )}
+                        
+                        {isSaving && (
+                            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
+                                <FiLoader className="w-4 h-4 animate-spin" />
+                                <span className="text-sm font-medium">Saving...</span>
+                            </div>
                         )}
                         
                         <motion.button
@@ -295,6 +489,7 @@ const BasicDetailsTab = ({ clientData, onEdit, loading }) => {
                                 : 'bg-white text-gray-700 hover:text-blue-600 hover:bg-blue-50 border border-gray-300 hover:border-blue-300'}`}
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
+                            disabled={isSaving}
                         >
                             {isBulkEditMode ? (
                                 <>
@@ -304,7 +499,7 @@ const BasicDetailsTab = ({ clientData, onEdit, loading }) => {
                             ) : (
                                 <>
                                     <FiEdit className="w-4 h-4" />
-                                 Edit 
+                                    Edit Profile
                                 </>
                             )}
                         </motion.button>
@@ -335,17 +530,23 @@ const BasicDetailsTab = ({ clientData, onEdit, loading }) => {
                                     className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg font-medium transition-all duration-200 text-sm border border-gray-300"
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
+                                    disabled={isSaving}
                                 >
                                     Cancel
                                 </motion.button>
                                 <motion.button
                                     onClick={handleBulkSave}
-                                    className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg font-medium hover:from-emerald-600 hover:to-green-700 transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg text-sm flex items-center gap-2"
+                                    className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg font-medium hover:from-emerald-600 hover:to-green-700 transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
+                                    disabled={isSaving}
                                 >
-                                    <FiSave className="w-4 h-4" />
-                                    Save All Changes
+                                    {isSaving ? (
+                                        <FiLoader className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <FiSave className="w-4 h-4" />
+                                    )}
+                                    {isSaving ? 'Saving...' : 'Save All Changes'}
                                 </motion.button>
                             </div>
                         </div>
@@ -373,12 +574,15 @@ const BasicDetailsTab = ({ clientData, onEdit, loading }) => {
                         <div className="p-5">
                             <div className="space-y-1">
                                 {renderField("Full Name", "name", clientData.name)}
-                                {renderField("Email", "email", clientData.email, "email")}
-                                {renderField("Mobile", "mobile", clientData.mobile, "tel")}
-                                {renderField("Date of Birth", "date_of_birth", clientData.date_of_birth, "date")}
+                                {renderField("Care Of", "care_of", clientData.care_of)}
                                 {renderField("Guardian Name", "guardian_name", clientData.guardian_name)}
+                                {renderField("Date of Birth", "date_of_birth", clientData.date_of_birth, "date")}
                                 {renderField("Gender", "gender", clientData.gender, "select")}
+                                {renderField("Mobile", "mobile", clientData.mobile, "tel")}
+                                {renderField("Country Code", "country_code", clientData.country_code || "91")}
+                                {renderField("Email", "email", clientData.email, "email")}
                                 {renderField("PAN Number", "pan_number", clientData.pan_number)}
+                                {renderField("Active Status", "is_active", clientData.is_active, "checkbox")}
                             </div>
                         </div>
                     </motion.div>
@@ -400,12 +604,13 @@ const BasicDetailsTab = ({ clientData, onEdit, loading }) => {
                         </div>
                         <div className="p-5">
                             <div className="space-y-1">
+                                {renderField("State", "state", clientData.state)}
+                                {renderField("District", "district", clientData.district)}
+                                {renderField("City", "city", clientData.city)}
+                                {renderField("Town/Village", "village_town", clientData.village_town)}
+                                {renderField("Pincode", "pincode", clientData.pincode)}
                                 {renderField("Address Line 1", "address_line_1", clientData.address_line_1)}
                                 {renderField("Address Line 2", "address_line_2", clientData.address_line_2)}
-                                {renderField("Town/Village", "village_town", clientData.village_town)}
-                                {renderField("District", "district", clientData.district)}
-                                {renderField("State", "state", clientData.state)}
-                                {renderField("Pincode", "pincode", clientData.pincode)}
                             </div>
                             
                             <div className="mt-6 pt-6 border-t border-gray-100">
@@ -416,85 +621,128 @@ const BasicDetailsTab = ({ clientData, onEdit, loading }) => {
                                 <div className="h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center border border-gray-300">
                                     <div className="text-center">
                                         <FiMapPin className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                                        <p className="text-sm text-gray-600">{clientData.village_town}, {clientData.state}</p>
+                                        <p className="text-sm text-gray-600">
+                                            {clientData.village_town || clientData.city}, {clientData.state}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </motion.div>
                 </div>
-
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4"
-                >
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Status</p>
-                                <p className="text-lg font-bold text-gray-900 mt-1">
-                                    {clientData.is_active ? 'Active' : 'Inactive'}
-                                </p>
-                            </div>
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                clientData.is_active 
-                                    ? 'bg-gradient-to-r from-emerald-500 to-green-600' 
-                                    : 'bg-gradient-to-r from-red-500 to-rose-600'
-                            }`}>
-                                {clientData.is_active ? (
-                                    <FiCheck className="w-5 h-5 text-white" />
-                                ) : (
-                                    <FiX className="w-5 h-5 text-white" />
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-xs font-medium text-emerald-700 uppercase tracking-wide">Balance</p>
-                                <p className="text-lg font-bold text-gray-900 mt-1">
-                                    ₹{clientData.balance || '0.00'}
-                                </p>
-                            </div>
-                            <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
-                                <FiDollarSign className="w-5 h-5 text-white" />
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-xs font-medium text-purple-700 uppercase tracking-wide">Country Code</p>
-                                <p className="text-lg font-bold text-gray-900 mt-1">+{clientData.country_code}</p>
-                            </div>
-                            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-violet-600 rounded-lg flex items-center justify-center">
-                                <FiPhone className="w-5 h-5 text-white" />
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">Care Of</p>
-                                <p className="text-lg font-bold text-gray-900 mt-1">{clientData.care_of}</p>
-                            </div>
-                            <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
-                                <FiUser className="w-5 h-5 text-white" />
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
             </div>
+
+            {/* Individual Field Edit Modal */}
+            {editingField && (
+                <EditFieldModal
+                    field={editingField}
+                    value={editedValue}
+                    onSave={handleSave}
+                    onCancel={handleCancel}
+                    isOpen={!!editingField}
+                />
+            )}
         </motion.div>
     );
 };
 
+// Individual Field Edit Modal Component
+const EditFieldModal = ({ isOpen, onClose, field, value, onSave }) => {
+    const [inputValue, setInputValue] = useState(value);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            await onSave(field, inputValue);
+            onClose();
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    const getFieldLabel = (fieldName) => {
+        return fieldName.replace(/_/g, ' ')
+            .replace(/\b\w/g, l => l.toUpperCase());
+    };
+
+    const getInputType = (fieldName) => {
+        if (fieldName.includes('email')) return 'email';
+        if (fieldName.includes('date')) return 'date';
+        if (fieldName.includes('mobile') || fieldName.includes('phone')) return 'tel';
+        if (fieldName.includes('pincode')) return 'number';
+        return 'text';
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        >
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-200"
+            >
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-5">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-xl font-bold">Edit {getFieldLabel(field)}</h2>
+                            <p className="text-blue-100 text-xs mt-1">Update the {field.toLowerCase()} information</p>
+                        </div>
+                        <button 
+                            onClick={onClose} 
+                            className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-full transition-all disabled:opacity-50"
+                            disabled={isSaving}
+                        >
+                            <FiX className="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
+                <div className="p-5">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                        {getFieldLabel(field)}
+                    </label>
+                    <input
+                        type={getInputType(field)}
+                        value={inputValue || ''}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-50/50 text-sm"
+                        autoFocus
+                    />
+                </div>
+                <div className="px-5 py-4 bg-gray-50/80 border-t border-gray-200 flex justify-end gap-2">
+                    <button 
+                        onClick={onClose} 
+                        className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg font-medium transition-all duration-200 text-sm disabled:opacity-50"
+                        disabled={isSaving}
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={handleSave}
+                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isSaving || !inputValue}
+                    >
+                        {isSaving ? (
+                            <>
+                                <FiLoader className="w-4 h-4 animate-spin" />
+                                Saving...
+                            </>
+                        ) : (
+                            'Save Changes'
+                        )}
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
 const EditModal = ({ isOpen, onClose, field, value, onSave, type = 'text' }) => {
     const [inputValue, setInputValue] = useState(value);
 
@@ -1093,24 +1341,30 @@ const ClientProfile = () => {
     };
 
     // Render content based on active tab
-    const renderTabContent = () => {
-        const tabComponents = {
-            basic: <BasicDetailsTab clientData={clientData} onEdit={handleEditField} loading={loading} />,
-            firms: <FirmsTab  clientUsername={username} />,
-            password: <PasswordTab />,
-            quotation: <QuotationTab />,
-            task: <TaskTab />,
-            billing: <BillingTab />,
-            ledger: <LedgerTab />,
-            notes: <NotesTab  clientUsername={username} />,
-            recurring: <RecurringTab />,
-            documents: <DocumentsTab />,
-            chatting: <ChattingTab />,
-            automation: <AutomationTab />
-        };
-
-        return tabComponents[activeTab];
+   // Render content based on active tab
+const renderTabContent = () => {
+    const tabComponents = {
+        basic: <BasicDetailsTab 
+            clientData={clientData} 
+            onEdit={handleEditField} 
+            loading={loading} 
+            clientUsername={username} // Pass username for API calls
+        />,
+        firms: <FirmsTab clientUsername={username} />,
+        password: <PasswordTab clientUsername={username} />,
+        quotation: <QuotationTab />,
+        task: <TaskTab />,
+        billing: <BillingTab />,
+        ledger: <LedgerTab />,
+        notes: <NotesTab clientUsername={username}/>,
+        recurring: <RecurringTab />,
+        documents: <DocumentsTab />,
+        chatting: <ChattingTab />,
+        automation: <AutomationTab />
     };
+
+    return tabComponents[activeTab];
+};
 
     // Format date for display
     const formatDate = (dateString) => {
