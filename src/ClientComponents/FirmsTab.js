@@ -638,7 +638,7 @@ const FirmsTab = ({ clientUsername }) => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <motion.button
+                                        {/* <motion.button
                                             onClick={() => toggleStatus(firm.firm_id)}
                                             className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-300 ${firm.status
                                                 ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:shadow-lg hover:shadow-green-500/25'
@@ -648,7 +648,7 @@ const FirmsTab = ({ clientUsername }) => {
                                             whileTap={{ scale: 0.95 }}
                                         >
                                             {firm.status ? 'Deactivate' : 'Activate'}
-                                        </motion.button>
+                                        </motion.button> */}
                                         <motion.button
                                             onClick={() => openViewModal(firm)}
                                             className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 text-green-600 hover:shadow-md rounded-xl transition-all duration-300"

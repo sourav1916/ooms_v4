@@ -208,6 +208,122 @@ const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusC
     );
 };
 
+// NEW: Firms Details Modal Component
+const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
+    if (!isOpen || !firms || firms.length === 0) return null;
+    
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                >
+                    <motion.div
+                        className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto max-h-[80vh] overflow-hidden"
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                                        <FiBriefcase className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold">Firms Details</h3>
+                                        <p className="text-blue-100 text-xs">{clientName}</p>
+                                    </div>
+                                </div>
+                                <motion.button
+                                    onClick={onClose}
+                                    className="text-white hover:text-blue-200 transition-colors p-1 rounded-lg hover:bg-white/10"
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                >
+                                    <FiX className="w-4 h-4" />
+                                </motion.button>
+                            </div>
+                        </div>
+                        
+                        {/* Firms List */}
+                        <div className="p-4 overflow-y-auto max-h-[60vh]">
+                            <div className="space-y-3">
+                                {firms.map((firm, index) => (
+                                    <motion.div
+                                        key={firm.firm_id || index}
+                                        className="bg-gray-50 border border-gray-200 rounded-lg p-3"
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: index * 0.05 }}
+                                    >
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div className="flex-1">
+                                                <h4 className="font-semibold text-gray-800 text-sm">
+                                                    {firm.firm_name || 'Unnamed Firm'}
+                                                </h4>
+                                                {firm.firm_type && (
+                                                    <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full mt-1">
+                                                        {firm.firm_type}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                                #{index + 1}
+                                            </span>
+                                        </div>
+                                        
+                                        <div className="space-y-1 text-xs text-gray-600">
+                                            {firm.pan_no && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium">PAN:</span>
+                                                    <span>{firm.pan_no}</span>
+                                                </div>
+                                            )}
+                                            {firm.file_no && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium">File No:</span>
+                                                    <span>{firm.file_no}</span>
+                                                </div>
+                                            )}
+                                            {firm.gst_no && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium">GST:</span>
+                                                    <span>{firm.gst_no}</span>
+                                                </div>
+                                            )}
+                                            {firm.registration_no && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium">Reg No:</span>
+                                                    <span>{firm.registration_no}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        {/* Footer */}
+                        <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                            <div className="text-center text-sm text-gray-600">
+                                Total: {firms.length} firm{firms.length !== 1 ? 's' : ''}
+                            </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
 // View Mode Toggle Component - Updated button size to match Filter
 const TableViewSwitch = ({ viewMode, setViewMode }) => {
     return (
@@ -251,7 +367,8 @@ const ClientTable = ({
     handleStatusChange,
     openStatusModal, // NEW: Added prop for status modal
     navigate, // NEW: Added prop for navigation
-    handleExport // ADDED: For WhatsApp functionality
+    handleExport, // ADDED: For WhatsApp functionality
+    showFirmsModal // NEW: Added prop for firms modal
 }) => {
     // Skeleton loader
     const SkeletonRow = () => (
@@ -277,7 +394,7 @@ const ClientTable = ({
     );
 
     // Mobile client card for table view
-    const MobileClientCard = ({ client, index, handleExport }) => {
+    const MobileClientCard = ({ client, index, handleExport, showFirmsModal }) => {
         // Get the last updated firm
         const getLastUpdatedFirm = () => {
             if (!client.firms || client.firms.length === 0) return null;
@@ -417,15 +534,6 @@ const ClientTable = ({
                             <div className={`text-sm font-semibold ${client.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
                                 ₹{Math.abs(client.balance || 0).toLocaleString()}
                             </div>
-                            <motion.button
-                                onClick={() => handleExport('whatsapp', client)}
-                                className="text-green-600 hover:text-green-700 p-2"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                title="Send via WhatsApp"
-                            >
-                                <FaWhatsapp className="w-4 h-4" />
-                            </motion.button>
                         </div>
                     </div>
 
@@ -439,12 +547,6 @@ const ClientTable = ({
                         <div className="text-xs text-gray-700 bg-gray-50 rounded p-2 border border-gray-200">
                             <div className="font-semibold mb-1">Latest Firm:</div>
                             <div>{lastFirm.firm_name || 'N/A'}</div>
-                            <div className="text-gray-600">
-                                {lastFirm.pan_no && `PAN: ${lastFirm.pan_no}`}
-                                {lastFirm.pan_no && lastFirm.file_no && ' • '}
-                                {lastFirm.file_no && `File: ${lastFirm.file_no}`}
-                                {!lastFirm.pan_no && !lastFirm.file_no && 'No details'}
-                            </div>
                         </div>
                     )}
 
@@ -544,7 +646,7 @@ const ClientTable = ({
                         {/* Mobile view - cards */}
                         <div className="md:hidden px-3 py-1">
                             {clients.map((client, index) => (
-                                <MobileClientCard key={client._id} client={client} index={index} handleExport={handleExport} />
+                                <MobileClientCard key={client._id} client={client} index={index} handleExport={handleExport} showFirmsModal={showFirmsModal} />
                             ))}
                         </div>
 
@@ -588,7 +690,7 @@ const ClientTable = ({
                                             <div className="space-y-1">
                                                 {column.items.map(item => (
                                                     <div key={item.id} className="min-h-[1.25rem] flex items-center justify-center">
-                                                        {renderCellContent(client, item.id, openStatusModal)} {/* NEW: Added openStatusModal prop */}
+                                                        {renderCellContent(client, item.id, openStatusModal, showFirmsModal)} {/* UPDATED: Added showFirmsModal */}
                                                     </div>
                                                 ))}
                                             </div>
@@ -619,7 +721,8 @@ const ClientCards = ({
     statusOptions,
     openStatusModal, // NEW: Added prop for status modal
     navigate, // NEW: Added prop for navigation
-    handleExport // Added for WhatsApp functionality
+    handleExport, // Added for WhatsApp functionality
+    showFirmsModal // NEW: Added prop for firms modal
 }) => {
     // Get status color
     const getStatusColor = (status) => {
@@ -833,15 +936,6 @@ const ClientCards = ({
                                             <div className={`text-xs font-semibold ${(client.balance || 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
                                                 {formatBalance(client.balance)}
                                             </div>
-                                            <motion.button
-                                                onClick={() => handleExport('whatsapp', client)}
-                                                className="text-green-600 hover:text-green-700 p-0.5"
-                                                whileHover={{ scale: 1.1 }}
-                                                whileTap={{ scale: 0.9 }}
-                                                title="Send via WhatsApp"
-                                            >
-                                                <FaWhatsapp className="w-3 h-3" />
-                                            </motion.button>
                                         </div>
                                     </div>
 
@@ -849,30 +943,26 @@ const ClientCards = ({
                                     <div className="text-xs text-gray-700">
                                         <div className="font-medium mb-1">Firms ({client.firms?.length || 0}):</div>
                                         {lastFirm && (
-                                            <div className="text-xs bg-gray-50 rounded p-1 border border-gray-200 mb-1">
+                                            <div className="text-xs bg-gray-50 rounded p-1 border border-gray-200 mb-1 cursor-pointer hover:bg-gray-100 transition-colors" 
+                                                 onClick={() => showFirmsModal(client.firms, client.name)}>
                                                 <div className="font-semibold">{lastFirm.firm_name || 'N/A'}</div>
-                                                <div className="text-gray-600">
-                                                    {lastFirm.pan_no && `PAN: ${lastFirm.pan_no}`}
-                                                    {lastFirm.pan_no && lastFirm.file_no && ' • '}
-                                                    {lastFirm.file_no && `File: ${lastFirm.file_no}`}
-                                                    {!lastFirm.pan_no && !lastFirm.file_no && 'No details'}
-                                                </div>
                                             </div>
                                         )}
                                         
                                         {/* Show "+X more" if there are additional firms */}
                                         {client.firms && client.firms.length > 1 && (
-                                            <div className="text-blue-600 font-medium text-xs mt-1">
+                                            <div className="text-blue-600 font-medium text-xs mt-1 cursor-pointer hover:text-blue-700 transition-colors"
+                                                 onClick={() => showFirmsModal(client.firms, client.name)}>
                                                 +{client.firms.length - 1} more firm{client.firms.length - 1 > 1 ? 's' : ''}
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* NEW: Status Display as Text (not dropdown) */}
-                                    <div className="pt-2 border-t border-gray-100">
+                                    {/* NEW: Status Display as Text (not dropdown) - Reduced height */}
+                                    <div className="pt-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-medium text-gray-600">Status:</span>
-                                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${getStatusColor(client.status)}`}>
+                                            <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(client.status)}`}>
                                                 {client.status === 'ACTIVE' ? 'Active' :
                                                  client.status === 'INACTIVE' ? 'Inactive' : 'Pending'}
                                             </div>
@@ -1010,7 +1100,8 @@ const ViewClients = () => {
     const [activeItemDragId, setActiveItemDragId] = useState(null);
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
     const [isMobile, setIsMobile] = useState(false);
-    const [statusModal, setStatusModal] = useState({ open: false, clientId: null, currentStatus: '' }); // NEW: Status modal state
+    const [statusModal, setStatusModal] = useState({ open: false, clientId: null, currentStatus: '' });
+    const [firmsModal, setFirmsModal] = useState({ open: false, firms: [], clientName: '' }); // NEW: Firms modal state
     
     // Pagination and API states
     const [clients, setClients] = useState([]);
@@ -1531,6 +1622,24 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         });
     };
 
+    // NEW: Open firms modal
+    const openFirmsModal = (firms, clientName) => {
+        setFirmsModal({
+            open: true,
+            firms,
+            clientName
+        });
+    };
+
+    // NEW: Close firms modal
+    const closeFirmsModal = () => {
+        setFirmsModal({
+            open: false,
+            firms: [],
+            clientName: ''
+        });
+    };
+
     // Filter clients based on search and filters (client-side filtering if needed)
     const filteredClients = clients.filter(client => {
         const matchesSearch = searchQuery === '' ||
@@ -1738,7 +1847,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
     };
 
     // Render cell content based on field type - UPDATED for status text display and openStatusModal parameter
-    const renderCellContent = (client, fieldId, openStatusModal) => {
+    const renderCellContent = (client, fieldId, openStatusModal, showFirmsModal) => {
         switch (fieldId) {
             case 'name':
                 return (
@@ -1793,15 +1902,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                             )}
                             {formatBalance(client.balance)}
                         </div>
-                        <motion.button
-                            onClick={() => handleExport('whatsapp', client)}
-                            className="text-green-600 hover:text-green-700 p-1 hover:bg-green-50 rounded"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            title="Send via WhatsApp"
-                        >
-                            <FaWhatsapp className="w-4 h-4" />
-                        </motion.button>
                     </div>
                 );
             case 'firm_count':
@@ -1817,23 +1917,10 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 return (
                     <div className="space-y-1">
                         {lastFirm ? (
-                            <div key={lastFirm.firm_id} className="bg-gray-50 rounded p-1 border border-gray-200">
+                            <div key={lastFirm.firm_id} className="bg-gray-50 rounded p-1 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                                 onClick={() => showFirmsModal(client.firms, client.name)}>
                                 <div className="font-semibold text-gray-800 text-xs">
                                     {lastFirm.firm_name || 'N/A'}
-                                </div>
-                                <div className="text-xs text-gray-600 flex gap-1 mt-0.5">
-                                    {lastFirm.pan_no ? (
-                                        <span>PAN: {lastFirm.pan_no}</span>
-                                    ) : null}
-                                    {lastFirm.file_no ? (
-                                        <>
-                                            {lastFirm.pan_no && <span>•</span>}
-                                            <span>File: {lastFirm.file_no}</span>
-                                        </>
-                                    ) : null}
-                                    {!lastFirm.pan_no && !lastFirm.file_no && (
-                                        <span className="text-gray-400 italic">No details</span>
-                                    )}
                                 </div>
                             </div>
                         ) : (
@@ -1842,16 +1929,17 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         
                         {/* Show "+X more" if there are additional firms */}
                         {client.firms && client.firms.length > 1 && (
-                            <div className="text-xs text-blue-600 font-medium mt-1">
+                            <div className="text-xs text-blue-600 font-medium mt-1 cursor-pointer hover:text-blue-700 transition-colors"
+                                 onClick={() => showFirmsModal(client.firms, client.name)}>
                                 +{client.firms.length - 1} more firm{client.firms.length - 1 > 1 ? 's' : ''}
                             </div>
                         )}
                     </div>
                 );
             case 'status':
-                // NEW: Display status as text instead of dropdown in table view
+                // NEW: Display status as text instead of dropdown in table view - Reduced height
                 return (
-                    <div className={`inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-medium ${getStatusColor(client.status)}`}>
+                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(client.status)}`}>
                         {getStatusText(client.status)}
                     </div>
                 );
@@ -2884,6 +2972,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                     openStatusModal={openStatusModal}
                                     navigate={navigate}
                                     handleExport={handleExport} // ADDED: Pass handleExport prop
+                                    showFirmsModal={openFirmsModal} // NEW: Pass firms modal function
                                 />
                             ) : (
                                 <ClientCards
@@ -2901,6 +2990,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                     openStatusModal={openStatusModal}
                                     navigate={navigate}
                                     handleExport={handleExport}
+                                    showFirmsModal={openFirmsModal} // NEW: Pass firms modal function
                                 />
                             )}
                         </div>
@@ -2977,6 +3067,14 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 currentStatus={statusModal.currentStatus}
                 onStatusChange={handleStatusChange}
                 statusOptions={statusOptions}
+            />
+
+            {/* NEW: Firms Details Modal */}
+            <FirmsDetailsModal
+                isOpen={firmsModal.open}
+                onClose={closeFirmsModal}
+                firms={firmsModal.firms}
+                clientName={firmsModal.clientName}
             />
 
             {/* Export Confirmation Modal - Compact */}

@@ -1113,7 +1113,6 @@ const ClientProfile = () => {
     const [isMobileView, setIsMobileView] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const tabsContainerRef = useRef(null);
     const [previousUsername, setPreviousUsername] = useState(null);
 
     const { username } = useParams();
@@ -1329,42 +1328,30 @@ const ClientProfile = () => {
         setEditModal({ isOpen: false, field: '', value: '' });
     };
 
-    // Scroll tabs
-    const scrollTabs = (direction) => {
-        if (tabsContainerRef.current) {
-            const scrollAmount = 200;
-            tabsContainerRef.current.scrollBy({
-                left: direction === 'left' ? -scrollAmount : scrollAmount,
-                behavior: 'smooth'
-            });
-        }
-    };
-
     // Render content based on active tab
-   // Render content based on active tab
-const renderTabContent = () => {
-    const tabComponents = {
-        basic: <BasicDetailsTab 
-            clientData={clientData} 
-            onEdit={handleEditField} 
-            loading={loading} 
-            clientUsername={username} // Pass username for API calls
-        />,
-        firms: <FirmsTab clientUsername={username} />,
-        password: <PasswordTab clientUsername={username} />,
-        quotation: <QuotationTab />,
-        task: <TaskTab />,
-        billing: <BillingTab />,
-        ledger: <LedgerTab />,
-        notes: <NotesTab clientUsername={username}/>,
-        recurring: <RecurringTab />,
-        documents: <DocumentsTab />,
-        chatting: <ChattingTab />,
-        automation: <AutomationTab />
-    };
+    const renderTabContent = () => {
+        const tabComponents = {
+            basic: <BasicDetailsTab 
+                clientData={clientData} 
+                onEdit={handleEditField} 
+                loading={loading} 
+                clientUsername={username} // Pass username for API calls
+            />,
+            firms: <FirmsTab clientUsername={username} />,
+            password: <PasswordTab clientUsername={username} />,
+            quotation: <QuotationTab />,
+            task: <TaskTab />,
+            billing: <BillingTab />,
+            ledger: <LedgerTab />,
+            notes: <NotesTab clientUsername={username}/>,
+            recurring: <RecurringTab />,
+            documents: <DocumentsTab />,
+            chatting: <ChattingTab />,
+            automation: <AutomationTab />
+        };
 
-    return tabComponents[activeTab];
-};
+        return tabComponents[activeTab];
+    };
 
     // Format date for display
     const formatDate = (dateString) => {
@@ -1561,34 +1548,15 @@ const renderTabContent = () => {
                                     </div>
                                 </motion.div>
 
-                                {/* Enhanced Profile Tabs - No Underline Version */}
+                                {/* Enhanced Profile Tabs - Multi-line Grid Layout */}
                                 <motion.div
                                     className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6 overflow-hidden"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: 0.2 }}
                                 >
-                                    <div className="relative">
-                                        {/* Gradient overlay for scroll indicators */}
-                                        <div className="absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none hidden sm:block"></div>
-                                        <div className="absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none hidden sm:block"></div>
-                                        
-                                        {/* Left scroll button */}
-                                        <div className="hidden sm:flex absolute left-0 top-0 bottom-0 items-center z-20">
-                                            <button
-                                                onClick={() => scrollTabs('left')}
-                                                className="h-full px-2 bg-gradient-to-r from-white via-white to-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all"
-                                            >
-                                                <FiChevronLeft className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                        
-                                        {/* Tabs container - No underline */}
-                                        <div 
-                                            ref={tabsContainerRef}
-                                            className="flex overflow-x-auto scrollbar-hide px-2 py-3"
-                                            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                                        >
+                                    <div className="p-4">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                                             {profileTabs.map((tab) => {
                                                 const Icon = tab.icon;
                                                 const isActive = activeTab === tab.id;
@@ -1597,10 +1565,11 @@ const renderTabContent = () => {
                                                     <motion.button
                                                         key={tab.id}
                                                         onClick={() => setActiveTab(tab.id)}
-                                                        className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap mx-1 ${isActive
-                                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
-                                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                                                            }`}
+                                                        className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all duration-200 ${
+                                                            isActive
+                                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200'
+                                                        }`}
                                                         whileHover={{ scale: 1.03, y: -1 }}
                                                         whileTap={{ scale: 0.98 }}
                                                     >
@@ -1610,23 +1579,14 @@ const renderTabContent = () => {
                                                                 scale: isActive ? 1.1 : 1
                                                             }}
                                                             transition={{ duration: 0.2 }}
+                                                            className="mb-2"
                                                         >
-                                                            <Icon className="w-4 h-4" />
+                                                            <Icon className="w-5 h-5" />
                                                         </motion.div>
-                                                        <span className="font-medium">{tab.name}</span>
+                                                        <span className="text-xs font-medium text-center leading-tight">{tab.name}</span>
                                                     </motion.button>
                                                 );
                                             })}
-                                        </div>
-
-                                        {/* Right scroll button */}
-                                        <div className="hidden sm:flex absolute right-0 top-0 bottom-0 items-center z-20">
-                                            <button
-                                                onClick={() => scrollTabs('right')}
-                                                className="h-full px-2 bg-gradient-to-l from-white via-white to-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all"
-                                            >
-                                                <FiChevronRight className="w-4 h-4" />
-                                            </button>
                                         </div>
                                     </div>
                                 </motion.div>
