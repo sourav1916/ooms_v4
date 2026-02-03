@@ -132,7 +132,7 @@ const DetailRow = ({
 
 // Enhanced BasicDetailsTab Component with bulk edit mode
 // Enhanced BasicDetailsTab Component with bulk edit mode and API integration
-const BasicDetailsTab = ({ clientData, onEdit, loading, clientUsername }) => {
+const BasicDetailsTab = ({ clientData, onEdit, loading, clientUsername  }) => {
     const [editingField, setEditingField] = useState(null);
     const [editedValue, setEditedValue] = useState('');
     const [isBulkEditMode, setIsBulkEditMode] = useState(false);
@@ -1100,7 +1100,35 @@ const EditFirmModal = ({ isOpen, onClose, onSave, firm }) => {
         </motion.div>
     );
 };
+// TabLink Component - Add this near other components
+const TabLink = ({ to, icon: Icon, label, isActive, onClick }) => {
+  return (
+    <motion.button
+      onClick={() => onClick(to)}
+      className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all duration-200 ${
+        isActive
+          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200'
+      }`}
+      whileHover={{ scale: 1.03, y: -1 }}
+      whileTap={{ scale: 0.98 }}
+    >
+      <motion.div
+        animate={{ 
+          rotate: isActive ? [0, 5, 0] : 0,
+          scale: isActive ? 1.1 : 1
+        }}
+        transition={{ duration: 0.2 }}
+        className="mb-2"
+      >
+        <Icon className="w-5 h-5" />
+      </motion.div>
+      <span className="text-xs font-medium text-center leading-tight">{label}</span>
+    </motion.button>
+  );
+};
 
+// Main Component - ClientProfile
 // Main Component - ClientProfile
 const ClientProfile = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -1108,14 +1136,14 @@ const ClientProfile = () => {
         const saved = localStorage.getItem('sidebarMinimized');
         return saved ? JSON.parse(saved) : false;
     });
-    const [activeTab, setActiveTab] = useState('basic');
     const [editModal, setEditModal] = useState({ isOpen: false, field: '', value: '' });
     const [isMobileView, setIsMobileView] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [previousUsername, setPreviousUsername] = useState(null);
 
-    const { username } = useParams();
+    // Get both username and tab from URL
+    const { username, tab = 'basic-details' } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -1170,14 +1198,10 @@ const ClientProfile = () => {
             setLoading(true);
             setError(null);
             
-            // console.log('Fetching client data for username:', usernameToFetch);
-            
             const response = await axios.get(
                 `${API_BASE_URL}/client/details/profile?username=${encodeURIComponent(usernameToFetch)}`,
                 { headers }
             );
-
-            // console.log('API Response:', response.data);
 
             if (response.data.success && response.data.data) {
                 const apiData = response.data.data;
@@ -1237,10 +1261,6 @@ const ClientProfile = () => {
 
     // Watch for URL changes and fetch new data
     useEffect(() => {
-        // console.log('URL changed to:', location.pathname);
-        // console.log('Username from params:', username);
-        // console.log('Previous username:', previousUsername);
-        
         // Only fetch if username has changed
         if (username && username !== previousUsername) {
             // Reset state for new user
@@ -1251,14 +1271,18 @@ const ClientProfile = () => {
                 pincode: "", address_line_1: "", address_line_2: "", balance: 0,
                 debit: 0, credit: 0
             });
-            setActiveTab('basic');
             setError(null);
             setPreviousUsername(username);
             
             // Fetch new data
             fetchClientData(username);
         }
-    }, [username, location.pathname, previousUsername, fetchClientData]);
+        
+        // If no tab specified, redirect to basic-details
+        if (username && !tab) {
+            navigate(`/client/profile/${username}/basic-details`, { replace: true });
+        }
+    }, [username, tab, location.pathname, previousUsername, fetchClientData, navigate]);
 
     // Initial fetch
     useEffect(() => {
@@ -1268,9 +1292,9 @@ const ClientProfile = () => {
         }
     }, [username, previousUsername, fetchClientData]);
 
-    // Profile tabs data
+    // Profile tabs data - updated with URL-friendly IDs
     const profileTabs = [
-        { id: 'basic', name: 'Basic Details', icon: FiUser },
+        { id: 'basic-details', name: 'Basic Details', icon: FiUser },
         { id: 'firms', name: 'Firms', icon: FiBriefcase },
         { id: 'password', name: 'Password', icon: FiKey },
         { id: 'quotation', name: 'Quotation', icon: FiClipboard },
@@ -1328,14 +1352,37 @@ const ClientProfile = () => {
         setEditModal({ isOpen: false, field: '', value: '' });
     };
 
+    // Handle tab navigation
+    const handleTabClick = (tabId) => {
+        navigate(`/client/profile/${username}/${tabId}`);
+    };
+
     // Render content based on active tab
     const renderTabContent = () => {
+        // Map URL-friendly IDs to component keys
+        const tabMap = {
+            'basic-details': 'basic',
+            'firms': 'firms',
+            'password': 'password',
+            'quotation': 'quotation',
+            'task': 'task',
+            'billing': 'billing',
+            'ledger': 'ledger',
+            'notes': 'notes',
+            'recurring': 'recurring',
+            'documents': 'documents',
+            'chatting': 'chatting',
+            'automation': 'automation'
+        };
+        
+        const componentKey = tabMap[tab] || 'basic';
+        
         const tabComponents = {
             basic: <BasicDetailsTab 
                 clientData={clientData} 
                 onEdit={handleEditField} 
                 loading={loading} 
-                clientUsername={username} // Pass username for API calls
+                clientUsername={username}
             />,
             firms: <FirmsTab clientUsername={username} />,
             password: <PasswordTab clientUsername={username} />,
@@ -1350,7 +1397,7 @@ const ClientProfile = () => {
             automation: <AutomationTab />
         };
 
-        return tabComponents[activeTab];
+        return tabComponents[componentKey] || tabComponents['basic'];
     };
 
     // Format date for display
@@ -1424,6 +1471,21 @@ const ClientProfile = () => {
                         {/* Client Profile Content */}
                         {!loading && !error && (
                             <>
+                                {/* Breadcrumb Navigation */}
+                                <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
+                                    <button 
+                                        onClick={() => navigate('/client/view')}
+                                        className="hover:text-blue-600 flex items-center gap-1"
+                                    >
+                                        <FiHome className="w-4 h-4" />
+                                        Clients
+                                    </button>
+                                    <FiChevronRight className="w-4 h-4" />
+                                    <span className="font-medium text-gray-900">{clientData.name}</span>
+                                    <FiChevronRight className="w-4 h-4" />
+                                    <span className="capitalize">{tab.replace('-', ' ')}</span>
+                                </div>
+
                                 {/* Compact Header Card */}
                                 <motion.div
                                     className="bg-white rounded-xl shadow-md border border-gray-200 p-5 mb-6 relative overflow-hidden"
@@ -1557,34 +1619,19 @@ const ClientProfile = () => {
                                 >
                                     <div className="p-4">
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                                            {profileTabs.map((tab) => {
-                                                const Icon = tab.icon;
-                                                const isActive = activeTab === tab.id;
+                                            {profileTabs.map((tabItem) => {
+                                                const Icon = tabItem.icon;
+                                                const isActive = tab === tabItem.id;
 
                                                 return (
-                                                    <motion.button
-                                                        key={tab.id}
-                                                        onClick={() => setActiveTab(tab.id)}
-                                                        className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all duration-200 ${
-                                                            isActive
-                                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
-                                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200'
-                                                        }`}
-                                                        whileHover={{ scale: 1.03, y: -1 }}
-                                                        whileTap={{ scale: 0.98 }}
-                                                    >
-                                                        <motion.div
-                                                            animate={{ 
-                                                                rotate: isActive ? [0, 5, 0] : 0,
-                                                                scale: isActive ? 1.1 : 1
-                                                            }}
-                                                            transition={{ duration: 0.2 }}
-                                                            className="mb-2"
-                                                        >
-                                                            <Icon className="w-5 h-5" />
-                                                        </motion.div>
-                                                        <span className="text-xs font-medium text-center leading-tight">{tab.name}</span>
-                                                    </motion.button>
+                                                    <TabLink
+                                                        key={tabItem.id}
+                                                        to={tabItem.id}
+                                                        icon={Icon}
+                                                        label={tabItem.name}
+                                                        isActive={isActive}
+                                                        onClick={handleTabClick}
+                                                    />
                                                 );
                                             })}
                                         </div>
@@ -1594,7 +1641,7 @@ const ClientProfile = () => {
                                 {/* Tab Content with AnimatePresence */}
                                 <AnimatePresence mode="wait">
                                     <motion.div
-                                        key={activeTab}
+                                        key={tab}
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: -10 }}

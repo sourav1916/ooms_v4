@@ -154,6 +154,14 @@ root.render(
   </ProtectedRoute>
 } />
 
+{/* Tabs For ClientProfile Tab */}
+<Route path="/client/profile/:username/:tab" element={
+  <ProtectedRoute>
+    <ClientProfile />
+  </ProtectedRoute>
+} />
+   
+
       <Route path="/client/profile" element={
         <ProtectedRoute>
           <ClientProfile />
