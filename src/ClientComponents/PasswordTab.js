@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiKey, FiTrash2, FiX, FiEye, FiEyeOff, FiCopy, FiShield, FiLock, FiGlobe } from 'react-icons/fi';
+import { FiKey, FiTrash2, FiX, FiEye, FiEyeOff, FiCopy, FiShield, FiLock, FiGlobe, FiEdit2, FiMoreVertical } from 'react-icons/fi';
 
 const PasswordTab = () => {
     const [passwords, setPasswords] = useState([
-        { id: 1, platform: "Client Portal", username: "venkatesh_r", password: "password123", lastChanged: "2024-01-15", showPassword: false, category: "Finance", strength: "Medium" },
-        { id: 2, platform: "GST Portal", username: "venkatesh_gst", password: "gstpass456", lastChanged: "2024-01-10", showPassword: false, category: "Government", strength: "Strong" },
-        { id: 3, platform: "Income Tax Portal", username: "venkatesh_it", password: "itpass789", lastChanged: "2024-01-05", showPassword: false, category: "Government", strength: "Weak" }
+        { id: 1, platform: "Client Portal", username: "venkatesh_r", password: "password123", lastChanged: "2024-01-15", showPassword: false, category: "Finance", strength: "Medium", description: "Main client management portal", group: "Business" },
+        { id: 2, platform: "GST Portal", username: "venkatesh_gst", password: "gstpass456", lastChanged: "2024-01-10", showPassword: false, category: "Government", strength: "Strong", description: "GST filing and compliance", group: "Government" },
+        { id: 3, platform: "Income Tax Portal", username: "venkatesh_it", password: "itpass789", lastChanged: "2024-01-05", showPassword: false, category: "Government", strength: "Weak", description: "Income tax filing system", group: "Government" }
     ]);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedPassword, setSelectedPassword] = useState(null);
     const [copiedItem, setCopiedItem] = useState(null);
+    const [activeMenu, setActiveMenu] = useState(null);
 
     const togglePasswordVisibility = (id) => {
         setPasswords(passwords.map(pwd => 
@@ -27,6 +28,7 @@ const PasswordTab = () => {
     const openDeleteModal = (password) => {
         setSelectedPassword(password);
         setShowDeleteModal(true);
+        setActiveMenu(null);
     };
 
     const deletePassword = () => {
@@ -43,19 +45,17 @@ const PasswordTab = () => {
         }
     };
 
-    const getPlatformIcon = (platform) => {
-        if (platform.includes('Portal')) return <FiGlobe className="w-5 h-5" />;
-        if (platform.includes('GST') || platform.includes('Tax')) return <FiShield className="w-5 h-5" />;
-        return <FiLock className="w-5 h-5" />;
+    const getGroupColor = (group) => {
+        switch(group) {
+            case 'Business': return 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700';
+            case 'Government': return 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700';
+            case 'Finance': return 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700';
+            default: return 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700';
+        }
     };
 
-    const getCategoryColor = (category) => {
-        switch(category) {
-            case 'Finance': return 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200';
-            case 'Government': return 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200';
-            case 'Business': return 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200';
-            default: return 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200';
-        }
+    const toggleMenu = (id) => {
+        setActiveMenu(activeMenu === id ? null : id);
     };
 
     return (
@@ -126,116 +126,170 @@ const PasswordTab = () => {
                 </div>
             </div>
 
-            {/* Passwords List */}
-            <div className="space-y-4">
-                {passwords.length === 0 ? (
-                    <div className="text-center py-12">
-                        <div className="w-20 h-20 mx-auto bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-4">
-                            <FiKey className="w-10 h-10 text-gray-400" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No passwords stored</h3>
-                        <p className="text-gray-600">Add your first password to get started</p>
+            {/* Passwords Table */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                {/* Table Header */}
+                <div className="grid grid-cols-12 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 px-6 py-4">
+                    <div className="col-span-1 text-center pl-8">
+                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">SL No</span>
                     </div>
-                ) : (
-                    passwords.map((pwd, index) => (
-                        <motion.div
-                            key={pwd.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className={`p-6 rounded-2xl border shadow-sm transition-all duration-300 hover:shadow-md ${getCategoryColor(pwd.category)}`}
-                        >
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                                <div className="flex items-start gap-4">
-                                    <div className="w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center text-white">
-                                        {getPlatformIcon(pwd.platform)}
+                    <div className="col-span-2 text-center">
+                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Firms</span>
+                    </div>
+                    <div className="col-span-2 text-center">
+                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Username</span>
+                    </div>
+                    <div className="col-span-2 text-center">
+                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Password</span>
+                    </div>
+                    <div className="col-span-3 text-center">
+                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</span>
+                    </div>
+                    <div className="col-span-1 text-center">
+                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Group</span>
+                    </div>
+                    <div className="col-span-1 text-center pr-8">
+                        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</span>
+                    </div>
+                </div>
+
+                {/* Table Body */}
+                <div className="divide-y divide-gray-100">
+                    {passwords.length === 0 ? (
+                        <div className="text-center py-12">
+                            <div className="w-20 h-20 mx-auto bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-4">
+                                <FiKey className="w-10 h-10 text-gray-400" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">No passwords stored</h3>
+                            <p className="text-gray-600">Add your first password to get started</p>
+                        </div>
+                    ) : (
+                        passwords.map((pwd, index) => (
+                            <motion.div
+                                key={pwd.id}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: index * 0.05 }}
+                                className="grid grid-cols-12 px-6 py-4 hover:bg-gray-50 transition-all duration-200 relative"
+                            >
+                                {/* SL No Column */}
+                                <div className="col-span-1 flex items-center justify-center pl-8">
+                                    <span className="font-bold text-gray-500 text-sm">{pwd.id}</span>
+                                </div>
+
+                                {/* Firms Column */}
+                                <div className="col-span-2 flex items-center justify-center">
+                                    <div className="text-center">
+                                        <span className="font-semibold text-gray-900">{pwd.platform}</span>
+                                        <span className={`block px-2 py-1 rounded-full text-xs font-semibold mt-1 ${getStrengthColor(pwd.strength)}`}>
+                                            {pwd.strength}
+                                        </span>
                                     </div>
-                                    <div className="space-y-3 flex-1">
-                                        <div className="flex items-center gap-3">
-                                            <h4 className="text-lg font-bold text-gray-900">{pwd.platform}</h4>
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStrengthColor(pwd.strength)}`}>
-                                                {pwd.strength}
-                                            </span>
-                                            <span className="px-3 py-1 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 rounded-full text-xs font-semibold">
-                                                {pwd.category}
-                                            </span>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Username</label>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium text-gray-900">{pwd.username}</span>
-                                                    <motion.button
-                                                        onClick={() => copyToClipboard(pwd.username, 'username', pwd.id)}
-                                                        className="p-1.5 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg hover:shadow-sm transition-all duration-200"
-                                                        whileHover={{ scale: 1.1 }}
-                                                        whileTap={{ scale: 0.9 }}
-                                                    >
-                                                        <FiCopy className={`w-3.5 h-3.5 ${copiedItem?.type === 'username' && copiedItem?.id === pwd.id ? 'text-green-600' : 'text-gray-500'}`} />
-                                                    </motion.button>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Password</label>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-xl">
-                                                        <span className="font-mono font-medium text-gray-900">
-                                                            {pwd.showPassword ? pwd.password : '••••••••••••'}
-                                                        </span>
-                                                        {copiedItem?.type === 'password' && copiedItem?.id === pwd.id && (
-                                                            <span className="text-xs text-green-600 font-semibold animate-pulse">Copied!</span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex gap-1">
-                                                        <motion.button
-                                                            onClick={() => togglePasswordVisibility(pwd.id)}
-                                                            className="p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 hover:shadow-md rounded-xl transition-all duration-200"
-                                                            whileHover={{ scale: 1.1 }}
-                                                            whileTap={{ scale: 0.9 }}
-                                                        >
-                                                            {pwd.showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
-                                                        </motion.button>
-                                                        <motion.button
-                                                            onClick={() => copyToClipboard(pwd.password, 'password', pwd.id)}
-                                                            className="p-2.5 bg-gradient-to-r from-gray-50 to-slate-50 text-gray-600 hover:shadow-md rounded-xl transition-all duration-200"
-                                                            whileHover={{ scale: 1.1 }}
-                                                            whileTap={{ scale: 0.9 }}
-                                                        >
-                                                            <FiCopy className="w-4 h-4" />
-                                                        </motion.button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-center gap-4 text-sm">
-                                            <div className="flex items-center gap-2 text-gray-600">
-                                                <FiKey className="w-4 h-4" />
-                                                <span>Last changed: <span className="font-semibold text-gray-900">{pwd.lastChanged}</span></span>
-                                            </div>
-                                            <div className="text-xs px-3 py-1 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-full">
-                                                30 days remaining
-                                            </div>
+                                </div>
+
+                                {/* Username Column */}
+                                <div className="col-span-2 flex items-center justify-center">
+                                    <div className="text-center">
+                                        <span className="font-medium text-gray-900 block">{pwd.username}</span>
+                                        <div className="mt-2">
+                                            <motion.button
+                                                onClick={() => copyToClipboard(pwd.username, 'username', pwd.id)}
+                                                className="px-3 py-1 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:shadow-sm rounded-lg text-sm font-medium transition-all"
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                            >
+                                                Copy
+                                            </motion.button>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div className="flex items-center gap-2">
+
+                                {/* Password Column */}
+                                <div className="col-span-2 flex items-center justify-center">
+                                    <div className="text-center">
+                                        <div className="px-3 py-2 bg-gray-100 rounded-lg">
+                                            <span className="font-mono text-gray-900">
+                                                {pwd.showPassword ? pwd.password : '••••••••••••'}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-2 mt-2 justify-center">
+                                            <motion.button
+                                                onClick={() => togglePasswordVisibility(pwd.id)}
+                                                className="px-2 py-1 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 hover:shadow-sm rounded-lg text-sm font-medium"
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                            >
+                                                {pwd.showPassword ? 'Hide' : 'Show'}
+                                            </motion.button>
+                                            <motion.button
+                                                onClick={() => copyToClipboard(pwd.password, 'password', pwd.id)}
+                                                className="px-2 py-1 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:shadow-sm rounded-lg text-sm font-medium"
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                            >
+                                                Copy
+                                            </motion.button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Description Column */}
+                                <div className="col-span-3 flex items-center justify-center">
+                                    <div className="text-center">
+                                        <p className="text-gray-800">{pwd.description}</p>
+                                        <p className="text-sm text-gray-500 mt-1">Last changed: {pwd.lastChanged}</p>
+                                    </div>
+                                </div>
+
+                                {/* Group Column */}
+                                <div className="col-span-1 flex items-center justify-center">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getGroupColor(pwd.group)}`}>
+                                        {pwd.group}
+                                    </span>
+                                </div>
+
+                                {/* Actions Column */}
+                                <div className="col-span-1 flex items-center justify-center pr-8 relative">
                                     <motion.button
-                                        onClick={() => openDeleteModal(pwd)}
-                                        className="p-3 bg-gradient-to-r from-red-50 to-pink-50 text-red-600 hover:shadow-md rounded-xl transition-all duration-200"
-                                        whileHover={{ scale: 1.1, rotate: -5 }}
+                                        onClick={() => toggleMenu(pwd.id)}
+                                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors relative"
+                                        whileHover={{ scale: 1.1 }}
                                         whileTap={{ scale: 0.9 }}
                                     >
-                                        <FiTrash2 className="w-4 h-4" />
+                                        <FiMoreVertical className="w-5 h-5" />
                                     </motion.button>
+
+                                    {/* Dropdown Menu */}
+                                    {activeMenu === pwd.id && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="absolute right-12 top-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 min-w-[140px] z-10"
+                                        >
+                                            <button
+                                                onClick={() => {
+                                                    // Add edit functionality here
+                                                    setActiveMenu(null);
+                                                }}
+                                                className="w-full px-4 py-2.5 text-left text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors flex items-center gap-2"
+                                            >
+                                                <FiEdit2 className="w-4 h-4" />
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => openDeleteModal(pwd)}
+                                                className="w-full px-4 py-2.5 text-left text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center gap-2"
+                                            >
+                                                <FiTrash2 className="w-4 h-4" />
+                                                Delete
+                                            </button>
+                                        </motion.div>
+                                    )}
                                 </div>
-                            </div>
-                        </motion.div>
-                    ))
-                )}
+                            </motion.div>
+                        ))
+                    )}
+                </div>
             </div>
 
             {/* Security Tips */}
