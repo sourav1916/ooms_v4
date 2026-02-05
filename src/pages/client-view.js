@@ -351,7 +351,7 @@ const TableViewSwitch = ({ viewMode, setViewMode }) => {
     );
 };
 
-// Client Table Component - Mobile Responsive with SL No column
+// Client Table Component - ULTRA PROFESSIONAL DESIGN
 const ClientTable = ({ 
     clients, 
     selectedClients, 
@@ -365,10 +365,10 @@ const ClientTable = ({
     activeRowDropdown,
     setActiveRowDropdown,
     handleStatusChange,
-    openStatusModal, // NEW: Added prop for status modal
-    navigate, // NEW: Added prop for navigation
-    handleExport, // ADDED: For WhatsApp functionality
-    showFirmsModal // NEW: Added prop for firms modal
+    openStatusModal,
+    navigate,
+    handleExport,
+    showFirmsModal
 }) => {
     // Skeleton loader
     const SkeletonRow = () => (
@@ -383,7 +383,7 @@ const ClientTable = ({
                 <div key={index} className="hidden md:block flex-1 p-2">
                     <div className="space-y-1">
                         {column.items.map((item, itemIndex) => (
-                            <div key={itemIndex} className="min-h-[1.25rem] flex items-center">
+                            <div key={itemIndex} className="min-h-[1.25rem] flex items-center justify-center">
                                 <div className="h-3 bg-gray-200 rounded w-3/4"></div>
                             </div>
                         ))}
@@ -395,11 +395,9 @@ const ClientTable = ({
 
     // Mobile client card for table view
     const MobileClientCard = ({ client, index, handleExport, showFirmsModal }) => {
-        // Get the last updated firm
         const getLastUpdatedFirm = () => {
             if (!client.firms || client.firms.length === 0) return null;
             
-            // Sort firms by modify_date or create_date (whichever is available)
             const sortedFirms = [...client.firms].sort((a, b) => {
                 const dateA = a.modify_date || a.create_date;
                 const dateB = b.modify_date || b.create_date;
@@ -432,10 +430,9 @@ const ClientTable = ({
                         </div>
                         <div>
                             <div className="font-semibold text-gray-800 text-sm">{client.name || 'N/A'}</div>
-                            {/* <div className="text-xs text-gray-500">@{client.username || 'N/A'}</div> */}
                         </div>
                     </div>
-                    {/* Vertical 3-dot menu for mobile - Updated to vertical style */}
+                    {/* Vertical 3-dot menu for mobile */}
                     <div className="relative">
                         <motion.button
                             onClick={() => toggleRowDropdown(client._id)}
@@ -450,7 +447,7 @@ const ClientTable = ({
                             </div>
                         </motion.button>
                         
-                        {/* Mobile dropdown - UPDATED: Added Change Status option */}
+                        {/* Mobile dropdown */}
                         <AnimatePresence>
                             {activeRowDropdown === client._id && (
                                 <motion.div
@@ -459,7 +456,6 @@ const ClientTable = ({
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -8, scale: 0.96 }}
                                 >
-                                    {/* NEW: Change Status option */}
                                     <button
                                         onClick={() => {
                                             openStatusModal(client._id, client.status);
@@ -510,7 +506,6 @@ const ClientTable = ({
                                     <button
                                         onClick={() => {
                                             setActiveRowDropdown(null);
-                                            // delete modal
                                         }}
                                         className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
                                     >
@@ -550,7 +545,7 @@ const ClientTable = ({
                         </div>
                     )}
 
-                    {/* NEW: Status as text display in mobile */}
+                    {/* Status display in mobile */}
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-gray-600">Status:</span>
                         <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
@@ -573,32 +568,38 @@ const ClientTable = ({
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
-           {/* Table Header - Fixed for desktop only */}
-<div className="hidden md:block border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-10">
-    <div className="flex items-center min-w-max">
-        {/* TOGGLE COLUMN (REPLACED CHECKBOX) */}
-        <div className="w-12 p-3 flex-shrink-0 flex justify-center">
-            <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={selectAll}
-                    onChange={handleSelectAll}
-                />
-                <div className={`w-9 h-5 ${selectAll ? 'bg-blue-600' : 'bg-gray-300'} peer-focus:outline-none rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all ${selectAll ? 'after:translate-x-full' : ''}`}></div>
-            </label>
-        </div>
+            {/* Professional Table Header */}
+            <div className="hidden md:block border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white sticky top-0 z-10">
+                <div className="flex items-center min-w-max bg-white">
+                    {/* Select All Toggle */}
+                    <div className="w-12 p-3 flex-shrink-0 flex justify-center">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={selectAll}
+                                onChange={handleSelectAll}
+                            />
+                            <div className={`w-8 h-4 ${selectAll ? 'bg-blue-600' : 'bg-gray-300'} peer-focus:outline-none rounded-full peer after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all ${selectAll ? 'after:translate-x-full' : ''}`}></div>
+                        </label>
+                    </div>
 
-        {/* SL No Column - Added */}
-        <div className="w-10 p-3 font-bold text-gray-700 text-sm flex-shrink-0 text-center">
-            SL No
-        </div>
-                    {/* Dynamic Columns - Equal width distribution */}
+                    {/* SL No Column */}
+                    <div className="w-12 p-3 font-bold text-gray-700 text-xs flex-shrink-0 text-center border-l border-gray-100">
+                        SL No
+                    </div>
+
+                    {/* Dynamic Columns - Fixed Widths */}
                     {columnConfig.map(column => (
                         <div
                             key={column.id}
-                            className="p-3 font-semibold text-gray-700 text-sm flex-1 min-w-0 text-center"
-                            style={{ flex: '1 1 0%' }}
+                            className="p-3 font-semibold text-gray-700 text-xs flex-1 min-w-0 text-center border-l border-gray-100"
+                            style={{ 
+                                flex: column.id === '1' ? '1.5' : 
+                                       column.id === '3' ? '1.2' : 
+                                       column.id === '5' ? '0.8' : 
+                                       column.id === '6' ? '0.8' : '1'
+                            }}
                         >
                             <div className="truncate">{column.name}</div>
                         </div>
@@ -650,49 +651,50 @@ const ClientTable = ({
                             ))}
                         </div>
 
-                        {/* Desktop view - table */}
-<div className="hidden md:block">
-    {clients.map((client, index) => (
-        <motion.div
-            key={client._id}
-            className="flex items-center border-b border-gray-100 hover:bg-gray-50 transition-colors group"
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.03 }}
-        >
-            {/* TOGGLE (REPLACED CHECKBOX) */}
-            <div className="w-12 p-3 flex-shrink-0 flex justify-center">
-                <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={selectedClients.has(client._id)}
-                        onChange={() => handleClientSelect(client._id)}
-                    />
-                    <div className={`w-9 h-5 ${selectedClients.has(client._id) ? 'bg-blue-600' : 'bg-gray-300'} peer-focus:outline-none rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all ${selectedClients.has(client._id) ? 'after:translate-x-full' : ''}`}></div>
-                </label>
-            </div>
+                        {/* Professional Desktop Table */}
+                        <div className="hidden md:block">
+                            {clients.map((client, index) => (
+                                <motion.div
+                                    key={client._id}
+                                    className="flex items-center border-b border-gray-100 hover:bg-gray-50 transition-colors group bg-white"
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.03 }}
+                                >
+                                    {/* Select Toggle */}
+                                    <div className="w-12 p-3 flex-shrink-0 flex justify-center">
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="sr-only peer"
+                                                checked={selectedClients.has(client._id)}
+                                                onChange={() => handleClientSelect(client._id)}
+                                            />
+                                            <div className={`w-8 h-4 ${selectedClients.has(client._id) ? 'bg-blue-600' : 'bg-gray-300'} peer-focus:outline-none rounded-full peer after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all ${selectedClients.has(client._id) ? 'after:translate-x-full' : ''}`}></div>
+                                        </label>
+                                    </div>
 
-            {/* SL No - Bold - Added */}
-            <div className="w-10 p-3 flex-shrink-0 text-center">
-                <span className="font-bold text-gray-800 text-sm">
-                    {index + 1}
-                </span>
-            </div>
+                                    {/* SL No */}
+                                    <div className="w-12 p-3 flex-shrink-0 text-center border-l border-gray-100">
+                                        <span className="font-bold text-gray-800 text-xs">
+                                            {index + 1}
+                                        </span>
+                                    </div>
 
-                                    {/* Dynamic Columns - Equal width distribution */}
+                                    {/* Dynamic Columns - Professional Layout with Fixed Widths */}
                                     {columnConfig.map(column => (
                                         <div 
                                             key={column.id} 
-                                            className="p-3 flex-1 min-w-0 text-center"
-                                            style={{ flex: '1 1 0%' }}
+                                            className="p-3 min-w-0 text-center border-l border-gray-100"
+                                            style={{ 
+                                                flex: column.id === '1' ? '1.5' : 
+                                                       column.id === '3' ? '1.2' : 
+                                                       column.id === '5' ? '0.8' : 
+                                                       column.id === '6' ? '0.8' : '1'
+                                            }}
                                         >
-                                            <div className="space-y-1">
-                                                {column.items.map(item => (
-                                                    <div key={item.id} className="min-h-[1.25rem] flex items-center justify-center">
-                                                        {renderCellContent(client, item.id, openStatusModal, showFirmsModal)} {/* UPDATED: Added showFirmsModal */}
-                                                    </div>
-                                                ))}
+                                            <div className="flex items-center justify-center">
+                                                {renderCellContent(client, column.items[0].id, openStatusModal, showFirmsModal)}
                                             </div>
                                         </div>
                                     ))}
@@ -706,7 +708,7 @@ const ClientTable = ({
     );
 };
 
-// Client Cards Component - Mobile Responsive with 3-dot menu
+// Client Cards Component - Professional Design
 const ClientCards = ({ 
     clients, 
     selectedClients, 
@@ -719,10 +721,10 @@ const ClientCards = ({
     setActiveRowDropdown,
     handleStatusChange,
     statusOptions,
-    openStatusModal, // NEW: Added prop for status modal
-    navigate, // NEW: Added prop for navigation
-    handleExport, // Added for WhatsApp functionality
-    showFirmsModal // NEW: Added prop for firms modal
+    openStatusModal,
+    navigate,
+    handleExport,
+    showFirmsModal
 }) => {
     // Get status color
     const getStatusColor = (status) => {
@@ -731,16 +733,6 @@ const ClientCards = ({
             case 'INACTIVE': return 'bg-red-100 text-red-700';
             case 'PENDING': return 'bg-yellow-100 text-yellow-700';
             default: return 'bg-gray-100 text-gray-700';
-        }
-    };
-
-    // Get status border color
-    const getStatusBorderColor = (status) => {
-        switch (status) {
-            case 'ACTIVE': return 'border-green-300';
-            case 'INACTIVE': return 'border-red-300';
-            case 'PENDING': return 'border-yellow-300';
-            default: return 'border-gray-300';
         }
     };
 
@@ -753,7 +745,6 @@ const ClientCards = ({
     const getLastUpdatedFirm = (firms) => {
         if (!firms || firms.length === 0) return null;
         
-        // Sort firms by modify_date or create_date (whichever is available)
         const sortedFirms = [...firms].sort((a, b) => {
             const dateA = a.modify_date || a.create_date;
             const dateB = b.modify_date || b.create_date;
@@ -829,14 +820,13 @@ const ClientCards = ({
                                             </div>
                                             <div className="min-w-0">
                                                 <h3 className="font-semibold text-gray-800 text-xs truncate">{client.name || 'N/A'}</h3>
-                                                {/* <p className="text-xs text-gray-500 truncate">@{client.username || 'N/A'}</p> */}
                                             </div>
                                         </div>
                                         <h4 className="font-bold text-gray-800 text-sm truncate">{client.guardian_name || 'N/A'}</h4>
                                         <p className="text-gray-600 text-xs truncate">{client.firms?.length || 0} firms</p>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
-                                        {/* Vertical 3-dot menu for cards - Updated to vertical style */}
+                                        {/* Vertical 3-dot menu */}
                                         <div className="relative">
                                             <motion.button
                                                 onClick={() => toggleRowDropdown(`card-${client._id}`)}
@@ -849,7 +839,7 @@ const ClientCards = ({
                                                 <div className="w-1 h-1 rounded-full bg-gray-600"></div>
                                             </motion.button>
 
-                                            {/* Dropdown for cards - UPDATED: Added Change Status option */}
+                                            {/* Dropdown for cards */}
                                             <AnimatePresence>
                                                 {activeRowDropdown === `card-${client._id}` && (
                                                     <motion.div
@@ -858,7 +848,6 @@ const ClientCards = ({
                                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                                         exit={{ opacity: 0, y: -8, scale: 0.96 }}
                                                     >
-                                                        {/* NEW: Change Status option */}
                                                         <button
                                                             onClick={() => {
                                                                 openStatusModal(client._id, client.status);
@@ -909,7 +898,6 @@ const ClientCards = ({
                                                         <button
                                                             onClick={() => {
                                                                 setActiveRowDropdown(null);
-                                                                // delete modal
                                                             }}
                                                             className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
                                                         >
@@ -924,7 +912,7 @@ const ClientCards = ({
                                 </div>
                             </div>
 
-                            {/* Card Body - Essential information with status dropdown */}
+                            {/* Card Body */}
                             <div className="p-3">
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
@@ -939,7 +927,7 @@ const ClientCards = ({
                                         </div>
                                     </div>
 
-                                    {/* Firm Information - Show total count and last updated firm */}
+                                    {/* Firm Information */}
                                     <div className="text-xs text-gray-700">
                                         <div className="font-medium mb-1">Firms ({client.firms?.length || 0}):</div>
                                         {lastFirm && (
@@ -949,7 +937,6 @@ const ClientCards = ({
                                             </div>
                                         )}
                                         
-                                        {/* Show "+X more" if there are additional firms */}
                                         {client.firms && client.firms.length > 1 && (
                                             <div className="text-blue-600 font-medium text-xs mt-1 cursor-pointer hover:text-blue-700 transition-colors"
                                                  onClick={() => showFirmsModal(client.firms, client.name)}>
@@ -958,7 +945,7 @@ const ClientCards = ({
                                         )}
                                     </div>
 
-                                    {/* NEW: Status Display as Text (not dropdown) - Reduced height */}
+                                    {/* Status Display */}
                                     <div className="pt-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-medium text-gray-600">Status:</span>
@@ -1098,10 +1085,10 @@ const ViewClients = () => {
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [activeDragId, setActiveDragId] = useState(null);
     const [activeItemDragId, setActiveItemDragId] = useState(null);
-    const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
+    const [viewMode, setViewMode] = useState('table');
     const [isMobile, setIsMobile] = useState(false);
     const [statusModal, setStatusModal] = useState({ open: false, clientId: null, currentStatus: '' });
-    const [firmsModal, setFirmsModal] = useState({ open: false, firms: [], clientName: '' }); // NEW: Firms modal state
+    const [firmsModal, setFirmsModal] = useState({ open: false, firms: [], clientName: '' });
     
     // Pagination and API states
     const [clients, setClients] = useState([]);
@@ -1135,7 +1122,6 @@ const ViewClients = () => {
     // Get headers from localStorage
   const getHeaders = useCallback(() => {
     try {
-        // Try new keys first, then fallback to old keys
         const userName = localStorage.getItem('userName') || 
                          localStorage.getItem('user_username') || '';
         const token = localStorage.getItem('token') || 
@@ -1143,11 +1129,8 @@ const ViewClients = () => {
         const branchId = localStorage.getItem('branchId') || 
                          localStorage.getItem('branch_id') || '';
         
-       
-        
         if (!userName || !token || !branchId) {
             console.error('Missing authentication data in localStorage');
-            // console.log('Available localStorage keys:', Object.keys(localStorage));
             return null;
         }
         
@@ -1161,9 +1144,9 @@ const ViewClients = () => {
         console.error('Error getting headers from localStorage:', error);
         return null;
     }
-}, []); // Empty dependency array
-// Fetch clients from API - keep as is
-// Update the fetchClients function
+}, []);
+
+// Fetch clients from API
 const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false) => {
     const headers = getHeaders();
     if (!headers) {
@@ -1186,52 +1169,34 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             ...(selectedGroup && { group: selectedGroup })
         });
 
-        // console.log('Fetching from:', `${CLIENT_LIST_API}?${params}`);
-        // console.log('Headers:', headers);
-
         const response = await axios.get(`${CLIENT_LIST_API}?${params}`, {
             headers: headers,
-            timeout: 10000 // 10 second timeout
+            timeout: 10000
         });
-
-        // console.log('Full API Response:', response);
-        // console.log('Response Data:', response.data);
 
         if (response.data) {
             let clientsData = [];
             let total = 0;
             let totalPages = 1;
             
-            // Check different possible response structures
             if (Array.isArray(response.data)) {
-                // Response is directly an array
                 clientsData = response.data;
                 total = response.data.length;
             } else if (response.data.data && Array.isArray(response.data.data)) {
-                // Response has data property containing array
                 clientsData = response.data.data;
                 total = response.data.total || response.data.data.length;
                 totalPages = response.data.total_pages || Math.ceil(total / limit);
             } else if (response.data.clients && Array.isArray(response.data.clients)) {
-                // Response has clients property
                 clientsData = response.data.clients;
                 total = response.data.total || response.data.clients.length;
                 totalPages = response.data.totalPages || Math.ceil(total / limit);
             } else if (response.data.success && Array.isArray(response.data.data)) {
-                // Response has success: true and data array
                 clientsData = response.data.data;
                 total = response.data.total || response.data.data.length;
                 totalPages = response.data.total_pages || Math.ceil(total / limit);
             }
             
-            // console.log('Parsed clients data:', clientsData);
-            // console.log('Total items:', total, 'Total pages:', totalPages);
-
-            // Transform API data to match your expected structure - UPDATED for firms array
             const transformedClients = clientsData.map((client, index) => {
-                // Debug the client object
-                // console.log(`Client ${index}:`, client);
-                
                 return {
                     _id: client.profile_id || client._id || client.id || `temp-${index}-${Date.now()}`,
                     id: client.profile_id || client._id || client.id || `temp-${index}-${Date.now()}`,
@@ -1241,12 +1206,10 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                     mobile: client.mobile || client.phone || client.contact_number || 'N/A',
                     status: client.status === "1" || client.status === "ACTIVE" || client.active ? "ACTIVE" : "INACTIVE",
                     balance: parseFloat(client.balance) || parseFloat(client.outstanding) || 0,
-                    firms: client.firms || [], // Directly use the firms array from API
-                    firm_count: client.firms ? client.firms.length : 0 // Count from firms array
+                    firms: client.firms || [],
+                    firm_count: client.firms ? client.firms.length : 0
                 };
             });
-
-            // console.log('Transformed clients:', transformedClients);
 
             if (isLoadMore) {
                 setClients(prev => [...prev, ...transformedClients]);
@@ -1254,7 +1217,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 setClients(transformedClients);
             }
 
-            // Update pagination info
             setPagination(prev => ({
                 ...prev,
                 currentPage: page,
@@ -1262,7 +1224,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 totalItems: total
             }));
 
-            // Check if there are more pages
             setHasMore(page < totalPages);
         } else {
             console.error('No data in response');
@@ -1270,11 +1231,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
     } catch (error) {
         console.error('Error fetching clients:', error);
         if (error.response) {
-            // console.error('Response status:', error.response.status);
-            // console.error('Response data:', error.response.data);
-            // console.error('Response headers:', error.response.headers);
-            
-            // Show error to user
             if (error.response.status === 401) {
                 alert('Session expired. Please login again.');
                 navigate('/login');
@@ -1291,7 +1247,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             alert(`Error: ${error.message}`);
         }
         
-        // Use dummy data for testing if API fails
+        // Dummy data for testing
         const dummyData = [
             {
                 _id: '1',
@@ -1308,9 +1264,21 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         firm_name: 'Doe Enterprises',
                         pan_no: 'ABCDE1234F',
                         file_no: 'FN001'
+                    },
+                    {
+                        firm_id: 'f2',
+                        firm_name: 'Doe Trading Co',
+                        pan_no: 'ABCDE1235F',
+                        file_no: 'FN002'
+                    },
+                    {
+                        firm_id: 'f3',
+                        firm_name: 'Doe Manufacturing',
+                        pan_no: 'ABCDE1236F',
+                        file_no: 'FN003'
                     }
                 ],
-                firm_count: 1
+                firm_count: 3
             },
             {
                 _id: '2',
@@ -1323,10 +1291,35 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 balance: -5000,
                 firms: [
                     {
-                        firm_id: 'f2',
+                        firm_id: 'f4',
                         firm_name: 'Smith & Co',
                         pan_no: 'XYZAB5678G',
-                        file_no: 'FN002'
+                        file_no: 'FN004'
+                    },
+                    {
+                        firm_id: 'f5',
+                        firm_name: 'Smith Industries',
+                        pan_no: 'XYZAB5679G',
+                        file_no: 'FN005'
+                    }
+                ],
+                firm_count: 2
+            },
+            {
+                _id: '3',
+                id: '3',
+                username: 'alex_wilson',
+                name: 'Alexander Wilson',
+                guardian_name: 'Michael Wilson',
+                mobile: '9876543212',
+                status: 'INACTIVE',
+                balance: 25000,
+                firms: [
+                    {
+                        firm_id: 'f6',
+                        firm_name: 'Wilson Enterprises',
+                        pan_no: 'PQRS1234T',
+                        file_no: 'FN006'
                     }
                 ],
                 firm_count: 1
@@ -1338,7 +1331,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             ...prev,
             currentPage: 1,
             totalPages: 1,
-            totalItems: 2
+            totalItems: 3
         }));
     } finally {
         setLoading(false);
@@ -1393,20 +1386,18 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         { id: 'actions', label: 'Actions', type: 'actions' }
     ];
 
-    // Default column configuration - SEPARATED STATUS AND ACTIONS
+    // Default column configuration - ULTRA PROFESSIONAL LAYOUT
     const defaultColumnConfig = [
         {
             id: '1',
-            name: 'Client Info',
+            name: 'Client Details',
             items: [
-                { id: 'name', label: 'Client Name' },
-                { id: 'guardian_name', label: 'Guardian Name' },
-                { id: 'username', label: 'Username' }
+                { id: 'name', label: 'Client Name' }
             ]
         },
         {
             id: '2',
-            name: 'Contact',
+            name: 'Mobile',
             items: [
                 { id: 'mobile', label: 'Mobile' }
             ]
@@ -1415,13 +1406,12 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             id: '3',
             name: 'Firms',
             items: [
-                { id: 'firms', label: 'Firm Details' },
-                { id: 'firm_count', label: 'Total Firms' }
+                { id: 'firms', label: 'Firms' }
             ]
         },
         {
             id: '4',
-            name: 'Financial',
+            name: 'Balance',
             items: [
                 { id: 'balance', label: 'Balance' }
             ]
@@ -1472,81 +1462,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         { value: 'company', name: 'Company' }
     ]);
 
-    // Fetch clients from API
-    // const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false) => {
-    //     const headers = getHeaders();
-    //     if (!headers) {
-    //         console.error('Cannot fetch clients: Missing authentication headers');
-    //         return;
-    //     }
-
-    //     try {
-    //         if (isLoadMore) {
-    //             setIsFetchingMore(true);
-    //         } else {
-    //             setLoading(true);
-    //         }
-
-    //         const params = new URLSearchParams({
-    //             search: searchQuery,
-    //             page: page.toString(),
-    //             limit: limit.toString(),
-    //             ...(selectedStatus && { status: selectedStatus }),
-    //             ...(selectedGroup && { group: selectedGroup })
-    //         });
-
-    //         const response = await axios.get(`${CLIENT_LIST_API}?${params}`, {
-    //             headers: headers
-    //         });
-
-    //         console.log('API Response:', response.data);
-
-    //         if (response.data && response.data.success) {
-    //             const data = response.data.data;
-    //             const clientsData = Array.isArray(data.clients) ? data.clients : [];
-                
-    //             if (isLoadMore) {
-    //                 setClients(prev => [...prev, ...clientsData]);
-    //             } else {
-    //                 setClients(clientsData);
-    //             }
-
-    //             // Update pagination info
-    //             setPagination(prev => ({
-    //                 ...prev,
-    //                 currentPage: page,
-    //                 totalPages: data.totalPages || Math.ceil(data.total / limit),
-    //                 totalItems: data.total || 0
-    //             }));
-
-    //             // Update stats if available
-    //             if (data.stats) {
-    //                 setClientStats({
-    //                     total: data.stats.total || 0,
-    //                     active: data.stats.active || 0,
-    //                     inactive: data.stats.inactive || 0,
-    //                     withBalance: data.stats.withBalance || 0
-    //                 });
-    //             }
-
-    //             // Check if there are more pages
-    //             setHasMore(page < (data.totalPages || Math.ceil(data.total / limit)));
-    //         } else {
-    //             console.error('API Error:', response.data?.message || 'Unknown error');
-    //         }
-    //     } catch (error) {
-    //         console.error('Error fetching clients:', error);
-    //         if (error.response) {
-    //             console.error('Response data:', error.response.data);
-    //             console.error('Response status:', error.response.status);
-    //             console.error('Response headers:', error.response.headers);
-    //         }
-    //     } finally {
-    //         setLoading(false);
-    //         setIsFetchingMore(false);
-    //     }
-    // }, [searchQuery, selectedStatus, selectedGroup]);
-
     // Initial load and when filters change
     useEffect(() => {
         fetchClients(1, pagination.itemsPerPage);
@@ -1573,13 +1488,12 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         }
         setSelectedClients(newSelected);
         
-        // Update selectAll state based on new selection
+        // Update selectAll state
         if (clients.length > 0) {
             const allSelected = newSelected.size === clients.length;
             setSelectAll(allSelected);
         }
     };
-
 
     // Handle select all
     const handleSelectAll = () => {
@@ -1604,7 +1518,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         ));
     };
 
-    // NEW: Open status modal
+    // Open status modal
     const openStatusModal = (clientId, currentStatus) => {
         setStatusModal({
             open: true,
@@ -1613,7 +1527,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         });
     };
 
-    // NEW: Close status modal
+    // Close status modal
     const closeStatusModal = () => {
         setStatusModal({
             open: false,
@@ -1622,7 +1536,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         });
     };
 
-    // NEW: Open firms modal
+    // Open firms modal
     const openFirmsModal = (firms, clientName) => {
         setFirmsModal({
             open: true,
@@ -1631,7 +1545,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         });
     };
 
-    // NEW: Close firms modal
+    // Close firms modal
     const closeFirmsModal = () => {
         setFirmsModal({
             open: false,
@@ -1640,7 +1554,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         });
     };
 
-    // Filter clients based on search and filters (client-side filtering if needed)
+    // Filter clients
     const filteredClients = clients.filter(client => {
         const matchesSearch = searchQuery === '' ||
             (client.name && client.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -1650,7 +1564,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             ));
 
         const matchesStatus = selectedStatus === '' || client.status === selectedStatus;
-        const matchesGroup = selectedGroup === ''; // Add group filtering logic if needed
+        const matchesGroup = selectedGroup === '';
 
         return matchesSearch && matchesStatus && matchesGroup;
     });
@@ -1687,7 +1601,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 return;
             }
             
-            // Load more data when scrolled to bottom
             if (pagination.currentPage < pagination.totalPages) {
                 fetchClients(pagination.currentPage + 1, pagination.itemsPerPage, true);
             }
@@ -1720,7 +1633,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
 
     const removeColumn = (columnIndex) => {
         const newConfig = [...columnConfig];
-        // Don't remove fixed columns (Status and Actions)
         if (!newConfig[columnIndex].fixed) {
             newConfig.splice(columnIndex, 1);
             saveColumnConfig(newConfig);
@@ -1745,29 +1657,20 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         }
         
         const sourceColumn = columnConfig[oldIndex];
-        const targetColumn = columnConfig[newIndex];
         
-        // Find the index of the first fixed column
-        const firstFixedIndex = columnConfig.findIndex(col => col.fixed);
-        
-        // Rules for dragging:
-        // 1. Fixed columns cannot be dragged
-        // 2. Cannot drag non-fixed columns to positions after fixed columns
-        // 3. Cannot drag fixed columns at all
         if (sourceColumn.fixed) {
             setActiveDragId(null);
             return;
         }
         
+        const firstFixedIndex = columnConfig.findIndex(col => col.fixed);
+        
         if (newIndex >= firstFixedIndex && newIndex < columnConfig.length) {
-            // Trying to drag into or after fixed columns
-            // Only allow dragging to positions before the first fixed column
             if (firstFixedIndex > 0) {
                 const newConfig = arrayMove(columnConfig, oldIndex, firstFixedIndex - 1);
                 saveColumnConfig(newConfig);
             }
         } else {
-            // Normal drag within allowed area
             const newConfig = arrayMove(columnConfig, oldIndex, newIndex);
             saveColumnConfig(newConfig);
         }
@@ -1800,7 +1703,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         const newConfig = [...columnConfig];
         const newColumnId = (Date.now()).toString();
         
-        // Find the index where to insert (before the first fixed column)
         const firstFixedIndex = newConfig.findIndex(col => col.fixed);
         const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length - 1;
         
@@ -1812,7 +1714,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         saveColumnConfig(newConfig);
     };
 
-    // NEW: Get status color for text display
+    // Get status color
     const getStatusColor = (status) => {
         switch (status) {
             case 'ACTIVE': return 'bg-green-100 text-green-700';
@@ -1822,7 +1724,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         }
     };
 
-    // NEW: Get status display text
+    // Get status display text
     const getStatusText = (status) => {
         switch (status) {
             case 'ACTIVE': return 'Active';
@@ -1836,7 +1738,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
     const getLastUpdatedFirm = (firms) => {
         if (!firms || firms.length === 0) return null;
         
-        // Sort firms by modify_date or create_date (whichever is available)
         const sortedFirms = [...firms].sort((a, b) => {
             const dateA = a.modify_date || a.create_date;
             const dateB = b.modify_date || b.create_date;
@@ -1846,124 +1747,101 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         return sortedFirms[0];
     };
 
-    // Render cell content based on field type - UPDATED for status text display and openStatusModal parameter
+    // ULTRA PROFESSIONAL RENDER CELL CONTENT - UPDATED WITH PHONE ICON AND FIRM NAME
     const renderCellContent = (client, fieldId, openStatusModal, showFirmsModal) => {
         switch (fieldId) {
             case 'name':
                 return (
-                    <div className="flex items-center gap-2 justify-center">
-                        <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
-                            <FiUser className="w-3.5 h-3.5 text-white" />
+                    <div className="flex items-center gap-3 w-full">
+                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
+                            <FiUser className="w-4 h-4 text-white" />
                         </div>
-                        <div
-                            className="min-w-0 cursor-pointer"
+                        <div 
+                            className="min-w-0 flex-1 text-left cursor-pointer hover:text-blue-600 transition-colors"
                             onClick={() => navigate(`/client/profile/${client.username}`)}
                         >
-                            <h3 className="font-semibold text-gray-800 text-xs truncate hover:text-blue-600">
+                            <div className="font-semibold text-gray-800 text-sm truncate">
                                 {client.name || 'N/A'}
-                            </h3>
-                            <p className="text-xs text-gray-500 truncate hover:text-blue-500">
-                                {/* @{client.username ? (client.username.length > 6 ? `${client.username.substring(0, 6)}...` : client.username) : 'N/A'} */}
-                            </p>
+                            </div>
+                            <div className="text-xs text-gray-500 truncate">
+                                {client.guardian_name || 'N/A'}
+                            </div>
                         </div>
                     </div>
                 );
-            case 'guardian_name':
-                return (
-                    <span className="text-gray-700 font-medium text-sm">
-                        {client.guardian_name || '-'}
-                    </span>
-                );
-            case 'username':
-                return (
-                   <span className="text-gray-700 font-medium bg-gray-100 px-2 py-0.5 rounded text-xs">
-            {/* TRUNCATE USERNAME TO 6 CHARACTERS */}
-            {client.username ? (client.username.length > 6 ? `${client.username.substring(0, 6)}...` : client.username) : 'N/A'}
-                    </span>
-                );
             case 'mobile':
                 return (
-                    <div className="flex items-center gap-2 text-gray-700 font-medium text-sm justify-center">
-                        <FiPhone className="w-3 h-3 text-gray-400" />
+                    <div className="flex items-center justify-center text-gray-700 font-medium text-sm gap-2">
+                        <FiPhone className="w-4 h-4 text-gray-400" />
                         {client.mobile || 'N/A'}
                     </div>
                 );
             case 'balance':
                 return (
-                    <div className="flex items-center gap-1 justify-center">
-                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${(client.balance || 0) < 0
+                    <div className="flex items-center justify-center">
+                        <div className={`inline-flex items-center px-3 py-1 rounded text-sm font-semibold ${(client.balance || 0) < 0
                             ? 'bg-red-50 text-red-700 border border-red-200'
                             : 'bg-green-50 text-green-700 border border-green-200'
                             }`}>
-                            {(client.balance || 0) < 0 ? (
-                                <FiTrendingDown className="w-3 h-3" />
-                            ) : (
-                                <FiTrendingUp className="w-3 h-3" />
-                            )}
                             {formatBalance(client.balance)}
                         </div>
                     </div>
                 );
-            case 'firm_count':
-                return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                        {client.firms?.length || 0} {(client.firms?.length || 0) === 1 ? 'firm' : 'firms'}
-                    </span>
-                );
-            case 'firms':
-                // Get last updated firm - UPDATED with proper null checks
-                const lastFirm = getLastUpdatedFirm(client.firms);
-                
-                return (
+          case 'firms':
+    const lastFirm = getLastUpdatedFirm(client.firms);
+    const firmCount = client.firms?.length || 0;
+    
+    return (
+        <div className="text-center">
+            {firmCount > 0 ? (
+                <div 
+                    className="cursor-pointer hover:bg-gray-100 transition-colors text-center p-2"
+                    onClick={() => showFirmsModal(client.firms, client.name)}
+                >
+                    <div className="font-medium text-gray-800 text-sm mb-1">
+                        {lastFirm?.firm_name || 'N/A'}
+                    </div>
                     <div className="space-y-1">
-                        {lastFirm ? (
-                            <div key={lastFirm.firm_id} className="bg-gray-50 rounded p-1 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-                                 onClick={() => showFirmsModal(client.firms, client.name)}>
-                                <div className="font-semibold text-gray-800 text-xs">
-                                    {lastFirm.firm_name || 'N/A'}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="text-xs text-gray-500 italic">No firms</div>
-                        )}
-                        
-                        {/* Show "+X more" if there are additional firms */}
-                        {client.firms && client.firms.length > 1 && (
-                            <div className="text-xs text-blue-600 font-medium mt-1 cursor-pointer hover:text-blue-700 transition-colors"
-                                 onClick={() => showFirmsModal(client.firms, client.name)}>
+                        <div className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200`}>
+                            {firmCount} firm{firmCount !== 1 ? 's' : ''}
+                        </div>
+                        {client.firms.length > 1 && (
+                            <div className="text-xs text-blue-600 font-medium">
                                 +{client.firms.length - 1} more firm{client.firms.length - 1 > 1 ? 's' : ''}
                             </div>
                         )}
                     </div>
-                );
+                </div>
+            ) : (
+                <div className="text-sm text-gray-500 italic">No firms</div>
+            )}
+        </div>
+    );
             case 'status':
-                // NEW: Display status as text instead of dropdown in table view - Reduced height
                 return (
-                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(client.status)}`}>
+                    <div className={`inline-flex items-center justify-center px-2 py-1 rounded text-xs font-medium ${getStatusColor(client.status)}`}>
                         {getStatusText(client.status)}
                     </div>
                 );
             case 'actions':
                 return (
                     <div className="relative dropdown-container flex justify-center">
-                        {/* Vertical 3-dot button - Updated to match TaskDisplay */}
+                        {/* Compact Action Button */}
                         <motion.button
                             onClick={() => toggleRowDropdown(client._id)}
-                            className="w-8 h-8 flex flex-col items-center justify-center rounded-full
-                           bg-gray-100 hover:bg-gray-200 transition-colors space-y-0.5"
-                            whileHover={{ scale: 1.1 }}
+                            className="w-8 h-8 flex items-center justify-center rounded
+                           bg-gray-100 hover:bg-gray-200 transition-colors border border-gray-300"
+                            whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                         >
-                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
-                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
-                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                            <FiMoreVertical className="w-4 h-4 text-gray-700" />
                         </motion.button>
 
-                        {/* Professional Dropdown - Compact - UPDATED: Added Change Status option */}
+                        {/* Professional Dropdown */}
                         <AnimatePresence>
                             {activeRowDropdown === client._id && (
                                 <motion.div
-                                    className="absolute right-0 mt-1 w-52 bg-white rounded-lg
+                                    className="absolute right-0 mt-1 w-48 bg-white rounded-lg
                                    shadow-xl border border-gray-200 z-50 overflow-hidden"
                                     initial={{ opacity: 0, y: -8, scale: 0.96 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1971,16 +1849,15 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                     transition={{ duration: 0.15 }}
                                 >
                                     <div className="py-1">
-                                        {/* NEW: Change Status Button */}
                                         <button
                                             onClick={() => {
                                                 openStatusModal(client._id, client.status);
                                                 setActiveRowDropdown(null);
                                             }}
-                                            className="flex items-center w-full px-3 py-2 text-sm
+                                            className="flex items-center w-full px-4 py-2 text-sm
                                            text-blue-600 hover:bg-blue-50 transition-colors"
                                         >
-                                            <FiCheckCircle className="mr-2 text-blue-600 w-4 h-4" />
+                                            <FiCheckCircle className="mr-3 text-blue-600 w-4 h-4" />
                                             Change Status
                                         </button>
 
@@ -1991,10 +1868,10 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                 setActiveRowDropdown(null);
                                                 navigate(`/client/profile/${client.username}`);
                                             }}
-                                            className="flex items-center w-full px-3 py-2 text-sm
+                                            className="flex items-center w-full px-4 py-2 text-sm
                                            text-gray-700 hover:bg-blue-50 transition-colors"
                                         >
-                                            <FiEye className="mr-2 text-blue-600 w-4 h-4" />
+                                            <FiEye className="mr-3 text-blue-600 w-4 h-4" />
                                             View Details
                                         </button>
 
@@ -2003,10 +1880,10 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                 setActiveRowDropdown(null);
                                                 navigate(`/client/edit/${client._id}`);
                                             }}
-                                            className="flex items-center w-full px-3 py-2 text-sm
+                                            className="flex items-center w-full px-4 py-2 text-sm
                                            text-gray-700 hover:bg-green-50 transition-colors"
                                         >
-                                            <FiEdit className="mr-2 text-green-600 w-4 h-4" />
+                                            <FiEdit className="mr-3 text-green-600 w-4 h-4" />
                                             Edit Client
                                         </button>
 
@@ -2014,10 +1891,10 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                             onClick={() => {
                                                 setActiveRowDropdown(null);
                                             }}
-                                            className="flex items-center w-full px-3 py-2 text-sm
+                                            className="flex items-center w-full px-4 py-2 text-sm
                                            text-gray-700 hover:bg-purple-50 transition-colors"
                                         >
-                                            <FiMessageSquare className="mr-2 text-purple-600 w-4 h-4" />
+                                            <FiMessageSquare className="mr-3 text-purple-600 w-4 h-4" />
                                             Send Message
                                         </button>
 
@@ -2028,10 +1905,10 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                 setActiveRowDropdown(null);
                                                 SetDeleteModal(true);
                                             }}
-                                            className="flex items-center w-full px-3 py-2 text-sm
+                                            className="flex items-center w-full px-4 py-2 text-sm
                                            text-red-600 hover:bg-red-50 transition-colors"
                                         >
-                                            <FiTrash2 className="mr-2 w-4 h-4" />
+                                            <FiTrash2 className="mr-3 w-4 h-4" />
                                             Delete Client
                                         </button>
                                     </div>
@@ -2061,29 +1938,26 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             itemsPerPage,
             currentPage: 1
         }));
-        // fetchClients will be triggered by useEffect
     };
 
-    // Settings Modal Component with Drag & Drop - UPDATED: Added column name editing for new columns
+    // Settings Modal Component - Keep as is
     const SettingsModal = React.memo(() => {
         const [localColumnConfig, setLocalColumnConfig] = useState(columnConfig);
         const [localActiveDragId, setLocalActiveDragId] = useState(null);
         const [localActiveItemDragId, setLocalActiveItemDragId] = useState(null);
-        const [editingColumnId, setEditingColumnId] = useState(null); // NEW: Track which column is being edited
-        const [tempColumnName, setTempColumnName] = useState(''); // NEW: Temporary column name
+        const [editingColumnId, setEditingColumnId] = useState(null);
+        const [tempColumnName, setTempColumnName] = useState('');
 
-        // Initialize with current column config - Fixed to prevent rerender
         useEffect(() => {
             if (settingsModalOpen) {
                 setLocalColumnConfig(JSON.parse(JSON.stringify(columnConfig)));
                 setLocalActiveDragId(null);
                 setLocalActiveItemDragId(null);
-                setEditingColumnId(null); // NEW: Reset editing state
-                setTempColumnName(''); // NEW: Reset temp name
+                setEditingColumnId(null);
+                setTempColumnName('');
             }
         }, [columnConfig, settingsModalOpen]);
 
-        // Handle drag end for columns in modal
         const handleModalDragEnd = (event) => {
             const { active, over } = event;
             
@@ -2103,26 +1977,19 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             const sourceColumn = localColumnConfig[oldIndex];
             const targetColumn = localColumnConfig[newIndex];
             
-            // Find the index of the first fixed column
             const firstFixedIndex = localColumnConfig.findIndex(col => col.fixed);
             
-            // Rules for dragging:
-            // 1. Fixed columns cannot be dragged
-            // 2. Cannot drag non-fixed columns to positions after fixed columns
             if (sourceColumn.fixed) {
                 setLocalActiveDragId(null);
                 return;
             }
             
             if (newIndex >= firstFixedIndex && newIndex < localColumnConfig.length) {
-                // Trying to drag into or after fixed columns
-                // Only allow dragging to positions before the first fixed column
                 if (firstFixedIndex > 0) {
                     const newConfig = arrayMove(localColumnConfig, oldIndex, firstFixedIndex - 1);
                     setLocalColumnConfig(newConfig);
                 }
             } else {
-                // Normal drag within allowed area
                 const newConfig = arrayMove(localColumnConfig, oldIndex, newIndex);
                 setLocalColumnConfig(newConfig);
             }
@@ -2130,7 +1997,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             setLocalActiveDragId(null);
         };
 
-        // Handle drag end for items within a column in modal
         const handleModalItemDragEnd = (event, columnIndex) => {
             const { active, over } = event;
             
@@ -2147,7 +2013,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             setLocalActiveItemDragId(null);
         };
 
-        // Add item to column in modal
         const addItemToColumnInModal = (columnIndex, fieldId) => {
             const field = availableFields.find(f => f.id === fieldId);
             if (!field) return;
@@ -2162,19 +2027,16 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             }
         };
 
-        // Remove item from column in modal
         const removeItemFromColumnInModal = (columnIndex, itemIndex) => {
             const newConfig = [...localColumnConfig];
             newConfig[columnIndex].items.splice(itemIndex, 1);
             setLocalColumnConfig(newConfig);
         };
 
-        // NEW: Add new column in modal with editable name
         const addNewColumnInModal = () => {
             const newConfig = [...localColumnConfig];
             const newColumnId = `col-${Date.now()}`;
             
-            // Find the index where to insert (before the first fixed column)
             const firstFixedIndex = newConfig.findIndex(col => col.fixed);
             const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length;
             
@@ -2186,18 +2048,15 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             });
             setLocalColumnConfig(newConfig);
             
-            // NEW: Start editing the new column immediately
             setEditingColumnId(newColumnId);
             setTempColumnName('New Column');
         };
 
-        // NEW: Start editing column name
         const startEditingColumn = (columnId, currentName) => {
             setEditingColumnId(columnId);
             setTempColumnName(currentName);
         };
 
-        // NEW: Save column name
         const saveColumnName = (columnId) => {
             if (!tempColumnName.trim()) {
                 setEditingColumnId(null);
@@ -2211,26 +2070,22 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             setEditingColumnId(null);
         };
 
-        // NEW: Cancel editing column name
         const cancelEditingColumn = () => {
             setEditingColumnId(null);
             setTempColumnName('');
         };
 
-        // Save changes from modal
         const saveModalChanges = () => {
             saveColumnConfig(localColumnConfig);
             setSettingsModalOpen(false);
         };
 
-        // Reset to default in modal
         const resetToDefaultInModal = () => {
             setLocalColumnConfig(JSON.parse(JSON.stringify(defaultColumnConfig)));
             setEditingColumnId(null);
             setTempColumnName('');
         };
 
-        // Sortable Column Component for Modal - UPDATED: Added column name editing
         const ModalSortableColumn = React.memo(({ column, index }) => {
             const {
                 attributes,
@@ -2252,10 +2107,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 cursor: column.fixed || index >= localColumnConfig.findIndex(col => col.fixed) ? 'not-allowed' : 'move'
             };
 
-            // Find the first fixed column index
             const firstFixedIndex = localColumnConfig.findIndex(col => col.fixed);
-            
-            // Check if this column is in the draggable zone
             const isDraggable = !column.fixed && index < firstFixedIndex;
 
             return (
@@ -2272,7 +2124,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         }`}
                     whileHover={{ scale: isDraggable ? 1.02 : 1 }}
                 >
-                    {/* Column Header - UPDATED: Added column name editing */}
+                    {/* Column Header */}
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             {isDraggable && (
@@ -2301,14 +2153,12 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                 className="flex-1 px-3 py-1.5 bg-green-500 text-white rounded text-xs font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-1"
                                             >
                                                 <FiCheckCircle className="w-3 h-3" />
-                                                
                                             </button>
                                             <button
                                                 onClick={cancelEditingColumn}
                                                 className="flex-1 px-3 py-1.5 bg-red-500 text-white rounded text-xs font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-1"
                                             >
                                                 <FiX className="w-3 h-3" />
-                                                
                                             </button>
                                         </div>
                                 </div>
@@ -2397,7 +2247,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         </DragOverlay>
                     </DndContext>
 
-                    {/* Add Field Dropdown (only for non-fixed columns with space) - Hide when editing */}
+                    {/* Add Field Dropdown */}
                     {!column.fixed && column.items.length < 5 && editingColumnId !== column.id && (
                         <select
                             value=""
@@ -2411,7 +2261,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         >
                             <option value="">Add field...</option>
                             {availableFields
-                                .filter(field => field.id !== 'actions') // Don't show actions in dropdown
+                                .filter(field => field.id !== 'actions')
                                 .filter(field =>
                                     !localColumnConfig.some(col =>
                                         col.items.some(item => item.id === field.id)
@@ -2426,7 +2276,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         </select>
                     )}
 
-                    {/* Empty State - Hide when editing */}
+                    {/* Empty State */}
                     {!column.fixed && column.items.length === 0 && editingColumnId !== column.id && (
                         <div className="text-center py-4 text-gray-400 text-sm">
                             <p>Drag fields here or select from dropdown</p>
@@ -2436,7 +2286,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             );
         });
 
-        // Sortable Item Component for Modal
         const ModalSortableItem = React.memo(({ item, columnIndex, itemIndex, columnId, removeItem }) => {
             const {
                 attributes,
@@ -2482,7 +2331,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             );
         });
 
-        // Draggable Field Component for Available Fields
         const DraggableField = React.memo(({ field }) => {
             const {
                 attributes,
@@ -2619,7 +2467,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                         onDragEnd={(event) => {
                                             const { active, over } = event;
                                             if (over && active.id !== over.id) {
-                                                // Find which column was dropped on
                                                 const columnIndex = localColumnConfig.findIndex(col => col.id === over.id);
                                                 if (columnIndex !== -1 && !localColumnConfig[columnIndex].fixed) {
                                                     addItemToColumnInModal(columnIndex, active.id);
@@ -2629,7 +2476,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                     >
                                         <SortableContext
                                             items={availableFields
-                                                .filter(field => field.id !== 'actions') // Don't show actions in available fields
+                                                .filter(field => field.id !== 'actions')
                                                 .filter(field =>
                                                     !localColumnConfig.some(col =>
                                                         col.items.some(item => item.id === field.id)
@@ -2640,7 +2487,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                         >
                                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                                                 {availableFields
-                                                    .filter(field => field.id !== 'actions') // Don't show actions in available fields
+                                                    .filter(field => field.id !== 'actions')
                                                     .filter(field =>
                                                         !localColumnConfig.some(col =>
                                                             col.items.some(item => item.id === field.id)
@@ -2658,7 +2505,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                 </div>
                             </div>
 
-                            {/* Modal Footer - Always visible at bottom */}
+                            {/* Modal Footer */}
                             <div className="border-t px-6 py-4 bg-gray-50 shrink-0">
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                     <motion.button
@@ -2725,14 +2572,14 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             {/* Main content */}
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="h-full flex flex-col">
-                    {/* Main Card - Mobile responsive and compact */}
+                    {/* Main Card - Professional Design */}
                     <motion.div
                         className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full mx-2 sm:mx-4 md:mx-8 my-3 md:my-4"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
                     >
-                        {/* Card Header - Responsive and compact */}
+                        {/* Card Header - Professional */}
                         <div className="border-b border-gray-200 px-3 md:px-4 py-3 bg-gradient-to-r from-gray-50 to-white">
                             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2 md:gap-3">
                                 <div className="w-full md:w-auto">
@@ -2756,7 +2603,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                 <TableViewSwitch viewMode={viewMode} setViewMode={setViewMode} />
                                             </div>
                                             
-                                            {/* Search Input - Mobile optimized */}
+                                            {/* Search Input */}
                                             <div className="flex-1 md:flex-none md:min-w-[200px] lg:min-w-[250px]">
                                                 <div className="relative">
                                                     <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -2771,7 +2618,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                             </div>
                                         </div>
 
-                                        {/* Action Buttons - Mobile optimized */}
+                                        {/* Action Buttons */}
                                         <div className="flex items-center gap-2">
                                             {/* Filter Dropdown */}
                                             <div className="dropdown-container relative">
@@ -2846,7 +2693,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                                 <button
                                                                     onClick={() => {
                                                                         setShowFilterDropdown(false);
-                                                                        // Refresh data with new filters
                                                                         fetchClients(1, pagination.itemsPerPage);
                                                                     }}
                                                                     className="w-full px-2 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -2867,10 +2713,9 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                 whileTap={{ scale: 0.95 }}
                                             >
                                                 <FiUserPlus className="w-4 h-4" />
-                                                {/* <span className="hidden sm:inline">Add Client</span> */}
                                             </motion.button>
                                             
-                                            {/* 3 Dot Menu (Export + Settings) */}
+                                            {/* 3 Dot Menu */}
                                             <div className="relative dropdown-container">
                                                 <motion.button
                                                     onClick={() => setShowMoreMenu(!showMoreMenu)}
@@ -2929,7 +2774,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                             {/* Divider */}
                                                             <div className="h-px bg-gray-200 my-1" />
 
-                                                            {/* Settings - Only enabled in table view */}
+                                                            {/* Settings */}
                                                             <button
                                                                 onClick={() => {
                                                                     if (viewMode === 'table') {
@@ -2971,8 +2816,8 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                     handleStatusChange={handleStatusChange}
                                     openStatusModal={openStatusModal}
                                     navigate={navigate}
-                                    handleExport={handleExport} // ADDED: Pass handleExport prop
-                                    showFirmsModal={openFirmsModal} // NEW: Pass firms modal function
+                                    handleExport={handleExport}
+                                    showFirmsModal={openFirmsModal}
                                 />
                             ) : (
                                 <ClientCards
@@ -2990,7 +2835,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                     openStatusModal={openStatusModal}
                                     navigate={navigate}
                                     handleExport={handleExport}
-                                    showFirmsModal={openFirmsModal} // NEW: Pass firms modal function
+                                    showFirmsModal={openFirmsModal}
                                 />
                             )}
                         </div>
@@ -3017,7 +2862,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 </div>
             </div>
 
-            {/* Floating Action Button for Selected Clients - Mobile Optimized */}
+            {/* Floating Action Button for Selected Clients */}
             <AnimatePresence>
                 {selectedClients.size > 0 && (
                     <motion.div
@@ -3059,7 +2904,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             {/* Settings Modal */}
             <SettingsModal />
 
-            {/* NEW: Status Change Modal */}
+            {/* Status Change Modal */}
             <StatusChangeModal
                 isOpen={statusModal.open}
                 onClose={closeStatusModal}
@@ -3069,7 +2914,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 statusOptions={statusOptions}
             />
 
-            {/* NEW: Firms Details Modal */}
+            {/* Firms Details Modal */}
             <FirmsDetailsModal
                 isOpen={firmsModal.open}
                 onClose={closeFirmsModal}
@@ -3077,7 +2922,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 clientName={firmsModal.clientName}
             />
 
-            {/* Export Confirmation Modal - Compact */}
+            {/* Export Confirmation Modal */}
             <AnimatePresence>
                 {exportModal.open && (
                     <motion.div
@@ -3117,7 +2962,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 title="Client Delete"
                 onConfirm={(res) => {
                     SetDeleteModal(false)
-                    // console.log("Confirmed:", res);
                 }}
             />
             }
