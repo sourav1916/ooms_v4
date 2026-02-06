@@ -27,6 +27,58 @@ import { IoTrash } from "react-icons/io5";
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../components/header';
 
+// Base URL for API
+const BASE_URL = 'https://api.ooms.in/api/v1';
+
+// Function to get headers from localStorage
+const getHeaders = () => {
+    try {
+        const userDataStr = localStorage.getItem('user');
+        let userName = '';
+        let token = '';
+        let branchId = '';
+
+        if (userDataStr) {
+            try {
+                const userData = JSON.parse(userDataStr);
+                userName = userData.username || userData.userName || '';
+                token = userData.token || '';
+                branchId = userData.branch || userData.branchId || '';
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+            }
+        }
+
+        // Fallback to individual localStorage items
+        if (!userName) {
+            userName = localStorage.getItem('userName') || localStorage.getItem('user_username') || '';
+        }
+        if (!token) {
+            token = localStorage.getItem('token') || localStorage.getItem('user_token') || '';
+        }
+        if (!branchId) {
+            branchId = localStorage.getItem('branchId') || localStorage.getItem('branch_id') || '';
+        }
+        
+        console.log('Headers from localStorage:', { userName, token: token ? '***' + token.slice(-4) : 'empty', branchId });
+        
+        if (!userName || !token || !branchId) {
+            console.error('Missing authentication data in localStorage');
+            return null;
+        }
+        
+        return {
+            'Content-Type': 'application/json',
+            'username': userName,
+            'token': token,
+            'branch': branchId
+        };
+    } catch (error) {
+        console.error('Error getting headers from localStorage:', error);
+        return null;
+    }
+};
+
 // Memoized ModalWrapper component to prevent re-renders
 const ModalWrapper = memo(({ isOpen, onClose, title, children, size = 'max-w-md' }) => {
     if (!isOpen) return null;
@@ -68,7 +120,208 @@ const ModalWrapper = memo(({ isOpen, onClose, title, children, size = 'max-w-md'
 
 ModalWrapper.displayName = 'ModalWrapper';
 
-// Memoized StaffFormModal component
+// Memoized AddStaffModal component with API integration
+const AddStaffModal = memo(({ 
+    isOpen, 
+    onClose, 
+    onSubmit, 
+    formData, 
+    onFormChange,
+    isSubmitting,
+    mode = 'add',
+    userDetails,
+    onFindUser,
+    isFindingUser,
+    isUserFound,
+    resetUserDetails
+}) => {
+    const [step, setStep] = useState(1); // 1: Find User, 2: Add Details
+    const [email, setEmail] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (step === 1) {
+            onFindUser(email);
+        } else {
+            onSubmit(e);
+        }
+    };
+
+    const handleInputChange = (field, value) => {
+        onFormChange({ ...formData, [field]: value });
+    };
+
+    const handleBack = () => {
+        setStep(1);
+        setEmail('');
+        resetUserDetails();
+    };
+
+    // Reset step when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            setStep(1);
+            setEmail('');
+        }
+    }, [isOpen]);
+
+    // Auto advance to step 2 when user is found
+    useEffect(() => {
+        if (isUserFound && userDetails) {
+            setStep(2);
+        }
+    }, [isUserFound, userDetails]);
+
+    return (
+        <ModalWrapper
+            isOpen={isOpen}
+            onClose={onClose}
+            title={step === 1 ? "Find Staff Member" : "Add Staff Details"}
+            size="max-w-md"
+        >
+            <div className="flex-1 overflow-y-auto p-6">
+                {step === 1 ? (
+                    <form onSubmit={handleSubmit}>
+                        <div className="space-y-6">
+                            <div className="text-center mb-4">
+                                <div className="w-16 h-16 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-200">
+                                    <FiMail className="w-8 h-8 text-blue-600" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-slate-800 mb-2">Find Staff by Email</h3>
+                                <p className="text-slate-600 text-sm">
+                                    Enter the email address to check if the user exists in our system.
+                                </p>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                    Email Address <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-300 transition-colors bg-white shadow-sm"
+                                    placeholder="email@company.com"
+                                    required
+                                />
+                            </div>
+                        </div>
+                    </form>
+                ) : (
+                    <form onSubmit={handleSubmit}>
+                        <div className="space-y-6">
+                            <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-lg p-4 mb-4">
+                                <div className="flex items-start">
+                                    <div className="p-1.5 bg-emerald-100 rounded-lg mr-3">
+                                        <FiUserCheck className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="text-sm font-semibold text-emerald-800 mb-1">User Found</h4>
+                                        <p className="text-emerald-600 text-xs mb-3">
+                                            User details fetched successfully. Please add designation below.
+                                        </p>
+                                        {userDetails && (
+                                            <div className="grid grid-cols-1 gap-2 text-xs">
+                                                <div>
+                                                    <span className="text-slate-500">Name:</span>
+                                                    <span className="ml-2 font-medium text-slate-800">{userDetails.name || 'N/A'}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-slate-500">Email:</span>
+                                                    <span className="ml-2 font-medium text-slate-800">{userDetails.email || 'N/A'}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-slate-500">Mobile:</span>
+                                                    <span className="ml-2 font-medium text-slate-800">+{userDetails.country_code || '91'} {userDetails.mobile || 'N/A'}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-slate-500">Username:</span>
+                                                    <span className="ml-2 font-medium text-slate-800">{userDetails.username || 'N/A'}</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                    Designation <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={formData.designation}
+                                    onChange={(e) => handleInputChange('designation', e.target.value)}
+                                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-300 transition-colors bg-white shadow-sm"
+                                    required
+                                >
+                                    <option value="">Select Designation</option>
+                                    <option value="Developer">Developer</option>
+                                    <option value="Senior Developer">Senior Developer</option>
+                                    <option value="Project Manager">Project Manager</option>
+                                    <option value="UI/UX Designer">UI/UX Designer</option>
+                                    <option value="Quality Assurance">Quality Assurance</option>
+                                    <option value="DevOps Engineer">DevOps Engineer</option>
+                                    <option value="Frontend Developer">Frontend Developer</option>
+                                    <option value="Backend Developer">Backend Developer</option>
+                                    <option value="HR Manager">HR Manager</option>
+                                    <option value="Sales Executive">Sales Executive</option>
+                                    <option value="Accountant">Accountant</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                )}
+            </div>
+
+            <div className="flex-shrink-0 border-t border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 p-6 rounded-b-xl">
+                <div className="flex justify-between gap-3">
+                    {step === 2 ? (
+                        <button
+                            type="button"
+                            onClick={handleBack}
+                            disabled={isSubmitting}
+                            className="px-6 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors disabled:opacity-50 shadow-sm"
+                        >
+                            Back
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isSubmitting || isFindingUser}
+                            className="px-6 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-colors disabled:opacity-50 shadow-sm"
+                        >
+                            Cancel
+                        </button>
+                    )}
+                    <button
+                        type="submit"
+                        onClick={handleSubmit}
+                        disabled={isSubmitting || isFindingUser}
+                        className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 border border-emerald-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center min-w-[120px] justify-center shadow-sm"
+                    >
+                        {(isSubmitting || isFindingUser) ? (
+                            <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                {step === 1 ? 'Finding...' : 'Adding...'}
+                            </>
+                        ) : (
+                            step === 1 ? 'Find User' : 'Add Staff Member'
+                        )}
+                    </button>
+                </div>
+            </div>
+        </ModalWrapper>
+    );
+});
+
+AddStaffModal.displayName = 'AddStaffModal';
+
+// Memoized StaffFormModal component for editing
 const StaffFormModal = memo(({ 
     isOpen, 
     onClose, 
@@ -76,7 +329,7 @@ const StaffFormModal = memo(({
     formData, 
     onFormChange,
     isSubmitting,
-    mode = 'add' 
+    mode = 'edit' 
 }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -91,7 +344,7 @@ const StaffFormModal = memo(({
         <ModalWrapper
             isOpen={isOpen}
             onClose={onClose}
-            title={mode === 'add' ? "Add New Staff Member" : "Edit Staff Member"}
+            title="Edit Staff Member"
             size="max-w-2xl"
         >
             <div className="flex-1 overflow-y-auto p-6">
@@ -116,7 +369,7 @@ const StaffFormModal = memo(({
 
                             <div>
                                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                    Guardian Name <span className="text-red-500">*</span>
+                                    Guardian Name
                                 </label>
                                 <input
                                     type="text"
@@ -124,7 +377,6 @@ const StaffFormModal = memo(({
                                     onChange={(e) => handleInputChange('guardian_name', e.target.value)}
                                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-blue-300 transition-colors bg-white shadow-sm"
                                     placeholder="Enter guardian name"
-                                    required
                                 />
                             </div>
 
@@ -202,16 +454,17 @@ const StaffFormModal = memo(({
                                     required
                                 >
                                     <option value="">Select Designation</option>
-                                    <option value="senior developer">Senior Developer</option>
-                                    <option value="project manager">Project Manager</option>
-                                    <option value="ui/ux designer">UI/UX Designer</option>
-                                    <option value="quality assurance">Quality Assurance</option>
-                                    <option value="devops engineer">DevOps Engineer</option>
-                                    <option value="frontend developer">Frontend Developer</option>
-                                    <option value="backend developer">Backend Developer</option>
-                                    <option value="hr manager">HR Manager</option>
-                                    <option value="sales executive">Sales Executive</option>
-                                    <option value="accountant">Accountant</option>
+                                    <option value="Developer">Developer</option>
+                                    <option value="Senior Developer">Senior Developer</option>
+                                    <option value="Project Manager">Project Manager</option>
+                                    <option value="UI/UX Designer">UI/UX Designer</option>
+                                    <option value="Quality Assurance">Quality Assurance</option>
+                                    <option value="DevOps Engineer">DevOps Engineer</option>
+                                    <option value="Frontend Developer">Frontend Developer</option>
+                                    <option value="Backend Developer">Backend Developer</option>
+                                    <option value="HR Manager">HR Manager</option>
+                                    <option value="Sales Executive">Sales Executive</option>
+                                    <option value="Accountant">Accountant</option>
                                 </select>
                             </div>
 
@@ -311,10 +564,10 @@ const StaffFormModal = memo(({
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                {mode === 'add' ? 'Adding...' : 'Updating...'}
+                                Updating...
                             </>
                         ) : (
-                            mode === 'add' ? 'Add Staff Member' : 'Update Staff'
+                            'Update Staff'
                         )}
                     </button>
                 </div>
@@ -342,20 +595,14 @@ const ViewStaff = () => {
     const [isDeleteStaffModalOpen, setIsDeleteStaffModalOpen] = useState(false);
     const [selectedStaff, setSelectedStaff] = useState(null);
 
+    // Add staff modal states
+    const [userDetails, setUserDetails] = useState(null);
+    const [isUserFound, setIsUserFound] = useState(false);
+    const [isFindingUser, setIsFindingUser] = useState(false);
+
     // Form states
     const [staffForm, setStaffForm] = useState({
-        name: '',
-        guardian_name: '',
-        mobile: '',
-        email: '',
-        designation: '',
-        address: '',
-        salary: '',
-        joining_date: new Date().toISOString().split('T')[0],
-        emergency_contact: '',
-        bank_account: '',
-        ifsc_code: '',
-        pan_number: ''
+        designation: ''
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -655,37 +902,114 @@ const ViewStaff = () => {
         setActiveRowDropdown(activeRowDropdown === username ? null : username);
     };
 
+    // Find user by email
+    const findUserByEmail = async (email) => {
+        setIsFindingUser(true);
+        setIsUserFound(false);
+        setUserDetails(null);
+
+        const headers = getHeaders();
+        if (!headers) {
+            alert('Authentication required. Please login again.');
+            setIsFindingUser(false);
+            return;
+        }
+
+        try {
+            const response = await fetch(`${BASE_URL}/settings/staff/check-user`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ email })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.data) {
+                setUserDetails(data.data);
+                setIsUserFound(true);
+            } else {
+                setIsUserFound(false);
+                setUserDetails(null);
+                alert(data.message || 'User not found. Please check the email address.');
+            }
+        } catch (error) {
+            console.error('Error finding user:', error);
+            setIsUserFound(false);
+            setUserDetails(null);
+            alert('Network error. Please try again.');
+        } finally {
+            setIsFindingUser(false);
+        }
+    };
+
     // Handle add staff
     const handleAddStaff = async (e) => {
         e.preventDefault();
-        if (isSubmitting) return;
+        if (isSubmitting || !userDetails || !userDetails.username) return;
 
         setIsSubmitting(true);
-        try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Generate new staff ID and username
-            const newId = (mockStaffData.length + 1).toString();
-            const newUsername = `staff${String(newId).padStart(3, '0')}`;
-            
-            const newStaff = {
-                id: newId,
-                username: newUsername,
-                ...staffForm,
-                loan: '0',
-                balance: '0'
-            };
+        
+        const headers = getHeaders();
+        if (!headers) {
+            alert('Authentication required. Please login again.');
+            setIsSubmitting(false);
+            return;
+        }
 
-            // Add to staff list
-            setStaff(prev => [newStaff, ...prev]);
-            
-            // Close modal and reset form
-            setIsAddStaffModalOpen(false);
-            resetForm();
-            
-            console.log('Staff added successfully:', newStaff);
+        try {
+            // Call create staff API with only username and designation
+            const response = await fetch(`${BASE_URL}/settings/staff/create`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    username: userDetails.username,
+                    designation: staffForm.designation
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Generate new staff ID
+                const newId = (mockStaffData.length + 1).toString();
+                const newUsername = `staff${String(newId).padStart(3, '0')}`;
+                
+                const newStaff = {
+                    id: newId,
+                    username: newUsername,
+                    name: userDetails.name || 'Unknown',
+                    guardian_name: '',
+                    mobile: userDetails.mobile || '',
+                    email: userDetails.email || '',
+                    designation: staffForm.designation,
+                    loan: '0',
+                    balance: '0',
+                    address: '',
+                    salary: '0',
+                    joining_date: new Date().toISOString().split('T')[0],
+                    emergency_contact: '',
+                    bank_account: '',
+                    ifsc_code: '',
+                    pan_number: ''
+                };
+
+                // Add to staff list
+                setStaff(prev => [newStaff, ...prev]);
+                
+                // Show success message
+                alert('Invitation sent to staff successfully!');
+                
+                // Close modal and reset form
+                setIsAddStaffModalOpen(false);
+                resetForm();
+                
+                console.log('Staff added successfully:', newStaff);
+            } else {
+                alert(data.message || 'Failed to add staff member');
+            }
         } catch (error) {
             console.error('Error adding staff:', error);
+            alert('An error occurred while adding staff member');
         } finally {
             setIsSubmitting(false);
         }
@@ -765,20 +1089,17 @@ const ViewStaff = () => {
     // Reset form
     const resetForm = () => {
         setStaffForm({
-            name: '',
-            guardian_name: '',
-            mobile: '',
-            email: '',
-            designation: '',
-            address: '',
-            salary: '',
-            joining_date: new Date().toISOString().split('T')[0],
-            emergency_contact: '',
-            bank_account: '',
-            ifsc_code: '',
-            pan_number: ''
+            designation: ''
         });
         setSelectedStaff(null);
+        setUserDetails(null);
+        setIsUserFound(false);
+    };
+
+    // Reset user details
+    const resetUserDetails = () => {
+        setUserDetails(null);
+        setIsUserFound(false);
     };
 
     // Calculate totals
@@ -1358,7 +1679,7 @@ const ViewStaff = () => {
             </div>
 
             {/* Add Staff Modal */}
-            <StaffFormModal
+            <AddStaffModal
                 isOpen={isAddStaffModalOpen}
                 onClose={() => {
                     setIsAddStaffModalOpen(false);
@@ -1369,6 +1690,11 @@ const ViewStaff = () => {
                 onFormChange={setStaffForm}
                 isSubmitting={isSubmitting}
                 mode="add"
+                userDetails={userDetails}
+                onFindUser={findUserByEmail}
+                isFindingUser={isFindingUser}
+                isUserFound={isUserFound}
+                resetUserDetails={resetUserDetails}
             />
 
             {/* Edit Staff Modal */}
