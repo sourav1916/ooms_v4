@@ -208,9 +208,44 @@ const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusC
     );
 };
 
-// NEW: Firms Details Modal Component
+// NEW: Firms Details Modal Component - UPDATED with professional design and View Details button
 const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
+    const [expandedFirm, setExpandedFirm] = useState(null);
+    
     if (!isOpen || !firms || firms.length === 0) return null;
+    
+    // Format date
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+        } catch (error) {
+            return 'Invalid Date';
+        }
+    };
+    
+    // Format address
+    const formatAddress = (address) => {
+        if (!address) return 'N/A';
+        const parts = [
+            address.address_line_1,
+            address.address_line_2,
+            address.city,
+            address.state,
+            address.pincode,
+            address.country
+        ].filter(Boolean);
+        return parts.join(', ') || 'N/A';
+    };
+    
+    const toggleFirmDetails = (firmId) => {
+        setExpandedFirm(expandedFirm === firmId ? null : firmId);
+    };
     
     return (
         <AnimatePresence>
@@ -223,7 +258,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                     onClick={onClose}
                 >
                     <motion.div
-                        className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto max-h-[80vh] overflow-hidden"
+                        className="bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-auto max-h-[90vh] overflow-hidden"
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -231,90 +266,229 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
-                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3">
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4">
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                                        <FiBriefcase className="w-4 h-4" />
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                                        <FiBriefcase className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <h3 className="text-base font-bold">Firms Details</h3>
-                                        <p className="text-blue-100 text-xs">{clientName}</p>
+                                        <h3 className="text-lg font-bold">Firms Details</h3>
+                                        <p className="text-blue-100 text-sm">{clientName}</p>
                                     </div>
                                 </div>
                                 <motion.button
                                     onClick={onClose}
-                                    className="text-white hover:text-blue-200 transition-colors p-1 rounded-lg hover:bg-white/10"
+                                    className="text-white hover:text-blue-200 transition-colors p-2 rounded-lg hover:bg-white/10"
                                     whileHover={{ scale: 1.1 }}
                                     whileTap={{ scale: 0.9 }}
                                 >
-                                    <FiX className="w-4 h-4" />
+                                    <FiX className="w-5 h-5" />
                                 </motion.button>
                             </div>
                         </div>
                         
                         {/* Firms List */}
-                        <div className="p-4 overflow-y-auto max-h-[60vh]">
-                            <div className="space-y-3">
+                        <div className="p-6 overflow-y-auto max-h-[70vh]">
+                            <div className="space-y-4">
                                 {firms.map((firm, index) => (
                                     <motion.div
                                         key={firm.firm_id || index}
-                                        className="bg-gray-50 border border-gray-200 rounded-lg p-3"
+                                        className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-xl overflow-hidden"
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: index * 0.05 }}
                                     >
-                                        <div className="flex items-start justify-between mb-2">
-                                            <div className="flex-1">
-                                                <h4 className="font-semibold text-gray-800 text-sm">
-                                                    {firm.firm_name || 'Unnamed Firm'}
-                                                </h4>
-                                                {firm.firm_type && (
-                                                    <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full mt-1">
-                                                        {firm.firm_type}
-                                                    </span>
-                                                )}
+                                        {/* Firm Header */}
+                                        <div className="p-4 bg-white border-b border-gray-200">
+                                            <div className="flex flex-col md:flex-row md:items-start justify-between mb-3 gap-4">
+                                                <div className="flex-1">
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                                                            <FiBriefcase className="w-6 h-6 text-white" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className="font-bold text-gray-900 text-lg mb-1">
+                                                                {firm.firm_name || 'Unnamed Firm'}
+                                                            </h4>
+                                                            <div className="flex flex-wrap gap-2 mb-2">
+                                                                {firm.firm_type && (
+                                                                    <span className="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full border border-blue-200">
+                                                                        {firm.firm_type}
+                                                                    </span>
+                                                                )}
+                                                                {firm.status && (
+                                                                    <span className="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-full border border-green-200">
+                                                                        Active
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-sm text-gray-600">
+                                                                <span className="font-medium">Firm #{index + 1}</span>
+                                                                <span className="mx-2">•</span>
+                                                                <span>Created: {formatDate(firm.create_date)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col items-start md:items-end gap-2">
+                                                    <motion.button
+                                                        onClick={() => toggleFirmDetails(firm.firm_id || index)}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                    >
+                                                        <FiEye className="w-4 h-4" />
+                                                        {expandedFirm === (firm.firm_id || index) ? 'Hide Details' : 'View Details'}
+                                                    </motion.button>
+                                                </div>
                                             </div>
-                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                                #{index + 1}
-                                            </span>
                                         </div>
                                         
-                                        <div className="space-y-1 text-xs text-gray-600">
-                                            {firm.pan_no && (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium">PAN:</span>
-                                                    <span>{firm.pan_no}</span>
-                                                </div>
-                                            )}
-                                            {firm.file_no && (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium">File No:</span>
-                                                    <span>{firm.file_no}</span>
-                                                </div>
-                                            )}
-                                            {firm.gst_no && (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium">GST:</span>
-                                                    <span>{firm.gst_no}</span>
-                                                </div>
-                                            )}
-                                            {firm.registration_no && (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium">Reg No:</span>
-                                                    <span>{firm.registration_no}</span>
-                                                </div>
-                                            )}
+                                        {/* Basic Details - Always visible */}
+                                        <div className="p-4">
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                {firm.pan_no && (
+                                                    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">PAN No</div>
+                                                        <div className="font-bold text-gray-900 text-sm truncate">{firm.pan_no}</div>
+                                                    </div>
+                                                )}
+                                                {firm.file_no && (
+                                                    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">File No</div>
+                                                        <div className="font-bold text-gray-900 text-sm truncate">{firm.file_no}</div>
+                                                    </div>
+                                                )}
+                                                {firm.gst_no && (
+                                                    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">GST No</div>
+                                                        <div className="font-bold text-gray-900 text-sm truncate">{firm.gst_no}</div>
+                                                    </div>
+                                                )}
+                                                {firm.registration_no && (
+                                                    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Registration No</div>
+                                                        <div className="font-bold text-gray-900 text-sm truncate">{firm.registration_no}</div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
+                                        
+                                        {/* Expanded Details - Only shown when expanded */}
+                                        <AnimatePresence>
+                                            {expandedFirm === (firm.firm_id || index) && (
+                                                <motion.div
+                                                    className="border-t border-gray-200 p-6 bg-gradient-to-b from-gray-50 to-white"
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                >
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                        {/* Additional Registration Numbers */}
+                                                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                                                            <h5 className="font-bold text-gray-800 text-sm mb-4 pb-2 border-b border-gray-100">Registration Details</h5>
+                                                            <div className="space-y-3">
+                                                                {firm.cin_no && (
+                                                                    <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                                        <span className="text-sm text-gray-600 font-medium">CIN No:</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.cin_no}</span>
+                                                                    </div>
+                                                                )}
+                                                                {firm.vat_no && (
+                                                                    <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                                        <span className="text-sm text-gray-600 font-medium">VAT No:</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.vat_no}</span>
+                                                                    </div>
+                                                                )}
+                                                                {firm.tan_no && (
+                                                                    <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                                        <span className="text-sm text-gray-600 font-medium">TAN No:</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.tan_no}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Address Information */}
+                                                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                                                            <h5 className="font-bold text-gray-800 text-sm mb-4 pb-2 border-b border-gray-100">Address</h5>
+                                                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                                                <p className="text-sm text-gray-800 leading-relaxed">
+                                                                    {formatAddress(firm.address)}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Creation Details */}
+                                                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                                                            <h5 className="font-bold text-gray-800 text-sm mb-4 pb-2 border-b border-gray-100">Created By</h5>
+                                                            {firm.create_by && (
+                                                                <div className="space-y-3">
+                                                                    <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                                        <span className="text-sm text-gray-600 font-medium">Name:</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.create_by.name || 'N/A'}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                                        <span className="text-sm text-gray-600 font-medium">Email:</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.create_by.email || 'N/A'}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                                        <span className="text-sm text-gray-600 font-medium">Mobile:</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.create_by.mobile || 'N/A'}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                                        <span className="text-sm text-gray-600 font-medium">Created Date:</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{formatDate(firm.create_date)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        
+                                                        {/* Modification Details */}
+                                                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                                                            <h5 className="font-bold text-gray-800 text-sm mb-4 pb-2 border-b border-gray-100">Last Modified</h5>
+                                                            {firm.modify_by && Object.keys(firm.modify_by).length > 0 && firm.modify_by.name ? (
+                                                                <div className="space-y-3">
+                                                                    <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                                        <span className="text-sm text-gray-600 font-medium">By:</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.modify_by.name}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                                                                        <span className="text-sm text-gray-600 font-medium">Date:</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{formatDate(firm.modify_date)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-center py-6">
+                                                                    <div className="text-gray-400 text-sm italic">Not modified yet</div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </motion.div>
                                 ))}
                             </div>
                         </div>
                         
                         {/* Footer */}
-                        <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                            <div className="text-center text-sm text-gray-600">
+                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+                            <div className="text-sm text-gray-600 font-medium">
                                 Total: {firms.length} firm{firms.length !== 1 ? 's' : ''}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <motion.button
+                                    onClick={onClose}
+                                    className="px-5 py-2.5 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 text-sm font-medium rounded-lg hover:from-gray-300 hover:to-gray-400 transition-colors shadow-sm"
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    Close
+                                </motion.button>
                             </div>
                         </div>
                     </motion.div>
@@ -1263,19 +1437,71 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         firm_id: 'f1',
                         firm_name: 'Doe Enterprises',
                         pan_no: 'ABCDE1234F',
-                        file_no: 'FN001'
+                        file_no: 'FN001',
+                        firm_type: 'partnership',
+                        create_date: '2024-01-15T10:30:00.000Z',
+                        modify_date: '2024-01-20T14:45:00.000Z',
+                        create_by: {
+                            name: 'Admin',
+                            email: 'admin@example.com',
+                            mobile: '9876543210'
+                        },
+                        modify_by: {
+                            name: 'Admin',
+                            email: 'admin@example.com',
+                            mobile: '9876543210'
+                        },
+                        address: {
+                            address_line_1: '123 Main Street',
+                            address_line_2: 'Suite 101',
+                            city: 'Mumbai',
+                            state: 'Maharashtra',
+                            pincode: '400001',
+                            country: 'India'
+                        }
                     },
                     {
                         firm_id: 'f2',
                         firm_name: 'Doe Trading Co',
                         pan_no: 'ABCDE1235F',
-                        file_no: 'FN002'
+                        file_no: 'FN002',
+                        firm_type: 'proprietorship',
+                        create_date: '2024-02-10T09:15:00.000Z',
+                        modify_date: '2024-02-12T11:20:00.000Z',
+                        create_by: {
+                            name: 'Admin',
+                            email: 'admin@example.com',
+                            mobile: '9876543210'
+                        },
+                        address: {
+                            address_line_1: '456 Market Road',
+                            city: 'Delhi',
+                            state: 'Delhi',
+                            pincode: '110001',
+                            country: 'India'
+                        }
                     },
                     {
                         firm_id: 'f3',
                         firm_name: 'Doe Manufacturing',
                         pan_no: 'ABCDE1236F',
-                        file_no: 'FN003'
+                        file_no: 'FN003',
+                        firm_type: 'llp',
+                        create_date: '2024-03-05T14:30:00.000Z',
+                        modify_date: '2024-03-10T16:45:00.000Z',
+                        create_by: {
+                            name: 'Admin',
+                            email: 'admin@example.com',
+                            mobile: '9876543210'
+                        },
+                        address: {
+                            address_line_1: '789 Industrial Area',
+                            address_line_2: 'Sector 5',
+                            city: 'Chennai',
+                            state: 'Tamil Nadu',
+                            pincode: '600001',
+                            country: 'India'
+                        }
                     }
                 ],
                 firm_count: 3
@@ -1294,13 +1520,49 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         firm_id: 'f4',
                         firm_name: 'Smith & Co',
                         pan_no: 'XYZAB5678G',
-                        file_no: 'FN004'
+                        file_no: 'FN004',
+                        firm_type: 'partnership',
+                        create_date: '2024-01-20T11:45:00.000Z',
+                        modify_date: '2024-01-25T16:30:00.000Z',
+                        create_by: {
+                            name: 'Admin',
+                            email: 'admin@example.com',
+                            mobile: '9876543210'
+                        },
+                        modify_by: {
+                            name: 'Admin',
+                            email: 'admin@example.com',
+                            mobile: '9876543210'
+                        },
+                        address: {
+                            address_line_1: '789 Business Avenue',
+                            address_line_2: 'Floor 5',
+                            city: 'Bangalore',
+                            state: 'Karnataka',
+                            pincode: '560001',
+                            country: 'India'
+                        }
                     },
                     {
                         firm_id: 'f5',
                         firm_name: 'Smith Industries',
                         pan_no: 'XYZAB5679G',
-                        file_no: 'FN005'
+                        file_no: 'FN005',
+                        firm_type: 'private limited',
+                        create_date: '2024-02-15T09:30:00.000Z',
+                        modify_date: '2024-02-20T13:15:00.000Z',
+                        create_by: {
+                            name: 'Admin',
+                            email: 'admin@example.com',
+                            mobile: '9876543210'
+                        },
+                        address: {
+                            address_line_1: '101 Corporate Park',
+                            city: 'Hyderabad',
+                            state: 'Telangana',
+                            pincode: '500001',
+                            country: 'India'
+                        }
                     }
                 ],
                 firm_count: 2
@@ -1319,7 +1581,22 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         firm_id: 'f6',
                         firm_name: 'Wilson Enterprises',
                         pan_no: 'PQRS1234T',
-                        file_no: 'FN006'
+                        file_no: 'FN006',
+                        firm_type: 'proprietorship',
+                        create_date: '2024-01-10T08:45:00.000Z',
+                        modify_date: '2024-01-18T12:30:00.000Z',
+                        create_by: {
+                            name: 'Admin',
+                            email: 'admin@example.com',
+                            mobile: '9876543210'
+                        },
+                        address: {
+                            address_line_1: '222 Wilson Street',
+                            city: 'Kolkata',
+                            state: 'West Bengal',
+                            pincode: '700001',
+                            country: 'India'
+                        }
                     }
                 ],
                 firm_count: 1
@@ -2914,7 +3191,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 statusOptions={statusOptions}
             />
 
-            {/* Firms Details Modal */}
+            {/* Firms Details Modal - UPDATED with professional alignment */}
             <FirmsDetailsModal
                 isOpen={firmsModal.open}
                 onClose={closeFirmsModal}
