@@ -21,7 +21,8 @@ import {
     FiChevronDown,
     FiChevronUp,
     FiChevronLeft,
-    FiChevronRight as FiChevronRightIcon
+    FiChevronRight as FiChevronRightIcon,
+    FiRefreshCw
 } from 'react-icons/fi';
 import { IoTrash } from "react-icons/io5";
 import { motion, AnimatePresence } from 'framer-motion';
@@ -600,6 +601,9 @@ const ViewStaff = () => {
     const [isUserFound, setIsUserFound] = useState(false);
     const [isFindingUser, setIsFindingUser] = useState(false);
 
+    // Resend link state
+    const [resendingLink, setResendingLink] = useState(null);
+
     // Form states
     const [staffForm, setStaffForm] = useState({
         designation: ''
@@ -614,190 +618,6 @@ const ViewStaff = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
     const [showAll, setShowAll] = useState(false);
-
-    // Extended mock staff data
-    const mockStaffData = [
-        {
-            id: '1',
-            username: 'staff001',
-            name: 'John Doe',
-            guardian_name: 'Robert Doe',
-            mobile: '+91 9876543210',
-            email: 'john.doe@company.com',
-            designation: 'senior developer',
-            loan: '15000',
-            balance: '25000',
-            address: '123 Main Street, Bangalore, Karnataka',
-            salary: '75000',
-            joining_date: '2023-01-15',
-            emergency_contact: '+91 9876543299',
-            bank_account: '123456789012',
-            ifsc_code: 'HDFC0001234',
-            pan_number: 'ABCDE1234F'
-        },
-        {
-            id: '2',
-            username: 'staff002',
-            name: 'Jane Smith',
-            guardian_name: 'William Smith',
-            mobile: '+91 9876543211',
-            email: 'jane.smith@company.com',
-            designation: 'project manager',
-            loan: '10000',
-            balance: '18500',
-            address: '456 Oak Avenue, Mumbai, Maharashtra',
-            salary: '85000',
-            joining_date: '2023-02-20',
-            emergency_contact: '+91 9876543298',
-            bank_account: '234567890123',
-            ifsc_code: 'ICIC0005678',
-            pan_number: 'XYZAB5678G'
-        },
-        {
-            id: '3',
-            username: 'staff003',
-            name: 'Robert Johnson',
-            guardian_name: 'Michael Johnson',
-            mobile: '+91 9876543212',
-            email: 'robert.j@company.com',
-            designation: 'ui/ux designer',
-            loan: '5000',
-            balance: '12000',
-            address: '789 Pine Road, Delhi',
-            salary: '65000',
-            joining_date: '2023-03-10',
-            emergency_contact: '+91 9876543297',
-            bank_account: '345678901234',
-            ifsc_code: 'SBIN0001234',
-            pan_number: 'PQRST5678H'
-        },
-        {
-            id: '4',
-            username: 'staff004',
-            name: 'Sarah Williams',
-            guardian_name: 'David Williams',
-            mobile: '+91 9876543213',
-            email: 'sarah.w@company.com',
-            designation: 'quality assurance',
-            loan: '8000',
-            balance: '15000',
-            address: '101 Maple Street, Chennai',
-            salary: '60000',
-            joining_date: '2023-04-05',
-            emergency_contact: '+91 9876543296',
-            bank_account: '456789012345',
-            ifsc_code: 'AXIS0001234',
-            pan_number: 'LMNOP1234I'
-        },
-        {
-            id: '5',
-            username: 'staff005',
-            name: 'Michael Brown',
-            guardian_name: 'James Brown',
-            mobile: '+91 9876543214',
-            email: 'michael.b@company.com',
-            designation: 'devops engineer',
-            loan: '12000',
-            balance: '22000',
-            address: '202 Cedar Lane, Hyderabad',
-            salary: '90000',
-            joining_date: '2023-05-12',
-            emergency_contact: '+91 9876543295',
-            bank_account: '567890123456',
-            ifsc_code: 'KOTAK0001234',
-            pan_number: 'VWXYZ5678J'
-        },
-        {
-            id: '6',
-            username: 'staff006',
-            name: 'Emily Davis',
-            guardian_name: 'Thomas Davis',
-            mobile: '+91 9876543215',
-            email: 'emily.d@company.com',
-            designation: 'frontend developer',
-            loan: '3000',
-            balance: '8000',
-            address: '303 Birch Avenue, Pune',
-            salary: '55000',
-            joining_date: '2023-06-18',
-            emergency_contact: '+91 9876543294',
-            bank_account: '678901234567',
-            ifsc_code: 'YESB0001234',
-            pan_number: 'FGHIJ1234K'
-        },
-        {
-            id: '7',
-            username: 'staff007',
-            name: 'David Wilson',
-            guardian_name: 'Richard Wilson',
-            mobile: '+91 9876543216',
-            email: 'david.w@company.com',
-            designation: 'backend developer',
-            loan: '20000',
-            balance: '35000',
-            address: '404 Elm Street, Kolkata',
-            salary: '95000',
-            joining_date: '2023-07-22',
-            emergency_contact: '+91 9876543293',
-            bank_account: '789012345678',
-            ifsc_code: 'UBIN0001234',
-            pan_number: 'RSTUV5678L'
-        },
-        {
-            id: '8',
-            username: 'staff008',
-            name: 'Lisa Anderson',
-            guardian_name: 'Charles Anderson',
-            mobile: '+91 9876543217',
-            email: 'lisa.a@company.com',
-            designation: 'hr manager',
-            loan: '7000',
-            balance: '14000',
-            address: '505 Walnut Drive, Ahmedabad',
-            salary: '70000',
-            joining_date: '2023-08-30',
-            emergency_contact: '+91 9876543292',
-            bank_account: '890123456789',
-            ifsc_code: 'IOBA0001234',
-            pan_number: 'CDEFG1234M'
-        },
-        {
-            id: '9',
-            username: 'staff009',
-            name: 'Kevin Martinez',
-            guardian_name: 'Joseph Martinez',
-            mobile: '+91 9876543218',
-            email: 'kevin.m@company.com',
-            designation: 'sales executive',
-            loan: '25000',
-            balance: '42000',
-            address: '606 Spruce Circle, Jaipur',
-            salary: '80000',
-            joining_date: '2023-09-14',
-            emergency_contact: '+91 9876543291',
-            bank_account: '901234567890',
-            ifsc_code: 'BARC0001234',
-            pan_number: 'WXYZA5678N'
-        },
-        {
-            id: '10',
-            username: 'staff010',
-            name: 'Amanda Taylor',
-            guardian_name: 'Christopher Taylor',
-            mobile: '+91 9876543219',
-            email: 'amanda.t@company.com',
-            designation: 'accountant',
-            loan: '9000',
-            balance: '18000',
-            address: '707 Fir Court, Lucknow',
-            salary: '65000',
-            joining_date: '2023-10-25',
-            emergency_contact: '+91 9876543290',
-            bank_account: '012345678901',
-            ifsc_code: 'CNRB0001234',
-            pan_number: 'MNOPQ1234O'
-        }
-    ];
 
     // Persist sidebar minimized state
     useEffect(() => {
@@ -845,28 +665,116 @@ const ViewStaff = () => {
 
     // Format date
     const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB');
     };
 
-    // Simulate API call to fetch staff data
+    // Function to transform API data to frontend format based on is_accepted status
+    const transformStaffData = (apiData) => {
+        return apiData.map((staffMember, index) => {
+            const isAccepted = staffMember.is_accepted === true;
+            const profile = staffMember.profile || {};
+            
+            // For accepted staff: Use full profile data
+            if (isAccepted) {
+                return {
+                    id: staffMember.map_id || (index + 1).toString(),
+                    username: staffMember.username || '',
+                    name: profile.name || 'Unknown',
+                    guardian_name: profile.guardian_name || profile.care_of || '',
+                    mobile: profile.mobile ? `${profile.country_code || '+91'} ${profile.mobile}` : 'N/A',
+                    email: profile.email || 'N/A',
+                    designation: staffMember.designation || 'Not Assigned',
+                    loan: '0',
+                    balance: '0',
+                    address: profile.address ? 
+                        `${profile.address.address_line_1 || ''} ${profile.address.address_line_2 || ''} ${profile.address.city || ''} ${profile.address.state || ''}`.trim() 
+                        : '',
+                    salary: '0',
+                    joining_date: staffMember.modify_date || new Date().toISOString().split('T')[0],
+                    emergency_contact: '',
+                    bank_account: '',
+                    ifsc_code: '',
+                    pan_number: '',
+                    is_accepted: isAccepted,
+                    status: isAccepted ? 'Accepted' : 'Pending'
+                };
+            } 
+            // For non-accepted staff: Use basic info only
+            else {
+                return {
+                    id: staffMember.map_id || (index + 1).toString(),
+                    username: staffMember.username || '',
+                    name: profile.name || 'Unknown',
+                    guardian_name: '',
+                    mobile: '', // Hide mobile for non-accepted
+                    email: profile.email || 'N/A',
+                    designation: staffMember.designation || 'Not Assigned',
+                    loan: '0',
+                    balance: '0',
+                    address: '',
+                    salary: '',
+                    joining_date: '',
+                    emergency_contact: '',
+                    bank_account: '',
+                    ifsc_code: '',
+                    pan_number: '',
+                    is_accepted: isAccepted,
+                    status: isAccepted ? 'Accepted' : 'Pending'
+                };
+            }
+        });
+    };
+
+    // API call to fetch staff data with pagination
     const fetchStaffData = async () => {
         setLoading(true);
         
-        setTimeout(() => {
-            setStaff(mockStaffData);
+        const headers = getHeaders();
+        if (!headers) {
+            console.error('Authentication headers not found');
             setLoading(false);
-        }, 1000);
+            return;
+        }
+
+        try {
+            const response = await fetch(`${BASE_URL}/settings/staff/list?search=&page=${currentPage}&limit=${itemsPerPage}`, {
+                method: 'GET',
+                headers: headers
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('API Response:', data);
+            
+            if (data.success && data.data && Array.isArray(data.data)) {
+                const transformedData = transformStaffData(data.data);
+                setStaff(transformedData);
+                console.log('Transformed staff data:', transformedData);
+            } else {
+                console.error('API response format error:', data);
+                setStaff([]);
+            }
+        } catch (error) {
+            console.error('Error fetching staff data:', error);
+            setStaff([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Handle search
     const handleSearch = () => {
         if (!searchQuery.trim()) {
-            setStaff(mockStaffData);
+            fetchStaffData(); // Reload original data
             return;
         }
 
-        const filteredData = mockStaffData.filter(item =>
+        const filteredData = staff.filter(item =>
             item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.mobile.includes(searchQuery) ||
             item.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -883,7 +791,7 @@ const ViewStaff = () => {
             if (searchQuery !== '') {
                 handleSearch();
             } else {
-                setStaff(mockStaffData);
+                fetchStaffData();
             }
         }, 300);
 
@@ -970,31 +878,8 @@ const ViewStaff = () => {
             const data = await response.json();
 
             if (data.success) {
-                // Generate new staff ID
-                const newId = (mockStaffData.length + 1).toString();
-                const newUsername = `staff${String(newId).padStart(3, '0')}`;
-                
-                const newStaff = {
-                    id: newId,
-                    username: newUsername,
-                    name: userDetails.name || 'Unknown',
-                    guardian_name: '',
-                    mobile: userDetails.mobile || '',
-                    email: userDetails.email || '',
-                    designation: staffForm.designation,
-                    loan: '0',
-                    balance: '0',
-                    address: '',
-                    salary: '0',
-                    joining_date: new Date().toISOString().split('T')[0],
-                    emergency_contact: '',
-                    bank_account: '',
-                    ifsc_code: '',
-                    pan_number: ''
-                };
-
-                // Add to staff list
-                setStaff(prev => [newStaff, ...prev]);
+                // Refresh staff list after adding new staff
+                fetchStaffData();
                 
                 // Show success message
                 alert('Invitation sent to staff successfully!');
@@ -1003,7 +888,7 @@ const ViewStaff = () => {
                 setIsAddStaffModalOpen(false);
                 resetForm();
                 
-                console.log('Staff added successfully:', newStaff);
+                console.log('Staff added successfully:', data);
             } else {
                 alert(data.message || 'Failed to add staff member');
             }
@@ -1022,8 +907,8 @@ const ViewStaff = () => {
 
         setIsSubmitting(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
+            // In a real implementation, you would call an API here
+            // For now, we'll just update the local state
             setStaff(prev => prev.map(staffMember => 
                 staffMember.id === selectedStaff.id 
                     ? { ...staffMember, ...staffForm }
@@ -1047,8 +932,8 @@ const ViewStaff = () => {
 
         setIsSubmitting(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
+            // In a real implementation, you would call an API here
+            // For now, we'll just update the local state
             setStaff(prev => prev.filter(staffMember => staffMember.id !== selectedStaff.id));
             setIsDeleteStaffModalOpen(false);
             
@@ -1057,6 +942,45 @@ const ViewStaff = () => {
             console.error('Error deleting staff:', error);
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    // Handle resend invitation link
+    const handleResendInvitation = async (staffMember) => {
+        if (resendingLink === staffMember.username) return;
+
+        setResendingLink(staffMember.username);
+        
+        const headers = getHeaders();
+        if (!headers) {
+            alert('Authentication required. Please login again.');
+            setResendingLink(null);
+            return;
+        }
+
+        try {
+            // Call API to resend invitation
+            const response = await fetch(`${BASE_URL}/settings/staff/resend-invitation`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    username: staffMember.username
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Invitation link has been resent successfully!');
+                console.log('Invitation resent for:', staffMember.username);
+            } else {
+                alert(data.message || 'Failed to resend invitation');
+            }
+        } catch (error) {
+            console.error('Error resending invitation:', error);
+            alert('An error occurred while resending invitation');
+        } finally {
+            setResendingLink(null);
         }
     };
 
@@ -1289,7 +1213,7 @@ const ViewStaff = () => {
                                         </h5>
                                     </div>
                                     <p className="text-slate-500 text-xs font-medium">
-                                        Manage and view all staff members
+                                        Manage all staff members (Accepted and Pending)
                                     </p>
                                 </div>
 
@@ -1339,7 +1263,7 @@ const ViewStaff = () => {
                                             DESIGNATION
                                         </th>
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
-                                            LOAN
+                                            STATUS
                                         </th>
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
                                             BALANCE
@@ -1374,6 +1298,7 @@ const ViewStaff = () => {
                                         currentItems.map((staffMember, index) => {
                                             const isDropdownOpen = activeRowDropdown === staffMember.username;
                                             const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
+                                            const isAccepted = staffMember.is_accepted === true;
 
                                             return (
                                                 <motion.tr
@@ -1390,61 +1315,87 @@ const ViewStaff = () => {
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="flex flex-col items-center">
-                                                            <a
-                                                                href={`/view-stuff-profile?username=${staffMember.username}`}
-                                                                className="text-blue-600 hover:text-blue-800 font-medium block hover:underline transition-colors text-sm"
-                                                            >
-                                                                {staffMember.name}
-                                                            </a>
-                                                            <div className="text-slate-500 text-xs mt-1">
-                                                                C/O: {staffMember.guardian_name}
-                                                            </div>
-                                                            <div className="text-slate-400 text-[10px] mt-1">
-                                                                Joined: {formatDate(staffMember.joining_date)}
-                                                            </div>
+                                                            {isAccepted ? (
+                                                                <a
+                                                                    href={`/view-stuff-profile?username=${staffMember.username}`}
+                                                                    className="text-blue-600 hover:text-blue-800 font-medium block hover:underline transition-colors text-sm"
+                                                                >
+                                                                    {staffMember.name}
+                                                                </a>
+                                                            ) : (
+                                                                <span className="text-slate-800 font-medium text-sm">
+                                                                    {staffMember.name}
+                                                                </span>
+                                                            )}
+                                                            {isAccepted && staffMember.guardian_name && (
+                                                                <div className="text-slate-500 text-xs mt-1">
+                                                                    C/O: {staffMember.guardian_name}
+                                                                </div>
+                                                            )}
+                                                            {isAccepted && (
+                                                                <div className="text-slate-400 text-[10px] mt-1">
+                                                                    Joined: {formatDate(staffMember.joining_date)}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="flex flex-col items-center">
-                                                            <div className="flex items-center gap-2 text-slate-800 font-medium text-xs">
-                                                                <FiPhone className="w-3 h-3 text-blue-500" />
-                                                                {staffMember.mobile}
-                                                            </div>
-                                                            <div className="flex items-center gap-2 text-slate-500 text-xs mt-1">
-                                                                <FiMail className="w-3 h-3 text-blue-400" />
-                                                                {staffMember.email}
-                                                            </div>
+                                                            {isAccepted ? (
+                                                                <>
+                                                                    <div className="flex items-center gap-2 text-slate-800 font-medium text-xs">
+                                                                        <FiPhone className="w-3 h-3 text-blue-500" />
+                                                                        {staffMember.mobile}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 text-slate-500 text-xs mt-1">
+                                                                        <FiMail className="w-3 h-3 text-blue-400" />
+                                                                        {staffMember.email}
+                                                                    </div>
+                                                                </>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2 text-slate-500 text-xs">
+                                                                    <FiMail className="w-3 h-3 text-blue-400" />
+                                                                    {staffMember.email}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="flex flex-col items-center">
-                                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-medium bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-800 uppercase border border-blue-200">
+                                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-medium ${isAccepted ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-800 uppercase border border-blue-200' : 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-800 uppercase border border-amber-200'}`}>
                                                                 {staffMember.designation}
                                                             </span>
-                                                            <div className="text-emerald-600 text-xs font-medium mt-1">
-                                                                ₹{formatCurrency(parseInt(staffMember.salary))}
-                                                            </div>
+                                                            {isAccepted && staffMember.salary && (
+                                                                <div className="text-emerald-600 text-xs font-medium mt-1">
+                                                                    ₹{formatCurrency(parseInt(staffMember.salary))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
-                                                        <a
-                                                            href={`/view-stuff-profile-loan?username=${staffMember.username}`}
-                                                            className="inline-block"
-                                                        >
-                                                            <span className="inline-flex items-center justify-center bg-gradient-to-r from-red-50 to-pink-50 text-red-700 text-xs font-bold px-3 py-1.5 rounded-lg min-w-[80px] border border-red-200 shadow-xs">
-                                                                ₹{formatCurrency(parseInt(staffMember.loan))}
-                                                            </span>
-                                                        </a>
+                                                        <span className={`inline-flex items-center justify-center px-3 py-1.5 rounded-lg min-w-[80px] border shadow-xs text-xs font-bold ${
+                                                            isAccepted 
+                                                                ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-green-200' 
+                                                                : 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border-amber-200'
+                                                        }`}>
+                                                            {isAccepted ? 'Accepted' : 'Pending'}
+                                                        </span>
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
-                                                        <a
-                                                            href={`/view-stuff-profile-ledger?username=${staffMember.username}`}
-                                                            className="inline-block"
-                                                        >
-                                                            <span className="inline-flex items-center justify-center bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 text-xs font-bold px-3 py-1.5 rounded-lg min-w-[80px] border border-green-200 shadow-xs">
-                                                                ₹{formatCurrency(parseInt(staffMember.balance))}
+                                                        {isAccepted ? (
+                                                            <a
+                                                                href={`/view-stuff-profile-ledger?username=${staffMember.username}`}
+                                                                className="inline-block"
+                                                            >
+                                                                <span className="inline-flex items-center justify-center bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 text-xs font-bold px-3 py-1.5 rounded-lg min-w-[80px] border border-green-200 shadow-xs">
+                                                                    ₹{formatCurrency(parseInt(staffMember.balance))}
+                                                                </span>
+                                                            </a>
+                                                        ) : (
+                                                            <span className="inline-flex items-center justify-center bg-gradient-to-r from-slate-100 to-slate-200 text-slate-500 text-xs font-medium px-3 py-1.5 rounded-lg min-w-[80px] border border-slate-300 shadow-xs">
+                                                                N/A
                                                             </span>
-                                                        </a>
+                                                        )}
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="dropdown-container relative flex justify-center">
@@ -1465,90 +1416,130 @@ const ViewStaff = () => {
                                                                         className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
                                                                     >
                                                                         <div className="py-1">
-                                                                            <a
-                                                                                href={`/view-stuff-profile?username=${staffMember.username}`}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                onClick={() => setActiveRowDropdown(null)}
-                                                                            >
-                                                                                <div className="p-1 bg-blue-50 rounded mr-2">
-                                                                                    <FiUserCheck className="w-3 h-3 text-blue-500" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">Attendance</div>
-                                                                                </div>
-                                                                            </a>
-                                                                            <a
-                                                                                href={`/view-stuff-profile-expenses?username=${staffMember.username}`}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                onClick={() => setActiveRowDropdown(null)}
-                                                                            >
-                                                                                <div className="p-1 bg-green-50 rounded mr-2">
-                                                                                    <FiDollarSign className="w-3 h-3 text-green-500" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">Expenses</div>
-                                                                                </div>
-                                                                            </a>
-                                                                            <a
-                                                                                href={`/view-stuff-profile-bonus-fine?username=${staffMember.username}`}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                onClick={() => setActiveRowDropdown(null)}
-                                                                            >
-                                                                                <div className="p-1 bg-purple-50 rounded mr-2">
-                                                                                    <FiGift className="w-3 h-3 text-purple-500" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">Bonus/Fine</div>
-                                                                                </div>
-                                                                            </a>
-                                                                            <a
-                                                                                href={`/view-stuff-profile-salary?username=${staffMember.username}`}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                onClick={() => setActiveRowDropdown(null)}
-                                                                            >
-                                                                                <div className="p-1 bg-amber-50 rounded mr-2">
-                                                                                    <FiCreditCard className="w-3 h-3 text-amber-500" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">Salary</div>
-                                                                                </div>
-                                                                            </a>
-                                                                            <a
-                                                                                href={`/view-stuff-profile-ledger?username=${staffMember.username}`}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                onClick={() => setActiveRowDropdown(null)}
-                                                                            >
-                                                                                <div className="p-1 bg-blue-50 rounded mr-2">
-                                                                                    <FiCreditCard className="w-3 h-3 text-blue-600" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">Ledger</div>
-                                                                                </div>
-                                                                            </a>
-                                                                            <a
-                                                                                href={`/view-stuff-profile-performance?username=${staffMember.username}`}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                onClick={() => setActiveRowDropdown(null)}
-                                                                            >
-                                                                                <div className="p-1 bg-emerald-50 rounded mr-2">
-                                                                                    <FiTrendingUp className="w-3 h-3 text-emerald-600" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">Performance</div>
-                                                                                </div>
-                                                                            </a>
-                                                                            <a
-                                                                                href={`/view-stuff-profile-profile?username=${staffMember.username}`}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                onClick={() => setActiveRowDropdown(null)}
-                                                                            >
-                                                                                <div className="p-1 bg-indigo-50 rounded mr-2">
-                                                                                    <FiUser className="w-3 h-3 text-indigo-500" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">Profile</div>
-                                                                                </div>
-                                                                            </a>
+                                                                            {isAccepted ? (
+                                                                                // Options for accepted staff
+                                                                                <>
+                                                                                    <a
+                                                                                        href={`/view-stuff-profile?username=${staffMember.username}`}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                        onClick={() => setActiveRowDropdown(null)}
+                                                                                    >
+                                                                                        <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                            <FiUserCheck className="w-3 h-3 text-blue-500" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Attendance</div>
+                                                                                        </div>
+                                                                                    </a>
+                                                                                    <a
+                                                                                        href={`/view-stuff-profile-expenses?username=${staffMember.username}`}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                        onClick={() => setActiveRowDropdown(null)}
+                                                                                    >
+                                                                                        <div className="p-1 bg-green-50 rounded mr-2">
+                                                                                            <FiDollarSign className="w-3 h-3 text-green-500" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Expenses</div>
+                                                                                        </div>
+                                                                                    </a>
+                                                                                    <a
+                                                                                        href={`/view-stuff-profile-bonus-fine?username=${staffMember.username}`}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                        onClick={() => setActiveRowDropdown(null)}
+                                                                                    >
+                                                                                        <div className="p-1 bg-purple-50 rounded mr-2">
+                                                                                            <FiGift className="w-3 h-3 text-purple-500" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Bonus/Fine</div>
+                                                                                        </div>
+                                                                                    </a>
+                                                                                    <a
+                                                                                        href={`/view-stuff-profile-salary?username=${staffMember.username}`}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                        onClick={() => setActiveRowDropdown(null)}
+                                                                                    >
+                                                                                        <div className="p-1 bg-amber-50 rounded mr-2">
+                                                                                            <FiCreditCard className="w-3 h-3 text-amber-500" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Salary</div>
+                                                                                        </div>
+                                                                                    </a>
+                                                                                    <a
+                                                                                        href={`/view-stuff-profile-ledger?username=${staffMember.username}`}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                        onClick={() => setActiveRowDropdown(null)}
+                                                                                    >
+                                                                                        <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                            <FiCreditCard className="w-3 h-3 text-blue-600" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Ledger</div>
+                                                                                        </div>
+                                                                                    </a>
+                                                                                    <a
+                                                                                        href={`/view-stuff-profile-performance?username=${staffMember.username}`}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                        onClick={() => setActiveRowDropdown(null)}
+                                                                                    >
+                                                                                        <div className="p-1 bg-emerald-50 rounded mr-2">
+                                                                                            <FiTrendingUp className="w-3 h-3 text-emerald-600" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Performance</div>
+                                                                                        </div>
+                                                                                    </a>
+                                                                                    <a
+                                                                                        href={`/view-stuff-profile-profile?username=${staffMember.username}`}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                        onClick={() => setActiveRowDropdown(null)}
+                                                                                    >
+                                                                                        <div className="p-1 bg-indigo-50 rounded mr-2">
+                                                                                            <FiUser className="w-3 h-3 text-indigo-500" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Profile</div>
+                                                                                        </div>
+                                                                                    </a>
+                                                                                </>
+                                                                            ) : (
+                                                                                // Options for pending staff
+                                                                                <>
+                                                                                    <div className="text-center py-2 px-3">
+                                                                                        <div className="text-xs text-amber-600 font-medium mb-1">
+                                                                                            Invitation Pending
+                                                                                        </div>
+                                                                                        <div className="text-[10px] text-slate-500 mb-2">
+                                                                                            Staff hasn't accepted yet
+                                                                                        </div>
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                setActiveRowDropdown(null);
+                                                                                                handleResendInvitation(staffMember);
+                                                                                            }}
+                                                                                            disabled={resendingLink === staffMember.username}
+                                                                                            className="flex items-center justify-center w-full px-3 py-2 text-xs bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 transition-colors duration-150 rounded border border-blue-200"
+                                                                                        >
+                                                                                            {resendingLink === staffMember.username ? (
+                                                                                                <>
+                                                                                                    <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-blue-600" fill="none" viewBox="0 0 24 24">
+                                                                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                                                    </svg>
+                                                                                                    Resending...
+                                                                                                </>
+                                                                                            ) : (
+                                                                                                <>
+                                                                                                    <FiRefreshCw className="w-3 h-3 mr-2" />
+                                                                                                    Resend Invitation
+                                                                                                </>
+                                                                                            )}
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </>
+                                                                            )}
                                                                             <div className="border-t border-slate-100 mt-1 pt-1">
                                                                                 <button
                                                                                     onClick={() => {
