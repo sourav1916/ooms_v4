@@ -58,76 +58,85 @@ const NotesTab = ({ clientUsername }) => {
     const chunksRef = useRef([]);
     const timerRef = useRef(null);
     
+    // Audio playback tracking
+    const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+    const audioRefs = useRef({});
+    
     const [uploadingAttachment, setUploadingAttachment] = useState(false);
     const [uploadProgress, setUploadProgress] = useState({});
     const fileInputRef = useRef(null);
+    
     // Download attachment
-const downloadAttachment = (attachment) => {
-    if (attachment.url) {
-        window.open(attachment.url, '_blank');
-    } else if (attachment.file) {
-        // Handle direct file download
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(attachment.file);
-        link.download = attachment.name || 'attachment';
-        link.click();
-    }
-};// Handle attachment selection (for legacy attachments in text notes)
-const handleAttachmentSelect = async (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-    
-    // Check file size (10MB limit)
-    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
-    const oversizedFiles = files.filter(file => file.size > maxSize);
-    
-    if (oversizedFiles.length > 0) {
-        alert(`Some files exceed the 10MB limit. Please upload smaller files.`);
-        return;
-    }
-    
-    // Check total attachments limit
-    if (newNote.attachments.length + files.length > 5) {
-        alert(`Maximum 5 attachments allowed. You have ${newNote.attachments.length} attachments already.`);
-        return;
-    }
-    
-    setUploadingAttachment(true);
-    const uploadedAttachments = [];
-    
-    for (const file of files) {
-        const uploadedFile = await uploadFileToServer(file);
-        if (uploadedFile) {
-            uploadedAttachments.push({
-                name: file.name,
-                filename: file.name,
-                size: file.size,
-                url: uploadedFile
-            });
+    const downloadAttachment = (attachment) => {
+        if (attachment.url) {
+            window.open(attachment.url, '_blank');
+        } else if (attachment.file) {
+            // Handle direct file download
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(attachment.file);
+            link.download = attachment.name || 'attachment';
+            link.click();
         }
-    }
+    };
     
-    if (uploadedAttachments.length > 0) {
+    // Handle attachment selection (for legacy attachments in text notes)
+    const handleAttachmentSelect = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        
+        // Check file size (10MB limit)
+        const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+        const oversizedFiles = files.filter(file => file.size > maxSize);
+        
+        if (oversizedFiles.length > 0) {
+            alert(`Some files exceed the 10MB limit. Please upload smaller files.`);
+            return;
+        }
+        
+        // Check total attachments limit
+        if (newNote.attachments.length + files.length > 5) {
+            alert(`Maximum 5 attachments allowed. You have ${newNote.attachments.length} attachments already.`);
+            return;
+        }
+        
+        setUploadingAttachment(true);
+        const uploadedAttachments = [];
+        
+        for (const file of files) {
+            const uploadedFile = await uploadFileToServer(file);
+            if (uploadedFile) {
+                uploadedAttachments.push({
+                    name: file.name,
+                    filename: file.name,
+                    size: file.size,
+                    url: uploadedFile
+                });
+            }
+        }
+        
+        if (uploadedAttachments.length > 0) {
+            setNewNote(prev => ({
+                ...prev,
+                attachments: [...prev.attachments, ...uploadedAttachments]
+            }));
+        }
+        
+        setUploadingAttachment(false);
+        
+        // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+    
+    // Remove attachment
+    const removeAttachment = (index) => {
         setNewNote(prev => ({
             ...prev,
-            attachments: [...prev.attachments, ...uploadedAttachments]
+            attachments: prev.attachments.filter((_, i) => i !== index)
         }));
-    }
+    };
     
-    setUploadingAttachment(false);
-    
-    // Reset file input
-    if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-    }
-};
-    // Remove attachment
-const removeAttachment = (index) => {
-    setNewNote(prev => ({
-        ...prev,
-        attachments: prev.attachments.filter((_, i) => i !== index)
-    }));
-};
     // Get headers from localStorage
     const getHeaders = () => {
         try {
@@ -237,7 +246,7 @@ const removeAttachment = (index) => {
                     modify_by: note.modify_by,
                     reminder_date: note.reminder_date ? new Date(note.reminder_date) : null,
                     type: note.type || 'text', // Add type field
-                    file: note.file || null, // Add file field
+                    file: note.file || note.voice || null, // Add file field
                     attachments: note.attachments || [],
                     // Add formatted dates for display
                     formatted_create_date: new Date(note.create_date).toLocaleDateString('en-US', {
@@ -385,107 +394,107 @@ const removeAttachment = (index) => {
         setShowEditModal(true);
     };
 
-const uploadFileToServer = async (file) => {
-    if (!file) return null;
-    
-    const headers = getHeaders();
-    if (!headers) {
-        alert('Missing authentication headers');
-        return null;
-    }
-    
-    try {
-        const formData = new FormData();
+    const uploadFileToServer = async (file) => {
+        if (!file) return null;
         
-        // Ensure WAV files are properly named
-        let uploadFile = file;
-        
-        // If it's a WAV file, ensure it has correct extension
-        if (file.type === 'audio/wav' && !file.name.toLowerCase().endsWith('.wav')) {
-            const wavFile = new File([file], `${file.name.replace(/\.[^/.]+$/, "")}.wav`, { 
-                type: 'audio/wav' 
-            });
-            uploadFile = wavFile;
+        const headers = getHeaders();
+        if (!headers) {
+            alert('Missing authentication headers');
+            return null;
         }
         
-        formData.append('file', uploadFile);
-        
-        // Add metadata for server - explicitly state it's audio
-        formData.append('file_type', 'voice_note');
-        formData.append('note_type', 'voice');
-        formData.append('mime_type', 'audio/wav');
-        
-        console.log('Uploading file to server:', {
-            name: uploadFile.name,
-            type: uploadFile.type,
-            size: uploadFile.size,
-            extension: uploadFile.name.split('.').pop()
-        });
-        
-        const response = await axios.post(
-            'https://api.ooms.in/api/v1/upload',
-            formData,
-            {
-                headers: {
-                    ...headers,
-                    'Content-Type': 'multipart/form-data'
-                },
-                onUploadProgress: (progressEvent) => {
-                    const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
-                },
-                timeout: 60000 // 60 second timeout for audio files
-            }
-        );
-        
-        console.log('Upload response:', response.data);
-        
-        if (response.data && response.data.success) {
-            return response.data.url || response.data.data?.url;
-        } else {
-            throw new Error(response.data?.message || 'Upload failed');
-        }
-        
-    } catch (error) {
-        console.error('Error uploading file:', error);
-        
-        // Detailed error handling
-        if (error.response) {
-            const { status, data } = error.response;
+        try {
+            const formData = new FormData();
             
-            if (status === 400) {
-                if (data?.message?.includes('MIME type')) {
-                    alert(`Server rejected file type: ${file.type}. The system is now converting recordings to WAV format which should be accepted.`);
-                } else if (data?.message?.includes('audio')) {
-                    alert(`Audio file error: ${data.message}. Please try recording again.`);
-                } else {
-                    alert(`Upload failed: ${data?.message || 'Bad request'}`);
-                }
-            } else if (status === 413) {
-                alert('File too large. Maximum size is 10MB.');
-            } else if (status === 415) {
-                alert('Unsupported media type. The system is converting to WAV format. Please try again.');
-            } else if (status >= 500) {
-                alert('Server error. Please try again later.');
+            // Ensure WAV files are properly named
+            let uploadFile = file;
+            
+            // If it's a WAV file, ensure it has correct extension
+            if (file.type === 'audio/wav' && !file.name.toLowerCase().endsWith('.wav')) {
+                const wavFile = new File([file], `${file.name.replace(/\.[^/.]+$/, "")}.wav`, { 
+                    type: 'audio/wav' 
+                });
+                uploadFile = wavFile;
             }
-        } else if (error.request) {
-            alert('No response from server. Check your internet connection.');
-        } else {
-            alert(`Upload error: ${error.message}`);
-        }
-        
-        return null;
-    } finally {
-        // Clear progress after delay
-        setTimeout(() => {
-            setUploadProgress(prev => {
-                const newProgress = { ...prev };
-                delete newProgress[file.name];
-                return newProgress;
+            
+            formData.append('file', uploadFile);
+            
+            // Add metadata for server - explicitly state it's audio
+            formData.append('file_type', 'voice_note');
+            formData.append('note_type', 'voice');
+            formData.append('mime_type', 'audio/wav');
+            
+            console.log('Uploading file to server:', {
+                name: uploadFile.name,
+                type: uploadFile.type,
+                size: uploadFile.size,
+                extension: uploadFile.name.split('.').pop()
             });
-        }, 2000);
-    }
-};
+            
+            const response = await axios.post(
+                'https://api.ooms.in/api/v1/upload',
+                formData,
+                {
+                    headers: {
+                        ...headers,
+                        'Content-Type': 'multipart/form-data'
+                    },
+                    onUploadProgress: (progressEvent) => {
+                        const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                        setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+                    },
+                    timeout: 60000 // 60 second timeout for audio files
+                }
+            );
+            
+            console.log('Upload response:', response.data);
+            
+            if (response.data && response.data.success) {
+                return response.data.url || response.data.data?.url;
+            } else {
+                throw new Error(response.data?.message || 'Upload failed');
+            }
+            
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            
+            // Detailed error handling
+            if (error.response) {
+                const { status, data } = error.response;
+                
+                if (status === 400) {
+                    if (data?.message?.includes('MIME type')) {
+                        alert(`Server rejected file type: ${file.type}. The system is now converting recordings to WAV format which should be accepted.`);
+                    } else if (data?.message?.includes('audio')) {
+                        alert(`Audio file error: ${data.message}. Please try recording again.`);
+                    } else {
+                        alert(`Upload failed: ${data?.message || 'Bad request'}`);
+                    }
+                } else if (status === 413) {
+                    alert('File too large. Maximum size is 10MB.');
+                } else if (status === 415) {
+                    alert('Unsupported media type. The system is converting to WAV format. Please try again.');
+                } else if (status >= 500) {
+                    alert('Server error. Please try again later.');
+                }
+            } else if (error.request) {
+                alert('No response from server. Check your internet connection.');
+            } else {
+                alert(`Upload error: ${error.message}`);
+            }
+            
+            return null;
+        } finally {
+            // Clear progress after delay
+            setTimeout(() => {
+                setUploadProgress(prev => {
+                    const newProgress = { ...prev };
+                    delete newProgress[file.name];
+                    return newProgress;
+                });
+            }, 2000);
+        }
+    };
 
     // Handle file selection for file type notes
     const handleFileSelect = async (e) => {
@@ -523,178 +532,177 @@ const uploadFileToServer = async (file) => {
         }
     };
 
- // Voice recording functions - FIXED TO CONVERT TO WAV FORMAT
-const startRecording = async () => {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: {
-                channelCount: 1,
-                sampleRate: 44100,
-                echoCancellation: true,
-                noiseSuppression: true
-            }
-        });
-        
-        // Use audio/webm for recording (most compatible with browsers)
-        const mimeType = 'audio/webm';
-        const mediaRecorder = new MediaRecorder(stream, { mimeType });
-        
-        mediaRecorderRef.current = mediaRecorder;
-        chunksRef.current = [];
-        
-        mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) {
-                chunksRef.current.push(e.data);
-            }
-        };
-        
-        mediaRecorder.onstop = async () => {
-            // Create WebM blob from recorded chunks
-            const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-            
-            // Convert WebM to WAV format for server compatibility
-            const wavBlob = await convertWebMToWav(webmBlob);
-            
-            // Create audio file with correct WAV format
-            const timestamp = new Date().getTime();
-            const audioFile = new File([wavBlob], `voice-note-${timestamp}.wav`, { 
-                type: 'audio/wav' 
+    // Voice recording functions - FIXED TO CONVERT TO WAV FORMAT
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    channelCount: 1,
+                    sampleRate: 44100,
+                    echoCancellation: true,
+                    noiseSuppression: true
+                }
             });
             
-            console.log('Final audio file:', {
-                name: audioFile.name,
-                type: audioFile.type,
-                size: audioFile.size
-            });
+            // Use audio/webm for recording (most compatible with browsers)
+            const mimeType = 'audio/webm';
+            const mediaRecorder = new MediaRecorder(stream, { mimeType });
             
-            // Update audio preview (still use original for playback)
-            setAudioBlob(webmBlob); // Keep original for preview
-            const audioUrl = URL.createObjectURL(webmBlob);
-            setAudioURL(audioUrl);
+            mediaRecorderRef.current = mediaRecorder;
+            chunksRef.current = [];
             
-            // Upload the WAV file (server will accept this)
-            setUploadingAttachment(true);
-            const fileUrl = await uploadFileToServer(audioFile);
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    chunksRef.current.push(e.data);
+                }
+            };
             
-            if (fileUrl) {
-                setNewNote(prev => ({
-                    ...prev,
-                    type: 'voice',
-                    file: fileUrl,
-                    note: `Voice note (${formatRecordingTime(recordingTime)})`,
-                    subject: prev.subject || 'Voice Note'
-                }));
-                alert('Voice note uploaded successfully!');
-            } else {
-                alert('Failed to upload voice note. Please try again.');
-            }
+            mediaRecorder.onstop = async () => {
+                // Create WebM blob from recorded chunks
+                const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+                
+                // Convert WebM to WAV format for server compatibility
+                const wavBlob = await convertWebMToWav(webmBlob);
+                
+                // Create audio file with correct WAV format
+                const timestamp = new Date().getTime();
+                const audioFile = new File([wavBlob], `voice-note-${timestamp}.wav`, { 
+                    type: 'audio/wav' 
+                });
+                
+                console.log('Final audio file:', {
+                    name: audioFile.name,
+                    type: audioFile.type,
+                    size: audioFile.size
+                });
+                
+                // Update audio preview (still use original for playback)
+                setAudioBlob(webmBlob); // Keep original for preview
+                const audioUrl = URL.createObjectURL(webmBlob);
+                setAudioURL(audioUrl);
+                
+                // Upload the WAV file (server will accept this)
+                setUploadingAttachment(true);
+                const fileUrl = await uploadFileToServer(audioFile);
+                
+                if (fileUrl) {
+                    setNewNote(prev => ({
+                        ...prev,
+                        type: 'voice',
+                        file: fileUrl,
+                        note: `Voice note (${formatRecordingTime(recordingTime)})`,
+                        subject: prev.subject || 'Voice Note'
+                    }));
+                    alert('Voice note uploaded successfully!');
+                } else {
+                    alert('Failed to upload voice note. Please try again.');
+                }
+                
+                setUploadingAttachment(false);
+                
+                // Stop all tracks
+                stream.getTracks().forEach(track => track.stop());
+            };
             
-            setUploadingAttachment(false);
+            mediaRecorder.start();
+            setIsRecording(true);
+            setRecordingTime(0);
             
-            // Stop all tracks
-            stream.getTracks().forEach(track => track.stop());
-        };
-        
-        mediaRecorder.start();
-        setIsRecording(true);
-        setRecordingTime(0);
-        
-        // Start timer
-        timerRef.current = setInterval(() => {
-            setRecordingTime(prev => prev + 1);
-        }, 1000);
-        
-    } catch (error) {
-        console.error('Error starting recording:', error);
-        alert('Error accessing microphone. Please check permissions.');
-    }
-};
-
-// Add this helper function to convert WebM to WAV
-const convertWebMToWav = async (webmBlob) => {
-    try {
-        // Create an audio context to process the audio
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Convert blob to array buffer
-        const arrayBuffer = await webmBlob.arrayBuffer();
-        
-        // Decode the WebM audio data
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        
-        // Get audio parameters
-        const numberOfChannels = audioBuffer.numberOfChannels;
-        const sampleRate = audioBuffer.sampleRate;
-        const length = audioBuffer.length;
-        
-        // Calculate WAV file size
-        const wavSize = 44 + length * numberOfChannels * 2; // 44 bytes header + PCM data
-        
-        // Create array buffer for WAV file
-        const wavBuffer = new ArrayBuffer(wavSize);
-        const view = new DataView(wavBuffer);
-        
-        // Write WAV header
-        // RIFF identifier
-        writeString(view, 0, 'RIFF');
-        // File length minus RIFF identifier length and file description length
-        view.setUint32(4, 36 + length * numberOfChannels * 2, true);
-        // RIFF type
-        writeString(view, 8, 'WAVE');
-        // Format chunk identifier
-        writeString(view, 12, 'fmt ');
-        // Format chunk length
-        view.setUint32(16, 16, true);
-        // Sample format (PCM)
-        view.setUint16(20, 1, true);
-        // Channel count
-        view.setUint16(22, numberOfChannels, true);
-        // Sample rate
-        view.setUint32(24, sampleRate, true);
-        // Byte rate (sample rate * block align)
-        view.setUint32(28, sampleRate * numberOfChannels * 2, true);
-        // Block align (channel count * bytes per sample)
-        view.setUint16(32, numberOfChannels * 2, true);
-        // Bits per sample
-        view.setUint16(34, 16, true);
-        // Data chunk identifier
-        writeString(view, 36, 'data');
-        // Data chunk length
-        view.setUint32(40, length * numberOfChannels * 2, true);
-        
-        // Write PCM audio data
-        let offset = 44;
-        for (let i = 0; i < length; i++) {
-            for (let channel = 0; channel < numberOfChannels; channel++) {
-                const sample = audioBuffer.getChannelData(channel)[i];
-                // Convert to 16-bit PCM
-                const int16 = Math.max(-1, Math.min(1, sample)) * 0x7FFF;
-                view.setInt16(offset, int16, true);
-                offset += 2;
-            }
+            // Start timer
+            timerRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Error starting recording:', error);
+            alert('Error accessing microphone. Please check permissions.');
         }
-        
-        // Create WAV blob
-        const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
-        
-        return wavBlob;
-        
-    } catch (error) {
-        console.error('Error converting WebM to WAV:', error);
-        // Fallback: use original blob but rename as WAV
-        // This is less ideal but better than nothing
-        console.log('Falling back to WebM with .wav extension');
-        return new Blob([webmBlob], { type: 'audio/wav' });
-    }
-};
+    };
 
-// Helper function to write strings to DataView
-const writeString = (view, offset, string) => {
-    for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
-    }
-};
+    // Add this helper function to convert WebM to WAV
+    const convertWebMToWav = async (webmBlob) => {
+        try {
+            // Create an audio context to process the audio
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Convert blob to array buffer
+            const arrayBuffer = await webmBlob.arrayBuffer();
+            
+            // Decode the WebM audio data
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            
+            // Get audio parameters
+            const numberOfChannels = audioBuffer.numberOfChannels;
+            const sampleRate = audioBuffer.sampleRate;
+            const length = audioBuffer.length;
+            
+            // Calculate WAV file size
+            const wavSize = 44 + length * numberOfChannels * 2; // 44 bytes header + PCM data
+            
+            // Create array buffer for WAV file
+            const wavBuffer = new ArrayBuffer(wavSize);
+            const view = new DataView(wavBuffer);
+            
+            // Write WAV header
+            // RIFF identifier
+            writeString(view, 0, 'RIFF');
+            // File length minus RIFF identifier length and file description length
+            view.setUint32(4, 36 + length * numberOfChannels * 2, true);
+            // RIFF type
+            writeString(view, 8, 'WAVE');
+            // Format chunk identifier
+            writeString(view, 12, 'fmt ');
+            // Format chunk length
+            view.setUint32(16, 16, true);
+            // Sample format (PCM)
+            view.setUint16(20, 1, true);
+            // Channel count
+            view.setUint16(22, numberOfChannels, true);
+            // Sample rate
+            view.setUint32(24, sampleRate, true);
+            // Byte rate (sample rate * block align)
+            view.setUint32(28, sampleRate * numberOfChannels * 2, true);
+            // Block align (channel count * bytes per sample)
+            view.setUint16(32, numberOfChannels * 2, true);
+            // Bits per sample
+            view.setUint16(34, 16, true);
+            // Data chunk identifier
+            writeString(view, 36, 'data');
+            // Data chunk length
+            view.setUint32(40, length * numberOfChannels * 2, true);
+            
+            // Write PCM audio data
+            let offset = 44;
+            for (let i = 0; i < length; i++) {
+                for (let channel = 0; channel < numberOfChannels; channel++) {
+                    const sample = audioBuffer.getChannelData(channel)[i];
+                    // Convert to 16-bit PCM
+                    const int16 = Math.max(-1, Math.min(1, sample)) * 0x7FFF;
+                    view.setInt16(offset, int16, true);
+                    offset += 2;
+                }
+            }
+            
+            // Create WAV blob
+            const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
+            
+            return wavBlob;
+            
+        } catch (error) {
+            console.error('Error converting WebM to WAV:', error);
+            // Fallback: use original blob but rename as WAV
+            // This is less ideal but better than nothing
+            console.log('Falling back to WebM with .wav extension');
+            return new Blob([webmBlob], { type: 'audio/wav' });
+        }
+    };
 
+    // Helper function to write strings to DataView
+    const writeString = (view, offset, string) => {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    };
 
     const stopRecording = () => {
         if (mediaRecorderRef.current && isRecording) {
@@ -1095,19 +1103,18 @@ const writeString = (view, offset, string) => {
             return status === 'cancel' || status === 'cancelled';
         }).length;
         const highPriority = meta.priority?.high || notes.filter(n => n.priority === 'High').length;
-        const withReminders = notes.filter(n => n.reminder_date).length;
-        const withAttachments = notes.filter(n => n.attachments && n.attachments.length > 0).length;
         const voiceNotes = notes.filter(n => n.type === 'voice').length;
         const fileNotes = notes.filter(n => n.type === 'file').length;
+        const textNotes = notes.filter(n => n.type === 'text' || !n.type).length;
         
-        return { total, active, completed, cancelled, highPriority, withReminders, withAttachments, voiceNotes, fileNotes };
+        return { total, active, completed, cancelled, highPriority, voiceNotes, fileNotes, textNotes };
     };
 
     const stats = calculateNoteStats();
 
     // Get file icon based on file type
     const getFileIcon = (fileName) => {
-        const extension = fileName.split('.').pop().toLowerCase();
+        const extension = fileName?.split('.').pop().toLowerCase() || '';
         switch (extension) {
             case 'pdf':
                 return <FiFile className="w-5 h-5 text-red-600" />;
@@ -1125,6 +1132,7 @@ const writeString = (view, offset, string) => {
             case 'mp3':
             case 'wav':
             case 'ogg':
+            case 'webm':
                 return <FiVolume2 className="w-5 h-5 text-orange-600" />;
             default:
                 return <FiPaperclip className="w-5 h-5 text-gray-600" />;
@@ -1182,6 +1190,29 @@ const writeString = (view, offset, string) => {
         }
     };
 
+    // Handle audio playback
+    const handlePlayAudio = (noteId) => {
+        if (currentlyPlaying === noteId) {
+            // Pause if currently playing
+            if (audioRefs.current[noteId]) {
+                audioRefs.current[noteId].pause();
+                setCurrentlyPlaying(null);
+            }
+        } else {
+            // Pause any currently playing audio
+            if (currentlyPlaying && audioRefs.current[currentlyPlaying]) {
+                audioRefs.current[currentlyPlaying].pause();
+            }
+            
+            // Play new audio
+            if (audioRefs.current[noteId]) {
+                audioRefs.current[noteId].play()
+                    .then(() => setCurrentlyPlaying(noteId))
+                    .catch(err => console.error('Error playing audio:', err));
+            }
+        }
+    };
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -1191,6 +1222,13 @@ const writeString = (view, offset, string) => {
             if (audioURL) {
                 URL.revokeObjectURL(audioURL);
             }
+            // Cleanup audio refs
+            Object.values(audioRefs.current).forEach(audio => {
+                if (audio) {
+                    audio.pause();
+                    audio.src = '';
+                }
+            });
         };
     }, [audioURL]);
 
@@ -1246,117 +1284,114 @@ const writeString = (view, offset, string) => {
                 </div>
             )}
 
-            {/* Stats Dashboard - UPDATED WITH TYPE STATS */}
+            {/* Stats Dashboard - UPDATED WITH IMPROVED CARDS */}
             {!loading && !error && clientUsername && (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-9 gap-4 mb-8">
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+                        <motion.div 
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+                        >
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Total Notes</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-2">{stats.total}</p>
+                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
                                 </div>
-                                <div className="w-10 h-10 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
-                                    <FiBook className="w-5 h-5 text-blue-600" />
+                                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                    <FiBook className="w-6 h-6 text-white" />
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                         
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                        <motion.div 
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+                        >
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Text Notes</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-2">{stats.total - stats.fileNotes - stats.voiceNotes}</p>
+                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.textNotes}</p>
                                 </div>
-                                <div className="w-10 h-10 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
-                                    <FiMessageSquare className="w-5 h-5 text-blue-600" />
+                                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                    <FiMessageSquare className="w-6 h-6 text-white" />
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                         
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                        <motion.div 
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+                        >
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">File Notes</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-2">{stats.fileNotes}</p>
+                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.fileNotes}</p>
                                 </div>
-                                <div className="w-10 h-10 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl flex items-center justify-center">
-                                    <FiFile className="w-5 h-5 text-green-600" />
+                                <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
+                                    <FiFile className="w-6 h-6 text-white" />
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                         
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                        <motion.div 
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+                        >
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Voice Notes</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-2">{stats.voiceNotes}</p>
+                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.voiceNotes}</p>
                                 </div>
-                                <div className="w-10 h-10 bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl flex items-center justify-center">
-                                    <FiMic className="w-5 h-5 text-purple-600" />
+                                <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-pink-700 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+                                    <FiMic className="w-6 h-6 text-white" />
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                         
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                        <motion.div 
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+                        >
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">High Priority</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-2">{stats.highPriority}</p>
+                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.highPriority}</p>
                                 </div>
-                                <div className="w-10 h-10 bg-gradient-to-r from-red-100 to-pink-100 rounded-xl flex items-center justify-center">
-                                    <FiTag className="w-5 h-5 text-red-600" />
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">With Reminders</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-2">{stats.withReminders}</p>
-                                </div>
-                                <div className="w-10 h-10 bg-gradient-to-r from-orange-100 to-amber-100 rounded-xl flex items-center justify-center">
-                                    <FiBell className="w-5 h-5 text-orange-600" />
+                                <div className="w-12 h-12 bg-gradient-to-r from-red-600 to-pink-700 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/20">
+                                    <FiTag className="w-6 h-6 text-white" />
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                         
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">With Attachments</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-2">{stats.withAttachments}</p>
-                                </div>
-                                <div className="w-10 h-10 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center">
-                                    <FiPaperclip className="w-5 h-5 text-indigo-600" />
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                        <motion.div 
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+                        >
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Completed</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-2">{stats.completed}</p>
+                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.completed}</p>
                                 </div>
-                                <div className="w-10 h-10 bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl flex items-center justify-center">
-                                    <FiCheckCircle className="w-5 h-5 text-green-600" />
+                                <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
+                                    <FiCheckCircle className="w-6 h-6 text-white" />
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                         
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                        <motion.div 
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+                        >
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Cancelled</p>
-                                    <p className="text-2xl font-bold text-gray-900 mt-2">{stats.cancelled}</p>
+                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.cancelled}</p>
                                 </div>
-                                <div className="w-10 h-10 bg-gradient-to-r from-gray-100 to-slate-100 rounded-xl flex items-center justify-center">
-                                    <FiX className="w-5 h-5 text-gray-600" />
+                                <div className="w-12 h-12 bg-gradient-to-r from-gray-600 to-slate-700 rounded-xl flex items-center justify-center shadow-lg shadow-gray-500/20">
+                                    <FiX className="w-6 h-6 text-white" />
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
 
                     {/* Search and Filter Bar */}
@@ -1385,7 +1420,7 @@ const writeString = (view, offset, string) => {
                         </div>
                     </div>
 
-                    {/* Notes List - UPDATED WITH TYPE BADGES */}
+                    {/* Notes List - UPDATED WITH VOICE PLAYBACK */}
                     <div className="space-y-4 mb-8">
                         {filteredNotes.length === 0 ? (
                             <div className="text-center py-12">
@@ -1439,31 +1474,60 @@ const writeString = (view, offset, string) => {
                                                                 </div>
                                                             </div>
                                                         )}
-                                                        <p className="text-gray-700 leading-relaxed">
-                                                            {note.type === 'voice' ? (
-                                                                <div className="flex items-center gap-2">
+                                                        
+                                                        {/* Note Content with Voice Playback */}
+                                                        {note.type === 'voice' ? (
+                                                            <div className="space-y-3">
+                                                                <div className="flex items-center gap-2 text-gray-700">
                                                                     <FiVolume2 className="w-4 h-4 text-purple-600" />
-                                                                    <span>Voice note - {note.note}</span>
+                                                                    <span className="text-sm text-gray-600">{note.note}</span>
                                                                 </div>
-                                                            ) : note.type === 'file' ? (
-                                                                <div className="flex items-center gap-2">
-                                                                    <FiFile className="w-4 h-4 text-green-600" />
-                                                                    <span>{note.note}</span>
-                                                                </div>
-                                                            ) : (
-                                                                <>
-                                                                    {note.note.length > 120 ? note.truncated_note : note.note}
-                                                                    {note.note.length > 120 && (
-                                                                        <button 
-                                                                            onClick={() => openViewModal(note)}
-                                                                            className="ml-2 text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                                                {note.file && (
+                                                                    <div className="flex items-center gap-3">
+                                                                        <audio 
+                                                                            ref={el => audioRefs.current[note.id] = el}
+                                                                            src={note.file}
+                                                                            preload="metadata"
+                                                                            onEnded={() => setCurrentlyPlaying(null)}
+                                                                            className="hidden"
+                                                                        />
+                                                                        <motion.button
+                                                                            onClick={() => handlePlayAudio(note.id)}
+                                                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                                                                currentlyPlaying === note.id
+                                                                                    ? 'bg-gradient-to-r from-red-600 to-pink-700 text-white'
+                                                                                    : 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 hover:from-purple-200 hover:to-pink-200'
+                                                                            }`}
+                                                                            whileHover={{ scale: 1.05 }}
+                                                                            whileTap={{ scale: 0.95 }}
                                                                         >
-                                                                            Read more
-                                                                        </button>
-                                                                    )}
-                                                                </>
-                                                            )}
-                                                        </p>
+                                                                            <FiVolume2 className="w-4 h-4" />
+                                                                            {currentlyPlaying === note.id ? 'Playing...' : 'Play Voice Note'}
+                                                                        </motion.button>
+                                                                        <span className="text-xs text-gray-500">
+                                                                            Click to preview
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ) : note.type === 'file' ? (
+                                                            <div className="flex items-center gap-2 text-gray-700">
+                                                                <FiFile className="w-4 h-4 text-green-600" />
+                                                                <span>{note.note}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-gray-700 leading-relaxed">
+                                                                {note.note.length > 120 ? note.truncated_note : note.note}
+                                                                {note.note.length > 120 && (
+                                                                    <button 
+                                                                        onClick={() => openViewModal(note)}
+                                                                        className="ml-2 text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                                                    >
+                                                                        Read more
+                                                                    </button>
+                                                                )}
+                                                            </p>
+                                                        )}
                                                         
                                                         <div className="flex flex-wrap items-center gap-3">
                                                             <div className="flex items-center gap-2 text-gray-600">
@@ -1724,7 +1788,7 @@ const writeString = (view, offset, string) => {
                 </>
             )}
 
-            {/* Professional View Note Modal - UPDATED FOR TYPE DISPLAY */}
+            {/* Professional View Note Modal - UPDATED FOR VOICE PLAYBACK */}
             <AnimatePresence>
                 {showViewModal && selectedNote && (
                     <motion.div
@@ -1845,7 +1909,7 @@ const writeString = (view, offset, string) => {
                                         </div>
                                     )}
 
-                                    {/* Note Content - UPDATED FOR DIFFERENT TYPES */}
+                                    {/* Note Content - UPDATED FOR VOICE PLAYBACK */}
                                     <div className="space-y-4">
                                         <label className="text-sm font-semibold text-gray-700">Note Content</label>
                                         <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
@@ -1860,29 +1924,35 @@ const writeString = (view, offset, string) => {
                                                             <p className="text-sm text-gray-600">{selectedNote.note}</p>
                                                         </div>
                                                     </div>
-                                                   {selectedNote.file && (
-    <div className="mt-4">
-        <audio controls className="w-full">
-            {/* Try multiple source types for compatibility */}
-            <source src={selectedNote.file} type="audio/mpeg" />
-            <source src={selectedNote.file} type="audio/webm" />
-            <source src={selectedNote.file} type="audio/ogg" />
-            <source src={selectedNote.file} type="audio/wav" />
-            Your browser does not support the audio element.
-        </audio>
-        <div className="mt-3 flex justify-end">
-            <motion.button
-                onClick={() => window.open(selectedNote.file, '_blank')}
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-700 text-white rounded-lg hover:shadow-md transition-all duration-200 flex items-center gap-2"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-            >
-                <FiDownload className="w-4 h-4" />
-                Download Audio
-            </motion.button>
-        </div>
-    </div>
-)}
+                                                    {selectedNote.file && (
+                                                        <div className="mt-4 space-y-4">
+                                                            <audio 
+                                                                controls 
+                                                                className="w-full" 
+                                                                preload="metadata"
+                                                                onPlay={() => setCurrentlyPlaying(selectedNote.id)}
+                                                                onPause={() => setCurrentlyPlaying(null)}
+                                                                onEnded={() => setCurrentlyPlaying(null)}
+                                                            >
+                                                                <source src={selectedNote.file} type="audio/mpeg" />
+                                                                <source src={selectedNote.file} type="audio/webm" />
+                                                                <source src={selectedNote.file} type="audio/ogg" />
+                                                                <source src={selectedNote.file} type="audio/wav" />
+                                                                Your browser does not support the audio element.
+                                                            </audio>
+                                                            <div className="flex justify-end gap-3">
+                                                                <motion.button
+                                                                    onClick={() => window.open(selectedNote.file, '_blank')}
+                                                                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-700 text-white rounded-lg hover:shadow-md transition-all duration-200 flex items-center gap-2"
+                                                                    whileHover={{ scale: 1.05 }}
+                                                                    whileTap={{ scale: 0.95 }}
+                                                                >
+                                                                    <FiDownload className="w-4 h-4" />
+                                                                    Download Audio
+                                                                </motion.button>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ) : selectedNote.type === 'file' ? (
                                                 <div className="space-y-4">
