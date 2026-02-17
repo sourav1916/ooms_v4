@@ -37,7 +37,7 @@ const NotesTab = ({ clientUsername }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [priorityFilter, setPriorityFilter] = useState('All');
     
-    // Updated newNote state to include type
+    // Updated newNote state - removed attachments
     const [newNote, setNewNote] = useState({
         subject: '',
         note: '',
@@ -45,8 +45,7 @@ const NotesTab = ({ clientUsername }) => {
         status: 'pending',
         reminder_date: null,
         type: 'text', // text, file, or voice
-        file: null, // For file/voice upload
-        attachments: [] // Keep for backward compatibility
+        file: null // For file/voice upload
     });
     
     // Voice recording states
@@ -66,75 +65,16 @@ const NotesTab = ({ clientUsername }) => {
     const [uploadProgress, setUploadProgress] = useState({});
     const fileInputRef = useRef(null);
     
-    // Download attachment
+    // Download attachment (for backward compatibility with existing notes)
     const downloadAttachment = (attachment) => {
         if (attachment.url) {
             window.open(attachment.url, '_blank');
         } else if (attachment.file) {
-            // Handle direct file download
             const link = document.createElement('a');
             link.href = URL.createObjectURL(attachment.file);
             link.download = attachment.name || 'attachment';
             link.click();
         }
-    };
-    
-    // Handle attachment selection (for legacy attachments in text notes)
-    const handleAttachmentSelect = async (e) => {
-        const files = Array.from(e.target.files);
-        if (files.length === 0) return;
-        
-        // Check file size (10MB limit)
-        const maxSize = 10 * 1024 * 1024; // 10MB in bytes
-        const oversizedFiles = files.filter(file => file.size > maxSize);
-        
-        if (oversizedFiles.length > 0) {
-            alert(`Some files exceed the 10MB limit. Please upload smaller files.`);
-            return;
-        }
-        
-        // Check total attachments limit
-        if (newNote.attachments.length + files.length > 5) {
-            alert(`Maximum 5 attachments allowed. You have ${newNote.attachments.length} attachments already.`);
-            return;
-        }
-        
-        setUploadingAttachment(true);
-        const uploadedAttachments = [];
-        
-        for (const file of files) {
-            const uploadedFile = await uploadFileToServer(file);
-            if (uploadedFile) {
-                uploadedAttachments.push({
-                    name: file.name,
-                    filename: file.name,
-                    size: file.size,
-                    url: uploadedFile
-                });
-            }
-        }
-        
-        if (uploadedAttachments.length > 0) {
-            setNewNote(prev => ({
-                ...prev,
-                attachments: [...prev.attachments, ...uploadedAttachments]
-            }));
-        }
-        
-        setUploadingAttachment(false);
-        
-        // Reset file input
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-    };
-    
-    // Remove attachment
-    const removeAttachment = (index) => {
-        setNewNote(prev => ({
-            ...prev,
-            attachments: prev.attachments.filter((_, i) => i !== index)
-        }));
     };
     
     // Get headers from localStorage
@@ -245,10 +185,9 @@ const NotesTab = ({ clientUsername }) => {
                     create_by: note.create_by,
                     modify_by: note.modify_by,
                     reminder_date: note.reminder_date ? new Date(note.reminder_date) : null,
-                    type: note.type || 'text', // Add type field
-                    file: note.file || note.voice || null, // Add file field
+                    type: note.type || 'text',
+                    file: note.file || note.voice || null,
                     attachments: note.attachments || [],
-                    // Add formatted dates for display
                     formatted_create_date: new Date(note.create_date).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
@@ -263,7 +202,6 @@ const NotesTab = ({ clientUsername }) => {
                         hour: '2-digit',
                         minute: '2-digit'
                     }) : null,
-                    // Add reminder date formatted
                     formatted_reminder_date: note.reminder_date ? new Date(note.reminder_date).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
@@ -271,10 +209,8 @@ const NotesTab = ({ clientUsername }) => {
                         hour: '2-digit',
                         minute: '2-digit'
                     }) : null,
-                    // Add creator and modifier names
                     created_by_name: note.create_by?.name || 'Unknown',
                     modified_by_name: note.modify_by?.name || null,
-                    // Truncated note for display
                     truncated_note: note.note.length > 120 ? note.note.substring(0, 120) + '...' : note.note
                 }));
                 
@@ -376,7 +312,7 @@ const NotesTab = ({ clientUsername }) => {
         } else if (displayStatus === 'cancel' || displayStatus === 'cancelled') {
             apiStatus = 'cancel';
         } else if (displayStatus === 'active') {
-            apiStatus = 'pending'; // Map "active" to "pending" for API
+            apiStatus = 'pending';
         } else {
             apiStatus = displayStatus;
         }
@@ -388,8 +324,7 @@ const NotesTab = ({ clientUsername }) => {
             status: apiStatus,
             reminder_date: note.reminder_date || null,
             type: note.type || 'text',
-            file: note.file || null,
-            attachments: note.attachments || []
+            file: note.file || null
         });
         setShowEditModal(true);
     };
@@ -755,7 +690,7 @@ const NotesTab = ({ clientUsername }) => {
         setAudioURL('');
     };
 
-    // Create new note - UPDATED
+    // Create new note
     const handleAddNote = async () => {
         if (!clientUsername) {
             alert('Client username is required');
@@ -822,8 +757,7 @@ const NotesTab = ({ clientUsername }) => {
                     status: 'pending',
                     reminder_date: null,
                     type: 'text',
-                    file: null,
-                    attachments: []
+                    file: null
                 });
                 // Reset voice recording
                 setAudioBlob(null);
@@ -842,7 +776,7 @@ const NotesTab = ({ clientUsername }) => {
         }
     };
 
-    // Edit note - UPDATED
+    // Edit note
     const handleEditNote = async () => {
         if (!selectedNote?.id || !clientUsername) {
             alert('No note selected for editing');
@@ -1102,12 +1036,8 @@ const NotesTab = ({ clientUsername }) => {
             const status = n.status.toLowerCase();
             return status === 'cancel' || status === 'cancelled';
         }).length;
-        const highPriority = meta.priority?.high || notes.filter(n => n.priority === 'High').length;
-        const voiceNotes = notes.filter(n => n.type === 'voice').length;
-        const fileNotes = notes.filter(n => n.type === 'file').length;
-        const textNotes = notes.filter(n => n.type === 'text' || !n.type).length;
         
-        return { total, active, completed, cancelled, highPriority, voiceNotes, fileNotes, textNotes };
+        return { total, active, completed, cancelled };
     };
 
     const stats = calculateNoteStats();
@@ -1284,111 +1214,102 @@ const NotesTab = ({ clientUsername }) => {
                 </div>
             )}
 
-            {/* Stats Dashboard - UPDATED WITH IMPROVED CARDS */}
+            {/* Stats Dashboard - UPDATED with only Total, Pending, Complete, Cancel */}
             {!loading && !error && clientUsername && (
                 <>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                         <motion.div 
                             whileHover={{ scale: 1.02, y: -2 }}
-                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+                            className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden"
                         >
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Total Notes</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-full -mr-8 -mt-8"></div>
+                            <div className="relative">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-600">Total Notes</p>
+                                        <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
+                                    </div>
+                                    <div className="w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                        <FiBook className="w-6 h-6 text-white" />
+                                    </div>
                                 </div>
-                                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                                    <FiBook className="w-6 h-6 text-white" />
+                                <div className="mt-4 flex items-center text-xs text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                        <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                                        All notes
+                                    </span>
                                 </div>
                             </div>
                         </motion.div>
                         
                         <motion.div 
                             whileHover={{ scale: 1.02, y: -2 }}
-                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+                            className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden"
                         >
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Text Notes</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.textNotes}</p>
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-yellow-500/10 to-amber-500/10 rounded-full -mr-8 -mt-8"></div>
+                            <div className="relative">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-600">Pending</p>
+                                        <p className="text-3xl font-bold text-gray-900 mt-2">{stats.active}</p>
+                                    </div>
+                                    <div className="w-14 h-14 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-yellow-500/20">
+                                        <FiClock className="w-6 h-6 text-white" />
+                                    </div>
                                 </div>
-                                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                                    <FiMessageSquare className="w-6 h-6 text-white" />
+                                <div className="mt-4 flex items-center text-xs text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                        <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                        Active notes
+                                    </span>
                                 </div>
                             </div>
                         </motion.div>
                         
                         <motion.div 
                             whileHover={{ scale: 1.02, y: -2 }}
-                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+                            className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden"
                         >
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">File Notes</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.fileNotes}</p>
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-full -mr-8 -mt-8"></div>
+                            <div className="relative">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-600">Completed</p>
+                                        <p className="text-3xl font-bold text-gray-900 mt-2">{stats.completed}</p>
+                                    </div>
+                                    <div className="w-14 h-14 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
+                                        <FiCheckCircle className="w-6 h-6 text-white" />
+                                    </div>
                                 </div>
-                                <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
-                                    <FiFile className="w-6 h-6 text-white" />
+                                <div className="mt-4 flex items-center text-xs text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                        Finished notes
+                                    </span>
                                 </div>
                             </div>
                         </motion.div>
                         
                         <motion.div 
                             whileHover={{ scale: 1.02, y: -2 }}
-                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+                            className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden"
                         >
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Voice Notes</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.voiceNotes}</p>
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-red-500/10 to-pink-500/10 rounded-full -mr-8 -mt-8"></div>
+                            <div className="relative">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-600">Cancelled</p>
+                                        <p className="text-3xl font-bold text-gray-900 mt-2">{stats.cancelled}</p>
+                                    </div>
+                                    <div className="w-14 h-14 bg-gradient-to-r from-red-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/20">
+                                        <FiX className="w-6 h-6 text-white" />
+                                    </div>
                                 </div>
-                                <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-pink-700 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-                                    <FiMic className="w-6 h-6 text-white" />
-                                </div>
-                            </div>
-                        </motion.div>
-                        
-                        <motion.div 
-                            whileHover={{ scale: 1.02, y: -2 }}
-                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
-                        >
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">High Priority</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.highPriority}</p>
-                                </div>
-                                <div className="w-12 h-12 bg-gradient-to-r from-red-600 to-pink-700 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/20">
-                                    <FiTag className="w-6 h-6 text-white" />
-                                </div>
-                            </div>
-                        </motion.div>
-                        
-                        <motion.div 
-                            whileHover={{ scale: 1.02, y: -2 }}
-                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
-                        >
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Completed</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.completed}</p>
-                                </div>
-                                <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-emerald-700 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
-                                    <FiCheckCircle className="w-6 h-6 text-white" />
-                                </div>
-                            </div>
-                        </motion.div>
-                        
-                        <motion.div 
-                            whileHover={{ scale: 1.02, y: -2 }}
-                            className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
-                        >
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Cancelled</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.cancelled}</p>
-                                </div>
-                                <div className="w-12 h-12 bg-gradient-to-r from-gray-600 to-slate-700 rounded-xl flex items-center justify-center shadow-lg shadow-gray-500/20">
-                                    <FiX className="w-6 h-6 text-white" />
+                                <div className="mt-4 flex items-center text-xs text-gray-500">
+                                    <span className="flex items-center gap-1">
+                                        <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                    Cancelled notes
+                                    </span>
                                 </div>
                             </div>
                         </motion.div>
@@ -1559,12 +1480,6 @@ const NotesTab = ({ clientUsername }) => {
                                                                 <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
                                                                     <FiPaperclip className="w-3 h-3" />
                                                                     {note.type === 'voice' ? 'Audio file' : 'File attached'}
-                                                                </span>
-                                                            )}
-                                                            {note.attachments && note.attachments.length > 0 && (
-                                                                <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
-                                                                    <FiPaperclip className="w-3 h-3" />
-                                                                    {note.attachments.length} attachment{note.attachments.length > 1 ? 's' : ''}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -1909,7 +1824,7 @@ const NotesTab = ({ clientUsername }) => {
                                         </div>
                                     )}
 
-                                    {/* Note Content - UPDATED FOR VOICE PLAYBACK */}
+                                    {/* Note Content */}
                                     <div className="space-y-4">
                                         <label className="text-sm font-semibold text-gray-700">Note Content</label>
                                         <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
@@ -2000,48 +1915,6 @@ const NotesTab = ({ clientUsername }) => {
                                         </div>
                                     </div>
 
-                                    {/* Attachments Section (for backward compatibility) */}
-                                    {selectedNote.attachments && selectedNote.attachments.length > 0 && (
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                                    <FiPaperclip className="w-4 h-4" />
-                                                    Additional Attachments ({selectedNote.attachments.length})
-                                                </label>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {selectedNote.attachments.map((attachment, index) => (
-                                                    <div key={index} className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                                <div className="w-12 h-12 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                                    {getFileIcon(attachment.name || attachment.filename || 'file')}
-                                                                </div>
-                                                                <div className="min-w-0">
-                                                                    <p className="font-medium text-gray-900 text-sm truncate">
-                                                                        {attachment.name || attachment.filename || 'Attachment'}
-                                                                    </p>
-                                                                    <p className="text-xs text-gray-500">
-                                                                        {attachment.size ? formatFileSize(attachment.size) : 'Size not available'}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <motion.button
-                                                                onClick={() => downloadAttachment(attachment)}
-                                                                className="p-2 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 hover:shadow-md rounded-lg transition-all duration-200 flex-shrink-0 ml-3"
-                                                                whileHover={{ scale: 1.1 }}
-                                                                whileTap={{ scale: 0.9 }}
-                                                                title="Download attachment"
-                                                            >
-                                                                <FiDownload className="w-4 h-4" />
-                                                            </motion.button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
                                     {/* Metadata Section */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
                                         <div className="space-y-4">
@@ -2110,7 +1983,7 @@ const NotesTab = ({ clientUsername }) => {
                 )}
             </AnimatePresence>
 
-            {/* Professional Add Note Modal - UPDATED WITH TYPE SELECTION */}
+            {/* Professional Add Note Modal - REMOVED ADDITIONAL ATTACHMENTS */}
             <AnimatePresence>
                 {showAddModal && (
                     <motion.div
@@ -2149,8 +2022,7 @@ const NotesTab = ({ clientUsername }) => {
                                                 status: 'pending',
                                                 reminder_date: null,
                                                 type: 'text',
-                                                file: null,
-                                                attachments: []
+                                                file: null
                                             });
                                             // Stop recording if in progress
                                             if (isRecording) {
@@ -2600,93 +2472,6 @@ const NotesTab = ({ clientUsername }) => {
                                             </div>
                                         </div>
                                     )}
-
-                                    {/* Additional Attachments (for backward compatibility) */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                                <FiPaperclip className="w-4 h-4" />
-                                                Additional Attachments
-                                            </label>
-                                            <span className="text-xs text-gray-500">
-                                                {newNote.attachments.length}/5 files • Max 10MB each
-                                            </span>
-                                        </div>
-                                        
-                                        {/* Legacy Upload Area */}
-                                        <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-blue-500 transition-colors cursor-pointer"
-                                             onClick={() => {
-                                                if (newNote.type !== 'text') {
-                                                    alert('Additional attachments are only available for text notes');
-                                                    return;
-                                                }
-                                                fileInputRef.current?.click();
-                                             }}>
-                                            <input
-                                                type="file"
-                                                ref={fileInputRef}
-                                                onChange={handleAttachmentSelect}
-                                                className="hidden"
-                                                multiple
-                                                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
-                                            />
-                                            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center">
-                                                <FiUpload className="w-8 h-8 text-blue-600" />
-                                            </div>
-                                            <h4 className="font-semibold text-gray-900 mb-2">Drop files here or click to upload</h4>
-                                            <p className="text-sm text-gray-600">Additional attachments for text notes only</p>
-                                        </div>
-
-                                        {/* Attachments List */}
-                                        {newNote.attachments.length > 0 && (
-                                            <div className="space-y-3">
-                                                <p className="text-sm font-medium text-gray-700">
-                                                    Additional files ({newNote.attachments.length})
-                                                </p>
-                                                <div className="space-y-2">
-                                                    {newNote.attachments.map((attachment, index) => (
-                                                        <div key={index} className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-shadow">
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                                    <div className="w-12 h-12 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                                        {getFileIcon(attachment.name || attachment.filename || 'file')}
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <p className="font-medium text-gray-900 text-sm truncate">
-                                                                            {attachment.name || attachment.filename || `Attachment ${index + 1}`}
-                                                                        </p>
-                                                                        <p className="text-xs text-gray-500">
-                                                                            {attachment.size ? formatFileSize(attachment.size) : 'Uploaded'}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <motion.button
-                                                                        onClick={() => downloadAttachment(attachment)}
-                                                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                                        whileHover={{ scale: 1.1 }}
-                                                                        whileTap={{ scale: 0.9 }}
-                                                                        title="Download"
-                                                                    >
-                                                                        <FiDownload className="w-4 h-4" />
-                                                                    </motion.button>
-                                                                    <motion.button
-                                                                        onClick={() => removeAttachment(index)}
-                                                                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                                        whileHover={{ scale: 1.1 }}
-                                                                        whileTap={{ scale: 0.9 }}
-                                                                        title="Remove"
-                                                                    >
-                                                                        <FiX className="w-4 h-4" />
-                                                                    </motion.button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
                             </div>
 
@@ -2709,8 +2494,7 @@ const NotesTab = ({ clientUsername }) => {
                                                 status: 'pending',
                                                 reminder_date: null,
                                                 type: 'text',
-                                                file: null,
-                                                attachments: []
+                                                file: null
                                             });
                                             // Stop recording if in progress
                                             if (isRecording) {
@@ -2766,7 +2550,7 @@ const NotesTab = ({ clientUsername }) => {
                 )}
             </AnimatePresence>
 
-            {/* Professional Edit Note Modal - SAME AS ADD MODAL BUT WITH EXISTING VALUES */}
+            {/* Professional Edit Note Modal - REMOVED ADDITIONAL ATTACHMENTS */}
             <AnimatePresence>
                 {showEditModal && selectedNote && (
                     <motion.div
@@ -2814,7 +2598,7 @@ const NotesTab = ({ clientUsername }) => {
                                 </div>
                             </div>
 
-                            {/* Modal Content - Same as Add Modal but with existing values */}
+                            {/* Modal Content */}
                             <div className="flex-1 overflow-y-auto p-8">
                                 <div className="space-y-8">
                                     {/* Note Type Selection */}
@@ -3246,93 +3030,6 @@ const NotesTab = ({ clientUsername }) => {
                                             </div>
                                         </div>
                                     )}
-
-                                    {/* Additional Attachments (for backward compatibility) */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                                <FiPaperclip className="w-4 h-4" />
-                                                Additional Attachments
-                                            </label>
-                                            <span className="text-xs text-gray-500">
-                                                {newNote.attachments.length}/5 files • Max 10MB each
-                                            </span>
-                                        </div>
-                                        
-                                        {/* Legacy Upload Area */}
-                                        <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-blue-500 transition-colors cursor-pointer"
-                                             onClick={() => {
-                                                if (newNote.type !== 'text') {
-                                                    alert('Additional attachments are only available for text notes');
-                                                    return;
-                                                }
-                                                fileInputRef.current?.click();
-                                             }}>
-                                            <input
-                                                type="file"
-                                                ref={fileInputRef}
-                                                onChange={handleAttachmentSelect}
-                                                className="hidden"
-                                                multiple
-                                                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
-                                            />
-                                            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center">
-                                                <FiUpload className="w-8 h-8 text-blue-600" />
-                                            </div>
-                                            <h4 className="font-semibold text-gray-900 mb-2">Drop files here or click to upload</h4>
-                                            <p className="text-sm text-gray-600">Additional attachments for text notes only</p>
-                                        </div>
-
-                                        {/* Attachments List */}
-                                        {newNote.attachments.length > 0 && (
-                                            <div className="space-y-3">
-                                                <p className="text-sm font-medium text-gray-700">
-                                                    Additional files ({newNote.attachments.length})
-                                                </p>
-                                                <div className="space-y-2">
-                                                    {newNote.attachments.map((attachment, index) => (
-                                                        <div key={index} className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-shadow">
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                                    <div className="w-12 h-12 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                                        {getFileIcon(attachment.name || attachment.filename || 'file')}
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <p className="font-medium text-gray-900 text-sm truncate">
-                                                                            {attachment.name || attachment.filename || `Attachment ${index + 1}`}
-                                                                        </p>
-                                                                        <p className="text-xs text-gray-500">
-                                                                            {attachment.size ? formatFileSize(attachment.size) : 'Uploaded'}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <motion.button
-                                                                        onClick={() => downloadAttachment(attachment)}
-                                                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                                        whileHover={{ scale: 1.1 }}
-                                                                        whileTap={{ scale: 0.9 }}
-                                                                        title="Download"
-                                                                    >
-                                                                        <FiDownload className="w-4 h-4" />
-                                                                    </motion.button>
-                                                                    <motion.button
-                                                                        onClick={() => removeAttachment(index)}
-                                                                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                                        whileHover={{ scale: 1.1 }}
-                                                                        whileTap={{ scale: 0.9 }}
-                                                                        title="Remove"
-                                                                    >
-                                                                        <FiX className="w-4 h-4" />
-                                                                    </motion.button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
                             </div>
 

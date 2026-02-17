@@ -21,6 +21,7 @@ import {
     FiTrash2,
     FiSearch
 } from 'react-icons/fi';
+import DatePickerComponent from "../../../ooms_v4/src/components/DatePickerComponent";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -1047,52 +1048,49 @@ try {
                                                 </div>
                                             </div>
 
-                                            {/* Date of Birth & Gender - Row 4 */}
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                <div className="space-y-1">
-                                                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                                                        Date of Birth <span className="text-red-500">*</span>
-                                                    </label>
-                                                    <div className="relative">
-                                                        <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
-                                                        <input
-                                                            type="date"
-                                                            name="date_of_birth"
-                                                            value={formData.date_of_birth}
-                                                            onChange={handleInputChange}
-                                                            className={`w-full pl-10 pr-3 py-2.5 text-sm border ${errors.date_of_birth ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-colors duration-200`}
-                                                            required
-                                                        />
-                                                    </div>
-                                                    {errors.date_of_birth && (
-                                                        <p className="text-red-500 text-xs mt-1">{errors.date_of_birth}</p>
-                                                    )}
-                                                </div>
+                                          {/* Date of Birth & Gender - Row 4 */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="space-y-1">
+        <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Date of Birth <span className="text-red-500">*</span>
+        </label>
+        <DatePickerComponent
+            selectedDate={formData.date_of_birth ? new Date(formData.date_of_birth) : null}
+            onDateChange={(date) => {
+                setFormData(prev => ({
+                    ...prev,
+                    date_of_birth: date ? date.toISOString().split('T')[0] : ''
+                }));
+            }}
+            placeholder="DD/MM/YYYY"
+            error={errors.date_of_birth}
+        />
+    </div>
 
-                                                <div className="space-y-1">
-                                                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                                                        Gender <span className="text-red-500">*</span>
-                                                    </label>
-                                                    <div className="relative">
-                                                        <select
-                                                            name="gender"
-                                                            value={formData.gender}
-                                                            onChange={handleInputChange}
-                                                            className="w-full p-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-colors duration-200 appearance-none cursor-pointer"
-                                                            required
-                                                        >
-                                                            {genders.map(gender => (
-                                                                <option key={gender.value} value={gender.value}>
-                                                                    {gender.name}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                                            <div className="w-2 h-2 border-r border-b border-gray-400 transform rotate-45 -translate-y-1/2"></div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+    <div className="space-y-1">
+        <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            Gender <span className="text-red-500">*</span>
+        </label>
+        <div className="relative">
+            <select
+                name="gender"
+                value={formData.gender}
+                onChange={handleInputChange}
+                className="w-full p-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-colors duration-200 appearance-none cursor-pointer"
+                required
+            >
+                {genders.map(gender => (
+                    <option key={gender.value} value={gender.value}>
+                        {gender.name}
+                    </option>
+                ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <div className="w-2 h-2 border-r border-b border-gray-400 transform rotate-45 -translate-y-1/2"></div>
+            </div>
+        </div>
+    </div>
+</div>
 
                                             {/* Profile Image - Centered in available space */}
                                             <div className="pt-2">
@@ -1887,24 +1885,20 @@ try {
                                                     </select>
                                                 </div>
 
-                                                <div className="space-y-1">
-                                                    <label className="block text-xs font-medium text-gray-700">
-                                                        Date <span className="text-red-500">*</span>
-                                                    </label>
-                                                    <div className="relative">
-                                                        <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
-                                                        <input
-                                                            type="date"
-                                                            value={formData.opening_balance.date}
-                                                            onChange={(e) => handleOpeningBalanceChange('date', e.target.value)}
-                                                            className={`w-full pl-10 pr-3 py-2.5 text-sm border ${errors.opening_date ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-colors duration-200`}
-                                                            required
-                                                        />
-                                                    </div>
-                                                    {errors.opening_date && (
-                                                        <p className="text-red-500 text-xs mt-1">{errors.opening_date}</p>
-                                                    )}
-                                                </div>
+                                             {/* Date Column */}
+<div className="space-y-1">
+    <label className="block text-xs font-medium text-gray-700">
+        Date <span className="text-red-500">*</span>
+    </label>
+    <DatePickerComponent
+        selectedDate={formData.opening_balance.date ? new Date(formData.opening_balance.date) : null}
+        onDateChange={(date) => {
+            handleOpeningBalanceChange('date', date ? date.toISOString().split('T')[0] : '');
+        }}
+        placeholder="DD/MM/YYYY"
+        error={errors.opening_date}
+    />
+</div>
                                             </div>
                                         </div>
                                     </div>

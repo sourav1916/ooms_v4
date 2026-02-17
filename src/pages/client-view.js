@@ -37,7 +37,8 @@ import {
     FiMove,
     FiSave,
     FiList,
-    FiRefreshCw
+    FiRefreshCw,
+    FiExternalLink
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
@@ -46,6 +47,9 @@ import { FaWhatsapp } from "react-icons/fa6";
 import DeleteConfirmationModal from '../components/delete-confirmation';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+
+// Import the new Pagination component
+import Pagination from '../components/paging-nation-component';
 
 // Import DnD Kit
 import {
@@ -67,15 +71,11 @@ import {
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// // API Configuration
+// API Configuration
 const API_BASE_URL = 'https://api.ooms.in/api/v1';
 const CLIENT_LIST_API = `${API_BASE_URL}/client/list`;
 
-// export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
-
-// export const CLIENT_LIST_API = `${API_BASE_URL}/client/list`;
-
-// Status Change Modal Component - NEW: For changing status from dropdown
+// Status Change Modal Component
 const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusChange, statusOptions }) => {
     const [selectedStatus, setSelectedStatus] = useState(currentStatus);
     
@@ -208,28 +208,22 @@ const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusC
     );
 };
 
-// NEW: Firms Details Modal Component - UPDATED with professional design and View Details button
+// Firms Details Modal Component
 const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
     const [expandedFirm, setExpandedFirm] = useState(null);
     
     if (!isOpen || !firms || firms.length === 0) return null;
     
-    // Format date
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-            });
-        } catch (error) {
-            return 'Invalid Date';
-        }
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
     };
     
-    // Format address
     const formatAddress = (address) => {
         if (!address) return 'N/A';
         const parts = [
@@ -345,7 +339,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                                             </div>
                                         </div>
                                         
-                                        {/* Basic Details - Always visible */}
+                                        {/* Basic Details */}
                                         <div className="p-4">
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                 {firm.pan_no && (
@@ -375,7 +369,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                                             </div>
                                         </div>
                                         
-                                        {/* Expanded Details - Only shown when expanded */}
+                                        {/* Expanded Details */}
                                         <AnimatePresence>
                                             {expandedFirm === (firm.firm_id || index) && (
                                                 <motion.div
@@ -428,15 +422,15 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                                                                 <div className="space-y-3">
                                                                     <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
                                                                         <span className="text-sm text-gray-600 font-medium">Name:</span>
-                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.create_by.name || 'N/A'}</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.create_by.name}</span>
                                                                     </div>
                                                                     <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
                                                                         <span className="text-sm text-gray-600 font-medium">Email:</span>
-                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.create_by.email || 'N/A'}</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.create_by.email}</span>
                                                                     </div>
                                                                     <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
                                                                         <span className="text-sm text-gray-600 font-medium">Mobile:</span>
-                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.create_by.mobile || 'N/A'}</span>
+                                                                        <span className="font-semibold text-gray-900 text-sm">{firm.create_by.mobile}</span>
                                                                     </div>
                                                                     <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
                                                                         <span className="text-sm text-gray-600 font-medium">Created Date:</span>
@@ -449,7 +443,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                                                         {/* Modification Details */}
                                                         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                                                             <h5 className="font-bold text-gray-800 text-sm mb-4 pb-2 border-b border-gray-100">Last Modified</h5>
-                                                            {firm.modify_by && Object.keys(firm.modify_by).length > 0 && firm.modify_by.name ? (
+                                                            {firm.modify_by && Object.keys(firm.modify_by).length > 0 ? (
                                                                 <div className="space-y-3">
                                                                     <div className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
                                                                         <span className="text-sm text-gray-600 font-medium">By:</span>
@@ -498,7 +492,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
     );
 };
 
-// View Mode Toggle Component - Updated button size to match Filter
+// View Mode Toggle Component
 const TableViewSwitch = ({ viewMode, setViewMode }) => {
     return (
         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
@@ -525,7 +519,7 @@ const TableViewSwitch = ({ viewMode, setViewMode }) => {
     );
 };
 
-// Client Table Component - ULTRA PROFESSIONAL DESIGN
+// Client Table Component
 const ClientTable = ({ 
     clients, 
     selectedClients, 
@@ -544,7 +538,6 @@ const ClientTable = ({
     handleExport,
     showFirmsModal
 }) => {
-    // Skeleton loader
     const SkeletonRow = () => (
         <div className="flex items-center border-b border-gray-100 animate-pulse p-3">
             <div className="w-8 md:w-10 flex-shrink-0 mr-2">
@@ -556,7 +549,7 @@ const ClientTable = ({
             {columnConfig.map((column, index) => (
                 <div key={index} className="hidden md:block flex-1 p-2">
                     <div className="space-y-1">
-                        {column.items.map((item, itemIndex) => (
+                        {column.items && column.items.map((item, itemIndex) => (
                             <div key={itemIndex} className="min-h-[1.25rem] flex items-center justify-center">
                                 <div className="h-3 bg-gray-200 rounded w-3/4"></div>
                             </div>
@@ -567,7 +560,6 @@ const ClientTable = ({
         </div>
     );
 
-    // Mobile client card for table view
     const MobileClientCard = ({ client, index, handleExport, showFirmsModal }) => {
         const getLastUpdatedFirm = () => {
             if (!client.firms || client.firms.length === 0) return null;
@@ -589,13 +581,12 @@ const ClientTable = ({
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
             >
-                {/* Mobile Card Header */}
                 <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <input
                             type="checkbox"
                             checked={selectedClients.has(client._id)}
-                            onChange={() => handleClientSelect(client.username)}
+                            onChange={() => handleClientSelect(client._id)}
                             className="w-4 h-4 text-blue-600 rounded border-gray-400 focus:ring-blue-500"
                         />
                         <div className="font-bold text-gray-800 text-sm w-4">{index + 1}</div>
@@ -606,7 +597,6 @@ const ClientTable = ({
                             <div className="font-semibold text-gray-800 text-sm">{client.name || 'N/A'}</div>
                         </div>
                     </div>
-                    {/* Vertical 3-dot menu for mobile */}
                     <div className="relative">
                         <motion.button
                             onClick={() => toggleRowDropdown(client._id)}
@@ -621,7 +611,6 @@ const ClientTable = ({
                             </div>
                         </motion.button>
                         
-                        {/* Mobile dropdown */}
                         <AnimatePresence>
                             {activeRowDropdown === client._id && (
                                 <motion.div
@@ -692,7 +681,6 @@ const ClientTable = ({
                     </div>
                 </div>
 
-                {/* Mobile Card Content */}
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-gray-700 text-sm">
@@ -711,7 +699,6 @@ const ClientTable = ({
                         <span>{client.firms?.length || 0} firms</span>
                     </div>
 
-                    {/* Last updated firm display */}
                     {lastFirm && (
                         <div className="text-xs text-gray-700 bg-gray-50 rounded p-2 border border-gray-200">
                             <div className="font-semibold mb-1">Latest Firm:</div>
@@ -719,7 +706,6 @@ const ClientTable = ({
                         </div>
                     )}
 
-                    {/* Status display in mobile */}
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-gray-600">Status:</span>
                         <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
@@ -742,10 +728,8 @@ const ClientTable = ({
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Professional Table Header */}
             <div className="hidden md:block border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white sticky top-0 z-10">
                 <div className="flex items-center min-w-max bg-white">
-                    {/* Select All Toggle */}
                     <div className="w-12 p-3 flex-shrink-0 flex justify-center">
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input
@@ -758,12 +742,10 @@ const ClientTable = ({
                         </label>
                     </div>
 
-                    {/* SL No Column */}
                     <div className="w-12 p-3 font-bold text-gray-700 text-xs flex-shrink-0 text-center border-l border-gray-100">
                         SL No
                     </div>
 
-                    {/* Dynamic Columns - Fixed Widths */}
                     {columnConfig.map(column => (
                         <div
                             key={column.id}
@@ -781,7 +763,6 @@ const ClientTable = ({
                 </div>
             </div>
 
-            {/* Mobile header */}
             <div className="md:hidden border-b border-gray-200 bg-white px-3 py-2 sticky top-0 z-10">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -797,10 +778,8 @@ const ClientTable = ({
                 </div>
             </div>
 
-            {/* Scrollable Table Body */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
                 {loading ? (
-                    // Skeleton Loaders
                     <div className="md:min-w-max">
                         {Array.from({ length: 6 }).map((_, index) => (
                             <SkeletonRow key={index} />
@@ -818,14 +797,12 @@ const ClientTable = ({
                     </div>
                 ) : (
                     <div className="md:min-w-max">
-                        {/* Mobile view - cards */}
                         <div className="md:hidden px-3 py-1">
                             {clients.map((client, index) => (
                                 <MobileClientCard key={client._id} client={client} index={index} handleExport={handleExport} showFirmsModal={showFirmsModal} />
                             ))}
                         </div>
 
-                        {/* Professional Desktop Table */}
                         <div className="hidden md:block">
                             {clients.map((client, index) => (
                                 <motion.div
@@ -835,7 +812,6 @@ const ClientTable = ({
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.03 }}
                                 >
-                                    {/* Select Toggle */}
                                     <div className="w-12 p-3 flex-shrink-0 flex justify-center">
                                         <label className="relative inline-flex items-center cursor-pointer">
                                             <input
@@ -848,14 +824,12 @@ const ClientTable = ({
                                         </label>
                                     </div>
 
-                                    {/* SL No */}
                                     <div className="w-12 p-3 flex-shrink-0 text-center border-l border-gray-100">
                                         <span className="font-bold text-gray-800 text-xs">
                                             {index + 1}
                                         </span>
                                     </div>
 
-                                    {/* Dynamic Columns - Professional Layout with Fixed Widths */}
                                     {columnConfig.map(column => (
                                         <div 
                                             key={column.id} 
@@ -868,7 +842,7 @@ const ClientTable = ({
                                             }}
                                         >
                                             <div className="flex items-center justify-center">
-                                                {renderCellContent(client, column.items[0].id, openStatusModal, showFirmsModal)}
+                                                {renderCellContent(client, column.items && column.items[0] ? column.items[0].id : 'name', openStatusModal, showFirmsModal)}
                                             </div>
                                         </div>
                                     ))}
@@ -882,7 +856,7 @@ const ClientTable = ({
     );
 };
 
-// Client Cards Component - Professional Design
+// Client Cards Component
 const ClientCards = ({ 
     clients, 
     selectedClients, 
@@ -900,7 +874,6 @@ const ClientCards = ({
     handleExport,
     showFirmsModal
 }) => {
-    // Get status color
     const getStatusColor = (status) => {
         switch (status) {
             case 'ACTIVE': return 'bg-green-100 text-green-700';
@@ -910,12 +883,10 @@ const ClientCards = ({
         }
     };
 
-    // Format balance
     const formatBalance = (balance) => {
         return `₹${Math.abs(balance || 0).toLocaleString()}`;
     };
 
-    // Get the last updated firm
     const getLastUpdatedFirm = (firms) => {
         if (!firms || firms.length === 0) return null;
         
@@ -928,7 +899,6 @@ const ClientCards = ({
         return sortedFirms[0];
     };
 
-    // Skeleton loader
     const SkeletonCard = () => (
         <div className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
             <div className="flex items-start justify-between mb-3">
@@ -977,7 +947,6 @@ const ClientCards = ({
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: index * 0.05 }}
                         >
-                            {/* Card Header */}
                             <div className="p-3 border-b border-gray-100">
                                 <div className="flex items-start justify-between mb-2">
                                     <div className="flex-1 min-w-0">
@@ -985,7 +954,7 @@ const ClientCards = ({
                                             <input
                                                 type="checkbox"
                                                 checked={selectedClients.has(client._id)}
-                                                onChange={() => handleClientSelect(client.username)}
+                                                onChange={() => handleClientSelect(client._id)}
                                                 className="w-3.5 h-3.5 text-blue-600 rounded border-gray-400 focus:ring-blue-500 flex-shrink-0"
                                             />
                                             <div className="font-bold text-gray-800 text-xs w-4">{index + 1}</div>
@@ -1000,7 +969,6 @@ const ClientCards = ({
                                         <p className="text-gray-600 text-xs truncate">{client.firms?.length || 0} firms</p>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
-                                        {/* Vertical 3-dot menu */}
                                         <div className="relative">
                                             <motion.button
                                                 onClick={() => toggleRowDropdown(`card-${client._id}`)}
@@ -1013,7 +981,6 @@ const ClientCards = ({
                                                 <div className="w-1 h-1 rounded-full bg-gray-600"></div>
                                             </motion.button>
 
-                                            {/* Dropdown for cards */}
                                             <AnimatePresence>
                                                 {activeRowDropdown === `card-${client._id}` && (
                                                     <motion.div
@@ -1086,7 +1053,6 @@ const ClientCards = ({
                                 </div>
                             </div>
 
-                            {/* Card Body */}
                             <div className="p-3">
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
@@ -1101,7 +1067,6 @@ const ClientCards = ({
                                         </div>
                                     </div>
 
-                                    {/* Firm Information */}
                                     <div className="text-xs text-gray-700">
                                         <div className="font-medium mb-1">Firms ({client.firms?.length || 0}):</div>
                                         {lastFirm && (
@@ -1119,7 +1084,6 @@ const ClientCards = ({
                                         )}
                                     </div>
 
-                                    {/* Status Display */}
                                     <div className="pt-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-medium text-gray-600">Status:</span>
@@ -1135,102 +1099,6 @@ const ClientCards = ({
                     )})}
                 </div>
             )}
-        </div>
-    );
-};
-
-// Pagination Component
-const Pagination = ({ currentPage, totalPages, onPageChange, itemsPerPage, onItemsPerPageChange }) => {
-    const pageOptions = [5, 10, 15, 20, 25, 50, 100];
-    
-    return (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-gray-50 border-t border-gray-200">
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Show:</span>
-                <select
-                    value={itemsPerPage}
-                    onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-                    className="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                >
-                    {pageOptions.map(option => (
-                        <option key={option} value={option}>
-                            {option}
-                        </option>
-                    ))}
-                </select>
-                <span className="text-sm text-gray-600">per page</span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-                <motion.button
-                    onClick={() => onPageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="p-2 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                >
-                    <FiArrowLeft className="w-4 h-4" />
-                </motion.button>
-                
-                <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, totalPages) }).map((_, idx) => {
-                        let pageNum;
-                        if (totalPages <= 5) {
-                            pageNum = idx + 1;
-                        } else if (currentPage <= 3) {
-                            pageNum = idx + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                            pageNum = totalPages - 4 + idx;
-                        } else {
-                            pageNum = currentPage - 2 + idx;
-                        }
-                        
-                        return (
-                            <motion.button
-                                key={pageNum}
-                                onClick={() => onPageChange(pageNum)}
-                                className={`w-8 h-8 rounded text-sm font-medium ${
-                                    currentPage === pageNum
-                                        ? 'bg-blue-600 text-white'
-                                        : 'border border-gray-300 text-gray-700 hover:bg-gray-100'
-                                }`}
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.95 }}
-                            >
-                                {pageNum}
-                            </motion.button>
-                        );
-                    })}
-                    
-                    {totalPages > 5 && currentPage < totalPages - 2 && (
-                        <>
-                            <span className="text-gray-400">...</span>
-                            <motion.button
-                                onClick={() => onPageChange(totalPages)}
-                                className="w-8 h-8 rounded border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.95 }}
-                            >
-                                {totalPages}
-                            </motion.button>
-                        </>
-                    )}
-                </div>
-                
-                <motion.button
-                    onClick={() => onPageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="p-2 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                >
-                    <FiArrowRight className="w-4 h-4" />
-                </motion.button>
-            </div>
-            
-            <div className="text-sm text-gray-600">
-                Page {currentPage} of {totalPages}
-            </div>
         </div>
     );
 };
@@ -1264,24 +1132,16 @@ const ViewClients = () => {
     const [statusModal, setStatusModal] = useState({ open: false, clientId: null, currentStatus: '' });
     const [firmsModal, setFirmsModal] = useState({ open: false, firms: [], clientName: '' });
     
-    // Pagination and API states
+    // Pagination state based on API structure
     const [clients, setClients] = useState([]);
-    const [clientStats, setClientStats] = useState({
-        total: 0,
-        active: 0,
-        inactive: 0,
-        withBalance: 0
-    });
     const [pagination, setPagination] = useState({
-        currentPage: 1,
-        totalPages: 1,
-        totalItems: 0,
-        itemsPerPage: 10
+        page: 1,
+        limit: 10,
+        total: 0,
+        total_pages: 1,
+        is_last_page: true
     });
-    const [hasMore, setHasMore] = useState(true);
-    const [isFetchingMore, setIsFetchingMore] = useState(false);
 
-    // Initialize DnD sensors
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
@@ -1293,330 +1153,140 @@ const ViewClients = () => {
         })
     );
 
-    // Get headers from localStorage
-  const getHeaders = useCallback(() => {
-    try {
-        const userName = localStorage.getItem('userName') || 
-                         localStorage.getItem('user_username') || '';
-        const token = localStorage.getItem('token') || 
-                      localStorage.getItem('user_token') || '';
-        const branchId = localStorage.getItem('branchId') || 
-                         localStorage.getItem('branch_id') || '';
-        
-        if (!userName || !token || !branchId) {
-            console.error('Missing authentication data in localStorage');
+    const getHeaders = useCallback(() => {
+        try {
+            const userName = localStorage.getItem('userName') || 
+                             localStorage.getItem('user_username') || '';
+            const token = localStorage.getItem('token') || 
+                          localStorage.getItem('user_token') || '';
+            const branchId = localStorage.getItem('branchId') || 
+                             localStorage.getItem('branch_id') || '';
+            
+            if (!userName || !token || !branchId) {
+                console.error('Missing authentication data in localStorage');
+                return null;
+            }
+            
+            return {
+                'Content-Type': 'application/json',
+                'username': userName,
+                'token': token,
+                'branch': branchId
+            };
+        } catch (error) {
+            console.error('Error getting headers from localStorage:', error);
             return null;
         }
-        
-        return {
-            'Content-Type': 'application/json',
-            'username': userName,
-            'token':token,
-            'branch': branchId
-        };
-    } catch (error) {
-        console.error('Error getting headers from localStorage:', error);
-        return null;
-    }
-}, []);
+    }, []);
 
-// Fetch clients from API
-const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false) => {
-    const headers = getHeaders();
-    if (!headers) {
-        console.error('Cannot fetch clients: Missing authentication headers');
-        return;
-    }
-
-    try {
-        if (isLoadMore) {
-            setIsFetchingMore(true);
-        } else {
-            setLoading(true);
+    // Fetch clients with API pagination
+    const fetchClients = useCallback(async (page = 1, limit = 10) => {
+        const headers = getHeaders();
+        if (!headers) {
+            console.error('Cannot fetch clients: Missing authentication headers');
+            return;
         }
 
-        const params = new URLSearchParams({
-            search: searchQuery,
-            page: page.toString(),
-            limit: limit.toString(),
-            ...(selectedStatus && { status: selectedStatus }),
-            ...(selectedGroup && { group: selectedGroup })
-        });
+        try {
+            setLoading(true);
 
-        const response = await axios.get(`${CLIENT_LIST_API}?${params}`, {
-            headers: headers,
-            timeout: 10000
-        });
-
-        if (response.data) {
-            let clientsData = [];
-            let total = 0;
-            let totalPages = 1;
-            
-            if (Array.isArray(response.data)) {
-                clientsData = response.data;
-                total = response.data.length;
-            } else if (response.data.data && Array.isArray(response.data.data)) {
-                clientsData = response.data.data;
-                total = response.data.total || response.data.data.length;
-                totalPages = response.data.total_pages || Math.ceil(total / limit);
-            } else if (response.data.clients && Array.isArray(response.data.clients)) {
-                clientsData = response.data.clients;
-                total = response.data.total || response.data.clients.length;
-                totalPages = response.data.totalPages || Math.ceil(total / limit);
-            } else if (response.data.success && Array.isArray(response.data.data)) {
-                clientsData = response.data.data;
-                total = response.data.total || response.data.data.length;
-                totalPages = response.data.total_pages || Math.ceil(total / limit);
-            }
-            
-            const transformedClients = clientsData.map((client, index) => {
-                return {
-                    _id: client.profile_id || client._id || client.id || `temp-${index}-${Date.now()}`,
-                    id: client.profile_id || client._id || client.id || `temp-${index}-${Date.now()}`,
-                    username: client.username || client.email || client.user_name || `user${index + 1}`,
-                    name: client.name || client.full_name || client.client_name || `Client ${index + 1}`,
-                    guardian_name: client.guardian_name || client.father_name || client.guardian || 'N/A',
-                    mobile: client.mobile || client.phone || client.contact_number || 'N/A',
-                    status: client.status === "1" || client.status === "ACTIVE" || client.active ? "ACTIVE" : "INACTIVE",
-                    balance: parseFloat(client.balance) || parseFloat(client.outstanding) || 0,
-                    firms: client.firms || [],
-                    firm_count: client.firms ? client.firms.length : 0
-                };
+            const params = new URLSearchParams({
+                search: searchQuery,
+                page: page.toString(),
+                limit: limit.toString(),
+                ...(selectedStatus && { status: selectedStatus }),
+                ...(selectedGroup && { group: selectedGroup })
             });
 
-            if (isLoadMore) {
-                setClients(prev => [...prev, ...transformedClients]);
-            } else {
+            const response = await axios.get(`${CLIENT_LIST_API}?${params}`, {
+                headers: headers,
+                timeout: 10000
+            });
+
+            if (response.data) {
+                let clientsData = [];
+                let paginationData = {
+                    page: 1,
+                    limit: limit,
+                    total: 0,
+                    total_pages: 1,
+                    is_last_page: true
+                };
+                
+                // Handle different response structures
+                if (response.data.pagination && Array.isArray(response.data.data)) {
+                    clientsData = response.data.data;
+                    paginationData = response.data.pagination;
+                } else if (response.data.data && response.data.data.pagination && Array.isArray(response.data.data.clients)) {
+                    clientsData = response.data.data.clients;
+                    paginationData = response.data.data.pagination;
+                } else if (Array.isArray(response.data)) {
+                    clientsData = response.data;
+                    paginationData = {
+                        page: 1,
+                        limit: limit,
+                        total: response.data.length,
+                        total_pages: Math.ceil(response.data.length / limit),
+                        is_last_page: true
+                    };
+                }
+                
+                const transformedClients = clientsData.map((client, index) => {
+                    return {
+                        _id: client.profile_id || client._id || client.id || `temp-${index}-${Date.now()}`,
+                        id: client.profile_id || client._id || client.id || `temp-${index}-${Date.now()}`,
+                        username: client.username || client.email || client.user_name || `user${index + 1}`,
+                        name: client.name || client.full_name || client.client_name || `Client ${index + 1}`,
+                        guardian_name: client.guardian_name || client.father_name || client.guardian || 'N/A',
+                        mobile: client.mobile || client.phone || client.contact_number || 'N/A',
+                        status: client.status === "1" || client.status === "ACTIVE" || client.active ? "ACTIVE" : "INACTIVE",
+                        balance: parseFloat(client.balance) || parseFloat(client.outstanding) || 0,
+                        firms: client.firms || [],
+                        firm_count: client.firms ? client.firms.length : 0
+                    };
+                });
+
                 setClients(transformedClients);
-            }
-
-            setPagination(prev => ({
-                ...prev,
-                currentPage: page,
-                totalPages: totalPages,
-                totalItems: total
-            }));
-
-            setHasMore(page < totalPages);
-        } else {
-            console.error('No data in response');
-        }
-    } catch (error) {
-        console.error('Error fetching clients:', error);
-        if (error.response) {
-            if (error.response.status === 401) {
-                alert('Session expired. Please login again.');
-                navigate('/login');
-            } else if (error.response.status === 403) {
-                alert('You do not have permission to view clients.');
+                setPagination(paginationData);
+                
             } else {
-                alert(`Error ${error.response.status}: ${error.response.data?.message || 'Failed to fetch clients'}`);
+                console.error('No data in response');
             }
-        } else if (error.request) {
-            console.error('No response received:', error.request);
-            alert('No response from server. Please check your connection.');
-        } else {
-            console.error('Request setup error:', error.message);
-            alert(`Error: ${error.message}`);
+        } catch (error) {
+            console.error('Error fetching clients:', error);
+            
+            // Dummy data for testing with pagination structure
+            const dummyData = Array.from({ length: 15 }, (_, i) => ({
+                _id: `${i + 1}`,
+                id: `${i + 1}`,
+                username: `user${i + 1}`,
+                name: `Client ${i + 1}`,
+                guardian_name: `Guardian ${i + 1}`,
+                mobile: `98765432${(i + 10).toString().padStart(2, '0')}`,
+                status: i % 3 === 0 ? 'ACTIVE' : i % 3 === 1 ? 'INACTIVE' : 'PENDING',
+                balance: (i + 1) * 1000 * (i % 2 === 0 ? 1 : -1),
+                firms: [],
+                firm_count: 0
+            }));
+            
+            const total = 15;
+            const total_pages = Math.ceil(total / limit);
+            const is_last_page = page >= total_pages;
+            
+            setClients(dummyData.slice((page - 1) * limit, page * limit));
+            
+            setPagination({
+                page: page,
+                limit: limit,
+                total: total,
+                total_pages: total_pages,
+                is_last_page: is_last_page
+            });
+        } finally {
+            setLoading(false);
         }
-        
-        // Dummy data for testing
-        const dummyData = [
-            {
-                _id: '1',
-                id: '1',
-                username: 'john_doe',
-                name: 'John Doe',
-                guardian_name: 'Robert Doe',
-                mobile: '9876543210',
-                status: 'ACTIVE',
-                balance: 15000,
-                firms: [
-                    {
-                        firm_id: 'f1',
-                        firm_name: 'Doe Enterprises',
-                        pan_no: 'ABCDE1234F',
-                        file_no: 'FN001',
-                        firm_type: 'partnership',
-                        create_date: '2024-01-15T10:30:00.000Z',
-                        modify_date: '2024-01-20T14:45:00.000Z',
-                        create_by: {
-                            name: 'Admin',
-                            email: 'admin@example.com',
-                            mobile: '9876543210'
-                        },
-                        modify_by: {
-                            name: 'Admin',
-                            email: 'admin@example.com',
-                            mobile: '9876543210'
-                        },
-                        address: {
-                            address_line_1: '123 Main Street',
-                            address_line_2: 'Suite 101',
-                            city: 'Mumbai',
-                            state: 'Maharashtra',
-                            pincode: '400001',
-                            country: 'India'
-                        }
-                    },
-                    {
-                        firm_id: 'f2',
-                        firm_name: 'Doe Trading Co',
-                        pan_no: 'ABCDE1235F',
-                        file_no: 'FN002',
-                        firm_type: 'proprietorship',
-                        create_date: '2024-02-10T09:15:00.000Z',
-                        modify_date: '2024-02-12T11:20:00.000Z',
-                        create_by: {
-                            name: 'Admin',
-                            email: 'admin@example.com',
-                            mobile: '9876543210'
-                        },
-                        address: {
-                            address_line_1: '456 Market Road',
-                            city: 'Delhi',
-                            state: 'Delhi',
-                            pincode: '110001',
-                            country: 'India'
-                        }
-                    },
-                    {
-                        firm_id: 'f3',
-                        firm_name: 'Doe Manufacturing',
-                        pan_no: 'ABCDE1236F',
-                        file_no: 'FN003',
-                        firm_type: 'llp',
-                        create_date: '2024-03-05T14:30:00.000Z',
-                        modify_date: '2024-03-10T16:45:00.000Z',
-                        create_by: {
-                            name: 'Admin',
-                            email: 'admin@example.com',
-                            mobile: '9876543210'
-                        },
-                        address: {
-                            address_line_1: '789 Industrial Area',
-                            address_line_2: 'Sector 5',
-                            city: 'Chennai',
-                            state: 'Tamil Nadu',
-                            pincode: '600001',
-                            country: 'India'
-                        }
-                    }
-                ],
-                firm_count: 3
-            },
-            {
-                _id: '2',
-                id: '2',
-                username: 'jane_smith',
-                name: 'Jane Smith',
-                guardian_name: 'William Smith',
-                mobile: '9876543211',
-                status: 'ACTIVE',
-                balance: -5000,
-                firms: [
-                    {
-                        firm_id: 'f4',
-                        firm_name: 'Smith & Co',
-                        pan_no: 'XYZAB5678G',
-                        file_no: 'FN004',
-                        firm_type: 'partnership',
-                        create_date: '2024-01-20T11:45:00.000Z',
-                        modify_date: '2024-01-25T16:30:00.000Z',
-                        create_by: {
-                            name: 'Admin',
-                            email: 'admin@example.com',
-                            mobile: '9876543210'
-                        },
-                        modify_by: {
-                            name: 'Admin',
-                            email: 'admin@example.com',
-                            mobile: '9876543210'
-                        },
-                        address: {
-                            address_line_1: '789 Business Avenue',
-                            address_line_2: 'Floor 5',
-                            city: 'Bangalore',
-                            state: 'Karnataka',
-                            pincode: '560001',
-                            country: 'India'
-                        }
-                    },
-                    {
-                        firm_id: 'f5',
-                        firm_name: 'Smith Industries',
-                        pan_no: 'XYZAB5679G',
-                        file_no: 'FN005',
-                        firm_type: 'private limited',
-                        create_date: '2024-02-15T09:30:00.000Z',
-                        modify_date: '2024-02-20T13:15:00.000Z',
-                        create_by: {
-                            name: 'Admin',
-                            email: 'admin@example.com',
-                            mobile: '9876543210'
-                        },
-                        address: {
-                            address_line_1: '101 Corporate Park',
-                            city: 'Hyderabad',
-                            state: 'Telangana',
-                            pincode: '500001',
-                            country: 'India'
-                        }
-                    }
-                ],
-                firm_count: 2
-            },
-            {
-                _id: '3',
-                id: '3',
-                username: 'alex_wilson',
-                name: 'Alexander Wilson',
-                guardian_name: 'Michael Wilson',
-                mobile: '9876543212',
-                status: 'INACTIVE',
-                balance: 25000,
-                firms: [
-                    {
-                        firm_id: 'f6',
-                        firm_name: 'Wilson Enterprises',
-                        pan_no: 'PQRS1234T',
-                        file_no: 'FN006',
-                        firm_type: 'proprietorship',
-                        create_date: '2024-01-10T08:45:00.000Z',
-                        modify_date: '2024-01-18T12:30:00.000Z',
-                        create_by: {
-                            name: 'Admin',
-                            email: 'admin@example.com',
-                            mobile: '9876543210'
-                        },
-                        address: {
-                            address_line_1: '222 Wilson Street',
-                            city: 'Kolkata',
-                            state: 'West Bengal',
-                            pincode: '700001',
-                            country: 'India'
-                        }
-                    }
-                ],
-                firm_count: 1
-            }
-        ];
-        
-        setClients(dummyData);
-        setPagination(prev => ({
-            ...prev,
-            currentPage: 1,
-            totalPages: 1,
-            totalItems: 3
-        }));
-    } finally {
-        setLoading(false);
-        setIsFetchingMore(false);
-    }
-}, [searchQuery, selectedStatus, selectedGroup, pagination.itemsPerPage, getHeaders, navigate]);
+    }, [searchQuery, selectedStatus, selectedGroup, getHeaders]);
 
-    // Check if mobile on mount and resize
     useEffect(() => {
         const checkIfMobile = () => {
             setIsMobile(window.innerWidth < 768);
@@ -1630,12 +1300,10 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         };
     }, []);
 
-    // Persist sidebar minimized state
     useEffect(() => {
         localStorage.setItem('sidebarMinimized', JSON.stringify(isMinimized));
     }, [isMinimized]);
 
-    // Lock body scroll when mobile sidebar is open
     useEffect(() => {
         if (mobileMenuOpen) {
             document.body.style.overflow = 'hidden';
@@ -1647,7 +1315,27 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         };
     }, [mobileMenuOpen]);
 
-    // All available data fields from clients
+    useEffect(() => {
+        fetchClients(1, pagination.limit);
+    }, [searchQuery, selectedStatus, selectedGroup]);
+
+    // Handle page change
+    const handlePageChange = (newPage) => {
+        if (newPage < 1 || newPage > pagination.total_pages) return;
+        fetchClients(newPage, pagination.limit);
+    };
+
+    // Handle limit change
+    const handleLimitChange = (newLimit) => {
+        setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
+        fetchClients(1, newLimit);
+    };
+
+    // Handle custom page change
+    const handleCustomPageChange = (pageNum) => {
+        handlePageChange(pageNum);
+    };
+
     const availableFields = [
         { id: 'id', label: 'ID', type: 'text' },
         { id: 'username', label: 'Username', type: 'text' },
@@ -1663,7 +1351,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         { id: 'actions', label: 'Actions', type: 'actions' }
     ];
 
-    // Default column configuration - ULTRA PROFESSIONAL LAYOUT
     const defaultColumnConfig = [
         {
             id: '1',
@@ -1711,7 +1398,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         }
     ];
 
-    // Initialize column config
     useEffect(() => {
         const savedConfig = localStorage.getItem('clientColumnConfig');
         if (savedConfig) {
@@ -1721,7 +1407,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         }
     }, []);
 
-    // Save column config
     const saveColumnConfig = (config) => {
         setColumnConfig(config);
         localStorage.setItem('clientColumnConfig', JSON.stringify(config));
@@ -1739,24 +1424,16 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         { value: 'company', name: 'Company' }
     ]);
 
-    // Initial load and when filters change
-    useEffect(() => {
-        fetchClients(1, pagination.itemsPerPage);
-    }, [searchQuery, selectedStatus, selectedGroup, pagination.itemsPerPage]);
-
-    // Handle export
     const handleExport = (type, data = null) => {
         setExportModal({ open: true, type, data });
 
-        // Simulate export process
         setTimeout(() => {
             setExportModal({ open: false, type: '', data: null });
             alert(`${type.toUpperCase()} export completed successfully!`);
         }, 1500);
     };
 
-    // Handle client selection
-     const handleClientSelect = (clientId) => {
+    const handleClientSelect = (clientId) => {
         const newSelected = new Set(selectedClients);
         if (newSelected.has(clientId)) {
             newSelected.delete(clientId);
@@ -1765,37 +1442,32 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         }
         setSelectedClients(newSelected);
         
-        // Update selectAll state
         if (clients.length > 0) {
             const allSelected = newSelected.size === clients.length;
             setSelectAll(allSelected);
         }
     };
 
-    // Handle select all
     const handleSelectAll = () => {
         if (selectAll) {
             setSelectedClients(new Set());
         } else {
-            const allClientIds = new Set(filteredClients.map(client => client._id));
+            const allClientIds = new Set(clients.map(client => client._id));
             setSelectedClients(allClientIds);
         }
         setSelectAll(!selectAll);
     };
 
-    // Format balance
     const formatBalance = (balance) => {
         return `₹${Math.abs(balance || 0).toLocaleString()}`;
     };
 
-    // Handle status change
     const handleStatusChange = (clientId, newStatus) => {
         setClients(prev => prev.map(client =>
             client._id === clientId ? { ...client, status: newStatus } : client
         ));
     };
 
-    // Open status modal
     const openStatusModal = (clientId, currentStatus) => {
         setStatusModal({
             open: true,
@@ -1804,7 +1476,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         });
     };
 
-    // Close status modal
     const closeStatusModal = () => {
         setStatusModal({
             open: false,
@@ -1813,7 +1484,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         });
     };
 
-    // Open firms modal
     const openFirmsModal = (firms, clientName) => {
         setFirmsModal({
             open: true,
@@ -1822,7 +1492,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         });
     };
 
-    // Close firms modal
     const closeFirmsModal = () => {
         setFirmsModal({
             open: false,
@@ -1831,27 +1500,10 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         });
     };
 
-    // Filter clients
-    const filteredClients = clients.filter(client => {
-        const matchesSearch = searchQuery === '' ||
-            (client.name && client.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-            (client.mobile && client.mobile.includes(searchQuery)) ||
-            (client.firms && client.firms.some(firm =>
-                firm.firm_name && firm.firm_name.toLowerCase().includes(searchQuery.toLowerCase())
-            ));
-
-        const matchesStatus = selectedStatus === '' || client.status === selectedStatus;
-        const matchesGroup = selectedGroup === '';
-
-        return matchesSearch && matchesStatus && matchesGroup;
-    });
-
-    // Toggle row dropdown
     const toggleRowDropdown = (clientId) => {
         setActiveRowDropdown(activeRowDropdown === clientId ? null : clientId);
     };
 
-    // Close all dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (!event.target.closest('.dropdown-container')) {
@@ -1868,130 +1520,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         };
     }, []);
 
-    // Handle scroll for infinite loading
-    useEffect(() => {
-        const handleScroll = () => {
-            if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || 
-                isFetchingMore || 
-                !hasMore || 
-                loading) {
-                return;
-            }
-            
-            if (pagination.currentPage < pagination.totalPages) {
-                fetchClients(pagination.currentPage + 1, pagination.itemsPerPage, true);
-            }
-        };
-
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, [isFetchingMore, hasMore, loading, pagination, fetchClients]);
-
-    // Helper functions for column management
-    const addItemToColumn = (columnIndex, fieldId) => {
-        const field = availableFields.find(f => f.id === fieldId);
-        if (!field) return;
-
-        const newConfig = [...columnConfig];
-        if (newConfig[columnIndex].items.length < 5) {
-            newConfig[columnIndex].items.push({
-                id: field.id,
-                label: field.label
-            });
-            saveColumnConfig(newConfig);
-        }
-    };
-
-    const removeItemFromColumn = (columnIndex, itemIndex) => {
-        const newConfig = [...columnConfig];
-        newConfig[columnIndex].items.splice(itemIndex, 1);
-        saveColumnConfig(newConfig);
-    };
-
-    const removeColumn = (columnIndex) => {
-        const newConfig = [...columnConfig];
-        if (!newConfig[columnIndex].fixed) {
-            newConfig.splice(columnIndex, 1);
-            saveColumnConfig(newConfig);
-        }
-    };
-
-    // Handle drag end for columns
-    const handleDragEnd = (event) => {
-        const { active, over } = event;
-        
-        if (!over || active.id === over.id) {
-            setActiveDragId(null);
-            return;
-        }
-        
-        const oldIndex = columnConfig.findIndex((col) => col.id === active.id);
-        const newIndex = columnConfig.findIndex((col) => col.id === over.id);
-        
-        if (oldIndex === -1 || newIndex === -1) {
-            setActiveDragId(null);
-            return;
-        }
-        
-        const sourceColumn = columnConfig[oldIndex];
-        
-        if (sourceColumn.fixed) {
-            setActiveDragId(null);
-            return;
-        }
-        
-        const firstFixedIndex = columnConfig.findIndex(col => col.fixed);
-        
-        if (newIndex >= firstFixedIndex && newIndex < columnConfig.length) {
-            if (firstFixedIndex > 0) {
-                const newConfig = arrayMove(columnConfig, oldIndex, firstFixedIndex - 1);
-                saveColumnConfig(newConfig);
-            }
-        } else {
-            const newConfig = arrayMove(columnConfig, oldIndex, newIndex);
-            saveColumnConfig(newConfig);
-        }
-        
-        setActiveDragId(null);
-    };
-
-    // Handle drag end for items within a column
-    const handleItemDragEnd = (event, columnIndex) => {
-        const { active, over } = event;
-        
-        if (active.id !== over.id) {
-            setColumnConfig((items) => {
-                const newConfig = [...items];
-                const columnItems = newConfig[columnIndex].items;
-                const oldIndex = columnItems.findIndex((item) => item.id === active.id);
-                const newIndex = columnItems.findIndex((item) => item.id === over.id);
-                
-                newConfig[columnIndex].items = arrayMove(columnItems, oldIndex, newIndex);
-                saveColumnConfig(newConfig);
-                return newConfig;
-            });
-        }
-        
-        setActiveItemDragId(null);
-    };
-
-    // Add a new column
-    const addNewColumn = () => {
-        const newConfig = [...columnConfig];
-        const newColumnId = (Date.now()).toString();
-        
-        const firstFixedIndex = newConfig.findIndex(col => col.fixed);
-        const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length - 1;
-        
-        newConfig.splice(insertIndex, 0, {
-            id: newColumnId,
-            name: `New Column`,
-            items: []
-        });
-        saveColumnConfig(newConfig);
-    };
-
-    // Get status color
     const getStatusColor = (status) => {
         switch (status) {
             case 'ACTIVE': return 'bg-green-100 text-green-700';
@@ -2001,7 +1529,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         }
     };
 
-    // Get status display text
     const getStatusText = (status) => {
         switch (status) {
             case 'ACTIVE': return 'Active';
@@ -2011,7 +1538,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         }
     };
 
-    // Get last updated firm
     const getLastUpdatedFirm = (firms) => {
         if (!firms || firms.length === 0) return null;
         
@@ -2024,7 +1550,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         return sortedFirms[0];
     };
 
-    // ULTRA PROFESSIONAL RENDER CELL CONTENT - UPDATED WITH PHONE ICON AND FIRM NAME
     const renderCellContent = (client, fieldId, openStatusModal, showFirmsModal) => {
         switch (fieldId) {
             case 'name':
@@ -2064,36 +1589,36 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         </div>
                     </div>
                 );
-          case 'firms':
-    const lastFirm = getLastUpdatedFirm(client.firms);
-    const firmCount = client.firms?.length || 0;
-    
-    return (
-        <div className="text-center">
-            {firmCount > 0 ? (
-                <div 
-                    className="cursor-pointer hover:bg-gray-100 transition-colors text-center p-2"
-                    onClick={() => showFirmsModal(client.firms, client.name)}
-                >
-                    <div className="font-medium text-gray-800 text-sm mb-1">
-                        {lastFirm?.firm_name || 'N/A'}
-                    </div>
-                    <div className="space-y-1">
-                        <div className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200`}>
-                            {firmCount} firm{firmCount !== 1 ? 's' : ''}
-                        </div>
-                        {client.firms.length > 1 && (
-                            <div className="text-xs text-blue-600 font-medium">
-                                +{client.firms.length - 1} more firm{client.firms.length - 1 > 1 ? 's' : ''}
+            case 'firms':
+                const lastFirm = getLastUpdatedFirm(client.firms);
+                const firmCount = client.firms?.length || 0;
+                
+                return (
+                    <div className="text-center">
+                        {firmCount > 0 ? (
+                            <div 
+                                className="cursor-pointer hover:bg-gray-100 transition-colors text-center p-2"
+                                onClick={() => showFirmsModal(client.firms, client.name)}
+                            >
+                                <div className="font-medium text-gray-800 text-sm mb-1">
+                                    {lastFirm?.firm_name || 'N/A'}
+                                </div>
+                                <div className="space-y-1">
+                                    <div className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200`}>
+                                        {firmCount} firm{firmCount !== 1 ? 's' : ''}
+                                    </div>
+                                    {client.firms.length > 1 && (
+                                        <div className="text-xs text-blue-600 font-medium">
+                                            +{client.firms.length - 1} more firm{client.firms.length - 1 > 1 ? 's' : ''}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
+                        ) : (
+                            <div className="text-sm text-gray-500 italic">No firms</div>
                         )}
                     </div>
-                </div>
-            ) : (
-                <div className="text-sm text-gray-500 italic">No firms</div>
-            )}
-        </div>
-    );
+                );
             case 'status':
                 return (
                     <div className={`inline-flex items-center justify-center px-2 py-1 rounded text-xs font-medium ${getStatusColor(client.status)}`}>
@@ -2103,7 +1628,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
             case 'actions':
                 return (
                     <div className="relative dropdown-container flex justify-center">
-                        {/* Compact Action Button */}
                         <motion.button
                             onClick={() => toggleRowDropdown(client._id)}
                             className="w-8 h-8 flex items-center justify-center rounded
@@ -2114,7 +1638,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                             <FiMoreVertical className="w-4 h-4 text-gray-700" />
                         </motion.button>
 
-                        {/* Professional Dropdown */}
                         <AnimatePresence>
                             {activeRowDropdown === client._id && (
                                 <motion.div
@@ -2203,21 +1726,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         }
     };
 
-    // Handle page change
-    const handlePageChange = (page) => {
-        fetchClients(page, pagination.itemsPerPage);
-    };
-
-    // Handle items per page change
-    const handleItemsPerPageChange = (itemsPerPage) => {
-        setPagination(prev => ({
-            ...prev,
-            itemsPerPage,
-            currentPage: 1
-        }));
-    };
-
-    // Settings Modal Component - Keep as is
     const SettingsModal = React.memo(() => {
         const [localColumnConfig, setLocalColumnConfig] = useState(columnConfig);
         const [localActiveDragId, setLocalActiveDragId] = useState(null);
@@ -2225,7 +1733,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
         const [editingColumnId, setEditingColumnId] = useState(null);
         const [tempColumnName, setTempColumnName] = useState('');
 
-        useEffect(() => {
+        const resetModalState = useCallback(() => {
             if (settingsModalOpen) {
                 setLocalColumnConfig(JSON.parse(JSON.stringify(columnConfig)));
                 setLocalActiveDragId(null);
@@ -2234,6 +1742,10 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 setTempColumnName('');
             }
         }, [columnConfig, settingsModalOpen]);
+
+        useEffect(() => {
+            resetModalState();
+        }, [resetModalState]);
 
         const handleModalDragEnd = (event) => {
             const { active, over } = event;
@@ -2401,7 +1913,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         }`}
                     whileHover={{ scale: isDraggable ? 1.02 : 1 }}
                 >
-                    {/* Column Header */}
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             {isDraggable && (
@@ -2483,7 +1994,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         )}
                     </div>
 
-                    {/* Column Items with Drag & Drop */}
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -2496,7 +2006,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                             strategy={verticalListSortingStrategy}
                         >
                             <div className="space-y-2 mb-3 min-h-[60px]">
-                                {column.items.map((item, itemIndex) => (
+                                {column.items && column.items.map((item, itemIndex) => (
                                     <ModalSortableItem
                                         key={item.id}
                                         item={item}
@@ -2509,7 +2019,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                             </div>
                         </SortableContext>
                         
-                        {/* Drag overlay for items */}
                         <DragOverlay>
                             {localActiveItemDragId ? (
                                 <div className="bg-white border border-blue-400 shadow-lg rounded-lg px-3 py-2">
@@ -2524,8 +2033,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         </DragOverlay>
                     </DndContext>
 
-                    {/* Add Field Dropdown */}
-                    {!column.fixed && column.items.length < 5 && editingColumnId !== column.id && (
+                    {!column.fixed && column.items && column.items.length < 5 && editingColumnId !== column.id && (
                         <select
                             value=""
                             onChange={(e) => {
@@ -2541,7 +2049,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                 .filter(field => field.id !== 'actions')
                                 .filter(field =>
                                     !localColumnConfig.some(col =>
-                                        col.items.some(item => item.id === field.id)
+                                        col.items && col.items.some(item => item.id === field.id)
                                     ) ||
                                     localColumnConfig[index].items.some(item => item.id === field.id)
                                 )
@@ -2553,8 +2061,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                         </select>
                     )}
 
-                    {/* Empty State */}
-                    {!column.fixed && column.items.length === 0 && editingColumnId !== column.id && (
+                    {!column.fixed && column.items && column.items.length === 0 && editingColumnId !== column.id && (
                         <div className="text-center py-4 text-gray-400 text-sm">
                             <p>Drag fields here or select from dropdown</p>
                         </div>
@@ -2661,11 +2168,10 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                             transition={{ duration: 0.2 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {/* Modal Header */}
                             <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-center shrink-0">
                                 <div>
-                                    <h2 className="text-xl font-bold">Table Column Settings</h2>
-                                    <p className="text-blue-100 text-sm mt-1">Drag and drop to rearrange columns and items. Click on column names to edit them.</p>
+                                    <h2 className="text-xl font-bold">Table Settings</h2>
+                                    <p className="text-blue-100 text-sm mt-1">Configure table columns</p>
                                 </div>
                                 <motion.button
                                     onClick={() => setSettingsModalOpen(false)}
@@ -2677,7 +2183,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                 </motion.button>
                             </div>
 
-                            {/* Modal Content - Scrollable area */}
                             <div className="flex-1 overflow-y-auto p-6">
                                 <DndContext
                                     sensors={sensors}
@@ -2701,7 +2206,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                         </div>
                                     </SortableContext>
                                     
-                                    {/* Drag overlay for columns */}
                                     <DragOverlay>
                                         {localActiveDragId ? (
                                             <div className="bg-white border-2 border-blue-300 shadow-xl rounded-xl p-4 w-48">
@@ -2712,14 +2216,13 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                     </h3>
                                                 </div>
                                                 <div className="text-xs text-gray-500">
-                                                    {localColumnConfig.find(col => col.id === localActiveDragId)?.items.length || 0} items
+                                                    {localColumnConfig.find(col => col.id === localActiveDragId)?.items?.length || 0} items
                                                 </div>
                                             </div>
                                         ) : null}
                                     </DragOverlay>
                                 </DndContext>
 
-                                {/* Add Column Button */}
                                 <div className="mb-6">
                                     <motion.button
                                         onClick={addNewColumnInModal}
@@ -2732,7 +2235,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                     </motion.button>
                                 </div>
 
-                                {/* Available Fields with Drag & Drop */}
                                 <div className="border-t pt-6">
                                     <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
                                         <FiGrid className="w-4 h-4 text-blue-600" />
@@ -2756,7 +2258,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                 .filter(field => field.id !== 'actions')
                                                 .filter(field =>
                                                     !localColumnConfig.some(col =>
-                                                        col.items.some(item => item.id === field.id)
+                                                        col.items && col.items.some(item => item.id === field.id)
                                                     )
                                                 )
                                                 .map(field => field.id)}
@@ -2767,7 +2269,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                     .filter(field => field.id !== 'actions')
                                                     .filter(field =>
                                                         !localColumnConfig.some(col =>
-                                                            col.items.some(item => item.id === field.id)
+                                                            col.items && col.items.some(item => item.id === field.id)
                                                         )
                                                     )
                                                     .map(field => (
@@ -2782,7 +2284,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                 </div>
                             </div>
 
-                            {/* Modal Footer */}
                             <div className="border-t px-6 py-4 bg-gray-50 shrink-0">
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                     <motion.button
@@ -2846,17 +2347,14 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 setIsMinimized={setIsMinimized}
             />
 
-            {/* Main content */}
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="h-full flex flex-col">
-                    {/* Main Card - Professional Design */}
                     <motion.div
                         className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full mx-2 sm:mx-4 md:mx-8 my-3 md:my-4"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
                     >
-                        {/* Card Header - Professional */}
                         <div className="border-b border-gray-200 px-3 md:px-4 py-3 bg-gradient-to-r from-gray-50 to-white">
                             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2 md:gap-3">
                                 <div className="w-full md:w-auto">
@@ -2869,9 +2367,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                 </div>
 
                                 <div className="flex flex-col lg:flex-row gap-2 w-full lg:w-auto">
-                                    {/* Table/Cards Toggle and Search */}
                                     <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full">
-                                        {/* Table/Cards Toggle */}
                                         <div className="flex items-center gap-2">
                                             <div className="md:hidden w-full">
                                                 <TableViewSwitch viewMode={viewMode} setViewMode={setViewMode} />
@@ -2880,7 +2376,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                 <TableViewSwitch viewMode={viewMode} setViewMode={setViewMode} />
                                             </div>
                                             
-                                            {/* Search Input */}
                                             <div className="flex-1 md:flex-none md:min-w-[200px] lg:min-w-[250px]">
                                                 <div className="relative">
                                                     <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -2895,9 +2390,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                             </div>
                                         </div>
 
-                                        {/* Action Buttons */}
                                         <div className="flex items-center gap-2">
-                                            {/* Filter Dropdown */}
                                             <div className="dropdown-container relative">
                                                 <motion.button
                                                     onClick={() => setShowFilterDropdown(!showFilterDropdown)}
@@ -2918,7 +2411,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                             exit={{ opacity: 0, y: -8, scale: 0.96 }}
                                                             transition={{ duration: 0.15 }}
                                                         >
-                                                            {/* Status Filter */}
                                                             <div className="mb-3">
                                                                 <label className="block text-xs font-semibold text-gray-600 mb-1">
                                                                     Status
@@ -2937,7 +2429,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                                 </select>
                                                             </div>
 
-                                                            {/* Group Filter */}
                                                             <div className="mb-3">
                                                                 <label className="block text-xs font-semibold text-gray-600 mb-1">
                                                                     Group
@@ -2956,7 +2447,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                                 </select>
                                                             </div>
 
-                                                            {/* Actions */}
                                                             <div className="flex justify-between gap-2">
                                                                 <button
                                                                     onClick={() => {
@@ -2970,7 +2460,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                                 <button
                                                                     onClick={() => {
                                                                         setShowFilterDropdown(false);
-                                                                        fetchClients(1, pagination.itemsPerPage);
+                                                                        fetchClients(1, pagination.limit);
                                                                     }}
                                                                     className="w-full px-2 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                                                                 >
@@ -2982,7 +2472,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                 </AnimatePresence>
                                             </div>
 
-                                            {/* Add Client Button */}
                                             <motion.button
                                                 onClick={() => navigate('/client/create')}
                                                 className="px-3 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm whitespace-nowrap"
@@ -2992,7 +2481,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                 <FiUserPlus className="w-4 h-4" />
                                             </motion.button>
                                             
-                                            {/* 3 Dot Menu */}
                                             <div className="relative dropdown-container">
                                                 <motion.button
                                                     onClick={() => setShowMoreMenu(!showMoreMenu)}
@@ -3011,7 +2499,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                             animate={{ opacity: 1, y: 0 }}
                                                             exit={{ opacity: 0, y: -8 }}
                                                         >
-                                                            {/* Export Section */}
                                                             <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
                                                                 Export
                                                             </div>
@@ -3048,10 +2535,8 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                                                 Share via Email
                                                             </button>
 
-                                                            {/* Divider */}
                                                             <div className="h-px bg-gray-200 my-1" />
 
-                                                            {/* Settings */}
                                                             <button
                                                                 onClick={() => {
                                                                     if (viewMode === 'table') {
@@ -3075,11 +2560,10 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                             </div>
                         </div>
 
-                        {/* Client Display Area */}
                         <div className="flex-1 flex flex-col overflow-hidden">
                             {viewMode === 'table' ? (
                                 <ClientTable
-                                    clients={filteredClients}
+                                    clients={clients}
                                     selectedClients={selectedClients}
                                     handleClientSelect={handleClientSelect}
                                     selectAll={selectAll}
@@ -3098,7 +2582,7 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                 />
                             ) : (
                                 <ClientCards
-                                    clients={filteredClients}
+                                    clients={clients}
                                     selectedClients={selectedClients}
                                     handleClientSelect={handleClientSelect}
                                     columnConfig={columnConfig}
@@ -3117,29 +2601,21 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                             )}
                         </div>
 
-                        {/* Footer with Pagination */}
+                        {/* Pagination Component - REPLACED with new Pagination component */}
                         <Pagination
-                            currentPage={pagination.currentPage}
-                            totalPages={pagination.totalPages}
+                            pagination={pagination}
                             onPageChange={handlePageChange}
-                            itemsPerPage={pagination.itemsPerPage}
-                            onItemsPerPageChange={handleItemsPerPageChange}
+                            onLimitChange={handleLimitChange}
+                            loading={loading}
+                            onCustomPageChange={handleCustomPageChange}
+                            showPageInfo={true}
+                            showLimitSelector={true}
+                            showCustomPageInput={true}
                         />
-
-                        {/* Loading indicator for infinite scroll */}
-                        {isFetchingMore && (
-                            <div className="py-3 text-center">
-                                <div className="inline-flex items-center gap-2 text-sm text-gray-600">
-                                    <FiLoader className="w-4 h-4 animate-spin" />
-                                    Loading more clients...
-                                </div>
-                            </div>
-                        )}
                     </motion.div>
                 </div>
             </div>
 
-            {/* Floating Action Button for Selected Clients */}
             <AnimatePresence>
                 {selectedClients.size > 0 && (
                     <motion.div
@@ -3154,9 +2630,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                                 className="px-3 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-semibold hover:from-blue-700 hover:to-blue-800 flex items-center gap-2 shadow-xl"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => {
-                                    // console.log("Send message to:", [...selectedClients]);
-                                }}
                             >
                                 <FiMail className="w-4 h-4" />
                                 <span className="hidden sm:inline">Send Message</span>
@@ -3178,10 +2651,8 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 )}
             </AnimatePresence>
 
-            {/* Settings Modal */}
             <SettingsModal />
 
-            {/* Status Change Modal */}
             <StatusChangeModal
                 isOpen={statusModal.open}
                 onClose={closeStatusModal}
@@ -3191,7 +2662,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 statusOptions={statusOptions}
             />
 
-            {/* Firms Details Modal - UPDATED with professional alignment */}
             <FirmsDetailsModal
                 isOpen={firmsModal.open}
                 onClose={closeFirmsModal}
@@ -3199,7 +2669,6 @@ const fetchClients = useCallback(async (page = 1, limit = 10, isLoadMore = false
                 clientName={firmsModal.clientName}
             />
 
-            {/* Export Confirmation Modal */}
             <AnimatePresence>
                 {exportModal.open && (
                     <motion.div
