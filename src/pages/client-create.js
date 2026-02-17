@@ -21,7 +21,7 @@ import {
     FiTrash2,
     FiSearch
 } from 'react-icons/fi';
-import DatePickerComponent from "../../../ooms_v4/src/components/DatePickerComponent";
+import DatePickerComponent from "../components/DatePickerComponent";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { motion } from 'framer-motion';
 import axios from 'axios';
