@@ -43,7 +43,10 @@ import {
     FiGrid,
     FiLoader,
     FiRefreshCw,
-    FiInfo 
+    FiInfo,
+    FiMinimize2,
+    FiMaximize2,
+    FiChevronDown
 } from 'react-icons/fi';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -1105,7 +1108,7 @@ const TabLink = ({ to, icon: Icon, label, isActive, onClick }) => {
   return (
     <motion.button
       onClick={() => onClick(to)}
-      className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all duration-200 ${
+      className={`flex flex-col items-center justify-center p-3 rounded-lg transition-all duration-200 ${
         isActive
           ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200'
@@ -1119,11 +1122,31 @@ const TabLink = ({ to, icon: Icon, label, isActive, onClick }) => {
           scale: isActive ? 1.1 : 1
         }}
         transition={{ duration: 0.2 }}
-        className="mb-2"
+        className="mb-1"
       >
-        <Icon className="w-5 h-5" />
+        <Icon className="w-4 h-4" />
       </motion.div>
       <span className="text-xs font-medium text-center leading-tight">{label}</span>
+    </motion.button>
+  );
+};
+
+// CompactTabIcon Component for minimized view with hover tooltip
+// CompactTabIcon Component for minimized view with name under icon - CENTERED
+const CompactTabIcon = ({ to, icon: Icon, label, isActive, onClick }) => {
+  return (
+    <motion.button
+      onClick={() => onClick(to)}
+      className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-[70px] ${
+        isActive
+          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200'
+      }`}
+      whileHover={{ scale: 1.05, y: -2 }}
+      whileTap={{ scale: 0.98 }}
+    >
+      <Icon className="w-4 h-4 mb-1 mx-auto" />
+      <span className="text-[10px] font-medium text-center leading-tight w-full">{label}</span>
     </motion.button>
   );
 };
@@ -1135,6 +1158,11 @@ const ClientProfile = () => {
     const [isMinimized, setIsMinimized] = useState(() => {
         const saved = localStorage.getItem('sidebarMinimized');
         return saved ? JSON.parse(saved) : false;
+    });
+    const [tabsMinimized, setTabsMinimized] = useState(() => {
+        const saved = localStorage.getItem('tabsMinimized');
+        // Default to true (minimized/icons only) if no saved preference
+        return saved ? JSON.parse(saved) : true;
     });
     const [editModal, setEditModal] = useState({ isOpen: false, field: '', value: '' });
     const [isMobileView, setIsMobileView] = useState(false);
@@ -1292,6 +1320,11 @@ const ClientProfile = () => {
         }
     }, [username, previousUsername, fetchClientData]);
 
+    // Persist tabs minimized state
+    useEffect(() => {
+        localStorage.setItem('tabsMinimized', JSON.stringify(tabsMinimized));
+    }, [tabsMinimized]);
+
     // Profile tabs data - updated with URL-friendly IDs
     const profileTabs = [
         { id: 'basic-details', name: 'Basic Details', icon: FiUser },
@@ -1355,6 +1388,11 @@ const ClientProfile = () => {
     // Handle tab navigation
     const handleTabClick = (tabId) => {
         navigate(`/client/profile/${username}/${tabId}`);
+    };
+
+    // Toggle tabs minimized state
+    const toggleTabsMinimized = () => {
+        setTabsMinimized(!tabsMinimized);
     };
 
     // Render content based on active tab
@@ -1610,33 +1648,77 @@ const ClientProfile = () => {
                                     </div>
                                 </motion.div>
 
-                                {/* Enhanced Profile Tabs - Multi-line Grid Layout */}
-                                <motion.div
-                                    className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6 overflow-hidden"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: 0.2 }}
-                                >
-                                    <div className="p-4">
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                                            {profileTabs.map((tabItem) => {
-                                                const Icon = tabItem.icon;
-                                                const isActive = tab === tabItem.id;
-
-                                                return (
-                                                    <TabLink
-                                                        key={tabItem.id}
-                                                        to={tabItem.id}
-                                                        icon={Icon}
-                                                        label={tabItem.name}
-                                                        isActive={isActive}
-                                                        onClick={handleTabClick}
-                                                    />
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </motion.div>
+                                {/* Enhanced Profile Tabs with Minimize Option */}
+                               {/* Enhanced Profile Tabs with Minimize Option */}
+{/* Enhanced Profile Tabs with Minimize Option */}
+<motion.div
+    className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6 overflow-hidden"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ delay: 0.2 }}
+>
+    <div className="p-3 flex items-center justify-between">
+        {tabsMinimized ? (
+            // Minimized view - icons with labels in one line - CENTERED
+            <>
+                <div className="flex items-center justify-center gap-1 flex-1 flex-wrap">
+                    {profileTabs.map((tabItem) => {
+                        const Icon = tabItem.icon;
+                        const isActive = tab === tabItem.id;
+                        return (
+                            <CompactTabIcon
+                                key={tabItem.id}
+                                to={tabItem.id}
+                                icon={Icon}
+                                label={tabItem.name}
+                                isActive={isActive}
+                                onClick={handleTabClick}
+                            />
+                        );
+                    })}
+                </div>
+                <motion.button
+                    onClick={toggleTabsMinimized}
+                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 ml-1 flex-shrink-0"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    title="Show full tabs"
+                >
+                    <FiMaximize2 className="w-4 h-4" />
+                </motion.button>
+            </>
+        ) : (
+            // Expanded view - grid layout with minimize button
+            <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 flex-1">
+                    {profileTabs.map((tabItem) => {
+                        const Icon = tabItem.icon;
+                        const isActive = tab === tabItem.id;
+                        return (
+                            <TabLink
+                                key={tabItem.id}
+                                to={tabItem.id}
+                                icon={Icon}
+                                label={tabItem.name}
+                                isActive={isActive}
+                                onClick={handleTabClick}
+                            />
+                        );
+                    })}
+                </div>
+                <motion.button
+                    onClick={toggleTabsMinimized}
+                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 ml-1 flex-shrink-0"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    title="Minimize tabs"
+                >
+                    <FiMinimize2 className="w-4 h-4" />
+                </motion.button>
+            </>
+        )}
+    </div>
+</motion.div>
 
                                 {/* Tab Content with AnimatePresence */}
                                 <AnimatePresence mode="wait">
