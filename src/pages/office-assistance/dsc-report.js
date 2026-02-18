@@ -35,6 +35,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
 import DateFilter from '../../components/DateFilter';
 import moment from 'moment';
+import SearchableSelect from '../../components/SearchableSelect'
 
 const ViewDSCRegister = () => {
     // Header/Sidebar states
@@ -543,6 +544,12 @@ const ViewDSCRegister = () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
+
+    // // Derived data
+    const userOptions = users.map(user => ({
+        value: user.username,
+        label: `${user.name} • ${user.user_type} • ${user.mobile}`
+    }));
 
     // Get current items based on pagination
     const indexOfLastItem = showAll ? dscData.length : currentPage * itemsPerPage;
@@ -1281,19 +1288,12 @@ const ViewDSCRegister = () => {
                                             Select User <span className="text-rose-500">*</span>
                                         </label>
                                         <div className="relative">
-                                            <select
+                                            <SearchableSelect
+                                                options={userOptions}
                                                 value={createForm.username}
-                                                onChange={(e) => handleCreateChange('username', e.target.value)}
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
-                                                required
-                                            >
-                                                <option value="" className="text-slate-500">Select a user...</option>
-                                                {users.map(user => (
-                                                    <option key={user.username} value={user.username} className="text-slate-700">
-                                                        {user.name} • {user.user_type} • {user.mobile}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                onChange={(selectedValue) => handleCreateChange('username', selectedValue)}
+                                                placeholder="Search user by name, type or mobile..."
+                                            />
                                             <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                         </div>
                                     </div>
