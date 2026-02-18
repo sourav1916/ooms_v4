@@ -200,33 +200,42 @@ const ViewDSCRegister = () => {
 
 
     // Simulate fetching users
-    const fetchUsers = async (search = "", page = 1) => {
+    const fetchUsers = async (search = "") => {
         try {
             const token = localStorage.getItem("user_token");
             const username = localStorage.getItem("user_username");
             const branch = localStorage.getItem("branch_id");
-            const response = await fetch(
-                `${BASE_URL}/client/list?search=${encodeURIComponent(search)}&page=${page}&limit=20`,
-                {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "token": token,
-                        "username": username,
-                        "branch": branch,
-                    },
-                }
-            );
+
+            const searchTrimmed = search.trim();
+
+            // 🔁 Decide endpoint dynamically
+            const endpoint =
+                searchTrimmed.length >= 3
+                    ? `${BASE_URL}/client/search?search=${encodeURIComponent(searchTrimmed)}`
+                    : `${BASE_URL}/client/list`;  // your fetch-all API
+
+            const response = await fetch(endpoint, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    token: token,
+                    username: username,
+                    branch: branch,
+                },
+            });
 
             const result = await response.json();
 
             if (response.ok && result.success) {
-                setUsers(result.data);
+                setUsers(result.data || []);
             } else {
-                console.error("Failed to fetch users:", result.message);
+                console.error("Failed:", result.message);
+                setUsers([]);
             }
+
         } catch (error) {
             console.error("Error fetching users:", error);
+            setUsers([]);
         }
     };
 
@@ -391,18 +400,16 @@ const ViewDSCRegister = () => {
         const username = localStorage.getItem("user_username");
         const branch = localStorage.getItem("branch_id");
 
-        // 🔄 TRANSFORM form data to API format
         const apiPayload = {
             dsc_id: editForm.dsc_id,
             company: editForm.company,
             password: editForm.password,
-            validity_start: editForm.issue_date,        // DD/MM/YYYY → send as-is
-            validity_end: editForm.expire_date,         // DD/MM/YYYY → send as-is  
-            type: 'premium',                            // Hardcode or map from duration
+            validity_start: editForm.issue_date,
+            validity_end: editForm.expire_date,
+            type: 'premium',
             year: new Date(editForm.expire_date.split('/').reverse().join('-')).getFullYear().toString()
         };
 
-        console.log('📤 Sending API payload:', apiPayload); // Debug
 
         try {
             const response = await fetch(
