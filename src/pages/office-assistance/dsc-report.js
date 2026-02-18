@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     FiSearch,
     FiPlus,
@@ -43,7 +43,7 @@ const ViewDSCRegister = () => {
         const saved = localStorage.getItem('sidebarMinimized');
         return saved ? JSON.parse(saved) : false;
     });
-
+    const BASE_URL = 'https://api.ooms.in/api/v1';
     // Main states
     const [loading, setLoading] = useState(false);
     const [dscData, setDscData] = useState([]);
@@ -65,6 +65,8 @@ const ViewDSCRegister = () => {
 
     const [isWhatsappModalOpen, setWhatsappModalOpen] = useState(false);
     const [selectedWhatsapp, setSelectedWhatsapp] = useState('');
+
+    const [meta, setMeta] = useState({ total_pages: 0, current_page: 1, total: 0 });
 
     // Form states
     const [createForm, setCreateForm] = useState({
@@ -90,127 +92,6 @@ const ViewDSCRegister = () => {
     const [itemsPerPage] = useState(10);
     const [showAll, setShowAll] = useState(false);
 
-    // Mock DSC data - FIXED: Made each dsc_id unique
-    const mockDscData = [
-        {
-            dsc_id: 'dsc001',
-            username: 'user001',
-            name: 'John Doe',
-            guardian_name: 'Robert Doe',
-            mobile: '+91 9876543210',
-            email: 'john.doe@company.com',
-            company: 'Tech Solutions Inc.',
-            issue_date: '2024-01-15',
-            expire_date: '2025-01-14',
-            duration: 1,
-            password: 'encrypted123',
-            status: 1,
-            user_type: 'user'
-        },
-        {
-            dsc_id: 'dsc002',
-            username: 'user001',
-            name: 'Surajit Doe',
-            guardian_name: 'Robert Doe',
-            mobile: '+91 9876543211',
-            email: 'surajit.doe@company.com',
-            company: 'Tech Solutions Inc.',
-            issue_date: '2024-01-15',
-            expire_date: '2025-01-14',
-            duration: 1,
-            password: 'encrypted123',
-            status: 1,
-            user_type: 'user'
-        },
-        {
-            dsc_id: 'dsc003',
-            username: 'user002',
-            name: 'Michael Smith',
-            guardian_name: 'William Smith',
-            mobile: '+91 9876543212',
-            email: 'michael.smith@company.com',
-            company: 'Digital Innovations',
-            issue_date: '2024-01-15',
-            expire_date: '2025-01-14',
-            duration: 1,
-            password: 'encrypted456',
-            status: 1,
-            user_type: 'user'
-        },
-        {
-            dsc_id: 'dsc004',
-            username: 'ca001',
-            name: 'Jane Smith',
-            guardian_name: 'William Smith',
-            mobile: '+91 9876543213',
-            email: 'jane.smith@ca.com',
-            company: 'Financial Advisors Ltd.',
-            issue_date: '2023-11-20',
-            expire_date: '2024-11-19',
-            duration: 1,
-            password: 'secure456',
-            status: 1,
-            user_type: 'ca'
-        },
-        {
-            dsc_id: 'dsc005',
-            username: 'agent001',
-            name: 'Mike Johnson',
-            guardian_name: 'David Johnson',
-            mobile: '+91 9876543214',
-            email: 'mike.johnson@agent.com',
-            company: 'Insurance Partners',
-            issue_date: '2024-03-10',
-            expire_date: '2026-03-09',
-            duration: 2,
-            password: 'agent789',
-            status: 1,
-            user_type: 'agent'
-        },
-        {
-            dsc_id: 'dsc006',
-            username: 'emp001',
-            name: 'Sarah Wilson',
-            guardian_name: 'James Wilson',
-            mobile: '+91 9876543215',
-            email: 'sarah.wilson@company.com',
-            company: 'Corporate Solutions',
-            issue_date: '2024-02-01',
-            expire_date: '2027-01-31',
-            duration: 3,
-            password: 'corp321',
-            status: 0,
-            user_type: 'employee'
-        }
-    ];
-
-    // Mock users data for dropdown
-    const mockUsers = [
-        {
-            username: 'user001',
-            name: 'John Doe',
-            guardian_name: 'Robert Doe',
-            mobile: '+91 9876543210',
-            user_type: 'user',
-            state: 'active'
-        },
-        {
-            username: 'ca001',
-            name: 'Jane Smith',
-            guardian_name: 'William Smith',
-            mobile: '+91 9876543211',
-            user_type: 'ca',
-            state: 'active'
-        },
-        {
-            username: 'agent001',
-            name: 'Mike Johnson',
-            guardian_name: 'David Johnson',
-            mobile: '+91 9876543212',
-            user_type: 'agent',
-            state: 'active'
-        }
-    ];
 
     // Persist sidebar minimized state
     useEffect(() => {
@@ -248,65 +129,126 @@ const ViewDSCRegister = () => {
 
         setDateRange(`${from} - ${to}`);
         setFromToDate(`From ${from} to ${to}`);
-        fetchDscData(true);
+        fetchDscData(1, '', from, to);
         fetchUsers();
     }, []);
 
     // Simulate API call to fetch DSC data
-    const fetchDscData = async (from = '', to = '') => {
+    const fetchDscData = async (page = 1, search = '') => {
+        console.log("called");
         setLoading(true);
 
-        setTimeout(() => {
-            let filteredData = mockDscData;
+        try {
+            const params = new URLSearchParams({
+                search: search || '',
+                page: page.toString(),
+                limit: '10'
+            });
 
-            // Filter by date range if provided
-            if (from && to) {
-                filteredData = mockDscData.filter(item => {
-                    const issueDate = moment(item.issue_date);
-                    const fromDate = moment(from, 'DD/MM/YYYY');
-                    const toDate = moment(to, 'DD/MM/YYYY');
-                    return issueDate.isBetween(fromDate, toDate, null, '[]');
-                });
-            }
+            const token = localStorage.getItem("user_token");
+            const username = localStorage.getItem("user_username");
 
-            // Filter by search query
-            if (searchQuery) {
-                filteredData = filteredData.filter(item =>
-                    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.mobile.includes(searchQuery) ||
-                    item.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.company.toLowerCase().includes(searchQuery.toLowerCase())
+            const response = await fetch(
+                `${BASE_URL}/assistance/dsc/list?${params.toString()}`,
+                {
+                    method: "GET",
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'token': token,
+                        'username': username
+                    }
+                }
+            );
+
+            const result = await response.json();
+            console.log(result);
+
+            if (response.ok && result.success) {
+                setDscData(
+                    result.data.map(item => ({
+                        dsc_id: item.dsc_id,
+                        username: item.client?.username,
+                        name: item.client?.name || item.client?.guardian_name,
+                        guardian_name: item.client?.guardian_name,
+                        mobile: item.client?.mobile,
+                        email: item.client?.email,
+                        user_type: item.client?.user_type,
+                        company: item.company,
+                        issue_date: item.validity_start,
+                        expire_date: item.validity_end,
+                        status: item.status || 1,
+                        duration: item.year || 1,
+                        password: item.password
+                    }))
                 );
+
+                setMeta(result.meta || {});
+                setCurrentPage(result.meta?.current_page || 1);
+
+            } else {
+                console.error("Backend error:", result.message);
+                setDscData([]);
             }
 
-            setDscData(filteredData);
+        } catch (error) {
+            console.error('Fetch error:', error);
+            setDscData([]);
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
+
 
     // Simulate fetching users
-    const fetchUsers = async () => {
-        setTimeout(() => {
-            setUsers(mockUsers);
-        }, 500);
+    const fetchUsers = async (search = "", page = 1) => {
+        try {
+            const token = localStorage.getItem("user_token");
+            const username = localStorage.getItem("user_username");
+            const branch = localStorage.getItem("branch_id");
+            const response = await fetch(
+                `${BASE_URL}/client/list?search=${encodeURIComponent(search)}&page=${page}&limit=20`,
+                {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "token": token,
+                        "username": username,
+                        "branch": branch,
+                    },
+                }
+            );
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                setUsers(result.data);
+            } else {
+                console.error("Failed to fetch users:", result.message);
+            }
+        } catch (error) {
+            console.error("Error fetching users:", error);
+        }
     };
+
+
 
     // Handle search
     const handleSearch = () => {
         const [from, to] = dateRange.split(' - ');
-        fetchDscData(from, to);
+        fetchDscData(1, searchQuery);
     };
+
 
     // Handle search input change with debounce
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (searchQuery !== '') {
-                handleSearch();
-            }
+            const [from, to] = dateRange.split(' - ');
+            fetchDscData(1, searchQuery);
         }, 500);
 
         return () => clearTimeout(timer);
     }, [searchQuery]);
+
 
     // Handle key press in search input
     const handleKeyPress = (e) => {
@@ -322,7 +264,7 @@ const ViewDSCRegister = () => {
             setDateRange(filter.range);
             const [from, to] = filter.range.split(' - ');
             setFromToDate(`From ${from} to ${to}`);
-            fetchDscData(from, to);
+            fetchDscData(1, searchQuery);
         }
     };
 
@@ -351,6 +293,8 @@ const ViewDSCRegister = () => {
     // Handle edit button click
     const handleEditClick = (dsc) => {
         setSelectedDsc(dsc);
+
+        // ✅ CORRECT: Use the 'dsc' parameter directly
         setEditForm({
             dsc_id: dsc.dsc_id,
             company: dsc.company,
@@ -359,34 +303,144 @@ const ViewDSCRegister = () => {
             expire_date: moment(dsc.expire_date).format('DD/MM/YYYY'),
             password: dsc.password
         });
+
         setShowEditModal(true);
     };
 
-    // Handle create form submit
-    const handleCreateSubmit = (e) => {
+
+
+    const handleCreateSubmit = async (e) => {
         e.preventDefault();
-        console.log('Create form data:', createForm);
-        setShowCreateModal(false);
-        setCreateForm({
-            username: '',
-            company: '',
-            duration: '1',
-            issue_date: '',
-            expire_date: '',
-            password: ''
-        });
-        const [from, to] = dateRange.split(' - ');
-        fetchDscData(from, to);
+        if (loading) return;
+
+        setLoading(true);
+
+        const token = localStorage.getItem("user_token");
+        const usernameHeader = localStorage.getItem("user_username");
+
+        try {
+            // Convert DD/MM/YYYY → YYYY-MM-DD
+            const validity_start = moment(createForm.issue_date, "DD/MM/YYYY").format("YYYY-MM-DD");
+            const validity_end = moment(createForm.expire_date, "DD/MM/YYYY").format("YYYY-MM-DD");
+
+            // Extract year from validity_start (example: 2026-04-01 → 2026)
+            const year = moment(validity_start).year();
+
+            const payload = {
+                username: createForm.username,
+                company: createForm.company,
+                password: createForm.password || null,
+                validity_start,
+                validity_end,
+                type: "premium",
+                year: year
+            };
+
+            const response = await fetch(`${BASE_URL}/assistance/dsc/create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'token': token,
+                    'username': usernameHeader
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                console.log('DSC created:', data);
+
+                setShowCreateModal(false);
+
+                setCreateForm({
+                    username: '',
+                    company: '',
+                    duration: '1',
+                    issue_date: '',
+                    expire_date: '',
+                    password: ''
+                });
+
+                fetchDscData(1, searchQuery);
+
+            } else {
+                console.error('Backend error:', data);
+            }
+
+        } catch (error) {
+            console.error('Network error:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    // Handle edit form submit
-    const handleEditSubmit = (e) => {
+
+    // Handle Edit Form Submit
+    const handleEditSubmit = async (e) => {
         e.preventDefault();
-        console.log('Edit form data:', editForm);
+
+        if (loading || !selectedDsc?.dsc_id) {
+            console.log("DSC ID not found");
+            return;
+        }
+
+        setLoading(true);
+
+        const token = localStorage.getItem("user_token");
+        const username = localStorage.getItem("user_username");
+        const branch = localStorage.getItem("branch_id");
+
+        // 🔄 TRANSFORM form data to API format
+        const apiPayload = {
+            dsc_id: editForm.dsc_id,
+            company: editForm.company,
+            password: editForm.password,
+            validity_start: editForm.issue_date,        // DD/MM/YYYY → send as-is
+            validity_end: editForm.expire_date,         // DD/MM/YYYY → send as-is  
+            type: 'premium',                            // Hardcode or map from duration
+            year: new Date(editForm.expire_date.split('/').reverse().join('-')).getFullYear().toString()
+        };
+
+        console.log('📤 Sending API payload:', apiPayload); // Debug
+
+        try {
+            const response = await fetch(
+                `${BASE_URL}/assistance/dsc/edit`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'token': token,
+                        'username': username,
+                        'branch': branch,
+                    },
+                    body: JSON.stringify(apiPayload),  // ← SEND TRANSFORMED DATA
+                }
+            );
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                console.log('✅ DSC updated:', data);
+            } else {
+                console.error('❌ Backend error:', data.message || data);
+                return;
+            }
+
+        } catch (error) {
+            console.error('❌ Network error:', error);
+            return;
+        } finally {
+            setLoading(false);
+        }
+
         setShowEditModal(false);
+        setSelectedDsc(null);
         const [from, to] = dateRange.split(' - ');
-        fetchDscData(from, to);
+        fetchDscData(1, searchQuery);
     };
+
 
     // Calculate expire date based on issue date and duration
     const calculateExpireDate = (issueDate, duration) => {
@@ -399,28 +453,28 @@ const ViewDSCRegister = () => {
     // Handle create form changes
     const handleCreateChange = (field, value) => {
         const newForm = { ...createForm, [field]: value };
-        
+
         if (field === 'issue_date' || field === 'duration') {
             newForm.expire_date = calculateExpireDate(
                 field === 'issue_date' ? value : createForm.issue_date,
                 field === 'duration' ? parseInt(value) : parseInt(createForm.duration)
             );
         }
-        
+
         setCreateForm(newForm);
     };
 
     // Handle edit form changes
     const handleEditChange = (field, value) => {
         const newForm = { ...editForm, [field]: value };
-        
+
         if (field === 'issue_date' || field === 'duration') {
             newForm.expire_date = calculateExpireDate(
                 field === 'issue_date' ? value : editForm.issue_date,
                 field === 'duration' ? parseInt(value) : parseInt(editForm.duration)
             );
         }
-        
+
         setEditForm(newForm);
     };
 
@@ -444,7 +498,7 @@ const ViewDSCRegister = () => {
 
     // Get status badge class
     const getStatusBadgeClass = (status) => {
-        return status === 1 
+        return status === 1
             ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
             : 'bg-rose-100 text-rose-700 border border-rose-200';
     };
@@ -616,7 +670,7 @@ const ViewDSCRegister = () => {
                 <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     {/* Header Stats Cards - Professional Compact Design */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2 }}
@@ -636,7 +690,7 @@ const ViewDSCRegister = () => {
                             </div>
                         </motion.div>
 
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: 0.1 }}
@@ -656,7 +710,7 @@ const ViewDSCRegister = () => {
                             </div>
                         </motion.div>
 
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: 0.2 }}
@@ -683,7 +737,7 @@ const ViewDSCRegister = () => {
                     </div>
 
                     {/* Main Card */}
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.3 }}
@@ -874,6 +928,7 @@ const ViewDSCRegister = () => {
                                             const daysLeft = getDaysLeft(dsc.expire_date);
                                             const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
                                             const profileLink = getUserProfileLink(dsc);
+                                            console.log(currentItems.map(item => item.dsc_id));
 
                                             return (
                                                 <motion.tr
@@ -912,12 +967,11 @@ const ViewDSCRegister = () => {
                                                                     C/O: {dsc.guardian_name}
                                                                 </div>
                                                                 <div className="mt-1">
-                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${
-                                                                        dsc.user_type === 'user' ? 'bg-blue-100 text-blue-700 group-hover:bg-blue-200' :
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${dsc.user_type === 'user' ? 'bg-blue-100 text-blue-700 group-hover:bg-blue-200' :
                                                                         dsc.user_type === 'ca' ? 'bg-purple-100 text-purple-700 group-hover:bg-purple-200' :
-                                                                        dsc.user_type === 'agent' ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' :
-                                                                        'bg-slate-100 text-slate-700 group-hover:bg-slate-200'
-                                                                    } transition-colors`}>
+                                                                            dsc.user_type === 'agent' ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' :
+                                                                                'bg-slate-100 text-slate-700 group-hover:bg-slate-200'
+                                                                        } transition-colors`}>
                                                                         {dsc.user_type}
                                                                     </span>
                                                                 </div>
@@ -1096,16 +1150,15 @@ const ViewDSCRegister = () => {
                                                     } else {
                                                         pageNumber = currentPage - 2 + i;
                                                     }
-                                                    
+
                                                     return (
                                                         <button
                                                             key={pageNumber}
                                                             onClick={() => setCurrentPage(pageNumber)}
-                                                            className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
-                                                                currentPage === pageNumber
-                                                                    ? 'bg-blue-600 text-white'
-                                                                    : 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
-                                                            }`}
+                                                            className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${currentPage === pageNumber
+                                                                ? 'bg-blue-600 text-white'
+                                                                : 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
+                                                                }`}
                                                         >
                                                             {pageNumber}
                                                         </button>
@@ -1155,8 +1208,8 @@ const ViewDSCRegister = () => {
                                 <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-white">
                                     <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
                                         <div className="text-xs text-slate-600">
-                                            <span className="font-semibold text-slate-800">Summary:</span> Total {dscData.length} DSC records • 
-                                            <span className="text-emerald-600 font-medium ml-2">Active: {dscData.filter(d => d.status === 1).length}</span> • 
+                                            <span className="font-semibold text-slate-800">Summary:</span> Total {dscData.length} DSC records •
+                                            <span className="text-emerald-600 font-medium ml-2">Active: {dscData.filter(d => d.status === 1).length}</span> •
                                             <span className="text-rose-600 font-medium ml-2">Inactive: {dscData.filter(d => d.status === 0).length}</span>
                                         </div>
                                         <div className="text-xs text-slate-600">
@@ -1230,7 +1283,7 @@ const ViewDSCRegister = () => {
                                                 <option value="" className="text-slate-500">Select a user...</option>
                                                 {users.map(user => (
                                                     <option key={user.username} value={user.username} className="text-slate-700">
-                                                        {user.name} • {user.user_type.toUpperCase()} • {user.mobile}
+                                                        {user.name} • {user.user_type} • {user.mobile}
                                                     </option>
                                                 ))}
                                             </select>
@@ -1408,7 +1461,7 @@ const ViewDSCRegister = () => {
                                                         <div className="font-medium text-slate-900 text-sm">{selectedDsc.name}</div>
                                                         <div className="text-slate-600 text-xs">C/O: {selectedDsc.guardian_name}</div>
                                                         <div className="text-slate-600 text-xs">Mobile: {selectedDsc.mobile}</div>
-                                                        <div className="text-slate-600 text-xs">Type: {selectedDsc.user_type.toUpperCase()}</div>
+                                                        <div className="text-slate-600 text-xs">Type: {selectedDsc.user_type}</div>
                                                     </div>
                                                 </div>
                                             )}
@@ -1507,12 +1560,15 @@ const ViewDSCRegister = () => {
                                     </motion.button>
                                     <motion.button
                                         type="submit"
-                                        onClick={handleEditSubmit}
-                                        className="px-5 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:shadow transition-all duration-200"
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
+                                        disabled={loading}
+                                        className={`px-5 py-2.5 text-xs font-semibold text-white rounded-lg transition-all duration-200 ${loading
+                                            ? 'bg-slate-400 cursor-not-allowed'
+                                            : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow'
+                                            }`}
+                                        whileHover={loading ? {} : { scale: 1.02 }}
+                                        whileTap={loading ? {} : { scale: 0.98 }}
                                     >
-                                        Update DSC
+                                        {loading ? 'Updating...' : 'Update DSC'}
                                     </motion.button>
                                 </div>
                             </form>
