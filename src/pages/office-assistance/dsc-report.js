@@ -34,8 +34,10 @@ import { FaWhatsapp } from "react-icons/fa6";
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
 import DateFilter from '../../components/DateFilter';
+import DatePickerComponent from '../../components/DatePickerComponent';
 import moment from 'moment';
 import SearchableSelect from '../../components/SearchableSelect'
+import { companies } from '../../constants/defaultValues';
 
 const ViewDSCRegister = () => {
     // Header/Sidebar states
@@ -74,8 +76,8 @@ const ViewDSCRegister = () => {
         username: '',
         company: '',
         duration: '1',
-        issue_date: '',
-        expire_date: '',
+        validity_start: '',
+        validity_end: '',
         password: ''
     });
 
@@ -83,8 +85,8 @@ const ViewDSCRegister = () => {
         dsc_id: '',
         company: '',
         duration: '1',
-        issue_date: '',
-        expire_date: '',
+        validity_start: '',
+        validity_end: '',
         password: ''
     });
 
@@ -136,7 +138,6 @@ const ViewDSCRegister = () => {
 
     // Simulate API call to fetch DSC data
     const fetchDscData = async (page = 1, search = '') => {
-        console.log("called");
         setLoading(true);
 
         try {
@@ -148,6 +149,7 @@ const ViewDSCRegister = () => {
 
             const token = localStorage.getItem("user_token");
             const username = localStorage.getItem("user_username");
+            const branch = localStorage.getItem("branch_id");
 
             const response = await fetch(
                 `${BASE_URL}/assistance/dsc/list?${params.toString()}`,
@@ -156,36 +158,39 @@ const ViewDSCRegister = () => {
                     headers: {
                         'Content-Type': 'application/json',
                         'token': token,
-                        'username': username
+                        'username': username,
+                        'branch': branch
                     }
                 }
             );
 
             const result = await response.json();
-            console.log(result);
 
             if (response.ok && result.success) {
-                setDscData(
-                    result.data.map(item => ({
-                        dsc_id: item.dsc_id,
-                        username: item.client?.username,
-                        name: item.client?.name || item.client?.guardian_name,
-                        guardian_name: item.client?.guardian_name,
-                        mobile: item.client?.mobile,
-                        email: item.client?.email,
-                        user_type: item.client?.user_type,
-                        company: item.company,
-                        issue_date: item.validity_start,
-                        expire_date: item.validity_end,
-                        status: item.status || 1,
-                        duration: item.year || 1,
-                        password: item.password
-                    }))
-                );
+                const seen = new Map();
+                const uniqueData = result.data.filter(item => {
+                    if (seen.has(item.dsc_id)) return false;
+                    seen.set(item.dsc_id, true);
+                    return true;
+                }).map(item => ({
+                    dsc_id: item.dsc_id,
+                    username: item.client?.username,
+                    name: item.client?.name || item.client?.guardian_name,
+                    guardian_name: item.client?.guardian_name,
+                    mobile: item.client?.mobile,
+                    email: item.client?.email,
+                    user_type: item.client?.user_type,
+                    company: item.company,
+                    validity_start: item.validity_start,
+                    validity_end: item.validity_end,
+                    status: item.status || 1,
+                    duration: item.year || 1,
+                    password: item.password
+                }));
 
+                setDscData(uniqueData);
                 setMeta(result.meta || {});
                 setCurrentPage(result.meta?.current_page || 1);
-
             } else {
                 console.error("Backend error:", result.message);
                 setDscData([]);
@@ -269,7 +274,7 @@ const ViewDSCRegister = () => {
 
     // Handle date filter change
     const handleDateFilterChange = (filter) => {
-        console.log('Selected filter:', filter);
+        // console.log('Selected filter:', filter);
         if (filter.range) {
             setDateRange(filter.range);
             const [from, to] = filter.range.split(' - ');
@@ -304,18 +309,31 @@ const ViewDSCRegister = () => {
     const handleEditClick = (dsc) => {
         setSelectedDsc(dsc);
 
-        // ✅ CORRECT: Use the 'dsc' parameter directly
-        setEditForm({
-            dsc_id: dsc.dsc_id,
-            company: dsc.company,
-            duration: dsc.duration.toString(),
-            issue_date: moment(dsc.issue_date).format('DD/MM/YYYY'),
-            expire_date: moment(dsc.expire_date).format('DD/MM/YYYY'),
-            password: dsc.password
-        });
+        // Map correct field names and format dates safely
+        const formatSafeDate = (dateStr) => {
+            if (!dateStr) return '';
+            const parsed = moment(dateStr, ['DD/MM/YYYY', 'YYYY-MM-DD']); // Try both formats
+            return parsed.isValid() ? parsed.format('DD/MM/YYYY') : '';
+        };
 
+        const newEditForm = {
+            dsc_id: dsc.dsc_id,
+            username: dsc.username || '',
+            company: dsc.company || '',
+            duration: (dsc.duration || 1).toString(),
+            validity_start: formatSafeDate(dsc.validity_start || dsc.validity_start),  // Use correct field
+            validity_end: formatSafeDate(dsc.validity_end || dsc.validity_end),  // Use correct field
+            password: dsc.password || ''
+        };
+
+        // Log the NEW form data (not old state)
+        // console.log('Setting EditForm:', newEditForm);
+
+        setEditForm(newEditForm);
         setShowEditModal(true);
     };
+
+
 
 
 
@@ -326,12 +344,13 @@ const ViewDSCRegister = () => {
         setLoading(true);
 
         const token = localStorage.getItem("user_token");
-        const usernameHeader = localStorage.getItem("user_username");
+        const username = localStorage.getItem("user_username");
+        const branch = localStorage.getItem("branch_id");
 
         try {
             // Convert DD/MM/YYYY → YYYY-MM-DD
-            const validity_start = moment(createForm.issue_date, "DD/MM/YYYY").format("YYYY-MM-DD");
-            const validity_end = moment(createForm.expire_date, "DD/MM/YYYY").format("YYYY-MM-DD");
+            const validity_start = moment(createForm.validity_start, "DD/MM/YYYY").format("YYYY-MM-DD");
+            const validity_end = moment(createForm.validity_end, "DD/MM/YYYY").format("YYYY-MM-DD");
 
             // Extract year from validity_start (example: 2026-04-01 → 2026)
             const year = moment(validity_start).year();
@@ -351,7 +370,8 @@ const ViewDSCRegister = () => {
                 headers: {
                     'Content-Type': 'application/json',
                     'token': token,
-                    'username': usernameHeader
+                    'username': username,
+                    'branch': branch
                 },
                 body: JSON.stringify(payload),
             });
@@ -359,7 +379,7 @@ const ViewDSCRegister = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                console.log('DSC created:', data);
+                // console.log('DSC created:', data);
 
                 setShowCreateModal(false);
 
@@ -367,8 +387,8 @@ const ViewDSCRegister = () => {
                     username: '',
                     company: '',
                     duration: '1',
-                    issue_date: '',
-                    expire_date: '',
+                    validity_start: '',
+                    validity_end: '',
                     password: ''
                 });
 
@@ -405,10 +425,10 @@ const ViewDSCRegister = () => {
             dsc_id: editForm.dsc_id,
             company: editForm.company,
             password: editForm.password,
-            validity_start: editForm.issue_date,
-            validity_end: editForm.expire_date,
+            validity_start: editForm.validity_start,
+            validity_end: editForm.validity_end,
             type: 'premium',
-            year: new Date(editForm.expire_date.split('/').reverse().join('-')).getFullYear().toString()
+            year: editForm.duration
         };
 
 
@@ -430,7 +450,7 @@ const ViewDSCRegister = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                console.log('✅ DSC updated:', data);
+                // console.log('✅ DSC updated:', data);
             } else {
                 console.error('❌ Backend error:', data.message || data);
                 return;
@@ -451,9 +471,9 @@ const ViewDSCRegister = () => {
 
 
     // Calculate expire date based on issue date and duration
-    const calculateExpireDate = (issueDate, duration) => {
-        if (!issueDate) return '';
-        const issueMoment = moment(issueDate, 'DD/MM/YYYY');
+    const calculatevalidity_end = (validity_start, duration) => {
+        if (!validity_start) return '';
+        const issueMoment = moment(validity_start, 'DD/MM/YYYY');
         const expireMoment = issueMoment.add(duration * 365, 'days');
         return expireMoment.format('DD/MM/YYYY');
     };
@@ -462,9 +482,9 @@ const ViewDSCRegister = () => {
     const handleCreateChange = (field, value) => {
         const newForm = { ...createForm, [field]: value };
 
-        if (field === 'issue_date' || field === 'duration') {
-            newForm.expire_date = calculateExpireDate(
-                field === 'issue_date' ? value : createForm.issue_date,
+        if (field === 'validity_start' || field === 'duration') {
+            newForm.validity_end = calculatevalidity_end(
+                field === 'validity_start' ? value : createForm.validity_start,
                 field === 'duration' ? parseInt(value) : parseInt(createForm.duration)
             );
         }
@@ -476,15 +496,26 @@ const ViewDSCRegister = () => {
     const handleEditChange = (field, value) => {
         const newForm = { ...editForm, [field]: value };
 
-        if (field === 'issue_date' || field === 'duration') {
-            newForm.expire_date = calculateExpireDate(
-                field === 'issue_date' ? value : editForm.issue_date,
-                field === 'duration' ? parseInt(value) : parseInt(editForm.duration)
-            );
+        // Always recalculate validity_end when validity_start OR duration changes
+        if (field === 'validity_start' || field === 'duration') {
+            if (newForm.validity_start) {
+                newForm.validity_end = calculatevalidity_end(newForm.validity_start, parseInt(newForm.duration || 1));
+            }
+        }
+
+        // Optional: Recalculate duration when both dates change manually
+        if (field === 'validity_end' && newForm.validity_start && newForm.validity_end) {
+            const issue = moment(newForm.validity_start, 'DD/MM/YYYY');
+            const expire = moment(newForm.validity_end, 'DD/MM/YYYY');
+            if (issue.isValid() && expire.isValid()) {
+                const yearsDiff = expire.diff(issue, 'years');
+                newForm.duration = Math.max(1, yearsDiff).toString(); // Minimum 1 year
+            }
         }
 
         setEditForm(newForm);
     };
+
 
     // Get user profile link based on user type
     const getUserProfileLink = (user) => {
@@ -498,8 +529,8 @@ const ViewDSCRegister = () => {
     };
 
     // Calculate days left until expiration
-    const getDaysLeft = (expireDate) => {
-        const targetDate = moment(expireDate, "YYYY-MM-DD");
+    const getDaysLeft = (validity_end) => {
+        const targetDate = moment(validity_end, "YYYY-MM-DD");
         const today = moment();
         return targetDate.diff(today, 'days');
     };
@@ -735,7 +766,7 @@ const ViewDSCRegister = () => {
                                     <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Expiring Soon</p>
                                     <h3 className="text-xl font-bold text-slate-800 mt-1">
                                         {dscData.filter(d => {
-                                            const daysLeft = getDaysLeft(d.expire_date);
+                                            const daysLeft = getDaysLeft(d.validity_end);
                                             return daysLeft <= 30 && daysLeft > 0;
                                         }).length}
                                     </h3>
@@ -939,10 +970,10 @@ const ViewDSCRegister = () => {
                                     ) : (
                                         currentItems.map((dsc, index) => {
                                             const isDropdownOpen = activeRowDropdown === dsc.dsc_id;
-                                            const daysLeft = getDaysLeft(dsc.expire_date);
+                                            const daysLeft = getDaysLeft(dsc.validity_end);
                                             const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
                                             const profileLink = getUserProfileLink(dsc);
-                                            console.log(currentItems.map(item => item.dsc_id));
+                                            // console.log(currentItems.map(item => item.dsc_id));
 
                                             return (
                                                 <motion.tr
@@ -1012,7 +1043,7 @@ const ViewDSCRegister = () => {
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="space-y-2">
                                                             <span className="inline-flex items-center justify-center bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 font-bold px-3 py-1.5 rounded text-xs min-w-[120px] shadow-xs">
-                                                                {formatDate(dsc.issue_date)} - {formatDate(dsc.expire_date)}
+                                                                {formatDate(dsc.validity_start)} - {formatDate(dsc.validity_end)}
                                                             </span>
                                                             <div className="text-indigo-600 text-[10px] font-semibold">
                                                                 ({dsc.duration} Year{dsc.duration > 1 ? 's' : ''})
@@ -1269,8 +1300,8 @@ const ViewDSCRegister = () => {
                                             username: '',
                                             company: '',
                                             duration: '1',
-                                            issue_date: '',
-                                            expire_date: '',
+                                            validity_start: '',
+                                            validity_end: '',
                                             password: ''
                                         });
                                     }}
@@ -1304,15 +1335,21 @@ const ViewDSCRegister = () => {
                                             <label className="block text-xs font-semibold text-slate-700 mb-2">
                                                 Company <span className="text-rose-500">*</span>
                                             </label>
-                                            <input
-                                                type="text"
+                                            <select
                                                 value={createForm.company}
                                                 onChange={(e) => handleCreateChange('company', e.target.value)}
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
-                                                placeholder="Enter company name"
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
                                                 required
-                                            />
+                                            >
+                                                <option value="">Select a company</option>
+                                                {companies.map((company) => (
+                                                    <option key={company.value} value={company.value}>
+                                                        {company.label}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
+
 
                                         {/* Duration */}
                                         <div>
@@ -1339,15 +1376,22 @@ const ViewDSCRegister = () => {
                                             <label className="block text-xs font-semibold text-slate-700 mb-2">
                                                 Issue Date <span className="text-rose-500">*</span>
                                             </label>
-                                            <input
-                                                type="text"
-                                                value={createForm.issue_date}
-                                                onChange={(e) => handleCreateChange('issue_date', e.target.value)}
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                            <DatePickerComponent
+                                                selectedDate={
+                                                    createForm.validity_start
+                                                        ? moment(createForm.validity_start, 'DD/MM/YYYY').toDate()
+                                                        : null
+                                                }
+                                                onDateChange={(date) => {
+                                                    const formattedDate = date ? moment(date).format('DD/MM/YYYY') : '';
+                                                    handleCreateChange('validity_start', formattedDate);
+                                                }}
                                                 placeholder="DD/MM/YYYY"
-                                                required
+                                                error={createForm.errors?.validity_start || ''}
                                             />
                                         </div>
+
+
 
                                         {/* Expire Date */}
                                         <div>
@@ -1356,7 +1400,7 @@ const ViewDSCRegister = () => {
                                             </label>
                                             <input
                                                 type="text"
-                                                value={createForm.expire_date}
+                                                value={createForm.validity_end}
                                                 readOnly
                                                 className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg bg-slate-50 outline-none cursor-not-allowed"
                                                 placeholder="Auto-calculated"
@@ -1388,8 +1432,8 @@ const ViewDSCRegister = () => {
                                                 username: '',
                                                 company: '',
                                                 duration: '1',
-                                                issue_date: '',
-                                                expire_date: '',
+                                                validity_start: '',
+                                                validity_end: '',
                                                 password: ''
                                             });
                                         }}
@@ -1481,14 +1525,21 @@ const ViewDSCRegister = () => {
                                             <label className="block text-xs font-semibold text-slate-700 mb-2">
                                                 Company <span className="text-rose-500">*</span>
                                             </label>
-                                            <input
-                                                type="text"
+                                            <select
                                                 value={editForm.company}
                                                 onChange={(e) => handleEditChange('company', e.target.value)}
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
                                                 required
-                                            />
+                                            >
+                                                <option value="">Select a company</option>
+                                                {companies.map((company) => (
+                                                    <option key={company.value} value={company.value}>
+                                                        {company.label}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
+
 
                                         {/* Duration */}
                                         <div>
@@ -1515,14 +1566,21 @@ const ViewDSCRegister = () => {
                                             <label className="block text-xs font-semibold text-slate-700 mb-2">
                                                 Issue Date <span className="text-rose-500">*</span>
                                             </label>
-                                            <input
-                                                type="text"
-                                                value={editForm.issue_date}
-                                                onChange={(e) => handleEditChange('issue_date', e.target.value)}
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
-                                                required
+                                            <DatePickerComponent
+                                                selectedDate={
+                                                    editForm.validity_start
+                                                        ? moment(editForm.validity_start, 'DD/MM/YYYY').toDate()
+                                                        : null
+                                                }
+                                                onDateChange={(date) => {
+                                                    const formattedDate = date ? moment(date).format('DD/MM/YYYY') : '';
+                                                    handleEditChange('validity_start', formattedDate);
+                                                }}
+                                                placeholder="DD/MM/YYYY"
+                                                error={editForm.errors?.validity_start || ''}
                                             />
                                         </div>
+
 
                                         {/* Expire Date */}
                                         <div>
@@ -1531,7 +1589,7 @@ const ViewDSCRegister = () => {
                                             </label>
                                             <input
                                                 type="text"
-                                                value={editForm.expire_date}
+                                                value={editForm.validity_end}
                                                 readOnly
                                                 className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg bg-slate-50 outline-none cursor-not-allowed"
                                             />
