@@ -8,17 +8,70 @@ export default function SearchableSelect({
   onChange,                     // (value, option) => void
   placeholder = "Select...",
   disabled = false,
+  BASE_URL = 'https://api.ooms.in/api/v1'  // Default API base
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [users, setUsers] = useState([]);  // 🔥 NEW: Local users state
+  const [loading, setLoading] = useState(false);  // 🔥 NEW: Loading state
   const containerRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Find the selected option based on value
-  const selectedOption = options.find(opt => opt.value === value);
+  // 🔥 NEW: Transform users to options format
+  const userOptions = users.map(user => ({
+    value: user.username,
+    label: `${user.name} • ${user.user_type} • ${user.mobile}`
+  }));
 
-  // When value changes externally, update search term to show the label
+  // 🔥 NEW: Built-in fetchUsers function
+  const fetchUsers = async (search = "") => {
+    const searchTrimmed = search.trim();
+    console.log("search=> "+searchTrimmed);
+    
+    // Skip if < 3 characters
+    if (searchTrimmed.length < 3) {
+      setUsers([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("user_token");
+      const username = localStorage.getItem("user_username");
+      const branch = localStorage.getItem("branch_id");
+
+      const endpoint = `${BASE_URL}/client/search?search=${encodeURIComponent(searchTrimmed)}`;
+
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          token: token,
+          username: username,
+          branch: branch,
+        },
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setUsers(result.data || []);
+      } else {
+        setUsers([]);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Find selected option
+  const selectedOption = userOptions.find(opt => opt.value === value);
+
+  // When value changes externally, update search term
   useEffect(() => {
     if (selectedOption) {
       setSearchTerm(selectedOption.label);
@@ -28,7 +81,7 @@ export default function SearchableSelect({
   }, [value, selectedOption]);
 
   // Filter options based on search term
-  const filteredOptions = options.filter(opt =>
+  const filteredOptions = userOptions.filter(opt =>
     opt.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -48,10 +101,15 @@ export default function SearchableSelect({
     setHighlightedIndex(0);
   }, [filteredOptions]);
 
+  // 🔥 UPDATED: handleInputChange with auto-fetch
   const handleInputChange = (e) => {
-    setSearchTerm(e.target.value);
+    const newSearchTerm = e.target.value;
+    setSearchTerm(newSearchTerm);
     setIsOpen(true);
     setHighlightedIndex(0);
+    
+    // 🔥 Auto-fetch users on typing
+    fetchUsers(newSearchTerm);
   };
 
   const handleSelect = (option) => {
@@ -96,12 +154,12 @@ export default function SearchableSelect({
   const clearSelection = () => {
     onChange("", null);
     setSearchTerm("");
+    setUsers([]);
     inputRef.current?.focus();
   };
 
   return (
     <div ref={containerRef} className="relative w-full">
-      {/* Input wrapper with clear button */}
       <div className="relative">
         <input
           ref={inputRef}
@@ -130,7 +188,6 @@ export default function SearchableSelect({
         />
       </div>
 
-      {/* Dropdown */}
       <AnimatePresence>
         {isOpen && (
           <motion.ul
@@ -140,9 +197,13 @@ export default function SearchableSelect({
             transition={{ duration: 0.15 }}
             className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto py-1"
           >
-            {filteredOptions.length === 0 ? (
+            {loading ? (
               <li className="px-4 py-3 text-sm text-slate-500 text-center">
-                No results found
+                Searching...
+              </li>
+            ) : filteredOptions.length === 0 ? (
+              <li className="px-4 py-3 text-sm text-slate-500 text-center">
+                {searchTerm.length < 3 ? "Type 3+ characters to search" : "No results found"}
               </li>
             ) : (
               filteredOptions.map((option, index) => (
