@@ -2,9 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { FiBriefcase, FiEdit, FiTrash2, FiSearch, FiPlus, FiX, FiCheck, FiAlertCircle, FiEye, FiUser, FiMail, FiPhone } from 'react-icons/fi';
 import axios from 'axios';
-
-// API Configuration
-const API_BASE_URL = 'https://api.ooms.in/api/v1';
+import API_BASE_URL from "../utils/api-controller";
+import getHeaders from "../utils/get-headers";
 
 const FirmsTab = ({ clientUsername }) => {
     const [firms, setFirms] = useState([]);
@@ -48,32 +47,32 @@ const FirmsTab = ({ clientUsername }) => {
         country: ''
     });
 
-    // Get headers from localStorage
-    const getHeaders = useCallback(() => {
-        try {
-            const userName = localStorage.getItem('userName') || 
-                           localStorage.getItem('user_username') || '';
-            const token = localStorage.getItem('token') || 
-                          localStorage.getItem('user_token') || '';
-            const branchId = localStorage.getItem('branchId') || 
-                           localStorage.getItem('branch_id') || '';
+    // // Get headers from localStorage
+    // const getHeaders = useCallback(() => {
+    //     try {
+    //         const userName = localStorage.getItem('userName') || 
+    //                        localStorage.getItem('user_username') || '';
+    //         const token = localStorage.getItem('token') || 
+    //                       localStorage.getItem('user_token') || '';
+    //         const branchId = localStorage.getItem('branchId') || 
+    //                        localStorage.getItem('branch_id') || '';
             
-            if (!userName || !token || !branchId) {
-                console.error('Missing authentication data in localStorage');
-                return null;
-            }
+    //         if (!userName || !token || !branchId) {
+    //             console.error('Missing authentication data in localStorage');
+    //             return null;
+    //         }
             
-            return {
-                'Content-Type': 'application/json',
-                'username': userName,
-                'token': token,
-                'branch': branchId
-            };
-        } catch (error) {
-            console.error('Error getting headers from localStorage:', error);
-            return null;
-        }
-    }, []);
+    //         return {
+    //             'Content-Type': 'application/json',
+    //             'username': userName,
+    //             'token': token,
+    //             'branch': branchId
+    //         };
+    //     } catch (error) {
+    //         console.error('Error getting headers from localStorage:', error);
+    //         return null;
+    //     }
+    // }, []);
 
     // Fetch firms from API - UPDATED with correct field mapping
     const fetchFirms = useCallback(async () => {
