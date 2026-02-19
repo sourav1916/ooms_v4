@@ -133,7 +133,6 @@ const ViewDSCRegister = () => {
         setDateRange(`${from} - ${to}`);
         setFromToDate(`From ${from} to ${to}`);
         fetchDscData(1, '', from, to);
-        fetchUsers();
     }, []);
 
     // Simulate API call to fetch DSC data
@@ -203,49 +202,6 @@ const ViewDSCRegister = () => {
             setLoading(false);
         }
     };
-
-
-    // Simulate fetching users
-    const fetchUsers = async (search = "") => {
-        try {
-            const token = localStorage.getItem("user_token");
-            const username = localStorage.getItem("user_username");
-            const branch = localStorage.getItem("branch_id");
-
-            const searchTrimmed = search.trim();
-
-            // 🔁 Decide endpoint dynamically
-            const endpoint =
-                searchTrimmed.length >= 3
-                    ? `${BASE_URL}/client/search?search=${encodeURIComponent(searchTrimmed)}`
-                    : `${BASE_URL}/client/list`;  // your fetch-all API
-
-            const response = await fetch(endpoint, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    token: token,
-                    username: username,
-                    branch: branch,
-                },
-            });
-
-            const result = await response.json();
-
-            if (response.ok && result.success) {
-                setUsers(result.data || []);
-            } else {
-                console.error("Failed:", result.message);
-                setUsers([]);
-            }
-
-        } catch (error) {
-            console.error("Error fetching users:", error);
-            setUsers([]);
-        }
-    };
-
-
 
     // Handle search
     const handleSearch = () => {
@@ -362,7 +318,7 @@ const ViewDSCRegister = () => {
                 validity_start,
                 validity_end,
                 type: "premium",
-                year: year
+                year: createForm.duration
             };
 
             const response = await fetch(`${BASE_URL}/assistance/dsc/create`, {
