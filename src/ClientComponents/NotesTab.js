@@ -12,6 +12,8 @@ import { RiAttachment2 } from 'react-icons/ri';
 import axios from 'axios';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
+import getHeaders from "../utils/get-headers";
+import API_BASE_URL from "../utils/api-controller";
 
 const NotesTab = ({ clientUsername }) => {
     const [notes, setNotes] = useState([]);
@@ -77,54 +79,54 @@ const NotesTab = ({ clientUsername }) => {
         }
     };
     
-    // Get headers from localStorage
-    const getHeaders = () => {
-        try {
-            const userDataStr = localStorage.getItem('user');
-            let userName = '';
-            let token = '';
-            let branchId = '';
+    // // Get headers from localStorage
+    // const getHeaders = () => {
+    //     try {
+    //         const userDataStr = localStorage.getItem('user');
+    //         let userName = '';
+    //         let token = '';
+    //         let branchId = '';
 
-            if (userDataStr) {
-                try {
-                    const userData = JSON.parse(userDataStr);
-                    userName = userData.username || userData.userName || '';
-                    token = userData.token || '';
-                    branchId = userData.branch || userData.branchId || '';
-                } catch (e) {
-                    console.error('Error parsing user data:', e);
-                }
-            }
+    //         if (userDataStr) {
+    //             try {
+    //                 const userData = JSON.parse(userDataStr);
+    //                 userName = userData.username || userData.userName || '';
+    //                 token = userData.token || '';
+    //                 branchId = userData.branch || userData.branchId || '';
+    //             } catch (e) {
+    //                 console.error('Error parsing user data:', e);
+    //             }
+    //         }
 
-            // Fallback to individual localStorage items
-            if (!userName) {
-                userName = localStorage.getItem('userName') || localStorage.getItem('user_username') || '';
-            }
-            if (!token) {
-                token = localStorage.getItem('token') || localStorage.getItem('user_token') || '';
-            }
-            if (!branchId) {
-                branchId = localStorage.getItem('branchId') || localStorage.getItem('branch_id') || '';
-            }
+    //         // Fallback to individual localStorage items
+    //         if (!userName) {
+    //             userName = localStorage.getItem('userName') || localStorage.getItem('user_username') || '';
+    //         }
+    //         if (!token) {
+    //             token = localStorage.getItem('token') || localStorage.getItem('user_token') || '';
+    //         }
+    //         if (!branchId) {
+    //             branchId = localStorage.getItem('branchId') || localStorage.getItem('branch_id') || '';
+    //         }
             
-            console.log('Headers from localStorage:', { userName, token: token ? '***' + token.slice(-4) : 'empty', branchId });
+    //         console.log('Headers from localStorage:', { userName, token: token ? '***' + token.slice(-4) : 'empty', branchId });
             
-            if (!userName || !token || !branchId) {
-                console.error('Missing authentication data in localStorage');
-                return null;
-            }
+    //         if (!userName || !token || !branchId) {
+    //             console.error('Missing authentication data in localStorage');
+    //             return null;
+    //         }
             
-            return {
-                'Content-Type': 'application/json',
-                'username': userName,
-                'token': token,
-                'branch': branchId
-            };
-        } catch (error) {
-            console.error('Error getting headers from localStorage:', error);
-            return null;
-        }
-    };
+    //         return {
+    //             'Content-Type': 'application/json',
+    //             'username': userName,
+    //             'token': token,
+    //             'branch': branchId
+    //         };
+    //     } catch (error) {
+    //         console.error('Error getting headers from localStorage:', error);
+    //         return null;
+    //     }
+    // };
     
     const fetchNotes = async (page = 1, search = '') => {
         console.log('fetchNotes called with:', { clientUsername, page, search });
@@ -145,7 +147,7 @@ const NotesTab = ({ clientUsername }) => {
             }
             
             // Construct API URL with query parameters
-            const apiUrl = `https://api.ooms.in/api/v1/client/details/notes/list`;
+            const apiUrl = `${API_BASE_URL}/client/details/notes/list`;
             
             // Prepare query parameters as shown in your example
             const params = {
@@ -740,7 +742,7 @@ const NotesTab = ({ clientUsername }) => {
             console.log('Creating note with data:', requestBody);
             
             const response = await axios.post(
-                `https://api.ooms.in/api/v1/client/details/notes/create`,
+                `${API_BASE_URL}/client/details/notes/create`,
                 requestBody,
                 { headers }
             );
@@ -827,7 +829,7 @@ const NotesTab = ({ clientUsername }) => {
             console.log('Updating note with data:', requestBody);
             
             const response = await axios.post(
-                `https://api.ooms.in/api/v1/client/details/notes/edit`,
+                `${API_BASE_URL}/client/details/notes/edit`,
                 requestBody,
                 { headers }
             );
@@ -930,7 +932,7 @@ const NotesTab = ({ clientUsername }) => {
         try {
             // API call to delete note
             const response = await axios.delete(
-                `https://api.ooms.in/api/v1/client/details/notes/delete/${selectedNote.id}`,
+                `${API_BASE_URL}/client/details/notes/delete/${selectedNote.id}`,
                 {
                     headers: headers,
                     data: { username: clientUsername }
