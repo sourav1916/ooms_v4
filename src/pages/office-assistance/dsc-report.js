@@ -421,16 +421,22 @@ const ViewDSCRegister = () => {
         const username = localStorage.getItem("user_username");
         const branch = localStorage.getItem("branch_id");
 
+        // Transform DD/MM/YYYY → YYYY-MM-DD for backend
+        const transformDate = (dateStr) => {
+            if (!dateStr) return '';
+            const [day, month, year] = dateStr.split('/');
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        };
+
         const apiPayload = {
             dsc_id: editForm.dsc_id,
             company: editForm.company,
             password: editForm.password,
-            validity_start: editForm.validity_start,
-            validity_end: editForm.validity_end,
+            validity_start: transformDate(editForm.validity_start),
+            validity_end: transformDate(editForm.validity_end),
             type: 'premium',
             year: editForm.duration
         };
-
 
         try {
             const response = await fetch(
@@ -443,14 +449,14 @@ const ViewDSCRegister = () => {
                         'username': username,
                         'branch': branch,
                     },
-                    body: JSON.stringify(apiPayload),  // ← SEND TRANSFORMED DATA
+                    body: JSON.stringify(apiPayload),
                 }
             );
 
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // console.log('✅ DSC updated:', data);
+                // Success handling
             } else {
                 console.error('❌ Backend error:', data.message || data);
                 return;
@@ -468,6 +474,7 @@ const ViewDSCRegister = () => {
         const [from, to] = dateRange.split(' - ');
         fetchDscData(1, searchQuery);
     };
+
 
 
     // Calculate expire date based on issue date and duration
@@ -836,7 +843,7 @@ const ViewDSCRegister = () => {
                                         <div className="dropdown-container relative">
                                             <motion.button
                                                 onClick={() => setShowAddDropdown(!showAddDropdown)}
-                                                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                                className="px-4 h-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
