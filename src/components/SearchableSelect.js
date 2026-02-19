@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { FiChevronDown, FiX } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import API_BASE_URL from "../utils/api-controller";
 
 export default function SearchableSelect({
-  options = [],                // array of { value, label }
   value = "",                   // currently selected value
   onChange,                     // (value, option) => void
   placeholder = "Select...",
-  disabled = false,
-  BASE_URL = 'https://api.ooms.in/api/v1'  // Default API base
+  disabled = false, // Default API base
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -21,14 +20,14 @@ export default function SearchableSelect({
   // 🔥 NEW: Transform users to options format
   const userOptions = users.map(user => ({
     value: user.username,
-    label: `${user.name} • ${user.user_type} • ${user.mobile}`
+    label: `${user.name} • ${user.email} • ${user.mobile}`
   }));
 
   // 🔥 NEW: Built-in fetchUsers function
   const fetchUsers = async (search = "") => {
     const searchTrimmed = search.trim();
-    console.log("search=> "+searchTrimmed);
-    
+    console.log("search=> " + searchTrimmed);
+
     // Skip if < 3 characters
     if (searchTrimmed.length < 3) {
       setUsers([]);
@@ -41,7 +40,7 @@ export default function SearchableSelect({
       const username = localStorage.getItem("user_username");
       const branch = localStorage.getItem("branch_id");
 
-      const endpoint = `${BASE_URL}/client/search?search=${encodeURIComponent(searchTrimmed)}`;
+      const endpoint = `${API_BASE_URL}/client/search?search=${encodeURIComponent(searchTrimmed)}`;
 
       const response = await fetch(endpoint, {
         method: "GET",
@@ -107,7 +106,7 @@ export default function SearchableSelect({
     setSearchTerm(newSearchTerm);
     setIsOpen(true);
     setHighlightedIndex(0);
-    
+
     // 🔥 Auto-fetch users on typing
     fetchUsers(newSearchTerm);
   };
@@ -182,9 +181,8 @@ export default function SearchableSelect({
           </button>
         )}
         <FiChevronDown
-          className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""
+            }`}
         />
       </div>
 
@@ -211,11 +209,10 @@ export default function SearchableSelect({
                   key={option.value}
                   onClick={() => handleSelect(option)}
                   onMouseEnter={() => setHighlightedIndex(index)}
-                  className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${
-                    index === highlightedIndex
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-700 hover:bg-slate-50"
-                  }`}
+                  className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${index === highlightedIndex
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-700 hover:bg-slate-50"
+                    }`}
                 >
                   {option.label}
                 </li>

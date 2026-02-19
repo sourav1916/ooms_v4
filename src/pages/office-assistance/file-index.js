@@ -39,6 +39,7 @@ import moment from 'moment';
 import getHeaders from "../../utils/get-headers";
 import axios from 'axios';
 import { header } from 'framer-motion/client';
+import SearchableSelect from '../../components/SearchableSelect';
 
 const ViewFileIndex = () => {
     // Header/Sidebar states
@@ -1063,9 +1064,9 @@ const ViewFileIndex = () => {
                                                                 </div>
                                                                 <div className="mt-1">
                                                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${file.user_type === 'user' ? 'bg-blue-100 text-blue-700 group-hover:bg-blue-200' :
-                                                                            file.user_type === 'ca' ? 'bg-purple-100 text-purple-700 group-hover:bg-purple-200' :
-                                                                                file.user_type === 'agent' ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' :
-                                                                                    'bg-slate-100 text-slate-700 group-hover:bg-slate-200'
+                                                                        file.user_type === 'ca' ? 'bg-purple-100 text-purple-700 group-hover:bg-purple-200' :
+                                                                            file.user_type === 'agent' ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' :
+                                                                                'bg-slate-100 text-slate-700 group-hover:bg-slate-200'
                                                                         } transition-colors`}>
                                                                         {file.user_type}
                                                                     </span>
@@ -1243,8 +1244,8 @@ const ViewFileIndex = () => {
                                                             key={pageNumber}
                                                             onClick={() => setCurrentPage(pageNumber)}
                                                             className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${currentPage === pageNumber
-                                                                    ? 'bg-blue-600 text-white'
-                                                                    : 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
+                                                                ? 'bg-blue-600 text-white'
+                                                                : 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
                                                                 }`}
                                                         >
                                                             {pageNumber}
@@ -1361,19 +1362,16 @@ const ViewFileIndex = () => {
                                             Select User <span className="text-rose-500">*</span>
                                         </label>
                                         <div className="relative">
-                                            <select
+
+                                            <SearchableSelect
+                                                options={users}
                                                 value={createForm.username}
-                                                onChange={(e) => handleCreateChange('username', e.target.value)}
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                                onChange={(e) => handleCreateChange('username', e)}
+
+                                                placeholder="Select a user..."
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                                 required
-                                            >
-                                                <option value="" className="text-slate-500">Select a user...</option>
-                                                {users.map(user => (
-                                                    <option key={user.username} value={user.username} className="text-slate-700">
-                                                        {user.name} • {user.user_type} • {user.mobile}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            />
                                             <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                         </div>
                                     </div>
