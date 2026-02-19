@@ -47,6 +47,7 @@ import { FaWhatsapp } from "react-icons/fa6";
 import DeleteConfirmationModal from '../components/delete-confirmation';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import API_BASE_URL from "../utils/api-controller";
 
 // Import the new Pagination component
 import Pagination from '../components/paging-nation-component';
@@ -71,8 +72,7 @@ import {
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// API Configuration
-const API_BASE_URL = 'https://api.ooms.in/api/v1';
+
 const CLIENT_LIST_API = `${API_BASE_URL}/client/list`;
 
 // Status Change Modal Component

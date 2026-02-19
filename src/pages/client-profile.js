@@ -48,6 +48,7 @@ import {
     FiMaximize2,
     FiChevronDown
 } from 'react-icons/fi';
+import API_BASE_URL from "../utils/api-controller";
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
@@ -64,8 +65,7 @@ import DocumentsTab from "../ClientComponents/DocumentsTab";
 import ChattingTab from "../ClientComponents/ChattingTab";
 import AutomationTab from "../ClientComponents/AutomationTab";
 
-// API Configuration
-const API_BASE_URL = 'https://api.ooms.in/api/v1';
+
 
 // Get headers from localStorage
 const getHeaders = () => {
