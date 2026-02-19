@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FiFile, FiUpload, FiEye, FiDownload, FiFolder, FiSearch, 
-  FiHardDrive, FiCheckCircle, FiClock, FiFileText, FiImage, 
+import {
+  FiFile, FiUpload, FiEye, FiDownload, FiFolder, FiSearch,
+  FiHardDrive, FiCheckCircle, FiClock, FiFileText, FiImage,
   FiArchive, FiPrinter, FiTrash2, FiPlus, FiX,
   FiChevronDown, FiChevronUp, FiGrid, FiList, FiCalendar,
   FiBriefcase, FiDollarSign, FiUsers, FiHome, FiCheckSquare,
@@ -11,6 +11,9 @@ import {
 } from 'react-icons/fi';
 import { SiWhatsapp } from 'react-icons/si';
 import Pagination from '../components/paging-nation-component';
+import getHeaders from "../utils/get-headers";
+import BASE_URL from "../utils/api-controller";
+
 
 const DocumentsTab = () => {
   const [activeTab, setActiveTab] = useState('income-tax');
@@ -35,6 +38,109 @@ const DocumentsTab = () => {
   const [showGeneralDropdown, setShowGeneralDropdown] = useState(false);
   const [attachments, setAttachments] = useState([]);
 
+  // API Data States
+  const [assessmentYears, setAssessmentYears] = useState([]);
+  const [financialYears, setFinancialYears] = useState([]);
+  const [loadingYears, setLoadingYears] = useState(false);
+
+  // Fetch Assessment Years for Income Tax
+  useEffect(() => {
+    const fetchAssessmentYears = async () => {
+      if (activeTab === 'income-tax') {
+        setLoadingYears(true);
+
+        const headers = getHeaders();
+        if (!headers) {
+          console.error('Authentication headers not found');
+          setLoadingYears(false);
+          return;
+        }
+
+        try {
+          const response = await fetch(`${BASE_URL}/utils/assisment-years`, {
+            method: 'GET',
+            headers: headers
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            setAssessmentYears(data.data);
+          } else {
+            console.error('Failed to fetch assessment years:', data.message);
+            // Fallback data in case of error
+            setAssessmentYears([
+              '2025-2026', '2024-2025', '2023-2024', '2022-2023',
+              '2021-2022', '2020-2021', '2019-2020', '2018-2019',
+              '2017-2018', '2016-2017'
+            ]);
+          }
+        } catch (error) {
+          console.error('Error fetching assessment years:', error);
+          // Fallback data in case of error
+          setAssessmentYears([
+            '2025-2026', '2024-2025', '2023-2024', '2022-2023',
+            '2021-2022', '2020-2021', '2019-2020', '2018-2019',
+            '2017-2018', '2016-2017'
+          ]);
+        } finally {
+          setLoadingYears(false);
+        }
+      }
+    };
+
+    fetchAssessmentYears();
+  }, [activeTab]);
+
+  // Fetch Financial Years for GST and MCA
+  useEffect(() => {
+    const fetchFinancialYears = async () => {
+      if (activeTab === 'gst' || activeTab === 'mca') {
+        setLoadingYears(true);
+
+        const headers = getHeaders();
+        if (!headers) {
+          console.error('Authentication headers not found');
+          setLoadingYears(false);
+          return;
+        }
+
+        try {
+          const response = await fetch(`${BASE_URL}/utils/financial-years`, {
+            method: 'GET',
+            headers: headers
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            setFinancialYears(data.data);
+          } else {
+            console.error('Failed to fetch financial years:', data.message);
+            // Fallback data in case of error
+            setFinancialYears([
+              '2025-2026', '2024-2025', '2023-2024', '2022-2023',
+              '2021-2022', '2020-2021', '2019-2020', '2018-2019',
+              '2017-2018', '2016-2017'
+            ]);
+          }
+        } catch (error) {
+          console.error('Error fetching financial years:', error);
+          // Fallback data in case of error
+          setFinancialYears([
+            '2025-2026', '2024-2025', '2023-2024', '2022-2023',
+            '2021-2022', '2020-2021', '2019-2020', '2018-2019',
+            '2017-2018', '2016-2017'
+          ]);
+        } finally {
+          setLoadingYears(false);
+        }
+      }
+    };
+
+    fetchFinancialYears();
+  }, [activeTab]);
+
   // Firms Data
   const firms = [
     { id: 1, name: 'ABC Enterprises', type: 'Private Limited' },
@@ -44,9 +150,6 @@ const DocumentsTab = () => {
     { id: 5, name: 'Startup Innovations', type: 'Private Limited' },
   ];
 
-  // Years Data
-  const years = ['2024-25', '2023-24', '2022-23', '2021-22', '2020-21'];
-  
   // Months Data
   const months = [
     'January 2024', 'February 2024', 'March 2024', 'April 2024',
@@ -99,47 +202,67 @@ const DocumentsTab = () => {
     ]
   });
 
+  // Get current year options based on active tab
+  const getYearOptions = () => {
+    if (activeTab === 'income-tax') {
+      return assessmentYears;
+    } else if (activeTab === 'gst' || activeTab === 'mca') {
+      return financialYears;
+    }
+    return [];
+  };
+
+  // Get year label based on active tab
+  const getYearLabel = () => {
+    if (activeTab === 'income-tax') {
+      return 'ALL AY';
+    } else if (activeTab === 'gst' || activeTab === 'mca') {
+      return 'ALL FY';
+    }
+    return 'All Years';
+  };
+
   // Filter documents based on selected filters
   const getFilteredDocuments = () => {
     let filtered = documents[activeTab] || [];
-    
+
     if (selectedFirm !== 'all') {
       filtered = filtered.filter(doc => doc.firm === selectedFirm);
     }
-    
+
     if (selectedYear !== 'all') {
       filtered = filtered.filter(doc => doc.year === selectedYear);
     }
-    
+
     if (selectedType !== 'all' && activeTab !== 'task' && activeTab !== 'general') {
       filtered = filtered.filter(doc => doc.type === selectedType);
     }
-    
+
     if (activeTab === 'gst' && selectedMonth !== 'all') {
       filtered = filtered.filter(doc => doc.month === selectedMonth);
     }
-    
+
     if (activeTab === 'task' && selectedService !== 'all') {
       filtered = filtered.filter(doc => doc.service === selectedService);
     }
-    
+
     if (activeTab === 'general' && selectedCategory !== 'all') {
       filtered = filtered.filter(doc => doc.category === selectedCategory);
     }
-    
+
     if (searchTerm) {
-      filtered = filtered.filter(doc => 
-        Object.values(doc).some(value => 
+      filtered = filtered.filter(doc =>
+        Object.values(doc).some(value =>
           String(value).toLowerCase().includes(searchTerm.toLowerCase())
         )
       );
     }
-    
+
     return filtered;
   };
 
   const filteredDocuments = getFilteredDocuments();
-  
+
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -212,7 +335,7 @@ const DocumentsTab = () => {
   };
 
   // Close action menu when clicking outside
-  React.useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (activeActionMenu && !event.target.closest('.action-menu-container')) {
         setActiveActionMenu(null);
@@ -259,7 +382,7 @@ const DocumentsTab = () => {
             <FiX className="w-5 h-5 text-gray-500" />
           </button>
         </div>
-        
+
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
           <div className="space-y-4">
             {Object.entries(document).map(([key, value]) => (
@@ -273,7 +396,7 @@ const DocumentsTab = () => {
               )
             ))}
           </div>
-          
+
           <div className="mt-6 flex justify-end">
             <button
               onClick={onClose}
@@ -312,7 +435,7 @@ const DocumentsTab = () => {
             <FiX className="w-5 h-5 text-gray-500" />
           </button>
         </div>
-        
+
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
           <div className="space-y-6">
             <div className="space-y-2">
@@ -327,10 +450,14 @@ const DocumentsTab = () => {
 
             {(tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Select Year *</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  {tab === 'income-tax' ? 'Select Assessment Year *' : 'Select Financial Year *'}
+                </label>
                 <select className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                  <option value="">Choose a year</option>
-                  {years.map(year => (
+                  <option value="">
+                    {tab === 'income-tax' ? 'Choose assessment year' : 'Choose financial year'}
+                  </option>
+                  {(tab === 'income-tax' ? assessmentYears : financialYears).map(year => (
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
@@ -354,10 +481,10 @@ const DocumentsTab = () => {
                 <label className="block text-sm font-medium text-gray-700">Select Type *</label>
                 <select className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                   <option value="">Choose type</option>
-                  {(tab === 'income-tax' ? incomeTaxTypes : 
+                  {(tab === 'income-tax' ? incomeTaxTypes :
                     tab === 'gst' ? gstTypes : mcaTypes).map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
+                      <option key={type} value={type}>{type}</option>
+                    ))}
                 </select>
               </div>
             )}
@@ -440,7 +567,7 @@ const DocumentsTab = () => {
         <div className="p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
           <h3 className="text-xl font-bold text-gray-900">Create Category</h3>
         </div>
-        
+
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
           <div className="space-y-4">
             <div className="space-y-2">
@@ -498,7 +625,7 @@ const DocumentsTab = () => {
             <FiX className="w-5 h-5 text-gray-500" />
           </button>
         </div>
-        
+
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
           <div className="space-y-6">
             {!document && selectedDocuments.length > 0 && (
@@ -514,22 +641,20 @@ const DocumentsTab = () => {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setSendOption('whatsapp')}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                    sendOption === 'whatsapp'
+                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${sendOption === 'whatsapp'
                       ? 'border-green-500 bg-green-50 text-green-700'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <SiWhatsapp className="w-5 h-5" />
                   <span className="text-sm font-medium">WhatsApp</span>
                 </button>
                 <button
                   onClick={() => setSendOption('email')}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                    sendOption === 'email'
+                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${sendOption === 'email'
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <FiMail className="w-5 h-5" />
                   <span className="text-sm font-medium">Email</span>
@@ -575,7 +700,7 @@ const DocumentsTab = () => {
                   <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG up to 10MB each</p>
                 </label>
               </div>
-              
+
               {/* Display attached files */}
               {attachments.length > 0 && (
                 <div className="mt-3 space-y-2">
@@ -650,7 +775,7 @@ const DocumentsTab = () => {
                   Add New
                   <FiChevronDown className="w-4 h-4" />
                 </motion.button>
-                
+
                 {showGeneralDropdown && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-10">
                     <button
@@ -703,12 +828,12 @@ const DocumentsTab = () => {
                   setActiveTab(tab.id);
                   setSelectedDocuments([]); // Clear selections when changing tabs
                   setActiveActionMenu(null);
+                  setSelectedYear('all'); // Reset year filter when changing tabs
                 }}
-                className={`flex items-center gap-2 px-6 py-3 rounded-t-xl font-medium transition-all relative whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 px-6 py-3 rounded-t-xl font-medium transition-all relative whitespace-nowrap ${activeTab === tab.id
                     ? `text-${tab.color}-600 bg-white border-t-2 border-l border-r border-gray-200 -mb-px`
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <Icon className={`w-5 h-5 ${activeTab === tab.id ? `text-${tab.color}-600` : ''}`} />
                 {tab.label}
@@ -729,7 +854,7 @@ const DocumentsTab = () => {
         <div className="flex flex-wrap gap-4 items-center">
           <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
             <FiUsers className="w-5 h-5 text-gray-400" />
-            <select 
+            <select
               value={selectedFirm}
               onChange={(e) => setSelectedFirm(e.target.value)}
               className="bg-transparent border-none focus:ring-0 text-sm font-medium"
@@ -744,15 +869,20 @@ const DocumentsTab = () => {
           {(activeTab === 'income-tax' || activeTab === 'gst' || activeTab === 'mca') && (
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
               <FiCalendar className="w-5 h-5 text-gray-400" />
-              <select 
+              <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
                 className="bg-transparent border-none focus:ring-0 text-sm font-medium"
+                disabled={loadingYears}
               >
-                <option value="all">All Years</option>
-                {years.map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
+                <option value="all">{getYearLabel()}</option>
+                {loadingYears ? (
+                  <option disabled>Loading...</option>
+                ) : (
+                  getYearOptions().map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))
+                )}
               </select>
             </div>
           )}
@@ -760,16 +890,16 @@ const DocumentsTab = () => {
           {(activeTab === 'income-tax' || activeTab === 'gst' || activeTab === 'mca') && (
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
               <FiFileText className="w-5 h-5 text-gray-400" />
-              <select 
+              <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="bg-transparent border-none focus:ring-0 text-sm font-medium"
               >
                 <option value="all">All Types</option>
-                {(activeTab === 'income-tax' ? incomeTaxTypes : 
+                {(activeTab === 'income-tax' ? incomeTaxTypes :
                   activeTab === 'gst' ? gstTypes : mcaTypes).map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
+                    <option key={type} value={type}>{type}</option>
+                  ))}
               </select>
             </div>
           )}
@@ -777,7 +907,7 @@ const DocumentsTab = () => {
           {activeTab === 'gst' && (
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
               <FiCalendar className="w-5 h-5 text-gray-400" />
-              <select 
+              <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 className="bg-transparent border-none focus:ring-0 text-sm font-medium"
@@ -793,7 +923,7 @@ const DocumentsTab = () => {
           {activeTab === 'task' && (
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
               <FiBriefcase className="w-5 h-5 text-gray-400" />
-              <select 
+              <select
                 value={selectedService}
                 onChange={(e) => setSelectedService(e.target.value)}
                 className="bg-transparent border-none focus:ring-0 text-sm font-medium"
@@ -810,7 +940,7 @@ const DocumentsTab = () => {
             <>
               <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
                 <FiGrid className="w-5 h-5 text-gray-400" />
-                <select 
+                <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="bg-transparent border-none focus:ring-0 text-sm font-medium"
@@ -872,114 +1002,21 @@ const DocumentsTab = () => {
         )}
       </div>
 
-    {/* Table Section */}
-<div className="p-6">
-  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-    {/* Table Container with fixed layout */}
-    <div className="overflow-x-auto">
-      <table className="w-full table-fixed">
-        <thead>
-          <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-            <th className="w-16 px-6 py-4 text-left">
-              <button 
-                onClick={handleSelectAll} 
-                className="text-gray-500 hover:text-gray-700"
-                title={selectedDocuments.length === currentItems.length ? "Deselect all" : "Select all"}
-              >
-                {selectedDocuments.length === currentItems.length && currentItems.length > 0 ? (
-                  <div className="relative inline-block">
-                    <div className="w-10 h-5 bg-blue-600 rounded-full transition-colors"></div>
-                    <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
-                  </div>
-                ) : (
-                  <div className="relative inline-block">
-                    <div className="w-10 h-5 bg-gray-300 rounded-full transition-colors"></div>
-                    <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
-                  </div>
-                )}
-              </button>
-            </th>
-            
-            {/* Dynamic Table Headers based on active tab */}
-            {activeTab === 'income-tax' && (
-              <>
-                <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Year</th>
-                <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
-                <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
-                <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
-                <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-              </>
-            )}
-
-            {activeTab === 'gst' && (
-              <>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Year</th>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Month</th>
-                <th className="w-1/4 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
-                <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
-                <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-              </>
-            )}
-
-            {activeTab === 'mca' && (
-              <>
-                <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Year</th>
-                <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
-                <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
-                <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
-                <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-              </>
-            )}
-
-            {activeTab === 'task' && (
-              <>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Service</th>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
-                <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
-                <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-              </>
-            )}
-
-            {activeTab === 'general' && (
-              <>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</th>
-                <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
-                <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
-                <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-              </>
-            )}
-          </tr>
-        </thead>
-        
-        <tbody className="divide-y divide-gray-200">
-          <AnimatePresence>
-            {currentItems.length > 0 ? (
-              currentItems.map((doc, index) => (
-                <motion.tr
-                  key={doc.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`hover:bg-gray-50 transition-colors ${
-                    selectedDocuments.includes(doc.id) ? 'bg-blue-50/50' : ''
-                  }`}
-                >
-                  <td className="px-6 py-4 align-middle">
-                    <button 
-                      onClick={() => handleSelect(doc.id)} 
+      {/* Table Section */}
+      <div className="p-6">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+          {/* Table Container with fixed layout */}
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed">
+              <thead>
+                <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                  <th className="w-16 px-6 py-4 text-left">
+                    <button
+                      onClick={handleSelectAll}
                       className="text-gray-500 hover:text-gray-700"
-                      title={selectedDocuments.includes(doc.id) ? "Deselect" : "Select"}
+                      title={selectedDocuments.length === currentItems.length ? "Deselect all" : "Select all"}
                     >
-                      {selectedDocuments.includes(doc.id) ? (
+                      {selectedDocuments.length === currentItems.length && currentItems.length > 0 ? (
                         <div className="relative inline-block">
                           <div className="w-10 h-5 bg-blue-600 rounded-full transition-colors"></div>
                           <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
@@ -991,184 +1028,297 @@ const DocumentsTab = () => {
                         </div>
                       )}
                     </button>
-                  </td>
+                  </th>
 
-                  {/* Dynamic Table Cells based on active tab */}
+                  {/* Dynamic Table Headers based on active tab */}
                   {activeTab === 'income-tax' && (
                     <>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm text-gray-600">{doc.year}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
-                          {doc.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
-                      </td>
+                      <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Assessment Year</th>
+                      <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                      <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
+                      <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
+                      <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </>
                   )}
 
                   {activeTab === 'gst' && (
                     <>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm text-gray-600">{doc.year}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
-                          {doc.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm text-gray-600 truncate" title={doc.month}>{doc.month}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
-                      </td>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Financial Year</th>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Month</th>
+                      <th className="w-1/4 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
+                      <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
+                      <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </>
                   )}
 
                   {activeTab === 'mca' && (
                     <>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm text-gray-600">{doc.year}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
-                          {doc.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
-                      </td>
+                      <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Financial Year</th>
+                      <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                      <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
+                      <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
+                      <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </>
                   )}
 
                   {activeTab === 'task' && (
                     <>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <span className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.service}>
-                          {doc.service}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm font-medium text-gray-900 truncate" title={doc.name}>{doc.name}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
-                      </td>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Service</th>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                      <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
+                      <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
+                      <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </>
                   )}
 
                   {activeTab === 'general' && (
                     <>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm font-medium text-gray-900 truncate" title={doc.name}>{doc.name}</div>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <span className="px-3 py-1 bg-gray-50 text-gray-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.category}>
-                          {doc.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 align-middle">
-                        <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
-                      </td>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                      <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</th>
+                      <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
+                      <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
+                      <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </>
                   )}
+                </tr>
+              </thead>
 
-                  {/* View Column */}
-                  <td className="px-6 py-4 text-center align-middle">
-                    <button
-                      onClick={() => handleView(doc)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="View"
-                    >
-                      <FiEye className="w-5 h-5" />
-                    </button>
-                  </td>
+              <tbody className="divide-y divide-gray-200">
+                <AnimatePresence>
+                  {currentItems.length > 0 ? (
+                    currentItems.map((doc, index) => (
+                      <motion.tr
+                        key={doc.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ delay: index * 0.05 }}
+                        className={`hover:bg-gray-50 transition-colors ${selectedDocuments.includes(doc.id) ? 'bg-blue-50/50' : ''
+                          }`}
+                      >
+                        <td className="px-6 py-4 align-middle">
+                          <button
+                            onClick={() => handleSelect(doc.id)}
+                            className="text-gray-500 hover:text-gray-700"
+                            title={selectedDocuments.includes(doc.id) ? "Deselect" : "Select"}
+                          >
+                            {selectedDocuments.includes(doc.id) ? (
+                              <div className="relative inline-block">
+                                <div className="w-10 h-5 bg-blue-600 rounded-full transition-colors"></div>
+                                <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
+                              </div>
+                            ) : (
+                              <div className="relative inline-block">
+                                <div className="w-10 h-5 bg-gray-300 rounded-full transition-colors"></div>
+                                <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
+                              </div>
+                            )}
+                          </button>
+                        </td>
 
-                  {/* Actions Column with 3-dot menu */}
-                  <td className="px-6 py-4 text-center align-middle relative action-menu-container">
-                    <button
-                      onClick={() => setActiveActionMenu(activeActionMenu === doc.id ? null : doc.id)}
-                      className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <FiMoreVertical className="w-5 h-5" />
-                    </button>
-                    
-                    {/* Action Menu */}
-                    {activeActionMenu === doc.id && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-50">
-                        <button
-                          onClick={() => {
-                            handleView(doc);
-                            setActiveActionMenu(null);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                        >
-                          <FiEye className="w-4 h-4" />
-                          View
-                        </button>
-                        <button
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                        >
-                          <FiDownload className="w-4 h-4" />
-                          Download
-                        </button>
-                        <button
-                          onClick={() => handleSend(doc)}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                        >
-                          <FiSend className="w-4 h-4" />
-                          Send
-                        </button>
-                        <button
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                        >
-                          <FiTrash2 className="w-4 h-4" />
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </motion.tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="10" className="px-6 py-12 text-center">
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <FiFolder className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No documents found</h3>
-                    <p className="text-gray-600">Try adjusting your search or filter criteria</p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </AnimatePresence>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
+                        {/* Dynamic Table Cells based on active tab */}
+                        {activeTab === 'income-tax' && (
+                          <>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm text-gray-600">{doc.year}</div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
+                                {doc.type}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
+                            </td>
+                          </>
+                        )}
 
+                        {activeTab === 'gst' && (
+                          <>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm text-gray-600">{doc.year}</div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
+                                {doc.type}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm text-gray-600 truncate" title={doc.month}>{doc.month}</div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
+                            </td>
+                          </>
+                        )}
+
+                        {activeTab === 'mca' && (
+                          <>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm text-gray-600">{doc.year}</div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
+                                {doc.type}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
+                            </td>
+                          </>
+                        )}
+
+                        {activeTab === 'task' && (
+                          <>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <span className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.service}>
+                                {doc.service}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm font-medium text-gray-900 truncate" title={doc.name}>{doc.name}</div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
+                            </td>
+                          </>
+                        )}
+
+                        {activeTab === 'general' && (
+                          <>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm font-medium text-gray-900 truncate" title={doc.name}>{doc.name}</div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <span className="px-3 py-1 bg-gray-50 text-gray-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.category}>
+                                {doc.category}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
+                            </td>
+                          </>
+                        )}
+
+                        {/* View Column */}
+                        <td className="px-6 py-4 text-center align-middle">
+                          <button
+                            onClick={() => handleView(doc)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View"
+                          >
+                            <FiEye className="w-5 h-5" />
+                          </button>
+                        </td>
+
+                        {/* Actions Column with 3-dot menu */}
+                        <td className="px-6 py-4 text-center align-middle relative action-menu-container">
+                          <button
+                            onClick={() => setActiveActionMenu(activeActionMenu === doc.id ? null : doc.id)}
+                            className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <FiMoreVertical className="w-5 h-5" />
+                          </button>
+
+                          {/* Action Menu */}
+                          {activeActionMenu === doc.id && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-50">
+                              <button
+                                onClick={() => {
+                                  handleView(doc);
+                                  setActiveActionMenu(null);
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <FiEye className="w-4 h-4" />
+                                View
+                              </button>
+                              <button
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <FiDownload className="w-4 h-4" />
+                                Download
+                              </button>
+                              <button
+                                onClick={() => handleSend(doc)}
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <FiSend className="w-4 h-4" />
+                                Send
+                              </button>
+                              <button
+                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </motion.tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="10" className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <FiFolder className="w-8 h-8 text-gray-400" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">No documents found</h3>
+                          <p className="text-gray-600">Try adjusting your search or filter criteria</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Pagination */}
+      {filteredDocuments.length > 0 && (
+        <div className="px-6 pb-6">
+          <Pagination
+            pagination={{
+              page: currentPage,
+              limit: itemsPerPage,
+              total: filteredDocuments.length,
+              total_pages: totalPages,
+              is_last_page: currentPage === totalPages
+            }}
+            onPageChange={setCurrentPage}
+            onLimitChange={setItemsPerPage}
+            onCustomPageChange={setCurrentPage}
+            loading={false}
+            showPageInfo={true}
+            showLimitSelector={true}
+            showCustomInput={true}
+          />
+        </div>
+      )}
       {/* Modals */}
       <AnimatePresence>
         {showUploadModal && (
@@ -1181,13 +1331,13 @@ const DocumentsTab = () => {
           <ViewModal document={selectedDocument} onClose={() => setShowViewModal(false)} />
         )}
         {showSendModal && (
-          <SendModal 
-            document={selectedDocument} 
+          <SendModal
+            document={selectedDocument}
             onClose={() => {
               setShowSendModal(false);
               setRecipient('');
               setAttachments([]);
-            }} 
+            }}
             onSubmit={handleSendSubmit}
           />
         )}
