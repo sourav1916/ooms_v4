@@ -136,42 +136,46 @@ const ViewDSCRegister = () => {
     }, []);
 
     // Simulate API call to fetch DSC data
-    const fetchDscData = async (page = 1, search = '') => {
+    const fetchDscData = async (page = 1, search = '', expires_from = '', expires_to = '') => {
         setLoading(true);
 
         try {
+            const token = localStorage.getItem("user_token");
+            const username = localStorage.getItem("user_username");
+            const branch = localStorage.getItem("branch_id");
+
             const params = new URLSearchParams({
                 search: search || '',
                 page: page.toString(),
                 limit: '10'
             });
 
-            const token = localStorage.getItem("user_token");
-            const username = localStorage.getItem("user_username");
-            const branch = localStorage.getItem("branch_id");
+            if (expires_from) params.append('expires_from', expires_from);
+            if (expires_to) params.append('expires_to', expires_to);
+            console.log("params======>>>>> " + params);
 
-            const response = await fetch(
-                `${BASE_URL}/assistance/dsc/list?${params.toString()}`,
-                {
-                    method: "GET",
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'token': token,
-                        'username': username,
-                        'branch': branch
-                    }
+
+            const url = `${BASE_URL}/assistance/dsc/list?${params.toString()}`;
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    'token': token,
+                    'username': username,
+                    'branch': branch
                 }
-            );
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`API Error ${response.status}:`, errorText);
+                setDscData([]);
+                return;
+            }
 
             const result = await response.json();
 
-            if (response.ok && result.success) {
-                const seen = new Map();
-                const uniqueData = result.data.filter(item => {
-                    if (seen.has(item.dsc_id)) return false;
-                    seen.set(item.dsc_id, true);
-                    return true;
-                }).map(item => ({
+            if (result.success) {
+                setDscData(result.data.map(item => ({
                     dsc_id: item.dsc_id,
                     username: item.client?.username,
                     name: item.client?.name || item.client?.guardian_name,
@@ -185,16 +189,14 @@ const ViewDSCRegister = () => {
                     status: item.status || 1,
                     duration: item.year || 1,
                     password: item.password
-                }));
+                })));
 
-                setDscData(uniqueData);
                 setMeta(result.meta || {});
                 setCurrentPage(result.meta?.current_page || 1);
             } else {
                 console.error("Backend error:", result.message);
                 setDscData([]);
             }
-
         } catch (error) {
             console.error('Fetch error:', error);
             setDscData([]);
@@ -202,6 +204,8 @@ const ViewDSCRegister = () => {
             setLoading(false);
         }
     };
+
+
 
     // Handle search
     const handleSearch = () => {
@@ -230,14 +234,30 @@ const ViewDSCRegister = () => {
 
     // Handle date filter change
     const handleDateFilterChange = (filter) => {
-        // console.log('Selected filter:', filter);
-        if (filter.range) {
+        console.log('Selected filter:', filter);
+        if (filter.range && filter.from && filter.to) {
             setDateRange(filter.range);
-            const [from, to] = filter.range.split(' - ');
-            setFromToDate(`From ${from} to ${to}`);
-            fetchDscData(1, searchQuery);
+            setFromToDate(`From ${filter.range}`);
+
+            // ✅ Convert DD/MM/YYYY → YYYY-MM-DD for backend
+            const convertToISODate = (dateStr) => {
+                if (!dateStr) return '';
+                const [day, month, year] = dateStr.split('/');
+                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            };
+
+            const expires_from = convertToISODate(filter.from.toLocaleDateString('en-GB'));
+            const expires_to = convertToISODate(filter.to.toLocaleDateString('en-GB'));
+
+            console.log("going to called for => " + expires_from + "--" + expires_to);
+
+            // Backend receives: 2026-02-01 & 2026-02-19 ✅
+            fetchDscData(1, searchQuery, expires_from, expires_to);
         }
     };
+
+
+
 
     // Handle export
     const handleExport = (type, data = null) => {
