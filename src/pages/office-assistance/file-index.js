@@ -128,13 +128,7 @@ const ViewFileIndex = () => {
         setLoading(true);
 
         try {
-            const token = localStorage.getItem("user_token");
-            const username = localStorage.getItem("user_username");
-            const branch = localStorage.getItem("branch_id");
-
-            if (!token) {
-                throw new Error("No auth token found");
-            }
+            const headers = getHeaders();
 
             const params = new URLSearchParams({
                 page: page.toString(),
@@ -154,11 +148,7 @@ const ViewFileIndex = () => {
             const response = await axios.get(
                 `${BASE_URL}/assistance/file-index/list?${params.toString()}`,
                 {
-                    headers: {
-                        'token': token,
-                        'username': username,
-                        'branch': branch
-                    }
+                    headers
                 }
             );
             const result = response.data;
