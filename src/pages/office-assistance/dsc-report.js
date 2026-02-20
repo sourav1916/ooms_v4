@@ -25,7 +25,8 @@ import {
     FiChevronRight as FiChevronRightIcon,
     FiChevronUp,
     FiUsers,
-    FiExternalLink
+    FiExternalLink,
+    FiEye,
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
@@ -77,7 +78,13 @@ const ViewDSCRegister = () => {
     const [selectedWhatsapp, setSelectedWhatsapp] = useState('');
 
     const [meta, setMeta] = useState({ total_pages: 0, current_page: 1, total: 0 });
-    const [selectedType, setSelectedType] = useState("");
+
+    // Add these states
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [selectedDetailDsc, setSelectedDetailDsc] = useState(null);
+
+
+
 
 
     // Form states
@@ -312,6 +319,23 @@ const ViewDSCRegister = () => {
     const handleSearch = () => {
         const [from, to] = dateRange.split(' - ');
         fetchDscData(1, searchQuery);
+    };
+
+    // Add this handler
+    const handleViewDetails = (dsc) => {
+        // 🔧 Enrich dsc with full company & type names
+        const enrichedDsc = {
+            ...dsc,
+
+            // Find matching company name
+            companyName: companies.find(comp => comp.value === dsc.company)?.name || dsc.company || 'N/A',
+
+            // Find matching type name  
+            typeName: types.find(typeItem => typeItem.value === dsc.type)?.name || dsc.type || 'N/A'
+        };
+
+        setSelectedDetailDsc(enrichedDsc);
+        setShowDetailsModal(true);
     };
 
 
@@ -926,7 +950,7 @@ const ViewDSCRegister = () => {
 
                                 <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
                                     {/* Search Input */}
-                                    <div className="relative">
+                                    <div className="relative flex justify-center items-center">
                                         <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
                                         <input
                                             type="text"
@@ -943,7 +967,7 @@ const ViewDSCRegister = () => {
                                         <DateFilter onChange={handleDateFilterChange} />
                                     </div>
 
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 lg:mr-8">
                                         {/* Export Dropdown */}
                                         <div className="dropdown-container relative">
                                             <motion.button
@@ -953,7 +977,7 @@ const ViewDSCRegister = () => {
                                                 whileTap={{ scale: 0.98 }}
                                             >
                                                 <PiExportBold className="w-4 h-4" />
-                                                Export
+
                                                 <FiChevronRight className={`w-3 h-3 transition-transform ${showAddDropdown ? 'rotate-90' : ''}`} />
                                             </motion.button>
 
@@ -1023,7 +1047,7 @@ const ViewDSCRegister = () => {
                                             whileTap={{ scale: 0.98 }}
                                         >
                                             <FiPlus className="w-4 h-4" />
-                                            Add DSC
+
                                         </motion.button>
                                     </div>
                                 </div>
@@ -1041,12 +1065,12 @@ const ViewDSCRegister = () => {
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[180px]">
                                             User Details
                                         </th>
-                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
+                                        {/* <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
                                             Contact Info
                                         </th>
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
                                             Company
-                                        </th>
+                                        </th> */}
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[140px]">
                                             Validity Period
                                         </th>
@@ -1135,7 +1159,7 @@ const ViewDSCRegister = () => {
                                                             </div>
                                                         </motion.a>
                                                     </td>
-                                                    <td className="text-center p-3 align-middle">
+                                                    {/* <td className="text-center p-3 align-middle">
                                                         <div className="space-y-1.5">
                                                             <div className="flex items-center justify-center gap-1 text-slate-700 text-xs">
                                                                 <FiPhone className="w-3 h-3 text-slate-500" />
@@ -1151,7 +1175,7 @@ const ViewDSCRegister = () => {
                                                         <span className="inline-flex items-center justify-center bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded text-xs border border-slate-300/50 shadow-xs max-w-[120px] truncate">
                                                             {dsc.company}
                                                         </span>
-                                                    </td>
+                                                    </td> */}
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="space-y-2">
                                                             <span className="inline-flex items-center justify-center bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 font-bold px-3 py-1.5 rounded text-xs min-w-[120px] shadow-xs">
@@ -1183,7 +1207,7 @@ const ViewDSCRegister = () => {
                                                             )}
                                                         </span>
                                                     </td>
-                                                    <td className="text-center p-3 align-middle">
+                                                    <td className="text-center p-3 align-middle flex items-center justify-center gap-2">
                                                         <div className="dropdown-container relative flex justify-center">
                                                             <motion.button
                                                                 className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
@@ -1271,6 +1295,18 @@ const ViewDSCRegister = () => {
                                                                 )}
                                                             </AnimatePresence>
                                                         </div>
+                                                        <div className="flex justify-center">
+                                                            <motion.button
+                                                                onClick={() => handleViewDetails(dsc)}  // ← Pass current row dsc
+                                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                                                whileHover={{ scale: 1.1 }}
+                                                                whileTap={{ scale: 0.95 }}
+                                                                title="View Details"
+                                                            >
+                                                                <FiEye className="w-4 h-4" />
+                                                            </motion.button>
+                                                        </div>
+
                                                     </td>
                                                 </motion.tr>
                                             );
@@ -1278,6 +1314,99 @@ const ViewDSCRegister = () => {
                                     )}
                                 </tbody>
                             </table>
+
+                            {/* view details modal */}
+                            <AnimatePresence>
+                                {showDetailsModal && selectedDetailDsc && (
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                                        onClick={() => setShowDetailsModal(false)} // Close on backdrop
+                                    >
+                                        <motion.div
+                                            initial={{ scale: 0.9, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            exit={{ scale: 0.9, opacity: 0 }}
+                                            className="bg-white rounded-2xl max-w-2xl max-h-[90vh] w-full overflow-y-auto shadow-2xl border border-slate-200"
+                                            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+                                        >
+                                            {/* Modal Header */}
+                                            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl z-10">
+                                                <div className="flex items-center justify-between">
+                                                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                                        <FiEye className="w-6 h-6 text-blue-600" />
+                                                        DSC Details
+                                                    </h3>
+                                                    <motion.button
+                                                        onClick={() => setShowDetailsModal(false)}
+                                                        className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                    >
+                                                        <FiX className="w-5 h-5" />
+                                                    </motion.button>
+                                                </div>
+                                            </div>
+
+                                            {/* Details Content */}
+                                            <div className="p-8 space-y-6">
+                                                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+                                                    <div className="w-12 h-12 bg-gradient-to-r from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center flex-shrink-0">
+                                                        <FiCreditCard className="w-6 h-6 text-blue-600" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-semibold text-slate-900 text-lg">{selectedDetailDsc.companyName}</div>
+                                                        <div className="text-sm text-slate-600">DSC ID: {selectedDetailDsc.dsc_id}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-3">
+
+                                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                                            <div>
+                                                                <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Issue Date</span>
+                                                                <span className="font-medium text-slate-900">{selectedDetailDsc.validity_start}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Expire Date</span>
+                                                                <span className="font-medium text-slate-900">{selectedDetailDsc.validity_end}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Duration</span>
+                                                                <span className="font-medium text-slate-900">{selectedDetailDsc.duration} Years</span>
+                                                            </div>
+                                                            {selectedDetailDsc.password && (
+                                                                <div>
+                                                                    <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Password</span>
+                                                                    <span className="font-mono bg-slate-100 px-2 py-1 rounded text-sm text-slate-900">{selectedDetailDsc.password}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <h4 className="font-semibold text-slate-900 mb-2">Client Information</h4>
+                                                            <div className="space-y-2 text-sm">
+                                                                <div><span className="text-slate-500">Name:</span> {selectedDetailDsc.name}</div>
+                                                                {selectedDetailDsc.guardian_name && (
+                                                                    <div><span className="text-slate-500">Guardian:</span> {selectedDetailDsc.guardian_name}</div>
+                                                                )}
+                                                                <div><span className="text-slate-500">Mobile:</span> {selectedDetailDsc.mobile}</div>
+                                                                <div><span className="text-slate-500">Email:</span> {selectedDetailDsc.email}</div>
+                                                                <div><span className="text-slate-500">Type:</span> <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">{selectedDetailDsc.typeName}</span></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
 
                             {/* Pagination Controls */}
                             {dscData.length > itemsPerPage && !showAll && (
@@ -1672,7 +1801,7 @@ const ViewDSCRegister = () => {
                                                 required
                                             />
                                         </div>
-<div>
+                                        <div>
                                             <label className="block text-xs font-semibold text-slate-700 mb-2">
                                                 Type <span className="text-rose-500">*</span>
                                             </label>
@@ -1837,3 +1966,4 @@ const ViewDSCRegister = () => {
 };
 
 export default ViewDSCRegister;
+

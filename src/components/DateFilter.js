@@ -249,7 +249,7 @@ const DateFilter = ({ onChange, onSearch }) => {
                 )}
             </div>
 
-            {/* Search Button */}
+            {/* Search Button
             <button
                 onClick={() => {
                     // Get current date range and trigger search
@@ -297,7 +297,7 @@ const DateFilter = ({ onChange, onSearch }) => {
             >
                 <FiSearch className="w-4 h-4" />
                 Search
-            </button>
+            </button> */}
         </div>
     );
 };
