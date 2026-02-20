@@ -1362,16 +1362,31 @@ const ViewFileIndex = () => {
                                             Select User <span className="text-rose-500">*</span>
                                         </label>
                                         <div className="relative">
+<SearchableSelect
+  endpoint="/clients/search"
+  listEndpoint="/clients/list"
 
-                                            <SearchableSelect
-                                                options={users}
-                                                value={createForm.username}
-                                                onChange={(e) => handleCreateChange('username', e)}
+  search="search"
+  minChars={3}
 
-                                                placeholder="Select a user..."
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
-                                                required
-                                            />
+  valueKey="username"
+
+  labelMapping={{
+    primary: "name",
+    secondary: "mobile"
+  }}
+
+  dataExtractor={(res) => res.data || []}
+
+  
+
+  placeholder="Search client by name, mobile, email..."
+
+  onSelect={(item, value) => {
+    console.log("Selected client:", item);
+    console.log("Username:", value);
+  }}
+/>
                                             <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                         </div>
                                     </div>

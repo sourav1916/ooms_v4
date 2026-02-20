@@ -1,226 +1,280 @@
-import { useState, useEffect, useRef } from "react";
-import { FiChevronDown, FiX } from "react-icons/fi";
-import { motion, AnimatePresence } from "framer-motion";
-import API_BASE_URL from "../utils/api-controller";
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import getHeaders from '../utils/get-headers';
+import API_BASE_URL from '../utils/api-controller';
+import debounce from 'lodash.debounce';
+import get from 'lodash.get';
 
 export default function SearchableSelect({
-  value = "",                   // currently selected value
-  onChange,                     // (value, option) => void
-  placeholder = "Select...",
-  disabled = false, // Default API base
+  // Search endpoint (used when search term length >= minChars)
+  endpoint,
+  // Optional list endpoint for initial options (no search param)
+  listEndpoint,
+  // Query params for list endpoint (e.g., { limit: 20 })
+  initialParams = {},
+  // Function to extract data from API response
+  dataExtractor,
+  // Mapping for display fields: { primary: 'path', secondary: 'path' }
+  labelMapping,
+  // Key to use as the selected value
+  valueKey,
+  placeholder = 'Search...',
+  onSelect,
+  // Query parameter key for search endpoint (e.g., 'q', 'search')
+  search = 'q',
+  // Extra query params for search endpoint
+  queryParams = {},
+  // Mock data array (used when useMock=true or in development with mockData)
+  mockData = [],
+  // Force mock mode (bypasses API calls)
+  useMock = false,
+  debounceMs = 300,
+  minChars = 2,
+  // Custom filter function for mock data (receives item and search term)
+  mockFilter,
+  // Custom render function for each suggestion
+  renderItem,
 }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [initialList, setInitialList] = useState([]);
+  const [loading, setLoading] = useState(false);        // for search
+  const [initialLoading, setInitialLoading] = useState(false);
+  const [error, setError] = useState(null);             // for search
+  const [initialError, setInitialError] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const [users, setUsers] = useState([]);  // 🔥 NEW: Local users state
-  const [loading, setLoading] = useState(false);  // 🔥 NEW: Loading state
-  const containerRef = useRef(null);
-  const inputRef = useRef(null);
 
-  // 🔥 NEW: Transform users to options format
-  const userOptions = users.map(user => ({
-    value: user.username,
-    label: `${user.name} • ${user.email} • ${user.mobile}`
-  }));
+  const abortControllerRef = useRef(null);
 
-  // 🔥 NEW: Built-in fetchUsers function
-  const fetchUsers = async (search = "") => {
-    const searchTrimmed = search.trim();
-    console.log("search=> " + searchTrimmed);
+  // Stable references for dynamic objects
+  const queryParamsRef = useRef(queryParams);
+  useEffect(() => {
+    queryParamsRef.current = queryParams;
+  }, [queryParams]);
 
-    // Skip if < 3 characters
-    if (searchTrimmed.length < 3) {
-      setUsers([]);
-      return;
+  const initialParamsRef = useRef(initialParams);
+  useEffect(() => {
+    initialParamsRef.current = initialParams;
+  }, [initialParams]);
+
+  // Helper to get nested value
+  const getValue = (obj, path) => get(obj, path, '');
+
+  // ---------- Default display when labelMapping is missing ----------
+  const getDisplayPrimary = (item) => {
+    if (labelMapping?.primary) return getValue(item, labelMapping.primary);
+    // Try common fields
+    if (valueKey) {
+      const val = getValue(item, valueKey);
+      if (val) return String(val);
     }
-
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("user_token");
-      const username = localStorage.getItem("user_username");
-      const branch = localStorage.getItem("branch_id");
-
-      const endpoint = `${API_BASE_URL}/client/search?search=${encodeURIComponent(searchTrimmed)}`;
-
-      const response = await fetch(endpoint, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          token: token,
-          username: username,
-          branch: branch,
-        },
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        setUsers(result.data || []);
-      } else {
-        setUsers([]);
-      }
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      setUsers([]);
-    } finally {
-      setLoading(false);
-    }
+    if (item.name) return item.name;
+    if (item.label) return item.label;
+    if (item.title) return item.title;
+    // Fallback: stringify (limit length)
+    return JSON.stringify(item).substring(0, 50);
   };
 
-  // Find selected option
-  const selectedOption = userOptions.find(opt => opt.value === value);
+  const getDisplaySecondary = (item) => {
+    if (labelMapping?.secondary) return getValue(item, labelMapping.secondary);
+    return null; // no default secondary
+  };
 
-  // When value changes externally, update search term
+  // ---------- Default mock filter ----------
+  const defaultMockFilter = (item, term) => {
+    const primary = String(getDisplayPrimary(item)).toLowerCase();
+    if (primary.includes(term)) return true;
+    const secondary = getDisplaySecondary(item);
+    if (secondary && String(secondary).toLowerCase().includes(term)) return true;
+    // If no match, fallback to searching in the whole item (as string)
+    return JSON.stringify(item).toLowerCase().includes(term);
+  };
+  const filterFn = mockFilter || defaultMockFilter;
+
+  // ---------- Default data extractor ----------
+  const defaultDataExtractor = (response) => {
+    if (Array.isArray(response)) return response;
+    if (response?.suggestions && Array.isArray(response.suggestions)) return response.suggestions;
+    if (response?.data && Array.isArray(response.data)) return response.data;
+    if (response?.results && Array.isArray(response.results)) return response.results;
+    return [];
+  };
+  const extractData = dataExtractor || defaultDataExtractor;
+
+  // ---------- Fetch initial list (if listEndpoint provided and not in mock mode) ----------
   useEffect(() => {
-    if (selectedOption) {
-      setSearchTerm(selectedOption.label);
-    } else {
-      setSearchTerm("");
+    if (useMock || (process.env.NODE_ENV === 'development' && mockData.length > 0)) {
+      return; // skip fetch in mock mode
     }
-  }, [value, selectedOption]);
+    if (!listEndpoint) return;
 
-  // Filter options based on search term
-  const filteredOptions = userOptions.filter(opt =>
-    opt.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    const fetchInitialList = async () => {
+      setInitialLoading(true);
+      setInitialError(null);
+      try {
+        const url = new URL(listEndpoint, API_BASE_URL);
+        Object.entries(initialParamsRef.current).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            url.searchParams.append(key, String(value));
+          }
+        });
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setIsOpen(false);
+        const headers = getHeaders();
+        if (!headers) {
+          setInitialError('Authentication headers missing');
+          setInitialLoading(false);
+          return;
+        }
+
+        const response = await fetch(url.toString(), { headers });
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        const json = await response.json();
+        const items = extractData(json);
+        setInitialList(items);
+      } catch (err) {
+        setInitialError(err.message || 'Failed to load initial list');
+      } finally {
+        setInitialLoading(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
-  // Reset highlighted index when filtered options change
+    fetchInitialList();
+  }, [listEndpoint, initialParamsRef, extractData, useMock, mockData]);
+
+  // ---------- Debounced search (for when searchTerm >= minChars) ----------
+  const debouncedSearch = useCallback(
+    debounce(async (term) => {
+      // If mock mode, filter mockData
+      if (useMock || (process.env.NODE_ENV === 'development' && mockData.length > 0)) {
+        const filtered = mockData.filter((item) => filterFn(item, term.toLowerCase()));
+        setSearchResults(filtered);
+        setLoading(false);
+        setError(null);
+        setIsOpen(true);
+        return;
+      }
+
+      // If term is too short, clear search results
+      if (term.length < minChars) {
+        setSearchResults([]);
+        return;
+      }
+
+      // Cancel previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const url = new URL(endpoint, API_BASE_URL);
+        url.searchParams.append(search, term);
+        Object.entries(queryParamsRef.current).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            url.searchParams.append(key, String(value));
+          }
+        });
+
+        const headers = getHeaders();
+        if (!headers) {
+          setError('Authentication headers missing');
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch(url.toString(), {
+          signal: controller.signal,
+          headers,
+        });
+
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        const json = await response.json();
+        const items = extractData(json);
+        setSearchResults(items);
+        setIsOpen(true);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setError(err.message || 'Failed to fetch');
+        }
+      } finally {
+        setLoading(false);
+      }
+    }, debounceMs),
+    [endpoint, search, useMock, mockData, minChars, filterFn, extractData]
+  );
+
   useEffect(() => {
-    setHighlightedIndex(0);
-  }, [filteredOptions]);
+    debouncedSearch(searchTerm);
+    return () => {
+      debouncedSearch.cancel();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [searchTerm, debouncedSearch]);
 
-  // 🔥 UPDATED: handleInputChange with auto-fetch
-  const handleInputChange = (e) => {
-    const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
-    setIsOpen(true);
-    setHighlightedIndex(0);
+  // Determine which list to show
+  const showInitial = searchTerm.length < minChars;
+  const displayList = showInitial ? initialList : searchResults;
+  const isLoading = showInitial ? initialLoading : loading;
+  const hasError = showInitial ? initialError : error;
 
-    // 🔥 Auto-fetch users on typing
-    fetchUsers(newSearchTerm);
-  };
-
-  const handleSelect = (option) => {
-    onChange(option.value, option);
-    setSearchTerm(option.label);
+  const handleSelect = (item) => {
+    const value = valueKey ? getValue(item, valueKey) : item;
+    onSelect?.(item, value);
+    setSearchTerm('');
     setIsOpen(false);
   };
 
-  const handleKeyDown = (e) => {
-    if (!isOpen) {
-      if (e.key === "ArrowDown" || e.key === "Enter") {
-        setIsOpen(true);
-      }
-      return;
-    }
+  const renderSuggestion = (item) => {
+    if (renderItem) return renderItem(item);
 
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setHighlightedIndex(prev =>
-          prev < filteredOptions.length - 1 ? prev + 1 : prev
-        );
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setHighlightedIndex(prev => (prev > 0 ? prev - 1 : 0));
-        break;
-      case "Enter":
-        e.preventDefault();
-        if (filteredOptions[highlightedIndex]) {
-          handleSelect(filteredOptions[highlightedIndex]);
-        }
-        break;
-      case "Escape":
-        setIsOpen(false);
-        break;
-      default:
-        break;
-    }
-  };
+    const primary = getDisplayPrimary(item);
+    const secondary = getDisplaySecondary(item);
 
-  const clearSelection = () => {
-    onChange("", null);
-    setSearchTerm("");
-    setUsers([]);
-    inputRef.current?.focus();
+    return (
+      <div className="px-4 py-2 hover:bg-gray-100 cursor-pointer">
+        <div className="font-medium">{primary}</div>
+        {secondary && <div className="text-sm text-gray-600">{secondary}</div>}
+      </div>
+    );
   };
 
   return (
-    <div ref={containerRef} className="relative w-full">
-      <div className="relative">
-        <input
-          ref={inputRef}
-          type="text"
-          className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors pr-10"
-          placeholder={placeholder}
-          value={searchTerm}
-          onChange={handleInputChange}
-          onFocus={() => setIsOpen(true)}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-        />
-        {selectedOption && !isOpen && (
-          <button
-            type="button"
-            onClick={clearSelection}
-            className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
-          >
-            <FiX className="w-4 h-4" />
-          </button>
-        )}
-        <FiChevronDown
-          className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""
-            }`}
-        />
-      </div>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.ul
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={{ duration: 0.15 }}
-            className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto py-1"
-          >
-            {loading ? (
-              <li className="px-4 py-3 text-sm text-slate-500 text-center">
-                Searching...
-              </li>
-            ) : filteredOptions.length === 0 ? (
-              <li className="px-4 py-3 text-sm text-slate-500 text-center">
-                {searchTerm.length < 3 ? "Type 3+ characters to search" : "No results found"}
-              </li>
-            ) : (
-              filteredOptions.map((option, index) => (
-                <li
-                  key={option.value}
-                  onClick={() => handleSelect(option)}
-                  onMouseEnter={() => setHighlightedIndex(index)}
-                  className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${index === highlightedIndex
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-slate-700 hover:bg-slate-50"
-                    }`}
-                >
-                  {option.label}
-                </li>
-              ))
-            )}
-          </motion.ul>
-        )}
-      </AnimatePresence>
+    <div className="relative w-full">
+      <input
+        type="text"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder={placeholder}
+        className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
+        onFocus={() => {
+          if (displayList.length > 0 || isLoading) setIsOpen(true);
+        }}
+        onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+      />
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+          {isLoading && <div className="px-4 py-2 text-gray-500">Loading...</div>}
+          {hasError && <div className="px-4 py-2 text-red-500">Error: {hasError}</div>}
+          {!isLoading && !hasError && displayList.length === 0 && (
+            <div className="px-4 py-2 text-gray-500">
+              {showInitial ? 'No options available' : 'No results found'}
+            </div>
+          )}
+          {displayList.map((item, index) => (
+            <div
+              key={valueKey ? getValue(item, valueKey) : index}
+              onMouseDown={() => handleSelect(item)}
+            >
+              {renderSuggestion(item)}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
