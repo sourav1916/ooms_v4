@@ -303,7 +303,7 @@ const ViewFileIndex = () => {
                     mobile: item.create_by?.mobile || '',
                     email: item.create_by?.email || '',
                     gst: item.gst,
-                    audit: item.audio,
+                    audit: item.audit,
                     income_tax: item.it,
                     other: item.others,
                     user_type: 'user',
@@ -458,7 +458,7 @@ const ViewFileIndex = () => {
             const payload = {
                 firm_id: selectedUser?.firms?.[0]?.firm_id,
                 gst: createForm.gst || null,
-                audio: createForm.audit || null,
+                audit: createForm.audit || null,
                 it: createForm.income_tax || null,
                 others: createForm.other || null
             };
@@ -526,7 +526,7 @@ const ViewFileIndex = () => {
         const apiPayload = {
             index_id: editForm.index_id,          // REQUIRED
             gst: editForm.gst || null,
-            audio: editForm.audit || null,
+            audit: editForm.audit || null,
             it: editForm.income_tax || null,
             others: editForm.other || null
         };
@@ -1362,16 +1362,31 @@ const ViewFileIndex = () => {
                                             Select User <span className="text-rose-500">*</span>
                                         </label>
                                         <div className="relative">
+<SearchableSelect
+  endpoint="/clients/search"
+  listEndpoint="/clients/list"
 
-                                            <SearchableSelect
-                                                options={users}
-                                                value={createForm.username}
-                                                onChange={(e) => handleCreateChange('username', e)}
+  search="search"
+  minChars={3}
 
-                                                placeholder="Select a user..."
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
-                                                required
-                                            />
+  valueKey="username"
+
+  labelMapping={{
+    primary: "name",
+    secondary: "mobile"
+  }}
+
+  dataExtractor={(res) => res.data || []}
+
+  
+
+  placeholder="Search client by name, mobile, email..."
+
+  onSelect={(item, value) => {
+    console.log("Selected client:", item);
+    console.log("Username:", value);
+  }}
+/>
                                             <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                         </div>
                                     </div>
