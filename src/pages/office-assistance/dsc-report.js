@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     FiSearch,
     FiPlus,
@@ -8,7 +8,6 @@ import {
     FiMail,
     FiMessageSquare,
     FiUser,
-    FiPhone,
     FiMail as FiEmailIcon,
     FiCalendar,
     FiClock,
@@ -16,16 +15,14 @@ import {
     FiChevronRight,
     FiChevronDown,
     FiCheck,
-    FiInfo,
-    FiDollarSign,
-    FiTrendingUp,
     FiCreditCard,
-    FiFilter,
     FiChevronLeft,
     FiChevronRight as FiChevronRightIcon,
     FiChevronUp,
     FiUsers,
-    FiExternalLink
+    FiExternalLink,
+    FiEye,
+    FiTrash2
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
@@ -37,7 +34,10 @@ import DateFilter from '../../components/DateFilter';
 import DatePickerComponent from '../../components/DatePickerComponent';
 import moment from 'moment';
 import SearchableSelect from '../../components/SearchableSelect'
-import { companies } from '../../constants/defaultValues';
+import SearchableSelectOptions from "../../components/SelectSearchableOptionsComponent";
+import getHeaders from "../../utils/get-headers";
+
+
 
 const ViewDSCRegister = () => {
     // Header/Sidebar states
@@ -57,28 +57,30 @@ const ViewDSCRegister = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedDsc, setSelectedDsc] = useState(null);
     const [users, setUsers] = useState([]);
-
-    // State for dropdown menus
+    const [types, setTypes] = useState([]);
+    const [companies, setCompanies] = useState([]);
+    const [typeLoading, setTypeLoading] = useState(false);
+    const [companyLoading, setCompanyLoading] = useState(false);
     const [showAddDropdown, setShowAddDropdown] = useState(false);
     const [activeRowDropdown, setActiveRowDropdown] = useState(null);
     const [exportModal, setExportModal] = useState({ open: false, type: '', data: null });
-
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [selectedEmail, setSelectedEmail] = useState('');
-
     const [isWhatsappModalOpen, setWhatsappModalOpen] = useState(false);
     const [selectedWhatsapp, setSelectedWhatsapp] = useState('');
-
     const [meta, setMeta] = useState({ total_pages: 0, current_page: 1, total: 0 });
-
-    // Form states
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [selectedDetailDsc, setSelectedDetailDsc] = useState(null);
+    const [deleteConfirmModal, setDeleteConfirmModal] = useState(false);
+    const [dscToDelete, setDscToDelete] = useState(null);
     const [createForm, setCreateForm] = useState({
         username: '',
         company: '',
         duration: '1',
         validity_start: '',
         validity_end: '',
-        password: ''
+        password: '',
+        type: ''
     });
 
     const [editForm, setEditForm] = useState({
@@ -87,7 +89,8 @@ const ViewDSCRegister = () => {
         duration: '1',
         validity_start: '',
         validity_end: '',
-        password: ''
+        password: '',
+        type: ''
     });
 
     // Pagination state
@@ -95,13 +98,10 @@ const ViewDSCRegister = () => {
     const [itemsPerPage] = useState(10);
     const [showAll, setShowAll] = useState(false);
 
-
-    // Persist sidebar minimized state
     useEffect(() => {
         localStorage.setItem('sidebarMinimized', JSON.stringify(isMinimized));
     }, [isMinimized]);
 
-    // Lock body scroll when mobile sidebar is open
     useEffect(() => {
         if (mobileMenuOpen) {
             document.body.style.overflow = 'hidden';
@@ -113,7 +113,6 @@ const ViewDSCRegister = () => {
         };
     }, [mobileMenuOpen]);
 
-    // Initialize with current month date range
     useEffect(() => {
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -135,14 +134,74 @@ const ViewDSCRegister = () => {
         fetchDscData(1, '', from, to);
     }, []);
 
-    // Simulate API call to fetch DSC data
+    const fetchDscType = async () => {
+        setLoading(true);
+        try {
+            const headers = getHeaders();
+            const url = `${BASE_URL}/assistance/dsc/types`;
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers
+            });
+
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (data.success && Array.isArray(data.data)) {
+                setTypes(data.data);
+            } else {
+                console.error('Invalid API response:', data);
+                setTypes([]);
+            }
+
+        } catch (error) {
+            console.error('Fetch DSC types failed:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchCompanies = async () => {
+        setLoading(true);
+        try {
+            const headers = getHeaders();
+
+            const url = `${BASE_URL}/assistance/dsc/companies`;
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers
+            });
+
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (data.success && Array.isArray(data.data)) {
+                setCompanies(data.data);
+            } else {
+                console.error('Invalid API response:', data);
+                setCompanies([]);
+            }
+
+        } catch (error) {
+            console.error('Fetch Companies failed:', error);
+            // setError(error.message); // Use your error state
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const fetchDscData = async (page = 1, search = '', expires_from = '', expires_to = '') => {
         setLoading(true);
 
         try {
-            const token = localStorage.getItem("user_token");
             const username = localStorage.getItem("user_username");
-            const branch = localStorage.getItem("branch_id");
+            const headers = getHeaders();
 
             const params = new URLSearchParams({
                 search: search || '',
@@ -152,17 +211,11 @@ const ViewDSCRegister = () => {
 
             if (expires_from) params.append('expires_from', expires_from);
             if (expires_to) params.append('expires_to', expires_to);
-            console.log("params======>>>>> " + params);
-
 
             const url = `${BASE_URL}/assistance/dsc/list?${params.toString()}`;
             const response = await fetch(url, {
                 method: "GET",
-                headers: {
-                    'token': token,
-                    'username': username,
-                    'branch': branch
-                }
+                headers
             });
 
             if (!response.ok) {
@@ -173,7 +226,6 @@ const ViewDSCRegister = () => {
             }
 
             const result = await response.json();
-
             if (result.success) {
                 setDscData(result.data.map(item => ({
                     dsc_id: item.dsc_id,
@@ -188,7 +240,9 @@ const ViewDSCRegister = () => {
                     validity_end: item.validity_end,
                     status: item.status || 1,
                     duration: item.year || 1,
-                    password: item.password
+                    password: item.password,
+                    modify_by: username,
+                    type: item.type
                 })));
 
                 setMeta(result.meta || {});
@@ -205,16 +259,72 @@ const ViewDSCRegister = () => {
         }
     };
 
+    const handleDeleteSubmit = async () => {
+        if (!dscToDelete || loading) return;
 
+        setLoading(true);
+        try {
+            const headers = getHeaders();
 
-    // Handle search
+            const response = await fetch(`${BASE_URL}/assistance/dsc/delete`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    headers
+                },
+                body: JSON.stringify({ dsc_id: dscToDelete })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                fetchDscData(1, searchQuery);
+                setDeleteConfirmModal(false);
+                setDscToDelete(null);
+            } else {
+                console.error('Delete failed:', data.message);
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSearch = () => {
         const [from, to] = dateRange.split(' - ');
         fetchDscData(1, searchQuery);
     };
 
+    const handleViewDetails = (dsc) => {
+        const enrichedDsc = {
+            ...dsc,
+            companyName: companies.find(comp => comp.value === dsc.company)?.name || dsc.company || 'N/A',
+            typeName: types.find(typeItem => typeItem.value === dsc.type)?.name || dsc.type || 'N/A'
+        };
 
-    // Handle search input change with debounce
+        setSelectedDetailDsc(enrichedDsc);
+        setShowDetailsModal(true);
+    };
+
+    const handleDeleteClick = (dscId) => {
+        setDscToDelete(dscId);
+        setDeleteConfirmModal(true);
+    };
+
+    useEffect(() => {
+        setTypeLoading(true);
+        fetchDscType();
+        setTypeLoading(false);
+    }, []);
+
+    useEffect(() => {
+        setCompanyLoading(true);
+        fetchCompanies();
+        setCompanyLoading(false);
+    }, []);
+
+
     useEffect(() => {
         const timer = setTimeout(() => {
             const [from, to] = dateRange.split(' - ');
@@ -224,42 +334,32 @@ const ViewDSCRegister = () => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-
-    // Handle key press in search input
     const handleKeyPress = (e) => {
         if (e.key === 'Enter') {
             handleSearch();
         }
     };
 
-    // Handle date filter change
     const handleDateFilterChange = (filter) => {
-        console.log('Selected filter:', filter);
-        if (filter.range && filter.from && filter.to) {
-            setDateRange(filter.range);
-            setFromToDate(`From ${filter.range}`);
+        setDateRange(filter.range || '');
+        setFromToDate(filter.range ? `From ${filter.range}` : '');
 
-            // ✅ Convert DD/MM/YYYY → YYYY-MM-DD for backend
-            const convertToISODate = (dateStr) => {
-                if (!dateStr) return '';
-                const [day, month, year] = dateStr.split('/');
-                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            };
+        const convertToISODate = (dateStr) => {
+            if (!dateStr) return '';
+            const [day, month, year] = dateStr.split('/');
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        };
 
-            const expires_from = convertToISODate(filter.from.toLocaleDateString('en-GB'));
-            const expires_to = convertToISODate(filter.to.toLocaleDateString('en-GB'));
-
-            console.log("going to called for => " + expires_from + "--" + expires_to);
-
-            // Backend receives: 2026-02-01 & 2026-02-19 ✅
-            fetchDscData(1, searchQuery, expires_from, expires_to);
-        }
+        const expires_from = filter.from instanceof Date
+            ? convertToISODate(filter.from.toLocaleDateString('en-GB'))
+            : '';
+        const expires_to = filter.to instanceof Date
+            ? convertToISODate(filter.to.toLocaleDateString('en-GB'))
+            : '';
+        fetchDscData(1, searchQuery, expires_from, expires_to);
     };
 
 
-
-
-    // Handle export
     const handleExport = (type, data = null) => {
         setExportModal({ open: true, type, data });
 
@@ -272,44 +372,53 @@ const ViewDSCRegister = () => {
     const handleEmailSubmit = (email) => {
         setSelectedEmail(email);
         setIsEmailModalOpen(false);
-        console.log('Selected email:', email);
     };
 
     const handleWhatsappSubmit = (number) => {
         setSelectedWhatsapp(number);
         setWhatsappModalOpen(false);
-        console.log('Selected number:', number);
     };
 
-    // Handle edit button click
     const handleEditClick = (dsc) => {
         setSelectedDsc(dsc);
 
-        // Map correct field names and format dates safely
         const formatSafeDate = (dateStr) => {
             if (!dateStr) return '';
-            const parsed = moment(dateStr, ['DD/MM/YYYY', 'YYYY-MM-DD']); // Try both formats
+            const parsed = moment(dateStr, ['DD/MM/YYYY', 'YYYY-MM-DD']);
             return parsed.isValid() ? parsed.format('DD/MM/YYYY') : '';
         };
+        console.log("companies=>>" + companies);
+
+        const matchingCompany = companies.find(company =>
+            company.label === dsc.company ||
+            company.value === dsc.company ||
+            company.name === dsc.company
+        )?.value || '';
+
+        const matchingType = types.find(typeItem =>
+            typeItem.label === dsc.type ||
+            typeItem.value === dsc.type ||
+            typeItem.name === dsc.type
+        )?.value || '';
 
         const newEditForm = {
             dsc_id: dsc.dsc_id,
             username: dsc.username || '',
-            company: dsc.company || '',
+            company: matchingCompany,
             duration: (dsc.duration || 1).toString(),
-            validity_start: formatSafeDate(dsc.validity_start || dsc.validity_start),  // Use correct field
-            validity_end: formatSafeDate(dsc.validity_end || dsc.validity_end),  // Use correct field
-            password: dsc.password || ''
+            validity_start: formatSafeDate(dsc.validity_start),
+            validity_end: formatSafeDate(dsc.validity_end),
+            password: dsc.password || '',
+            type: matchingType
         };
 
-        // Log the NEW form data (not old state)
-        // console.log('Setting EditForm:', newEditForm);
+        console.log('🔍 dsc.company:', dsc.company);
+        console.log('🔍 matchingCompany:', matchingCompany);
+        console.log('🔍 companies sample:', companies.slice(0, 2));
 
         setEditForm(newEditForm);
         setShowEditModal(true);
     };
-
-
 
 
 
@@ -318,45 +427,37 @@ const ViewDSCRegister = () => {
         if (loading) return;
 
         setLoading(true);
+        const headers = getHeaders();
 
-        const token = localStorage.getItem("user_token");
+        // const token = localStorage.getItem("user_token");
         const username = localStorage.getItem("user_username");
-        const branch = localStorage.getItem("branch_id");
-
+        // const branch = localStorage.getItem("branch_id");
         try {
-            // Convert DD/MM/YYYY → YYYY-MM-DD
             const validity_start = moment(createForm.validity_start, "DD/MM/YYYY").format("YYYY-MM-DD");
             const validity_end = moment(createForm.validity_end, "DD/MM/YYYY").format("YYYY-MM-DD");
 
-            // Extract year from validity_start (example: 2026-04-01 → 2026)
             const year = moment(validity_start).year();
-
             const payload = {
                 username: createForm.username,
                 company: createForm.company,
                 password: createForm.password || null,
                 validity_start,
                 validity_end,
-                type: "premium",
-                year: createForm.duration
+                type: createForm.type,
+                year: createForm.duration,
+                modify_by: username
             };
 
             const response = await fetch(`${BASE_URL}/assistance/dsc/create`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'token': token,
-                    'username': username,
-                    'branch': branch
+                    headers
                 },
                 body: JSON.stringify(payload),
             });
-
             const data = await response.json();
-
             if (response.ok && data.success) {
-                // console.log('DSC created:', data);
-
                 setShowCreateModal(false);
 
                 setCreateForm({
@@ -381,8 +482,6 @@ const ViewDSCRegister = () => {
         }
     };
 
-
-    // Handle Edit Form Submit
     const handleEditSubmit = async (e) => {
         e.preventDefault();
 
@@ -392,12 +491,8 @@ const ViewDSCRegister = () => {
         }
 
         setLoading(true);
+        const headers = getHeaders();
 
-        const token = localStorage.getItem("user_token");
-        const username = localStorage.getItem("user_username");
-        const branch = localStorage.getItem("branch_id");
-
-        // Transform DD/MM/YYYY → YYYY-MM-DD for backend
         const transformDate = (dateStr) => {
             if (!dateStr) return '';
             const [day, month, year] = dateStr.split('/');
@@ -410,7 +505,7 @@ const ViewDSCRegister = () => {
             password: editForm.password,
             validity_start: transformDate(editForm.validity_start),
             validity_end: transformDate(editForm.validity_end),
-            type: 'premium',
+            type: editForm.type,
             year: editForm.duration
         };
 
@@ -421,9 +516,7 @@ const ViewDSCRegister = () => {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'token': token,
-                        'username': username,
-                        'branch': branch,
+                        headers
                     },
                     body: JSON.stringify(apiPayload),
                 }
@@ -432,7 +525,6 @@ const ViewDSCRegister = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Success handling
             } else {
                 console.error('❌ Backend error:', data.message || data);
                 return;
@@ -451,9 +543,6 @@ const ViewDSCRegister = () => {
         fetchDscData(1, searchQuery);
     };
 
-
-
-    // Calculate expire date based on issue date and duration
     const calculatevalidity_end = (validity_start, duration) => {
         if (!validity_start) return '';
         const issueMoment = moment(validity_start, 'DD/MM/YYYY');
@@ -461,7 +550,6 @@ const ViewDSCRegister = () => {
         return expireMoment.format('DD/MM/YYYY');
     };
 
-    // Handle create form changes
     const handleCreateChange = (field, value) => {
         const newForm = { ...createForm, [field]: value };
 
@@ -475,24 +563,21 @@ const ViewDSCRegister = () => {
         setCreateForm(newForm);
     };
 
-    // Handle edit form changes
     const handleEditChange = (field, value) => {
         const newForm = { ...editForm, [field]: value };
 
-        // Always recalculate validity_end when validity_start OR duration changes
         if (field === 'validity_start' || field === 'duration') {
             if (newForm.validity_start) {
                 newForm.validity_end = calculatevalidity_end(newForm.validity_start, parseInt(newForm.duration || 1));
             }
         }
 
-        // Optional: Recalculate duration when both dates change manually
         if (field === 'validity_end' && newForm.validity_start && newForm.validity_end) {
             const issue = moment(newForm.validity_start, 'DD/MM/YYYY');
             const expire = moment(newForm.validity_end, 'DD/MM/YYYY');
             if (issue.isValid() && expire.isValid()) {
                 const yearsDiff = expire.diff(issue, 'years');
-                newForm.duration = Math.max(1, yearsDiff).toString(); // Minimum 1 year
+                newForm.duration = Math.max(1, yearsDiff).toString();
             }
         }
 
@@ -500,7 +585,6 @@ const ViewDSCRegister = () => {
     };
 
 
-    // Get user profile link based on user type
     const getUserProfileLink = (user) => {
         const baseUrls = {
             user: '/view-client-profile',
@@ -511,21 +595,18 @@ const ViewDSCRegister = () => {
         return `${baseUrls[user.user_type]}?username=${user.username}`;
     };
 
-    // Calculate days left until expiration
     const getDaysLeft = (validity_end) => {
         const targetDate = moment(validity_end, "YYYY-MM-DD");
         const today = moment();
         return targetDate.diff(today, 'days');
     };
 
-    // Get status badge class
     const getStatusBadgeClass = (status) => {
         return status === 1
             ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
             : 'bg-rose-100 text-rose-700 border border-rose-200';
     };
 
-    // Get urgency badge class
     const getUrgencyBadgeClass = (daysLeft) => {
         if (daysLeft < 0) return 'bg-rose-100 text-rose-700 border border-rose-200';
         if (daysLeft <= 30) return 'bg-amber-100 text-amber-700 border border-amber-200';
@@ -533,18 +614,15 @@ const ViewDSCRegister = () => {
         return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
     };
 
-    // Format date
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB');
     };
 
-    // Toggle row dropdown
     const toggleRowDropdown = (dscId) => {
         setActiveRowDropdown(activeRowDropdown === dscId ? null : dscId);
     };
 
-    // Close all dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (!event.target.closest('.dropdown-container')) {
@@ -559,29 +637,22 @@ const ViewDSCRegister = () => {
         };
     }, []);
 
-    // // Derived data
     const userOptions = users.map(user => ({
         value: user.username,
         label: `${user.name} • ${user.user_type} • ${user.mobile}`
     }));
 
-    // Get current items based on pagination
     const indexOfLastItem = showAll ? dscData.length : currentPage * itemsPerPage;
     const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
     const currentItems = dscData.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(dscData.length / itemsPerPage);
 
-    // Handle user profile click
     const handleUserProfileClick = (e, dsc) => {
         e.preventDefault();
         const profileLink = getUserProfileLink(dsc);
-        console.log('Navigating to profile:', profileLink);
-        // You can use router.push(profileLink) if using Next.js router
-        // or window.location.href = profileLink for standard navigation
         window.open(profileLink, '_blank');
     };
 
-    // Skeleton loader component
     const SkeletonRow = () => (
         <tr className="border-b border-slate-100 animate-pulse">
             <td className="p-3 text-center">
@@ -773,20 +844,20 @@ const ViewDSCRegister = () => {
                     >
                         {/* Card Header */}
                         <div className="border-b border-slate-200 px-6 py-4 bg-gradient-to-r from-slate-50 to-white sticky top-0 z-10">
-                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                                <div>
+                            <div className="header flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div className="options-parent">
                                     <div className="flex items-center gap-3 mb-1">
                                         <div className="p-2 bg-gradient-to-r from-blue-100 to-blue-200 rounded-lg">
                                             <FiCreditCard className="w-5 h-5 text-blue-600" />
                                         </div>
                                         <div>
-                                            <h5 className="text-lg font-bold text-slate-800">
+                                            <h5 className="text-lg font-bold text-slate-800 whitespace-nowrap">
                                                 DSC Register
                                             </h5>
                                             {fromToDate && (
                                                 <div className="flex items-center gap-1 text-slate-600">
                                                     <FiCalendar className="w-3 h-3" />
-                                                    <p className="text-xs font-medium">
+                                                    <p className="text-xs font-medium whitespace-nowrap">
                                                         {fromToDate}
                                                     </p>
                                                 </div>
@@ -795,107 +866,110 @@ const ViewDSCRegister = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+                                <div className="flex flex-col gap-3 w-full">
                                     {/* Search Input */}
-                                    <div className="relative">
-                                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                        <input
-                                            type="text"
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            onKeyPress={handleKeyPress}
-                                            placeholder="Search by name, mobile, email..."
-                                            className="pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full lg:w-64"
-                                        />
-                                    </div>
-
-                                    {/* Date Filter Component */}
-                                    <div className="w-full lg:w-auto">
-                                        <DateFilter onChange={handleDateFilterChange} />
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        {/* Export Dropdown */}
-                                        <div className="dropdown-container relative">
-                                            <motion.button
-                                                onClick={() => setShowAddDropdown(!showAddDropdown)}
-                                                className="px-4 h-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
-                                            >
-                                                <PiExportBold className="w-4 h-4" />
-                                                Export
-                                                <FiChevronRight className={`w-3 h-3 transition-transform ${showAddDropdown ? 'rotate-90' : ''}`} />
-                                            </motion.button>
-
-                                            <AnimatePresence>
-                                                {showAddDropdown && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, y: 5 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        exit={{ opacity: 0, y: 5 }}
-                                                        className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
-                                                    >
-                                                        <div className="py-1">
-                                                            <button
-                                                                onClick={() => handleExport('pdf')}
-                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
-                                                            >
-                                                                <div className="p-1.5 bg-red-50 rounded mr-2 group-hover:bg-red-100 transition-colors">
-                                                                    <PiFilePdfDuotone className="w-3.5 h-3.5 text-red-500" />
-                                                                </div>
-                                                                <div className="text-left">
-                                                                    <div className="font-medium text-xs">Export as PDF</div>
-                                                                </div>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleExport('excel')}
-                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
-                                                            >
-                                                                <div className="p-1.5 bg-green-50 rounded mr-2 group-hover:bg-green-100 transition-colors">
-                                                                    <PiMicrosoftExcelLogoDuotone className="w-3.5 h-3.5 text-green-500" />
-                                                                </div>
-                                                                <div className="text-left">
-                                                                    <div className="font-medium text-xs">Export as Excel</div>
-                                                                </div>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => setWhatsappModalOpen(true)}
-                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
-                                                            >
-                                                                <div className="p-1.5 bg-green-50 rounded mr-2 group-hover:bg-green-100 transition-colors">
-                                                                    <FaWhatsapp className="w-3.5 h-3.5 text-green-500" />
-                                                                </div>
-                                                                <div className="text-left">
-                                                                    <div className="font-medium text-xs">Share via WhatsApp</div>
-                                                                </div>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => setIsEmailModalOpen(true)}
-                                                                className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
-                                                            >
-                                                                <div className="p-1.5 bg-blue-50 rounded mr-2 group-hover:bg-blue-100 transition-colors">
-                                                                    <AiOutlineMail className="w-3.5 h-3.5 text-blue-500" />
-                                                                </div>
-                                                                <div className="text-left">
-                                                                    <div className="font-medium text-xs">Share via Email</div>
-                                                                </div>
-                                                            </button>
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                                    <div className="flex justify-end gap-2">
+                                        <div className="relative flex justify-center items-center">
+                                            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <input
+                                                type="text"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                onKeyPress={handleKeyPress}
+                                                placeholder="Search by name, mobile, email..."
+                                                className="pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full lg:w-64"
+                                            />
                                         </div>
+                                        <div className="flex gap-2">
+                                            {/* Date Filter Component */}
+                                            <div className="w-full lg:w-auto whitespace-nowrap">
+                                                <DateFilter onChange={handleDateFilterChange} />
+                                            </div>
 
-                                        <motion.button
-                                            onClick={() => setShowCreateModal(true)}
-                                            className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
-                                        >
-                                            <FiPlus className="w-4 h-4" />
-                                            Add DSC
-                                        </motion.button>
+                                            <div className="flex gap-2">
+                                                {/* Export Dropdown */}
+                                                <div className="dropdown-container relative">
+                                                    <motion.button
+                                                        onClick={() => setShowAddDropdown(!showAddDropdown)}
+                                                        className="px-4 h-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                    >
+                                                        <PiExportBold className="w-4 h-4" />
+
+                                                        <FiChevronRight className={`w-3 h-3 transition-transform ${showAddDropdown ? 'rotate-90' : ''}`} />
+                                                    </motion.button>
+
+                                                    <AnimatePresence>
+                                                        {showAddDropdown && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, y: 5 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                exit={{ opacity: 0, y: 5 }}
+                                                                className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
+                                                            >
+                                                                <div className="py-1">
+                                                                    <button
+                                                                        onClick={() => handleExport('pdf')}
+                                                                        className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                                    >
+                                                                        <div className="p-1.5 bg-red-50 rounded mr-2 group-hover:bg-red-100 transition-colors">
+                                                                            <PiFilePdfDuotone className="w-3.5 h-3.5 text-red-500" />
+                                                                        </div>
+                                                                        <div className="text-left">
+                                                                            <div className="font-medium text-xs">Export as PDF</div>
+                                                                        </div>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleExport('excel')}
+                                                                        className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                                    >
+                                                                        <div className="p-1.5 bg-green-50 rounded mr-2 group-hover:bg-green-100 transition-colors">
+                                                                            <PiMicrosoftExcelLogoDuotone className="w-3.5 h-3.5 text-green-500" />
+                                                                        </div>
+                                                                        <div className="text-left">
+                                                                            <div className="font-medium text-xs">Export as Excel</div>
+                                                                        </div>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setWhatsappModalOpen(true)}
+                                                                        className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                                    >
+                                                                        <div className="p-1.5 bg-green-50 rounded mr-2 group-hover:bg-green-100 transition-colors">
+                                                                            <FaWhatsapp className="w-3.5 h-3.5 text-green-500" />
+                                                                        </div>
+                                                                        <div className="text-left">
+                                                                            <div className="font-medium text-xs">Share via WhatsApp</div>
+                                                                        </div>
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setIsEmailModalOpen(true)}
+                                                                        className="flex items-center w-full px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 transition-all duration-150 group"
+                                                                    >
+                                                                        <div className="p-1.5 bg-blue-50 rounded mr-2 group-hover:bg-blue-100 transition-colors">
+                                                                            <AiOutlineMail className="w-3.5 h-3.5 text-blue-500" />
+                                                                        </div>
+                                                                        <div className="text-left">
+                                                                            <div className="font-medium text-xs">Share via Email</div>
+                                                                        </div>
+                                                                    </button>
+                                                                </div>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+
+                                                <motion.button
+                                                    onClick={() => setShowCreateModal(true)}
+                                                    className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                                    whileHover={{ scale: 1.02 }}
+                                                    whileTap={{ scale: 0.98 }}
+                                                >
+                                                    <FiPlus className="w-4 h-4" />
+
+                                                </motion.button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -912,12 +986,7 @@ const ViewDSCRegister = () => {
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[180px]">
                                             User Details
                                         </th>
-                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
-                                            Contact Info
-                                        </th>
-                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
-                                            Company
-                                        </th>
+
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[140px]">
                                             Validity Period
                                         </th>
@@ -1006,23 +1075,7 @@ const ViewDSCRegister = () => {
                                                             </div>
                                                         </motion.a>
                                                     </td>
-                                                    <td className="text-center p-3 align-middle">
-                                                        <div className="space-y-1.5">
-                                                            <div className="flex items-center justify-center gap-1 text-slate-700 text-xs">
-                                                                <FiPhone className="w-3 h-3 text-slate-500" />
-                                                                {dsc.mobile}
-                                                            </div>
-                                                            <div className="flex items-center justify-center gap-1 text-slate-600 text-[10px]">
-                                                                <FiEmailIcon className="w-3 h-3 text-slate-500" />
-                                                                {dsc.email}
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="text-center p-3 align-middle">
-                                                        <span className="inline-flex items-center justify-center bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded text-xs border border-slate-300/50 shadow-xs max-w-[120px] truncate">
-                                                            {dsc.company}
-                                                        </span>
-                                                    </td>
+
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="space-y-2">
                                                             <span className="inline-flex items-center justify-center bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 font-bold px-3 py-1.5 rounded text-xs min-w-[120px] shadow-xs">
@@ -1054,93 +1107,121 @@ const ViewDSCRegister = () => {
                                                             )}
                                                         </span>
                                                     </td>
-                                                    <td className="text-center p-3 align-middle">
-                                                        <div className="dropdown-container relative flex justify-center">
-                                                            <motion.button
-                                                                className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
-                                                                onClick={() => toggleRowDropdown(dsc.dsc_id)}
-                                                                whileHover={{ scale: 1.05 }}
-                                                                whileTap={{ scale: 0.95 }}
-                                                            >
-                                                                <FiMenu className="w-3.5 h-3.5" />
-                                                            </motion.button>
-                                                            <AnimatePresence>
-                                                                {isDropdownOpen && (
-                                                                    <motion.div
-                                                                        initial={{ opacity: 0, y: 5 }}
-                                                                        animate={{ opacity: 1, y: 0 }}
-                                                                        exit={{ opacity: 0, y: 5 }}
-                                                                        className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
-                                                                    >
-                                                                        <div className="py-1">
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    setActiveRowDropdown(null);
-                                                                                    handleEditClick(dsc);
-                                                                                }}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                            >
-                                                                                <div className="p-1 bg-blue-50 rounded mr-2">
-                                                                                    <FiEdit className="w-3 h-3 text-blue-500" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">Edit DSC</div>
-                                                                                </div>
-                                                                            </button>
-                                                                            <a
-                                                                                href={profileLink}
-                                                                                onClick={(e) => {
-                                                                                    setActiveRowDropdown(null);
-                                                                                    handleUserProfileClick(e, dsc);
-                                                                                }}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                            >
-                                                                                <div className="p-1 bg-emerald-50 rounded mr-2">
-                                                                                    <FiUser className="w-3 h-3 text-emerald-500" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">View Profile</div>
-                                                                                </div>
-                                                                            </a>
-                                                                            <div className="border-t border-slate-100 mt-1 pt-1">
+                                                    <td className="text-center p-3 align-middle ">
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <div className="dropdown-container relative flex justify-center">
+                                                                <motion.button
+                                                                    className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
+                                                                    onClick={() => toggleRowDropdown(dsc.dsc_id)}
+                                                                    whileHover={{ scale: 1.05 }}
+                                                                    whileTap={{ scale: 0.95 }}
+                                                                >
+                                                                    <FiMenu className="w-3.5 h-3.5" />
+                                                                </motion.button>
+                                                                <AnimatePresence>
+                                                                    {isDropdownOpen && (
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, y: 5 }}
+                                                                            animate={{ opacity: 1, y: 0 }}
+                                                                            exit={{ opacity: 0, y: 5 }}
+                                                                            className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
+                                                                        >
+                                                                            <div className="py-1">
                                                                                 <button
-                                                                                    onClick={() => handleExport('print', dsc)}
-                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                >
-                                                                                    <div className="p-1 bg-slate-50 rounded mr-2">
-                                                                                        <FiPrinter className="w-3 h-3 text-slate-600" />
-                                                                                    </div>
-                                                                                    <div className="text-left">
-                                                                                        <div className="font-medium">Print</div>
-                                                                                    </div>
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => handleExport('whatsapp', dsc)}
-                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                >
-                                                                                    <div className="p-1 bg-green-50 rounded mr-2">
-                                                                                        <FiMessageSquare className="w-3 h-3 text-green-500" />
-                                                                                    </div>
-                                                                                    <div className="text-left">
-                                                                                        <div className="font-medium">WhatsApp</div>
-                                                                                    </div>
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => handleExport('email', dsc)}
+                                                                                    onClick={() => {
+                                                                                        setActiveRowDropdown(null);
+                                                                                        handleEditClick(dsc);
+                                                                                    }}
                                                                                     className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                 >
                                                                                     <div className="p-1 bg-blue-50 rounded mr-2">
-                                                                                        <FiMail className="w-3 h-3 text-blue-500" />
+                                                                                        <FiEdit className="w-3 h-3 text-blue-500" />
                                                                                     </div>
                                                                                     <div className="text-left">
-                                                                                        <div className="font-medium">Email</div>
+                                                                                        <div className="font-medium">Edit DSC</div>
                                                                                     </div>
                                                                                 </button>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setActiveRowDropdown(null);
+                                                                                        handleDeleteClick(dsc.dsc_id);  // ← Pass dsc_id
+                                                                                    }}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-red-50 transition-colors duration-150 group"
+                                                                                >
+                                                                                    <div className="p-1 bg-red-50 rounded mr-2 group-hover:bg-red-100 transition-colors">
+                                                                                        <FiTrash2 className="w-3 h-3 text-red-500" />  {/* Add FiTrash2 to imports */}
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium text-red-700">Delete DSC</div>
+                                                                                    </div>
+                                                                                </button>
+
+                                                                                <a
+                                                                                    href={profileLink}
+                                                                                    onClick={(e) => {
+                                                                                        setActiveRowDropdown(null);
+                                                                                        handleUserProfileClick(e, dsc);
+                                                                                    }}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                >
+                                                                                    <div className="p-1 bg-emerald-50 rounded mr-2">
+                                                                                        <FiUser className="w-3 h-3 text-emerald-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">View Profile</div>
+                                                                                    </div>
+                                                                                </a>
+                                                                                <div className="border-t border-slate-100 mt-1 pt-1">
+                                                                                    <button
+                                                                                        onClick={() => handleExport('print', dsc)}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    >
+                                                                                        <div className="p-1 bg-slate-50 rounded mr-2">
+                                                                                            <FiPrinter className="w-3 h-3 text-slate-600" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Print</div>
+                                                                                        </div>
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleExport('whatsapp', dsc)}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    >
+                                                                                        <div className="p-1 bg-green-50 rounded mr-2">
+                                                                                            <FiMessageSquare className="w-3 h-3 text-green-500" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">WhatsApp</div>
+                                                                                        </div>
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleExport('email', dsc)}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    >
+                                                                                        <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                            <FiMail className="w-3 h-3 text-blue-500" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Email</div>
+                                                                                        </div>
+                                                                                    </button>
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
-                                                                    </motion.div>
-                                                                )}
-                                                            </AnimatePresence>
+                                                                        </motion.div>
+                                                                    )}
+                                                                </AnimatePresence>
+                                                            </div>
+                                                            <div className="flex justify-center">
+                                                                <motion.button
+                                                                    onClick={() => handleViewDetails(dsc)}  // ← Pass current row dsc
+                                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                                                    whileHover={{ scale: 1.1 }}
+                                                                    whileTap={{ scale: 0.95 }}
+                                                                    title="View Details"
+                                                                >
+                                                                    <FiEye className="w-4 h-4" />
+                                                                </motion.button>
+                                                            </div>
                                                         </div>
                                                     </td>
                                                 </motion.tr>
@@ -1149,6 +1230,99 @@ const ViewDSCRegister = () => {
                                     )}
                                 </tbody>
                             </table>
+
+                            {/* view details modal */}
+                            <AnimatePresence>
+                                {showDetailsModal && selectedDetailDsc && (
+                                    <motion.div
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                                        onClick={() => setShowDetailsModal(false)} // Close on backdrop
+                                    >
+                                        <motion.div
+                                            initial={{ scale: 0.9, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            exit={{ scale: 0.9, opacity: 0 }}
+                                            className="bg-white rounded-2xl max-w-2xl max-h-[90vh] w-full overflow-y-auto shadow-2xl border border-slate-200"
+                                            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+                                        >
+                                            {/* Modal Header */}
+                                            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl z-10">
+                                                <div className="flex items-center justify-between">
+                                                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                                        <FiEye className="w-6 h-6 text-blue-600" />
+                                                        DSC Details
+                                                    </h3>
+                                                    <motion.button
+                                                        onClick={() => setShowDetailsModal(false)}
+                                                        className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                    >
+                                                        <FiX className="w-5 h-5" />
+                                                    </motion.button>
+                                                </div>
+                                            </div>
+
+                                            {/* Details Content */}
+                                            <div className="p-8 space-y-6">
+                                                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+                                                    <div className="w-12 h-12 bg-gradient-to-r from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center flex-shrink-0">
+                                                        <FiCreditCard className="w-6 h-6 text-blue-600" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-semibold text-slate-900 text-lg">{selectedDetailDsc.companyName}</div>
+                                                        <div className="text-sm text-slate-600">DSC ID: {selectedDetailDsc.dsc_id}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-3">
+
+                                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                                            <div>
+                                                                <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Issue Date</span>
+                                                                <span className="font-medium text-slate-900">{selectedDetailDsc.validity_start}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Expire Date</span>
+                                                                <span className="font-medium text-slate-900">{selectedDetailDsc.validity_end}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Duration</span>
+                                                                <span className="font-medium text-slate-900">{selectedDetailDsc.duration} Years</span>
+                                                            </div>
+                                                            {selectedDetailDsc.password && (
+                                                                <div>
+                                                                    <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Password</span>
+                                                                    <span className="font-mono bg-slate-100 px-2 py-1 rounded text-sm text-slate-900">{selectedDetailDsc.password}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <h4 className="font-semibold text-slate-900 mb-2">Client Information</h4>
+                                                            <div className="space-y-2 text-sm">
+                                                                <div><span className="text-slate-500">Name:</span> {selectedDetailDsc.name}</div>
+                                                                {selectedDetailDsc.guardian_name && (
+                                                                    <div><span className="text-slate-500">Guardian:</span> {selectedDetailDsc.guardian_name}</div>
+                                                                )}
+                                                                <div><span className="text-slate-500">Mobile:</span> {selectedDetailDsc.mobile}</div>
+                                                                <div><span className="text-slate-500">Email:</span> {selectedDetailDsc.email}</div>
+                                                                <div><span className="text-slate-500">Type:</span> <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium">{selectedDetailDsc.typeName}</span></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
 
                             {/* Pagination Controls */}
                             {dscData.length > itemsPerPage && !showAll && (
@@ -1369,20 +1543,41 @@ const ViewDSCRegister = () => {
                                             <label className="block text-xs font-semibold text-slate-700 mb-2">
                                                 Company <span className="text-rose-500">*</span>
                                             </label>
-                                            <select
+                                            <SearchableSelectOptions
+                                                options={companies}
                                                 value={createForm.company}
-                                                onChange={(e) => handleCreateChange('company', e.target.value)}
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                                onChange={(val) => handleCreateChange("company", val)}
+                                                placeholder={companyLoading ? "Loading..." : "Select a Company"}
+                                            />
+
+                                            <input
+                                                type="hidden"
+                                                value={createForm.company}
                                                 required
-                                            >
-                                                <option value="">Select a company</option>
-                                                {companies.map((company) => (
-                                                    <option key={company.value} value={company.value}>
-                                                        {company.label}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            />
+
                                         </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Type <span className="text-rose-500">*</span>
+                                            </label>
+
+                                            <SearchableSelectOptions
+                                                options={types}
+                                                value={createForm.type}
+                                                onChange={(val) => handleCreateChange("type", val)}
+                                                placeholder={typeLoading ? "Loading..." : "Select a Type"}
+                                            />
+
+                                            {/* Hidden input for required validation */}
+                                            <input
+                                                type="hidden"
+                                                value={createForm.type}
+                                                required
+                                            />
+                                        </div>
+
 
 
                                         {/* Duration */}
@@ -1552,28 +1747,47 @@ const ViewDSCRegister = () => {
                                             )}
                                         </div>
                                     </div>
-
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         {/* Company */}
                                         <div>
                                             <label className="block text-xs font-semibold text-slate-700 mb-2">
                                                 Company <span className="text-rose-500">*</span>
                                             </label>
-                                            <select
+                                            <SearchableSelectOptions
+                                                options={companies}
                                                 value={editForm.company}
-                                                onChange={(e) => handleEditChange('company', e.target.value)}
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
-                                                required
-                                            >
-                                                <option value="">Select a company</option>
-                                                {companies.map((company) => (
-                                                    <option key={company.value} value={company.value}>
-                                                        {company.label}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
+                                                onChange={(val) => handleEditChange("company", val)}
+                                                placeholder={companyLoading ? "Loading..." : "Select a Company"}
+                                                labelKey="name"
+                                                valueKey="value"
+                                            />
 
+                                            <input
+                                                type="hidden"
+                                                value={editForm.company}
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Type <span className="text-rose-500">*</span>
+                                            </label>
+
+                                            <SearchableSelectOptions
+                                                options={types}
+                                                value={editForm.type}
+                                                onChange={(val) => handleEditChange("type", val)}
+                                                placeholder={typeLoading ? "Loading..." : "Select a Type"}
+                                                labelKey="name"   // your type API uses {name, value}
+                                                valueKey="value"
+                                            />
+
+                                            <input
+                                                type="hidden"
+                                                value={editForm.type}
+                                                required
+                                            />
+                                        </div>
 
                                         {/* Duration */}
                                         <div>
@@ -1714,8 +1928,58 @@ const ViewDSCRegister = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {deleteConfirmModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setDeleteConfirmModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.9 }}
+                            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 mx-auto bg-red-100 rounded-2xl flex items-center justify-center mb-4">
+                                    <FiTrash2 className="w-8 h-8 text-red-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 mb-2">Delete DSC?</h3>
+                                <p className="text-slate-600 mb-6">
+                                    This action cannot be undone. DSC ID <strong>{dscToDelete}</strong> will be permanently deleted.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3 justify-end">
+                                <motion.button
+                                    onClick={() => setDeleteConfirmModal(false)}
+                                    className="flex-1 px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                                    whileHover={{ scale: 1.02 }}
+                                >
+                                    Cancel
+                                </motion.button>
+                                <motion.button
+                                    onClick={handleDeleteSubmit}
+                                    className="flex-1 px-4 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:shadow-lg rounded-lg transition-all"
+                                    whileHover={{ scale: 1.02 }}
+                                >
+                                    Delete
+                                </motion.button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
         </div>
     );
 };
 
 export default ViewDSCRegister;
+
