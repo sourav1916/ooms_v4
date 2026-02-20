@@ -6,18 +6,15 @@
  */
 const getHeaders = () => {
     try {
-        const userName = localStorage.getItem('userName') || 
-                       localStorage.getItem('user_username') || '';
-        const token = localStorage.getItem('token') || 
-                      localStorage.getItem('user_token') || '';
-        const branchId = localStorage.getItem('branchId') || 
-                       localStorage.getItem('branch_id') || '';
-        
+        const userName = localStorage.getItem('user_username') || '';
+        const token = localStorage.getItem('user_token') || '';
+        const branchId = localStorage.getItem('branch_id') || '';
+
         if (!userName || !token || !branchId) {
             console.error('Missing authentication data in localStorage');
             return null;
         }
-        
+
         return {
             'Content-Type': 'application/json',
             'username': userName,
