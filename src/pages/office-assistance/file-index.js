@@ -303,7 +303,7 @@ const ViewFileIndex = () => {
                     mobile: item.create_by?.mobile || '',
                     email: item.create_by?.email || '',
                     gst: item.gst,
-                    audit: item.audio,
+                    audit: item.audit,
                     income_tax: item.it,
                     other: item.others,
                     user_type: 'user',
@@ -458,7 +458,7 @@ const ViewFileIndex = () => {
             const payload = {
                 firm_id: selectedUser?.firms?.[0]?.firm_id,
                 gst: createForm.gst || null,
-                audio: createForm.audit || null,
+                audit: createForm.audit || null,
                 it: createForm.income_tax || null,
                 others: createForm.other || null
             };
@@ -526,7 +526,7 @@ const ViewFileIndex = () => {
         const apiPayload = {
             index_id: editForm.index_id,          // REQUIRED
             gst: editForm.gst || null,
-            audio: editForm.audit || null,
+            audit: editForm.audit || null,
             it: editForm.income_tax || null,
             others: editForm.other || null
         };
