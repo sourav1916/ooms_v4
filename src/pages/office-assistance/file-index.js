@@ -36,6 +36,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
 import DateFilter from '../../components/DateFilter';
 import moment from 'moment';
+import getHeaders from "../../utils/get-headers";
+import axios from 'axios';
+import { header } from 'framer-motion/client';
+import SearchableSelect from '../../components/SearchableSelect';
 
 const ViewFileIndex = () => {
     // Header/Sidebar states
@@ -44,6 +48,9 @@ const ViewFileIndex = () => {
         const saved = localStorage.getItem('sidebarMinimized');
         return saved ? JSON.parse(saved) : false;
     });
+
+    // Base Api Url
+    const BASE_URL = 'https://api.ooms.in/api/v1';
 
     // Main states
     const [loading, setLoading] = useState(false);
@@ -67,6 +74,8 @@ const ViewFileIndex = () => {
     const [isWhatsappModalOpen, setWhatsappModalOpen] = useState(false);
     const [selectedWhatsapp, setSelectedWhatsapp] = useState('');
 
+    const [meta, setMeta] = useState({ total_pages: 0, current_page: 1, total: 0 });
+
     // Form states
     const [createForm, setCreateForm] = useState({
         username: '',
@@ -89,121 +98,121 @@ const ViewFileIndex = () => {
     const [itemsPerPage] = useState(10);
     const [showAll, setShowAll] = useState(false);
 
-    // Mock File Index data
-    const mockFileData = [
-        {
-            index_id: 'index001',
-            username: 'user001',
-            name: 'John Doe',
-            guardian_name: 'Robert Doe',
-            mobile: '+91 9876543210',
-            email: 'john.doe@company.com',
-            gst: 'GST/2024/001',
-            audit: 'AUD/2024/001',
-            income_tax: 'ITR/2024/001',
-            other: 'MISC/2024/001',
-            user_type: 'user',
-            created_date: '2024-01-15'
-        },
-        {
-            index_id: 'index002',
-            username: 'ca001',
-            name: 'Jane Smith',
-            guardian_name: 'William Smith',
-            mobile: '+91 9876543211',
-            email: 'jane.smith@ca.com',
-            gst: 'GST/2024/002',
-            audit: 'AUD/2024/002',
-            income_tax: 'ITR/2024/002',
-            other: 'MISC/2024/002',
-            user_type: 'ca',
-            created_date: '2024-01-20'
-        },
-        {
-            index_id: 'index003',
-            username: 'agent001',
-            name: 'Mike Johnson',
-            guardian_name: 'David Johnson',
-            mobile: '+91 9876543212',
-            email: 'mike.johnson@agent.com',
-            gst: 'GST/2024/003',
-            audit: 'AUD/2024/003',
-            income_tax: 'ITR/2024/003',
-            other: 'MISC/2024/003',
-            user_type: 'agent',
-            created_date: '2024-02-05'
-        },
-        {
-            index_id: 'index004',
-            username: 'emp001',
-            name: 'Sarah Wilson',
-            guardian_name: 'James Wilson',
-            mobile: '+91 9876543213',
-            email: 'sarah.wilson@company.com',
-            gst: 'GST/2024/004',
-            audit: 'AUD/2024/004',
-            income_tax: 'ITR/2024/004',
-            other: 'MISC/2024/004',
-            user_type: 'employee',
-            created_date: '2024-02-10'
-        },
-        {
-            index_id: 'index005',
-            username: 'user002',
-            name: 'Robert Brown',
-            guardian_name: 'Thomas Brown',
-            mobile: '+91 9876543214',
-            email: 'robert.brown@company.com',
-            gst: 'GST/2024/005',
-            audit: 'AUD/2024/005',
-            income_tax: 'ITR/2024/005',
-            other: 'MISC/2024/005',
-            user_type: 'user',
-            created_date: '2024-02-15'
-        },
-        {
-            index_id: 'index006',
-            username: 'user003',
-            name: 'Emily Davis',
-            guardian_name: 'Michael Davis',
-            mobile: '+91 9876543215',
-            email: 'emily.davis@company.com',
-            gst: 'GST/2024/006',
-            audit: 'AUD/2024/006',
-            income_tax: 'ITR/2024/006',
-            other: 'MISC/2024/006',
-            user_type: 'user',
-            created_date: '2024-02-20'
-        }
-    ];
+    // // Mock File Index data
+    // const mockFileData = [
+    // {
+    //     index_id: 'index001',
+    //     username: 'user001',
+    //     name: 'John Doe',
+    //     guardian_name: 'Robert Doe',
+    //     mobile: '+91 9876543210',
+    //     email: 'john.doe@company.com',
+    //     gst: 'GST/2024/001',
+    //     audit: 'AUD/2024/001',
+    //     income_tax: 'ITR/2024/001',
+    //     other: 'MISC/2024/001',
+    //     user_type: 'user',
+    //     created_date: '2024-01-15'
+    // },
+    //     {
+    //         index_id: 'index002',
+    //         username: 'ca001',
+    //         name: 'Jane Smith',
+    //         guardian_name: 'William Smith',
+    //         mobile: '+91 9876543211',
+    //         email: 'jane.smith@ca.com',
+    //         gst: 'GST/2024/002',
+    //         audit: 'AUD/2024/002',
+    //         income_tax: 'ITR/2024/002',
+    //         other: 'MISC/2024/002',
+    //         user_type: 'ca',
+    //         created_date: '2024-01-20'
+    //     },
+    //     {
+    //         index_id: 'index003',
+    //         username: 'agent001',
+    //         name: 'Mike Johnson',
+    //         guardian_name: 'David Johnson',
+    //         mobile: '+91 9876543212',
+    //         email: 'mike.johnson@agent.com',
+    //         gst: 'GST/2024/003',
+    //         audit: 'AUD/2024/003',
+    //         income_tax: 'ITR/2024/003',
+    //         other: 'MISC/2024/003',
+    //         user_type: 'agent',
+    //         created_date: '2024-02-05'
+    //     },
+    //     {
+    //         index_id: 'index004',
+    //         username: 'emp001',
+    //         name: 'Sarah Wilson',
+    //         guardian_name: 'James Wilson',
+    //         mobile: '+91 9876543213',
+    //         email: 'sarah.wilson@company.com',
+    //         gst: 'GST/2024/004',
+    //         audit: 'AUD/2024/004',
+    //         income_tax: 'ITR/2024/004',
+    //         other: 'MISC/2024/004',
+    //         user_type: 'employee',
+    //         created_date: '2024-02-10'
+    //     },
+    //     {
+    //         index_id: 'index005',
+    //         username: 'user002',
+    //         name: 'Robert Brown',
+    //         guardian_name: 'Thomas Brown',
+    //         mobile: '+91 9876543214',
+    //         email: 'robert.brown@company.com',
+    //         gst: 'GST/2024/005',
+    //         audit: 'AUD/2024/005',
+    //         income_tax: 'ITR/2024/005',
+    //         other: 'MISC/2024/005',
+    //         user_type: 'user',
+    //         created_date: '2024-02-15'
+    //     },
+    //     {
+    //         index_id: 'index006',
+    //         username: 'user003',
+    //         name: 'Emily Davis',
+    //         guardian_name: 'Michael Davis',
+    //         mobile: '+91 9876543215',
+    //         email: 'emily.davis@company.com',
+    //         gst: 'GST/2024/006',
+    //         audit: 'AUD/2024/006',
+    //         income_tax: 'ITR/2024/006',
+    //         other: 'MISC/2024/006',
+    //         user_type: 'user',
+    //         created_date: '2024-02-20'
+    //     }
+    // ];
 
-    // Mock users data for dropdown
-    const mockUsers = [
-        {
-            username: 'user001',
-            name: 'John Doe',
-            guardian_name: 'Robert Doe',
-            mobile: '+91 9876543210',
-            user_type: 'user',
-            state: 'active'
-        },
-        {
-            username: 'ca001',
-            name: 'Jane Smith',
-            guardian_name: 'William Smith',
-            mobile: '+91 9876543211',
-            user_type: 'ca',
-            state: 'active'
-        },
-        {
-            username: 'agent001',
-            name: 'Mike Johnson',
-            guardian_name: 'David Johnson',
-            mobile: '+91 9876543212',
-            user_type: 'agent',
-            state: 'active'
-        }
-    ];
+    // // Mock users data for dropdown
+    // const mockUsers = [
+    //     {
+    //         username: 'user001',
+    //         name: 'John Doe',
+    //         guardian_name: 'Robert Doe',
+    //         mobile: '+91 9876543210',
+    //         user_type: 'user',
+    //         state: 'active'
+    //     },
+    //     {
+    //         username: 'ca001',
+    //         name: 'Jane Smith',
+    //         guardian_name: 'William Smith',
+    //         mobile: '+91 9876543211',
+    //         user_type: 'ca',
+    //         state: 'active'
+    //     },
+    //     {
+    //         username: 'agent001',
+    //         name: 'Mike Johnson',
+    //         guardian_name: 'David Johnson',
+    //         mobile: '+91 9876543212',
+    //         user_type: 'agent',
+    //         state: 'active'
+    //     }
+    // ];
 
     // Persist sidebar minimized state
     useEffect(() => {
@@ -246,45 +255,111 @@ const ViewFileIndex = () => {
     }, []);
 
     // Simulate API call to fetch file data
-    const fetchFileData = async (from = '', to = '') => {
+    const fetchFileData = async (from = '', to = '', search = '', page = 1, limit = 10) => {
         setLoading(true);
 
-        setTimeout(() => {
-            let filteredData = mockFileData;
+        try {
+            const headers = getHeaders();
+            if (!headers) {
+                console.error('Cannot create firm: Missing authentication headers');
+                return;
+            }
+            // Build query parameters
+            const params = new URLSearchParams({
+                page: page.toString(),
+                limit: limit.toString()
+            });
 
-            // Filter by date range if provided
+            if (search) {
+                params.append('search', search);
+            }
+
+            // Convert date format from DD/MM/YYYY to YYYY-MM-DD if both dates are provided
             if (from && to) {
-                filteredData = mockFileData.filter(item => {
-                    const createdDate = moment(item.created_date);
-                    const fromDate = moment(from, 'DD/MM/YYYY');
-                    const toDate = moment(to, 'DD/MM/YYYY');
-                    return createdDate.isBetween(fromDate, toDate, null, '[]');
+                // Assuming moment is available; otherwise use vanilla JS date parsing
+                const fromFormatted = moment(from, 'DD/MM/YYYY').format('YYYY-MM-DD');
+                const toFormatted = moment(to, 'DD/MM/YYYY').format('YYYY-MM-DD');
+                params.append('from', fromFormatted);
+                params.append('to', toFormatted);
+            }
+
+            const response = await fetch(
+                `${BASE_URL}/assistance/file-index/list?${params.toString()}`,
+                {
+                    method: "GET",
+                    headers: headers
+                }
+            );
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+
+                const mapFileIndexToUI = (item) => ({
+                    index_id: item.index_id,
+                    username: item.firm_id,
+                    name: item.firm_name,
+                    guardian_name: '-',
+                    mobile: item.create_by?.mobile || '',
+                    email: item.create_by?.email || '',
+                    gst: item.gst,
+                    audit: item.audio,
+                    income_tax: item.it,
+                    other: item.others,
+                    user_type: 'user',
+                    created_date: item.create_date?.split('T')[0]
                 });
-            }
 
-            // Filter by search query
-            if (searchQuery) {
-                filteredData = filteredData.filter(item =>
-                    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.mobile.includes(searchQuery) ||
-                    item.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.gst.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.audit.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.income_tax.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.other.toLowerCase().includes(searchQuery.toLowerCase())
-                );
+                setFileData(result.data.map(mapFileIndexToUI));
+                setMeta(result.meta || {});
+                setCurrentPage(result.meta?.page || 1);
+            } else {
+                console.error('Backend error:', result.message);
+                setFileData([]);
             }
-
-            setFileData(filteredData);
+        } catch (error) {
+            console.error('Fetch error:', error);
+            setFileData([]);
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
 
     // Simulate fetching users
-    const fetchUsers = async () => {
-        setTimeout(() => {
-            setUsers(mockUsers);
-        }, 500);
+    const fetchUsers = async (search = "") => {
+        try {
+            const headers = getHeaders();
+            if (!headers) {
+                console.error('Cannot create firm: Missing authentication headers');
+                return;
+            }
+
+            const searchTrimmed = search.trim();
+
+            // 🔁 Decide endpoint dynamically
+            const endpoint =
+                searchTrimmed.length >= 3
+                    ? `${BASE_URL}/client/search?search=${encodeURIComponent(searchTrimmed)}`
+                    : `${BASE_URL}/client/list`;  // your fetch-all API
+
+            const response = await fetch(endpoint, {
+                method: "GET",
+                headers: headers
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                setUsers(result.data || []);
+            } else {
+                console.error("Failed:", result.message);
+                setUsers([]);
+            }
+
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            setUsers([]);
+        }
     };
 
     // Handle search
@@ -348,39 +423,148 @@ const ViewFileIndex = () => {
     const handleEditClick = (file) => {
         setSelectedFile(file);
         setEditForm({
-            index_id: file.index_id,
-            gst: file.gst,
-            audit: file.audit,
-            income_tax: file.income_tax,
-            other: file.other
+            index_id: file.index_id || '',
+            gst: file.gst || '',
+            audit: file.audit || '',
+            income_tax: file.income_tax || '',
+            other: file.other || ''
         });
         setShowEditModal(true);
     };
 
     // Handle create form submit
-    const handleCreateSubmit = (e) => {
+    const handleCreateSubmit = async (e) => {
         e.preventDefault();
-        console.log('Create form data:', createForm);
-        setShowCreateModal(false);
-        setCreateForm({
-            username: '',
-            gst: '',
-            audit: '',
-            income_tax: '',
-            other: ''
-        });
-        const [from, to] = dateRange.split(' - ');
-        fetchFileData(from, to);
+        const headers = getHeaders();
+        if (!headers) {
+            console.error('Cannot create firm: Missing authentication headers');
+            return;
+        }
+        if (loading) return;
+
+        setLoading(true);
+
+        const token = localStorage.getItem("user_token");
+        const usernameHeader = localStorage.getItem("user_username");
+
+        const selectedUser = users.find(
+            u => u.username === createForm.username
+        );
+
+        console.log(selectedUser?.firms?.[0]?.firm_id);
+
+
+        try {
+            const payload = {
+                firm_id: selectedUser?.firms?.[0]?.firm_id,
+                gst: createForm.gst || null,
+                audio: createForm.audit || null,
+                it: createForm.income_tax || null,
+                others: createForm.other || null
+            };
+
+
+            const response = await fetch(
+                `${BASE_URL}/assistance/file-index/create`,
+                {
+                    method: "POST",
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                }
+            );
+
+            const data = await response.json();
+            console.log(data);
+
+            if (response.ok && data.success) {
+                console.log("File index created:", data);
+
+                setShowCreateModal(false);
+
+                setCreateForm({
+                    username: '',
+                    gst: '',
+                    audit: '',
+                    income_tax: '',
+                    other: ''
+                });
+
+                // Refresh list after create
+                fetchFileData(1, searchQuery);
+
+            } else {
+                console.error("Backend error:", data.message || data);
+            }
+
+        } catch (error) {
+            console.error("Network error:", error);
+        } finally {
+            setLoading(false);
+        }
     };
 
+
     // Handle edit form submit
-    const handleEditSubmit = (e) => {
+    const handleEditSubmit = async (e) => {
         e.preventDefault();
-        console.log('Edit form data:', editForm);
+
+        const headers = getHeaders();
+        if (!headers) {
+            console.error('Cannot create firm: Missing authentication headers');
+            return;
+        }
+
+        if (loading || !editForm?.index_id) {
+            console.error("File Index ID not found");
+            return;
+        }
+
+        setLoading(true);
+
+
+        // 🔁 Transform UI form → API payload
+        const apiPayload = {
+            index_id: editForm.index_id,          // REQUIRED
+            gst: editForm.gst || null,
+            audio: editForm.audit || null,
+            it: editForm.income_tax || null,
+            others: editForm.other || null
+        };
+
+        try {
+            const response = await fetch(
+                `${BASE_URL}/assistance/file-index/edit`,
+                {
+                    method: "PUT",
+                    headers: headers,
+                    body: JSON.stringify(apiPayload)
+                }
+            );
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                console.log("✅ File index updated:", data);
+            } else {
+                console.error("❌ Backend error:", data.message || data);
+                return;
+            }
+
+        } catch (error) {
+            console.error("❌ Network error:", error);
+            return;
+        } finally {
+            setLoading(false);
+        }
+
+        // UI cleanup + refresh
         setShowEditModal(false);
-        const [from, to] = dateRange.split(' - ');
-        fetchFileData(from, to);
+        setSelectedFile(null);
+
+        const [from, to] = dateRange.split(" - ");
+        fetchFileData(from, to, searchQuery);
     };
+
 
     // Handle form changes
     const handleCreateChange = (field, value) => {
@@ -417,7 +601,7 @@ const ViewFileIndex = () => {
     // Get file badge class
     const getFileBadgeClass = (fileType) => {
         const baseClasses = 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border shadow-xs';
-        
+
         switch (fileType) {
             case 'gst':
                 return `${baseClasses} bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 border-blue-200`;
@@ -586,7 +770,7 @@ const ViewFileIndex = () => {
                 <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     {/* Header Stats Cards - Professional Compact Design */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2 }}
@@ -606,7 +790,7 @@ const ViewFileIndex = () => {
                             </div>
                         </motion.div>
 
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: 0.1 }}
@@ -626,7 +810,7 @@ const ViewFileIndex = () => {
                             </div>
                         </motion.div>
 
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: 0.2 }}
@@ -648,7 +832,7 @@ const ViewFileIndex = () => {
                     </div>
 
                     {/* Main Card */}
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.3 }}
@@ -879,12 +1063,11 @@ const ViewFileIndex = () => {
                                                                     C/O: {file.guardian_name}
                                                                 </div>
                                                                 <div className="mt-1">
-                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${
-                                                                        file.user_type === 'user' ? 'bg-blue-100 text-blue-700 group-hover:bg-blue-200' :
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${file.user_type === 'user' ? 'bg-blue-100 text-blue-700 group-hover:bg-blue-200' :
                                                                         file.user_type === 'ca' ? 'bg-purple-100 text-purple-700 group-hover:bg-purple-200' :
-                                                                        file.user_type === 'agent' ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' :
-                                                                        'bg-slate-100 text-slate-700 group-hover:bg-slate-200'
-                                                                    } transition-colors`}>
+                                                                            file.user_type === 'agent' ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' :
+                                                                                'bg-slate-100 text-slate-700 group-hover:bg-slate-200'
+                                                                        } transition-colors`}>
                                                                         {file.user_type}
                                                                     </span>
                                                                 </div>
@@ -1055,16 +1238,15 @@ const ViewFileIndex = () => {
                                                     } else {
                                                         pageNumber = currentPage - 2 + i;
                                                     }
-                                                    
+
                                                     return (
                                                         <button
                                                             key={pageNumber}
                                                             onClick={() => setCurrentPage(pageNumber)}
-                                                            className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
-                                                                currentPage === pageNumber
-                                                                    ? 'bg-blue-600 text-white'
-                                                                    : 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
-                                                            }`}
+                                                            className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${currentPage === pageNumber
+                                                                ? 'bg-blue-600 text-white'
+                                                                : 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700'
+                                                                }`}
                                                         >
                                                             {pageNumber}
                                                         </button>
@@ -1114,9 +1296,9 @@ const ViewFileIndex = () => {
                                 <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-white">
                                     <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
                                         <div className="text-xs text-slate-600">
-                                            <span className="font-semibold text-slate-800">Summary:</span> Total {fileData.length} file index records • 
-                                            <span className="text-blue-600 font-medium ml-2">GST: {fileData.filter(f => f.gst).length}</span> • 
-                                            <span className="text-emerald-600 font-medium ml-2">Audit: {fileData.filter(f => f.audit).length}</span> • 
+                                            <span className="font-semibold text-slate-800">Summary:</span> Total {fileData.length} file index records •
+                                            <span className="text-blue-600 font-medium ml-2">GST: {fileData.filter(f => f.gst).length}</span> •
+                                            <span className="text-emerald-600 font-medium ml-2">Audit: {fileData.filter(f => f.audit).length}</span> •
                                             <span className="text-purple-600 font-medium ml-2">Income Tax: {fileData.filter(f => f.income_tax).length}</span>
                                         </div>
                                         <div className="text-xs text-slate-600">
@@ -1180,19 +1362,16 @@ const ViewFileIndex = () => {
                                             Select User <span className="text-rose-500">*</span>
                                         </label>
                                         <div className="relative">
-                                            <select
+
+                                            <SearchableSelect
+                                                options={users}
                                                 value={createForm.username}
-                                                onChange={(e) => handleCreateChange('username', e.target.value)}
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                                onChange={(e) => handleCreateChange('username', e)}
+
+                                                placeholder="Select a user..."
+                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                                 required
-                                            >
-                                                <option value="" className="text-slate-500">Select a user...</option>
-                                                {users.map(user => (
-                                                    <option key={user.username} value={user.username} className="text-slate-700">
-                                                        {user.name} • {user.user_type.toUpperCase()} • {user.mobile}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            />
                                             <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                         </div>
                                     </div>
@@ -1344,7 +1523,7 @@ const ViewFileIndex = () => {
                                                         <div className="font-medium text-slate-900 text-sm">{selectedFile.name}</div>
                                                         <div className="text-slate-600 text-xs">C/O: {selectedFile.guardian_name}</div>
                                                         <div className="text-slate-600 text-xs">Mobile: {selectedFile.mobile}</div>
-                                                        <div className="text-slate-600 text-xs">Type: {selectedFile.user_type.toUpperCase()}</div>
+                                                        <div className="text-slate-600 text-xs">Type: {selectedFile.user_type}</div>
                                                     </div>
                                                 </div>
                                             )}

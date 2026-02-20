@@ -27,58 +27,10 @@ import {
 import { IoTrash } from "react-icons/io5";
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../components/header';
+import getHeaders from "../utils/get-headers";
+import BASE_URL from "../utils/api-controller";
 
-// Base URL for API
-const BASE_URL = 'https://api.ooms.in/api/v1';
 
-// Function to get headers from localStorage
-const getHeaders = () => {
-    try {
-        const userDataStr = localStorage.getItem('user');
-        let userName = '';
-        let token = '';
-        let branchId = '';
-
-        if (userDataStr) {
-            try {
-                const userData = JSON.parse(userDataStr);
-                userName = userData.username || userData.userName || '';
-                token = userData.token || '';
-                branchId = userData.branch || userData.branchId || '';
-            } catch (e) {
-                console.error('Error parsing user data:', e);
-            }
-        }
-
-        // Fallback to individual localStorage items
-        if (!userName) {
-            userName = localStorage.getItem('userName') || localStorage.getItem('user_username') || '';
-        }
-        if (!token) {
-            token = localStorage.getItem('token') || localStorage.getItem('user_token') || '';
-        }
-        if (!branchId) {
-            branchId = localStorage.getItem('branchId') || localStorage.getItem('branch_id') || '';
-        }
-        
-        console.log('Headers from localStorage:', { userName, token: token ? '***' + token.slice(-4) : 'empty', branchId });
-        
-        if (!userName || !token || !branchId) {
-            console.error('Missing authentication data in localStorage');
-            return null;
-        }
-        
-        return {
-            'Content-Type': 'application/json',
-            'username': userName,
-            'token': token,
-            'branch': branchId
-        };
-    } catch (error) {
-        console.error('Error getting headers from localStorage:', error);
-        return null;
-    }
-};
 
 // Memoized ModalWrapper component to prevent re-renders
 const ModalWrapper = memo(({ isOpen, onClose, title, children, size = 'max-w-md' }) => {

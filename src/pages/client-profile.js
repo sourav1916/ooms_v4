@@ -49,6 +49,7 @@ import {
     FiChevronDown
 } from 'react-icons/fi';
 import API_BASE_URL from "../utils/api-controller";
+import getHeaders from "../utils/get-headers";
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
@@ -64,35 +65,6 @@ import RecurringTab from "../ClientComponents/RecurringTab";
 import DocumentsTab from "../ClientComponents/DocumentsTab";
 import ChattingTab from "../ClientComponents/ChattingTab";
 import AutomationTab from "../ClientComponents/AutomationTab";
-
-
-
-// Get headers from localStorage
-const getHeaders = () => {
-    try {
-        const userName = localStorage.getItem('username') || 
-                         localStorage.getItem('user_username') || '';
-        const token = localStorage.getItem('token') || 
-                      localStorage.getItem('user_token') || '';
-        const branchId = localStorage.getItem('branchId') || 
-                         localStorage.getItem('branch_id') || '';
-        
-        if (!userName || !token || !branchId) {
-            console.error('Missing authentication data in localStorage');
-            return null;
-        }
-        
-        return {
-            'Content-Type': 'application/json',
-            'username': userName,
-            'token': token,
-            'branch': branchId
-        };
-    } catch (error) {
-        console.error('Error getting headers from localStorage:', error);
-        return null;
-    }
-};
 
 // Enhanced DetailRow Component with inline editing
 const DetailRow = ({ 

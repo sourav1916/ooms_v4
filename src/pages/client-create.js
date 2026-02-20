@@ -22,11 +22,12 @@ import {
     FiSearch
 } from 'react-icons/fi';
 import DatePickerComponent from "../components/DatePickerComponent";
+import getHeaders from "../utils/get-headers";
+import API_BASE_URL from '../utils/api-controller';
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { motion } from 'framer-motion';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.ooms.in/api/v1';
 
 const CreateClient = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -217,36 +218,36 @@ const CreateClient = () => {
         group.name.toLowerCase().includes(searchGroup.toLowerCase())
     );
 
-    // Get auth headers from localStorage
-   const getHeaders = () => {
-    try {
-        // Try new keys first, then fallback to old keys
-        const userName = localStorage.getItem('userName') || 
-                         localStorage.getItem('user_username') || '';
-        const token = localStorage.getItem('token') || 
-                      localStorage.getItem('user_token') || '';
-        const branchId = localStorage.getItem('branchId') || 
-                         localStorage.getItem('branch_id') || '';
+//     // Get auth headers from localStorage
+//    const getHeaders = () => {
+//     try {
+//         // Try new keys first, then fallback to old keys
+//         const userName = localStorage.getItem('userName') || 
+//                          localStorage.getItem('user_username') || '';
+//         const token = localStorage.getItem('token') || 
+//                       localStorage.getItem('user_token') || '';
+//         const branchId = localStorage.getItem('branchId') || 
+//                          localStorage.getItem('branch_id') || '';
         
-        // console.log('Retrieved from localStorage:', { userName, token, branchId });
+//         // console.log('Retrieved from localStorage:', { userName, token, branchId });
         
-        if (!userName || !token || !branchId) {
-            // console.error('Missing authentication data in localStorage');
-            // console.log('Available localStorage keys:', Object.keys(localStorage));
-            return null;
-        }
+//         if (!userName || !token || !branchId) {
+//             // console.error('Missing authentication data in localStorage');
+//             // console.log('Available localStorage keys:', Object.keys(localStorage));
+//             return null;
+//         }
         
-        return {
-            'Content-Type': 'application/json',
-            'username': userName,
-            'token': token,
-            'branch': branchId
-        };
-    } catch (error) {
-        console.error('Error getting headers from localStorage:', error);
-        return null;
-    }
-};
+//         return {
+//             'Content-Type': 'application/json',
+//             'username': userName,
+//             'token': token,
+//             'branch': branchId
+//         };
+//     } catch (error) {
+//         console.error('Error getting headers from localStorage:', error);
+//         return null;
+//     }
+// };
 
     // Handle input changes
     const handleInputChange = (e) => {

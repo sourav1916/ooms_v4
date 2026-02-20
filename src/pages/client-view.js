@@ -48,7 +48,7 @@ import DeleteConfirmationModal from '../components/delete-confirmation';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import API_BASE_URL from "../utils/api-controller";
-
+import getHeaders from "../utils/get-headers";
 // Import the new Pagination component
 import Pagination from '../components/paging-nation-component';
 
@@ -78,9 +78,9 @@ const CLIENT_LIST_API = `${API_BASE_URL}/client/list`;
 // Status Change Modal Component
 const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusChange, statusOptions }) => {
     const [selectedStatus, setSelectedStatus] = useState(currentStatus);
-    
+
     if (!isOpen) return null;
-    
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'ACTIVE': return 'bg-green-100 text-green-700 border-green-300';
@@ -89,7 +89,7 @@ const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusC
             default: return 'bg-gray-100 text-gray-700 border-gray-300';
         }
     };
-    
+
     const getStatusIcon = (status) => {
         switch (status) {
             case 'ACTIVE': return <FiCheckCircle className="w-4 h-4" />;
@@ -98,12 +98,12 @@ const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusC
             default: return <FiClock className="w-4 h-4" />;
         }
     };
-    
+
     const handleConfirm = () => {
         onStatusChange(clientId, selectedStatus);
         onClose();
     };
-    
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -144,7 +144,7 @@ const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusC
                                 </motion.button>
                             </div>
                         </div>
-                        
+
                         {/* Current Status */}
                         <div className="p-4 border-b border-gray-200">
                             <div className="mb-3">
@@ -156,7 +156,7 @@ const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusC
                                     </span>
                                 </div>
                             </div>
-                            
+
                             {/* New Status Selection */}
                             <div className="mb-2">
                                 <label className="block text-xs font-semibold text-gray-600 mb-1">Select New Status</label>
@@ -181,7 +181,7 @@ const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusC
                                 </div>
                             </div>
                         </div>
-                        
+
                         {/* Footer */}
                         <div className="px-4 py-3 bg-gray-50 flex justify-end gap-2">
                             <motion.button
@@ -211,9 +211,9 @@ const StatusChangeModal = ({ isOpen, onClose, clientId, currentStatus, onStatusC
 // Firms Details Modal Component
 const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
     const [expandedFirm, setExpandedFirm] = useState(null);
-    
+
     if (!isOpen || !firms || firms.length === 0) return null;
-    
+
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
@@ -223,7 +223,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
             year: 'numeric'
         });
     };
-    
+
     const formatAddress = (address) => {
         if (!address) return 'N/A';
         const parts = [
@@ -236,11 +236,11 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
         ].filter(Boolean);
         return parts.join(', ') || 'N/A';
     };
-    
+
     const toggleFirmDetails = (firmId) => {
         setExpandedFirm(expandedFirm === firmId ? null : firmId);
     };
-    
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -281,7 +281,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                                 </motion.button>
                             </div>
                         </div>
-                        
+
                         {/* Firms List */}
                         <div className="p-6 overflow-y-auto max-h-[70vh]">
                             <div className="space-y-4">
@@ -338,7 +338,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         {/* Basic Details */}
                                         <div className="p-4">
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -368,7 +368,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                                                 )}
                                             </div>
                                         </div>
-                                        
+
                                         {/* Expanded Details */}
                                         <AnimatePresence>
                                             {expandedFirm === (firm.firm_id || index) && (
@@ -404,7 +404,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        
+
                                                         {/* Address Information */}
                                                         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                                                             <h5 className="font-bold text-gray-800 text-sm mb-4 pb-2 border-b border-gray-100">Address</h5>
@@ -414,7 +414,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                                                                 </p>
                                                             </div>
                                                         </div>
-                                                        
+
                                                         {/* Creation Details */}
                                                         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                                                             <h5 className="font-bold text-gray-800 text-sm mb-4 pb-2 border-b border-gray-100">Created By</h5>
@@ -439,7 +439,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        
+
                                                         {/* Modification Details */}
                                                         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                                                             <h5 className="font-bold text-gray-800 text-sm mb-4 pb-2 border-b border-gray-100">Last Modified</h5>
@@ -468,7 +468,7 @@ const FirmsDetailsModal = ({ isOpen, onClose, firms, clientName }) => {
                                 ))}
                             </div>
                         </div>
-                        
+
                         {/* Footer */}
                         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3">
                             <div className="text-sm text-gray-600 font-medium">
@@ -505,7 +505,7 @@ const TableViewSwitch = ({ viewMode, setViewMode }) => {
                 <FiList className="w-4 h-4" />
                 <span className="text-xs font-medium hidden sm:inline">Table</span>
             </motion.button>
-            
+
             <motion.button
                 onClick={() => setViewMode('card')}
                 className={`flex items-center gap-2 px-3 py-2 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
@@ -520,13 +520,13 @@ const TableViewSwitch = ({ viewMode, setViewMode }) => {
 };
 
 // Client Table Component
-const ClientTable = ({ 
-    clients, 
-    selectedClients, 
-    handleClientSelect, 
-    selectAll, 
-    handleSelectAll, 
-    columnConfig, 
+const ClientTable = ({
+    clients,
+    selectedClients,
+    handleClientSelect,
+    selectAll,
+    handleSelectAll,
+    columnConfig,
     renderCellContent,
     loading,
     toggleRowDropdown,
@@ -563,18 +563,18 @@ const ClientTable = ({
     const MobileClientCard = ({ client, index, handleExport, showFirmsModal }) => {
         const getLastUpdatedFirm = () => {
             if (!client.firms || client.firms.length === 0) return null;
-            
+
             const sortedFirms = [...client.firms].sort((a, b) => {
                 const dateA = a.modify_date || a.create_date;
                 const dateB = b.modify_date || b.create_date;
                 return new Date(dateB) - new Date(dateA);
             });
-            
+
             return sortedFirms[0];
         };
-        
+
         const lastFirm = getLastUpdatedFirm();
-        
+
         return (
             <motion.div
                 className="bg-white border border-gray-200 rounded-lg p-3 mb-2 md:hidden"
@@ -610,7 +610,7 @@ const ClientTable = ({
                                 <div className="w-1 h-1 rounded-full bg-gray-600"></div>
                             </div>
                         </motion.button>
-                        
+
                         <AnimatePresence>
                             {activeRowDropdown === client._id && (
                                 <motion.div
@@ -708,13 +708,12 @@ const ClientTable = ({
 
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-gray-600">Status:</span>
-                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-                            client.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${client.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
                             client.status === 'INACTIVE' ? 'bg-red-100 text-red-700' :
-                            'bg-yellow-100 text-yellow-700'
-                        }`}>
+                                'bg-yellow-100 text-yellow-700'
+                            }`}>
                             {client.status === 'ACTIVE' ? 'Active' :
-                             client.status === 'INACTIVE' ? 'Inactive' : 'Pending'}
+                                client.status === 'INACTIVE' ? 'Inactive' : 'Pending'}
                         </div>
                     </div>
 
@@ -750,11 +749,11 @@ const ClientTable = ({
                         <div
                             key={column.id}
                             className="p-3 font-semibold text-gray-700 text-xs flex-1 min-w-0 text-center border-l border-gray-100"
-                            style={{ 
-                                flex: column.id === '1' ? '1.5' : 
-                                       column.id === '3' ? '1.2' : 
-                                       column.id === '5' ? '0.8' : 
-                                       column.id === '6' ? '0.8' : '1'
+                            style={{
+                                flex: column.id === '1' ? '1.5' :
+                                    column.id === '3' ? '1.2' :
+                                        column.id === '5' ? '0.8' :
+                                            column.id === '6' ? '0.8' : '1'
                             }}
                         >
                             <div className="truncate">{column.name}</div>
@@ -831,14 +830,14 @@ const ClientTable = ({
                                     </div>
 
                                     {columnConfig.map(column => (
-                                        <div 
-                                            key={column.id} 
+                                        <div
+                                            key={column.id}
                                             className="p-3 min-w-0 text-center border-l border-gray-100"
-                                            style={{ 
-                                                flex: column.id === '1' ? '1.5' : 
-                                                       column.id === '3' ? '1.2' : 
-                                                       column.id === '5' ? '0.8' : 
-                                                       column.id === '6' ? '0.8' : '1'
+                                            style={{
+                                                flex: column.id === '1' ? '1.5' :
+                                                    column.id === '3' ? '1.2' :
+                                                        column.id === '5' ? '0.8' :
+                                                            column.id === '6' ? '0.8' : '1'
                                             }}
                                         >
                                             <div className="flex items-center justify-center">
@@ -857,10 +856,10 @@ const ClientTable = ({
 };
 
 // Client Cards Component
-const ClientCards = ({ 
-    clients, 
-    selectedClients, 
-    handleClientSelect, 
+const ClientCards = ({
+    clients,
+    selectedClients,
+    handleClientSelect,
     columnConfig,
     renderCellContent,
     loading,
@@ -889,13 +888,13 @@ const ClientCards = ({
 
     const getLastUpdatedFirm = (firms) => {
         if (!firms || firms.length === 0) return null;
-        
+
         const sortedFirms = [...firms].sort((a, b) => {
             const dateA = a.modify_date || a.create_date;
             const dateB = b.modify_date || b.create_date;
             return new Date(dateB) - new Date(dateA);
         });
-        
+
         return sortedFirms[0];
     };
 
@@ -938,165 +937,166 @@ const ClientCards = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {clients.map((client, index) => {
                         const lastFirm = getLastUpdatedFirm(client.firms);
-                        
+
                         return (
-                        <motion.div
-                            key={client._id}
-                            className={`bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200 overflow-hidden ${selectedClients.has(client._id) ? 'ring-2 ring-blue-500' : ''}`}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.05 }}
-                        >
-                            <div className="p-3 border-b border-gray-100">
-                                <div className="flex items-start justify-between mb-2">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedClients.has(client._id)}
-                                                onChange={() => handleClientSelect(client._id)}
-                                                className="w-3.5 h-3.5 text-blue-600 rounded border-gray-400 focus:ring-blue-500 flex-shrink-0"
-                                            />
-                                            <div className="font-bold text-gray-800 text-xs w-4">{index + 1}</div>
-                                            <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-                                                <FiUser className="w-3.5 h-3.5 text-white" />
+                            <motion.div
+                                key={client._id}
+                                className={`bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200 overflow-hidden ${selectedClients.has(client._id) ? 'ring-2 ring-blue-500' : ''}`}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: index * 0.05 }}
+                            >
+                                <div className="p-3 border-b border-gray-100">
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedClients.has(client._id)}
+                                                    onChange={() => handleClientSelect(client._id)}
+                                                    className="w-3.5 h-3.5 text-blue-600 rounded border-gray-400 focus:ring-blue-500 flex-shrink-0"
+                                                />
+                                                <div className="font-bold text-gray-800 text-xs w-4">{index + 1}</div>
+                                                <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                                                    <FiUser className="w-3.5 h-3.5 text-white" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <h3 className="font-semibold text-gray-800 text-xs truncate">{client.name || 'N/A'}</h3>
+                                                </div>
                                             </div>
-                                            <div className="min-w-0">
-                                                <h3 className="font-semibold text-gray-800 text-xs truncate">{client.name || 'N/A'}</h3>
-                                            </div>
+                                            <h4 className="font-bold text-gray-800 text-sm truncate">{client.guardian_name || 'N/A'}</h4>
+                                            <p className="text-gray-600 text-xs truncate">{client.firms?.length || 0} firms</p>
                                         </div>
-                                        <h4 className="font-bold text-gray-800 text-sm truncate">{client.guardian_name || 'N/A'}</h4>
-                                        <p className="text-gray-600 text-xs truncate">{client.firms?.length || 0} firms</p>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <div className="relative">
-                                            <motion.button
-                                                onClick={() => toggleRowDropdown(`card-${client._id}`)}
-                                                className="w-6 h-6 flex flex-col items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors space-y-0.5"
-                                                whileHover={{ scale: 1.1 }}
-                                                whileTap={{ scale: 0.95 }}
-                                            >
-                                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
-                                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
-                                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
-                                            </motion.button>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <div className="relative">
+                                                <motion.button
+                                                    onClick={() => toggleRowDropdown(`card-${client._id}`)}
+                                                    className="w-6 h-6 flex flex-col items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors space-y-0.5"
+                                                    whileHover={{ scale: 1.1 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                >
+                                                    <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                                                    <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                                                    <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                                                </motion.button>
 
-                                            <AnimatePresence>
-                                                {activeRowDropdown === `card-${client._id}` && (
-                                                    <motion.div
-                                                        className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
-                                                        initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                        exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                                                    >
-                                                        <button
-                                                            onClick={() => {
-                                                                openStatusModal(client._id, client.status);
-                                                                setActiveRowDropdown(null);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
+                                                <AnimatePresence>
+                                                    {activeRowDropdown === `card-${client._id}` && (
+                                                        <motion.div
+                                                            className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                            exit={{ opacity: 0, y: -8, scale: 0.96 }}
                                                         >
-                                                            <FiCheckCircle className="mr-3" />
-                                                            Change Status
-                                                        </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    openStatusModal(client._id, client.status);
+                                                                    setActiveRowDropdown(null);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
+                                                            >
+                                                                <FiCheckCircle className="mr-3" />
+                                                                Change Status
+                                                            </button>
 
-                                                        <div className="border-t my-1"></div>
+                                                            <div className="border-t my-1"></div>
 
-                                                        <button
-                                                            onClick={() => {
-                                                                setActiveRowDropdown(null);
-                                                                navigate(`/client/profile/${client.username}`);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
-                                                        >
-                                                            <FiEye className="mr-3" />
-                                                            View Details
-                                                        </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setActiveRowDropdown(null);
+                                                                    navigate(`/client/profile/${client.username}`);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                                                            >
+                                                                <FiEye className="mr-3" />
+                                                                View Details
+                                                            </button>
 
-                                                        <button
-                                                            onClick={() => {
-                                                                setActiveRowDropdown(null);
-                                                                navigate(`/client/edit/${client._id}`);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
-                                                        >
-                                                            <FiEdit className="mr-3" />
-                                                            Edit Client
-                                                        </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setActiveRowDropdown(null);
+                                                                    navigate(`/client/edit/${client._id}`);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                                                            >
+                                                                <FiEdit className="mr-3" />
+                                                                Edit Client
+                                                            </button>
 
-                                                        <button
-                                                            onClick={() => {
-                                                                setActiveRowDropdown(null);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
-                                                        >
-                                                            <FiMessageSquare className="mr-3" />
-                                                            Send Message
-                                                        </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setActiveRowDropdown(null);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                                                            >
+                                                                <FiMessageSquare className="mr-3" />
+                                                                Send Message
+                                                            </button>
 
-                                                        <div className="border-t my-1"></div>
+                                                            <div className="border-t my-1"></div>
 
-                                                        <button
-                                                            onClick={() => {
-                                                                setActiveRowDropdown(null);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                                                        >
-                                                            <FiTrash2 className="mr-3" />
-                                                            Delete Client
-                                                        </button>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setActiveRowDropdown(null);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                                            >
+                                                                <FiTrash2 className="mr-3" />
+                                                                Delete Client
+                                                            </button>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="p-3">
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1 text-gray-700 text-xs">
-                                            <FiPhone className="w-3 h-3 text-gray-400" />
-                                            <span>{client.mobile || 'N/A'}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <div className={`text-xs font-semibold ${(client.balance || 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                {formatBalance(client.balance)}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="text-xs text-gray-700">
-                                        <div className="font-medium mb-1">Firms ({client.firms?.length || 0}):</div>
-                                        {lastFirm && (
-                                            <div className="text-xs bg-gray-50 rounded p-1 border border-gray-200 mb-1 cursor-pointer hover:bg-gray-100 transition-colors" 
-                                                 onClick={() => showFirmsModal(client.firms, client.name)}>
-                                                <div className="font-semibold">{lastFirm.firm_name || 'N/A'}</div>
-                                            </div>
-                                        )}
-                                        
-                                        {client.firms && client.firms.length > 1 && (
-                                            <div className="text-blue-600 font-medium text-xs mt-1 cursor-pointer hover:text-blue-700 transition-colors"
-                                                 onClick={() => showFirmsModal(client.firms, client.name)}>
-                                                +{client.firms.length - 1} more firm{client.firms.length - 1 > 1 ? 's' : ''}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="pt-1">
+                                <div className="p-3">
+                                    <div className="space-y-2">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-xs font-medium text-gray-600">Status:</span>
-                                            <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(client.status)}`}>
-                                                {client.status === 'ACTIVE' ? 'Active' :
-                                                 client.status === 'INACTIVE' ? 'Inactive' : 'Pending'}
+                                            <div className="flex items-center gap-1 text-gray-700 text-xs">
+                                                <FiPhone className="w-3 h-3 text-gray-400" />
+                                                <span>{client.mobile || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <div className={`text-xs font-semibold ${(client.balance || 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                    {formatBalance(client.balance)}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="text-xs text-gray-700">
+                                            <div className="font-medium mb-1">Firms ({client.firms?.length || 0}):</div>
+                                            {lastFirm && (
+                                                <div className="text-xs bg-gray-50 rounded p-1 border border-gray-200 mb-1 cursor-pointer hover:bg-gray-100 transition-colors"
+                                                    onClick={() => showFirmsModal(client.firms, client.name)}>
+                                                    <div className="font-semibold">{lastFirm.firm_name || 'N/A'}</div>
+                                                </div>
+                                            )}
+
+                                            {client.firms && client.firms.length > 1 && (
+                                                <div className="text-blue-600 font-medium text-xs mt-1 cursor-pointer hover:text-blue-700 transition-colors"
+                                                    onClick={() => showFirmsModal(client.firms, client.name)}>
+                                                    +{client.firms.length - 1} more firm{client.firms.length - 1 > 1 ? 's' : ''}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="pt-1">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-medium text-gray-600">Status:</span>
+                                                <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(client.status)}`}>
+                                                    {client.status === 'ACTIVE' ? 'Active' :
+                                                        client.status === 'INACTIVE' ? 'Inactive' : 'Pending'}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </motion.div>
-                    )})}
+                            </motion.div>
+                        )
+                    })}
                 </div>
             )}
         </div>
@@ -1131,7 +1131,7 @@ const ViewClients = () => {
     const [isMobile, setIsMobile] = useState(false);
     const [statusModal, setStatusModal] = useState({ open: false, clientId: null, currentStatus: '' });
     const [firmsModal, setFirmsModal] = useState({ open: false, firms: [], clientName: '' });
-    
+
     // Pagination state based on API structure
     const [clients, setClients] = useState([]);
     const [pagination, setPagination] = useState({
@@ -1153,31 +1153,7 @@ const ViewClients = () => {
         })
     );
 
-    const getHeaders = useCallback(() => {
-        try {
-            const userName = localStorage.getItem('userName') || 
-                             localStorage.getItem('user_username') || '';
-            const token = localStorage.getItem('token') || 
-                          localStorage.getItem('user_token') || '';
-            const branchId = localStorage.getItem('branchId') || 
-                             localStorage.getItem('branch_id') || '';
-            
-            if (!userName || !token || !branchId) {
-                console.error('Missing authentication data in localStorage');
-                return null;
-            }
-            
-            return {
-                'Content-Type': 'application/json',
-                'username': userName,
-                'token': token,
-                'branch': branchId
-            };
-        } catch (error) {
-            console.error('Error getting headers from localStorage:', error);
-            return null;
-        }
-    }, []);
+
 
     // Fetch clients with API pagination
     const fetchClients = useCallback(async (page = 1, limit = 10) => {
@@ -1212,7 +1188,7 @@ const ViewClients = () => {
                     total_pages: 1,
                     is_last_page: true
                 };
-                
+
                 // Handle different response structures
                 if (response.data.pagination && Array.isArray(response.data.data)) {
                     clientsData = response.data.data;
@@ -1230,7 +1206,7 @@ const ViewClients = () => {
                         is_last_page: true
                     };
                 }
-                
+
                 const transformedClients = clientsData.map((client, index) => {
                     return {
                         _id: client.profile_id || client._id || client.id || `temp-${index}-${Date.now()}`,
@@ -1248,13 +1224,13 @@ const ViewClients = () => {
 
                 setClients(transformedClients);
                 setPagination(paginationData);
-                
+
             } else {
                 console.error('No data in response');
             }
         } catch (error) {
             console.error('Error fetching clients:', error);
-            
+
             // Dummy data for testing with pagination structure
             const dummyData = Array.from({ length: 15 }, (_, i) => ({
                 _id: `${i + 1}`,
@@ -1268,13 +1244,13 @@ const ViewClients = () => {
                 firms: [],
                 firm_count: 0
             }));
-            
+
             const total = 15;
             const total_pages = Math.ceil(total / limit);
             const is_last_page = page >= total_pages;
-            
+
             setClients(dummyData.slice((page - 1) * limit, page * limit));
-            
+
             setPagination({
                 page: page,
                 limit: limit,
@@ -1291,10 +1267,10 @@ const ViewClients = () => {
         const checkIfMobile = () => {
             setIsMobile(window.innerWidth < 768);
         };
-        
+
         checkIfMobile();
         window.addEventListener('resize', checkIfMobile);
-        
+
         return () => {
             window.removeEventListener('resize', checkIfMobile);
         };
@@ -1441,7 +1417,7 @@ const ViewClients = () => {
             newSelected.add(clientId);
         }
         setSelectedClients(newSelected);
-        
+
         if (clients.length > 0) {
             const allSelected = newSelected.size === clients.length;
             setSelectAll(allSelected);
@@ -1540,13 +1516,13 @@ const ViewClients = () => {
 
     const getLastUpdatedFirm = (firms) => {
         if (!firms || firms.length === 0) return null;
-        
+
         const sortedFirms = [...firms].sort((a, b) => {
             const dateA = a.modify_date || a.create_date;
             const dateB = b.modify_date || b.create_date;
             return new Date(dateB) - new Date(dateA);
         });
-        
+
         return sortedFirms[0];
     };
 
@@ -1558,7 +1534,7 @@ const ViewClients = () => {
                         <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
                             <FiUser className="w-4 h-4 text-white" />
                         </div>
-                        <div 
+                        <div
                             className="min-w-0 flex-1 text-left cursor-pointer hover:text-blue-600 transition-colors"
                             onClick={() => navigate(`/client/profile/${client.username}`)}
                         >
@@ -1592,11 +1568,11 @@ const ViewClients = () => {
             case 'firms':
                 const lastFirm = getLastUpdatedFirm(client.firms);
                 const firmCount = client.firms?.length || 0;
-                
+
                 return (
                     <div className="text-center">
                         {firmCount > 0 ? (
-                            <div 
+                            <div
                                 className="cursor-pointer hover:bg-gray-100 transition-colors text-center p-2"
                                 onClick={() => showFirmsModal(client.firms, client.name)}
                             >
@@ -1749,30 +1725,30 @@ const ViewClients = () => {
 
         const handleModalDragEnd = (event) => {
             const { active, over } = event;
-            
+
             if (!over || active.id === over.id) {
                 setLocalActiveDragId(null);
                 return;
             }
-            
+
             const oldIndex = localColumnConfig.findIndex((col) => col.id === active.id);
             const newIndex = localColumnConfig.findIndex((col) => col.id === over.id);
-            
+
             if (oldIndex === -1 || newIndex === -1) {
                 setLocalActiveDragId(null);
                 return;
             }
-            
+
             const sourceColumn = localColumnConfig[oldIndex];
             const targetColumn = localColumnConfig[newIndex];
-            
+
             const firstFixedIndex = localColumnConfig.findIndex(col => col.fixed);
-            
+
             if (sourceColumn.fixed) {
                 setLocalActiveDragId(null);
                 return;
             }
-            
+
             if (newIndex >= firstFixedIndex && newIndex < localColumnConfig.length) {
                 if (firstFixedIndex > 0) {
                     const newConfig = arrayMove(localColumnConfig, oldIndex, firstFixedIndex - 1);
@@ -1782,23 +1758,23 @@ const ViewClients = () => {
                 const newConfig = arrayMove(localColumnConfig, oldIndex, newIndex);
                 setLocalColumnConfig(newConfig);
             }
-            
+
             setLocalActiveDragId(null);
         };
 
         const handleModalItemDragEnd = (event, columnIndex) => {
             const { active, over } = event;
-            
+
             if (active.id !== over.id) {
                 const newConfig = [...localColumnConfig];
                 const columnItems = newConfig[columnIndex].items;
                 const oldIndex = columnItems.findIndex((item) => item.id === active.id);
                 const newIndex = columnItems.findIndex((item) => item.id === over.id);
-                
+
                 newConfig[columnIndex].items = arrayMove(columnItems, oldIndex, newIndex);
                 setLocalColumnConfig(newConfig);
             }
-            
+
             setLocalActiveItemDragId(null);
         };
 
@@ -1825,10 +1801,10 @@ const ViewClients = () => {
         const addNewColumnInModal = () => {
             const newConfig = [...localColumnConfig];
             const newColumnId = `col-${Date.now()}`;
-            
+
             const firstFixedIndex = newConfig.findIndex(col => col.fixed);
             const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length;
-            
+
             newConfig.splice(insertIndex, 0, {
                 id: newColumnId,
                 name: `New Column`,
@@ -1836,7 +1812,7 @@ const ViewClients = () => {
                 fixed: false
             });
             setLocalColumnConfig(newConfig);
-            
+
             setEditingColumnId(newColumnId);
             setTempColumnName('New Column');
         };
@@ -1851,8 +1827,8 @@ const ViewClients = () => {
                 setEditingColumnId(null);
                 return;
             }
-            
-            const newConfig = localColumnConfig.map(col => 
+
+            const newConfig = localColumnConfig.map(col =>
                 col.id === columnId ? { ...col, name: tempColumnName.trim() } : col
             );
             setLocalColumnConfig(newConfig);
@@ -1908,8 +1884,8 @@ const ViewClients = () => {
                     className={`border-2 rounded-xl p-4 transition-all duration-200 ${column.fixed
                         ? 'bg-blue-50 border-blue-300 shadow-sm cursor-not-allowed'
                         : !isDraggable
-                        ? 'bg-gray-50 border-gray-200 cursor-not-allowed'
-                        : 'bg-white border-gray-200 hover:shadow-md hover:border-gray-300 cursor-move'
+                            ? 'bg-gray-50 border-gray-200 cursor-not-allowed'
+                            : 'bg-white border-gray-200 hover:shadow-md hover:border-gray-300 cursor-move'
                         }`}
                     whileHover={{ scale: isDraggable ? 1.02 : 1 }}
                 >
@@ -1949,7 +1925,7 @@ const ViewClients = () => {
                                                 <FiX className="w-3 h-3" />
                                             </button>
                                         </div>
-                                </div>
+                                    </div>
                                 ) : (
                                     <div className="flex items-center justify-between">
                                         <div className="min-w-0">
@@ -2018,7 +1994,7 @@ const ViewClients = () => {
                                 ))}
                             </div>
                         </SortableContext>
-                        
+
                         <DragOverlay>
                             {localActiveItemDragId ? (
                                 <div className="bg-white border border-blue-400 shadow-lg rounded-lg px-3 py-2">
@@ -2205,7 +2181,7 @@ const ViewClients = () => {
                                             ))}
                                         </div>
                                     </SortableContext>
-                                    
+
                                     <DragOverlay>
                                         {localActiveDragId ? (
                                             <div className="bg-white border-2 border-blue-300 shadow-xl rounded-xl p-4 w-48">
@@ -2375,7 +2351,7 @@ const ViewClients = () => {
                                             <div className="hidden md:block">
                                                 <TableViewSwitch viewMode={viewMode} setViewMode={setViewMode} />
                                             </div>
-                                            
+
                                             <div className="flex-1 md:flex-none md:min-w-[200px] lg:min-w-[250px]">
                                                 <div className="relative">
                                                     <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -2480,7 +2456,7 @@ const ViewClients = () => {
                                             >
                                                 <FiUserPlus className="w-4 h-4" />
                                             </motion.button>
-                                            
+
                                             <div className="relative dropdown-container">
                                                 <motion.button
                                                     onClick={() => setShowMoreMenu(!showMoreMenu)}
@@ -2635,7 +2611,7 @@ const ViewClients = () => {
                                 <span className="hidden sm:inline">Send Message</span>
                                 <span className="sm:hidden">({selectedClients.size})</span>
                             </motion.button>
-                            
+
                             <motion.button
                                 className="px-3 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg text-sm font-semibold hover:from-green-700 hover:to-green-800 flex items-center gap-2 shadow-xl"
                                 whileHover={{ scale: 1.05 }}
