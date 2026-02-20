@@ -35,6 +35,7 @@ import DatePickerComponent from '../../components/DatePickerComponent';
 import moment from 'moment';
 import SearchableSelect from '../../components/SearchableSelect'
 import SearchableSelectOptions from "../../components/SelectSearchableOptionsComponent";
+import getHeaders from "../../utils/get-headers";
 
 
 
@@ -136,24 +137,12 @@ const ViewDSCRegister = () => {
     const fetchDscType = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem("user_token");
-            const username = localStorage.getItem("user_username");
-            const branch = localStorage.getItem("branch_id");
-
-            if (!token) {
-                throw new Error("No auth token found");
-            }
-
+            const headers = getHeaders();
             const url = `${BASE_URL}/assistance/dsc/types`;
 
             const response = await fetch(url, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'token': token,
-                    'username': username,
-                    'branch': branch
-                },
+                headers
             });
 
             if (!response.ok) {
@@ -178,24 +167,13 @@ const ViewDSCRegister = () => {
     const fetchCompanies = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem("user_token");
-            const username = localStorage.getItem("user_username");
-            const branch = localStorage.getItem("branch_id");
-
-            if (!token) {
-                throw new Error("No auth token found");
-            }
+            const headers = getHeaders();
 
             const url = `${BASE_URL}/assistance/dsc/companies`;
 
             const response = await fetch(url, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'token': token,
-                    'username': username,
-                    'branch': branch
-                },
+                headers
             });
 
             if (!response.ok) {
@@ -222,9 +200,8 @@ const ViewDSCRegister = () => {
         setLoading(true);
 
         try {
-            const token = localStorage.getItem("user_token");
             const username = localStorage.getItem("user_username");
-            const branch = localStorage.getItem("branch_id");
+            const headers = getHeaders();
 
             const params = new URLSearchParams({
                 search: search || '',
@@ -238,11 +215,7 @@ const ViewDSCRegister = () => {
             const url = `${BASE_URL}/assistance/dsc/list?${params.toString()}`;
             const response = await fetch(url, {
                 method: "GET",
-                headers: {
-                    'token': token,
-                    'username': username,
-                    'branch': branch
-                }
+                headers
             });
 
             if (!response.ok) {
@@ -291,17 +264,13 @@ const ViewDSCRegister = () => {
 
         setLoading(true);
         try {
-            const token = localStorage.getItem("user_token");
-            const username = localStorage.getItem("user_username");
-            const branch = localStorage.getItem("branch_id");
+            const headers = getHeaders();
 
             const response = await fetch(`${BASE_URL}/assistance/dsc/delete`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'token': token,
-                    'username': username,
-                    'branch': branch,
+                    headers
                 },
                 body: JSON.stringify({ dsc_id: dscToDelete })
             });
@@ -458,11 +427,11 @@ const ViewDSCRegister = () => {
         if (loading) return;
 
         setLoading(true);
+        const headers = getHeaders();
 
-        const token = localStorage.getItem("user_token");
+        // const token = localStorage.getItem("user_token");
         const username = localStorage.getItem("user_username");
-        const branch = localStorage.getItem("branch_id");
-
+        // const branch = localStorage.getItem("branch_id");
         try {
             const validity_start = moment(createForm.validity_start, "DD/MM/YYYY").format("YYYY-MM-DD");
             const validity_end = moment(createForm.validity_end, "DD/MM/YYYY").format("YYYY-MM-DD");
@@ -483,9 +452,7 @@ const ViewDSCRegister = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'token': token,
-                    'username': username,
-                    'branch': branch
+                    headers
                 },
                 body: JSON.stringify(payload),
             });
@@ -524,10 +491,7 @@ const ViewDSCRegister = () => {
         }
 
         setLoading(true);
-
-        const token = localStorage.getItem("user_token");
-        const username = localStorage.getItem("user_username");
-        const branch = localStorage.getItem("branch_id");
+        const headers = getHeaders();
 
         const transformDate = (dateStr) => {
             if (!dateStr) return '';
@@ -552,9 +516,7 @@ const ViewDSCRegister = () => {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'token': token,
-                        'username': username,
-                        'branch': branch,
+                        headers
                     },
                     body: JSON.stringify(apiPayload),
                 }
