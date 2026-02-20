@@ -259,11 +259,14 @@ const ViewFileIndex = () => {
         setLoading(true);
 
         try {
-            const headers = getHeaders();
-            if (!headers) {
-                console.error('Cannot create firm: Missing authentication headers');
-                return;
+            const token = localStorage.getItem("user_token");
+            const username = localStorage.getItem("user_username");
+            const branch = localStorage.getItem("branch_id");
+
+            if (!token) {
+                throw new Error("No auth token found");
             }
+
             // Build query parameters
             const params = new URLSearchParams({
                 page: page.toString(),
@@ -276,25 +279,27 @@ const ViewFileIndex = () => {
 
             // Convert date format from DD/MM/YYYY to YYYY-MM-DD if both dates are provided
             if (from && to) {
-                // Assuming moment is available; otherwise use vanilla JS date parsing
                 const fromFormatted = moment(from, 'DD/MM/YYYY').format('YYYY-MM-DD');
                 const toFormatted = moment(to, 'DD/MM/YYYY').format('YYYY-MM-DD');
                 params.append('from', fromFormatted);
                 params.append('to', toFormatted);
             }
 
-            const response = await fetch(
+            // ✅ FIXED: Use axios instead of fetch to bypass CORS preflight
+            const response = await axios.get(
                 `${BASE_URL}/assistance/file-index/list?${params.toString()}`,
                 {
-                    method: "GET",
-                    headers: headers
+                    headers: {
+                        'token': token,
+                        'username': username,
+                        'branch': branch
+                    }
                 }
             );
 
-            const result = await response.json();
+            const result = response.data;
 
-            if (response.ok && result.success) {
-
+            if (result.success) {
                 const mapFileIndexToUI = (item) => ({
                     index_id: item.index_id,
                     username: item.firm_id,
@@ -840,20 +845,20 @@ const ViewFileIndex = () => {
                     >
                         {/* Card Header */}
                         <div className="border-b border-slate-200 px-6 py-4 bg-gradient-to-r from-slate-50 to-white sticky top-0 z-10">
-                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                                <div>
+                            <div className="header flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div className="options-parent">
                                     <div className="flex items-center gap-3 mb-1">
                                         <div className="p-2 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg">
                                             <FiFileText className="w-5 h-5 text-purple-600" />
                                         </div>
                                         <div>
-                                            <h5 className="text-lg font-bold text-slate-800">
+                                            <h5 className="text-lg font-bold text-slate-800 whitespace-nowrap">
                                                 File Index Register
                                             </h5>
                                             {fromToDate && (
                                                 <div className="flex items-center gap-1 text-slate-600">
                                                     <FiCalendar className="w-3 h-3" />
-                                                    <p className="text-xs font-medium">
+                                                    <p className="text-xs font-medium whitespace-nowrap">
                                                         {fromToDate}
                                                     </p>
                                                 </div>
@@ -862,9 +867,9 @@ const ViewFileIndex = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+                                <div className="flex flex-col lg:flex-row gap-3 w-full justify-end">
                                     {/* Search Input */}
-                                    <div className="relative">
+                                    <div className="relative flex justify-center items-center ">
                                         <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
                                         <input
                                             type="text"
@@ -875,23 +880,22 @@ const ViewFileIndex = () => {
                                             className="pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full lg:w-64"
                                         />
                                     </div>
-
-                                    {/* Date Filter Component */}
-                                    <div className="w-full lg:w-auto">
-                                        <DateFilter onChange={handleDateFilterChange} />
-                                    </div>
-
                                     <div className="flex gap-2">
+
+                                        {/* Date Filter Component */}
+                                        <div className="w-full lg:w-auto whitespace-nowrap">
+                                            <DateFilter onChange={handleDateFilterChange} />
+                                        </div>
+
                                         {/* Export Dropdown */}
                                         <div className="dropdown-container relative">
                                             <motion.button
                                                 onClick={() => setShowAddDropdown(!showAddDropdown)}
-                                                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                                className="px-4 h-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
                                                 <PiExportBold className="w-4 h-4" />
-                                                Export
                                                 <FiChevronRight className={`w-3 h-3 transition-transform ${showAddDropdown ? 'rotate-90' : ''}`} />
                                             </motion.button>
 
@@ -961,7 +965,7 @@ const ViewFileIndex = () => {
                                             whileTap={{ scale: 0.98 }}
                                         >
                                             <FiPlus className="w-4 h-4" />
-                                            Add File Index
+
                                         </motion.button>
                                     </div>
                                 </div>
@@ -1362,31 +1366,31 @@ const ViewFileIndex = () => {
                                             Select User <span className="text-rose-500">*</span>
                                         </label>
                                         <div className="relative">
-<SearchableSelect
-  endpoint="/clients/search"
-  listEndpoint="/clients/list"
+                                            <SearchableSelect
+                                                endpoint="/clients/search"
+                                                listEndpoint="/clients/list"
 
-  search="search"
-  minChars={3}
+                                                search="search"
+                                                minChars={3}
 
-  valueKey="username"
+                                                valueKey="username"
 
-  labelMapping={{
-    primary: "name",
-    secondary: "mobile"
-  }}
+                                                labelMapping={{
+                                                    primary: "name",
+                                                    secondary: "mobile"
+                                                }}
 
-  dataExtractor={(res) => res.data || []}
+                                                dataExtractor={(res) => res.data || []}
 
-  
 
-  placeholder="Search client by name, mobile, email..."
 
-  onSelect={(item, value) => {
-    console.log("Selected client:", item);
-    console.log("Username:", value);
-  }}
-/>
+                                                placeholder="Search client by name, mobile, email..."
+
+                                                onSelect={(item, value) => {
+                                                    console.log("Selected client:", item);
+                                                    console.log("Username:", value);
+                                                }}
+                                            />
                                             <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                         </div>
                                     </div>
