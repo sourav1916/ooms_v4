@@ -1248,121 +1248,122 @@ const ViewDSCRegister = () => {
                                                             )}
                                                         </span>
                                                     </td>
-                                                    <td className="text-center p-3 align-middle flex items-center justify-center gap-2">
-                                                        <div className="dropdown-container relative flex justify-center">
-                                                            <motion.button
-                                                                className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
-                                                                onClick={() => toggleRowDropdown(dsc.dsc_id)}
-                                                                whileHover={{ scale: 1.05 }}
-                                                                whileTap={{ scale: 0.95 }}
-                                                            >
-                                                                <FiMenu className="w-3.5 h-3.5" />
-                                                            </motion.button>
-                                                            <AnimatePresence>
-                                                                {isDropdownOpen && (
-                                                                    <motion.div
-                                                                        initial={{ opacity: 0, y: 5 }}
-                                                                        animate={{ opacity: 1, y: 0 }}
-                                                                        exit={{ opacity: 0, y: 5 }}
-                                                                        className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
-                                                                    >
-                                                                        <div className="py-1">
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    setActiveRowDropdown(null);
-                                                                                    handleEditClick(dsc);
-                                                                                }}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                            >
-                                                                                <div className="p-1 bg-blue-50 rounded mr-2">
-                                                                                    <FiEdit className="w-3 h-3 text-blue-500" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">Edit DSC</div>
-                                                                                </div>
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    setActiveRowDropdown(null);
-                                                                                    handleDeleteClick(dsc.dsc_id);  // ← Pass dsc_id
-                                                                                }}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-red-50 transition-colors duration-150 group"
-                                                                            >
-                                                                                <div className="p-1 bg-red-50 rounded mr-2 group-hover:bg-red-100 transition-colors">
-                                                                                    <FiTrash2 className="w-3 h-3 text-red-500" />  {/* Add FiTrash2 to imports */}
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium text-red-700">Delete DSC</div>
-                                                                                </div>
-                                                                            </button>
-
-                                                                            <a
-                                                                                href={profileLink}
-                                                                                onClick={(e) => {
-                                                                                    setActiveRowDropdown(null);
-                                                                                    handleUserProfileClick(e, dsc);
-                                                                                }}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                            >
-                                                                                <div className="p-1 bg-emerald-50 rounded mr-2">
-                                                                                    <FiUser className="w-3 h-3 text-emerald-500" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">View Profile</div>
-                                                                                </div>
-                                                                            </a>
-                                                                            <div className="border-t border-slate-100 mt-1 pt-1">
+                                                    <td className="text-center p-3 align-middle ">
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <div className="dropdown-container relative flex justify-center">
+                                                                <motion.button
+                                                                    className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
+                                                                    onClick={() => toggleRowDropdown(dsc.dsc_id)}
+                                                                    whileHover={{ scale: 1.05 }}
+                                                                    whileTap={{ scale: 0.95 }}
+                                                                >
+                                                                    <FiMenu className="w-3.5 h-3.5" />
+                                                                </motion.button>
+                                                                <AnimatePresence>
+                                                                    {isDropdownOpen && (
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, y: 5 }}
+                                                                            animate={{ opacity: 1, y: 0 }}
+                                                                            exit={{ opacity: 0, y: 5 }}
+                                                                            className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
+                                                                        >
+                                                                            <div className="py-1">
                                                                                 <button
-                                                                                    onClick={() => handleExport('print', dsc)}
-                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                >
-                                                                                    <div className="p-1 bg-slate-50 rounded mr-2">
-                                                                                        <FiPrinter className="w-3 h-3 text-slate-600" />
-                                                                                    </div>
-                                                                                    <div className="text-left">
-                                                                                        <div className="font-medium">Print</div>
-                                                                                    </div>
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => handleExport('whatsapp', dsc)}
-                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                >
-                                                                                    <div className="p-1 bg-green-50 rounded mr-2">
-                                                                                        <FiMessageSquare className="w-3 h-3 text-green-500" />
-                                                                                    </div>
-                                                                                    <div className="text-left">
-                                                                                        <div className="font-medium">WhatsApp</div>
-                                                                                    </div>
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => handleExport('email', dsc)}
+                                                                                    onClick={() => {
+                                                                                        setActiveRowDropdown(null);
+                                                                                        handleEditClick(dsc);
+                                                                                    }}
                                                                                     className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                 >
                                                                                     <div className="p-1 bg-blue-50 rounded mr-2">
-                                                                                        <FiMail className="w-3 h-3 text-blue-500" />
+                                                                                        <FiEdit className="w-3 h-3 text-blue-500" />
                                                                                     </div>
                                                                                     <div className="text-left">
-                                                                                        <div className="font-medium">Email</div>
+                                                                                        <div className="font-medium">Edit DSC</div>
                                                                                     </div>
                                                                                 </button>
-                                                                            </div>
-                                                                        </div>
-                                                                    </motion.div>
-                                                                )}
-                                                            </AnimatePresence>
-                                                        </div>
-                                                        <div className="flex justify-center">
-                                                            <motion.button
-                                                                onClick={() => handleViewDetails(dsc)}  // ← Pass current row dsc
-                                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
-                                                                whileHover={{ scale: 1.1 }}
-                                                                whileTap={{ scale: 0.95 }}
-                                                                title="View Details"
-                                                            >
-                                                                <FiEye className="w-4 h-4" />
-                                                            </motion.button>
-                                                        </div>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setActiveRowDropdown(null);
+                                                                                        handleDeleteClick(dsc.dsc_id);  // ← Pass dsc_id
+                                                                                    }}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-red-50 transition-colors duration-150 group"
+                                                                                >
+                                                                                    <div className="p-1 bg-red-50 rounded mr-2 group-hover:bg-red-100 transition-colors">
+                                                                                        <FiTrash2 className="w-3 h-3 text-red-500" />  {/* Add FiTrash2 to imports */}
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium text-red-700">Delete DSC</div>
+                                                                                    </div>
+                                                                                </button>
 
+                                                                                <a
+                                                                                    href={profileLink}
+                                                                                    onClick={(e) => {
+                                                                                        setActiveRowDropdown(null);
+                                                                                        handleUserProfileClick(e, dsc);
+                                                                                    }}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                >
+                                                                                    <div className="p-1 bg-emerald-50 rounded mr-2">
+                                                                                        <FiUser className="w-3 h-3 text-emerald-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">View Profile</div>
+                                                                                    </div>
+                                                                                </a>
+                                                                                <div className="border-t border-slate-100 mt-1 pt-1">
+                                                                                    <button
+                                                                                        onClick={() => handleExport('print', dsc)}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    >
+                                                                                        <div className="p-1 bg-slate-50 rounded mr-2">
+                                                                                            <FiPrinter className="w-3 h-3 text-slate-600" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Print</div>
+                                                                                        </div>
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleExport('whatsapp', dsc)}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    >
+                                                                                        <div className="p-1 bg-green-50 rounded mr-2">
+                                                                                            <FiMessageSquare className="w-3 h-3 text-green-500" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">WhatsApp</div>
+                                                                                        </div>
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleExport('email', dsc)}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    >
+                                                                                        <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                            <FiMail className="w-3 h-3 text-blue-500" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Email</div>
+                                                                                        </div>
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </motion.div>
+                                                                    )}
+                                                                </AnimatePresence>
+                                                            </div>
+                                                            <div className="flex justify-center">
+                                                                <motion.button
+                                                                    onClick={() => handleViewDetails(dsc)}  // ← Pass current row dsc
+                                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                                                                    whileHover={{ scale: 1.1 }}
+                                                                    whileTap={{ scale: 0.95 }}
+                                                                    title="View Details"
+                                                                >
+                                                                    <FiEye className="w-4 h-4" />
+                                                                </motion.button>
+                                                            </div>
+                                                        </div>
                                                     </td>
                                                 </motion.tr>
                                             );
