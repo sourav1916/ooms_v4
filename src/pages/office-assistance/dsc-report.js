@@ -1513,15 +1513,67 @@ const ViewDSCRegister = () => {
                                         <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             Select User <span className="text-rose-500">*</span>
                                         </label>
-                                        <div className="relative">
-                                            <SearchableSelect
-                                                options={userOptions}
-                                                value={createForm.username}
-                                                onChange={(selectedValue) => handleCreateChange('username', selectedValue)}
-                                                placeholder="Search user by name, type or mobile..."
-                                            />
-                                            <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                                        </div>
+                                        <SearchableSelect
+                                            endpoint="/client/search"
+                                            searchParam="search"
+                                            valueKey="username"
+                                            labelMapping={{
+                                                primary: 'name',
+                                                secondary: (item) => `${item.user_type || ''} • ${item.mobile || ''} • ${item.email || ''}`
+                                            }}
+                                            onSelect={(item, value) => {
+                                                handleCreateChange('username', value);
+                                                handleCreateChange('selectedUser', item);
+                                            }}
+                                            placeholder="Search user by name, type or mobile..."
+                                            dataExtractor={(response) => {
+                                                // Your API returns { success: true, data: [...] }
+                                                return response?.data || [];
+                                            }}
+                                        />
+
+                                        {/* Show selected user info */}
+                                        {createForm.selectedUser && (
+                                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                                            <FiUser className="w-4 h-4 text-blue-600" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="font-medium text-sm">
+                                                                    {createForm.selectedUser.name}
+                                                                </span>
+                                                                <span className="text-gray-400">•</span>
+                                                                <span className="text-sm text-gray-600">
+                                                                    {createForm.selectedUser.mobile}
+                                                                </span>
+                                                                <span className="text-gray-400">•</span>
+                                                                <span className="text-xs text-gray-500">
+                                                                    {createForm.selectedUser.email}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                                                    {createForm.selectedUser.user_type}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            handleCreateChange('username', '');
+                                                            handleCreateChange('selectedUser', null);
+                                                        }}
+                                                        className="p-1 hover:bg-blue-100 rounded-full"
+                                                    >
+                                                        <FiX className="w-4 h-4 text-gray-500" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
