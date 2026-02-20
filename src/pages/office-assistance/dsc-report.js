@@ -412,27 +412,28 @@ const ViewDSCRegister = () => {
 
     // Handle date filter change
     const handleDateFilterChange = (filter) => {
-        // console.log('Selected filter:', filter);
-        if (filter.range && filter.from && filter.to) {
-            setDateRange(filter.range);
-            setFromToDate(`From ${filter.range}`);
+        // ✅ Handle ALL cases (including clear & custom)
+        setDateRange(filter.range || '');
+        setFromToDate(filter.range ? `From ${filter.range}` : '');
 
-            // ✅ Convert DD/MM/YYYY → YYYY-MM-DD for backend
-            const convertToISODate = (dateStr) => {
-                if (!dateStr) return '';
-                const [day, month, year] = dateStr.split('/');
-                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            };
+        const convertToISODate = (dateStr) => {
+            if (!dateStr) return '';
+            const [day, month, year] = dateStr.split('/');
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        };
 
-            const expires_from = convertToISODate(filter.from.toLocaleDateString('en-GB'));
-            const expires_to = convertToISODate(filter.to.toLocaleDateString('en-GB'));
+        // ✅ Convert Date objects OR empty strings
+        const expires_from = filter.from instanceof Date
+            ? convertToISODate(filter.from.toLocaleDateString('en-GB'))
+            : '';
+        const expires_to = filter.to instanceof Date
+            ? convertToISODate(filter.to.toLocaleDateString('en-GB'))
+            : '';
 
-            // console.log("going to called for => " + expires_from + "--" + expires_to);
-
-            // Backend receives: 2026-02-01 & 2026-02-19 ✅
-            fetchDscData(1, searchQuery, expires_from, expires_to);
-        }
+        // ✅ ALWAYS call fetchDscData
+        fetchDscData(1, searchQuery, expires_from, expires_to);
     };
+
 
 
 
