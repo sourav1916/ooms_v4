@@ -5,276 +5,295 @@ import debounce from 'lodash.debounce';
 import get from 'lodash.get';
 
 export default function SearchableSelect({
-  // Search endpoint (used when search term length >= minChars)
   endpoint,
-  // Optional list endpoint for initial options (no search param)
   listEndpoint,
-  // Query params for list endpoint (e.g., { limit: 20 })
   initialParams = {},
-  // Function to extract data from API response
   dataExtractor,
-  // Mapping for display fields: { primary: 'path', secondary: 'path' }
   labelMapping,
-  // Key to use as the selected value
   valueKey,
   placeholder = 'Search...',
   onSelect,
-  // Query parameter key for search endpoint (e.g., 'q', 'search')
-  search = 'q',
-  // Extra query params for search endpoint
+  searchParam = 'search',
   queryParams = {},
-  // Mock data array (used when useMock=true or in development with mockData)
   mockData = [],
-  // Force mock mode (bypasses API calls)
   useMock = false,
   debounceMs = 300,
   minChars = 2,
-  // Custom filter function for mock data (receives item and search term)
   mockFilter,
-  // Custom render function for each suggestion
   renderItem,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [initialList, setInitialList] = useState([]);
-  const [loading, setLoading] = useState(false);        // for search
+  const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
-  const [error, setError] = useState(null);             // for search
+  const [error, setError] = useState(null);
   const [initialError, setInitialError] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
 
   const abortControllerRef = useRef(null);
 
-  // Stable references for dynamic objects
+  // ---------- REFS ----------
+  const endpointRef = useRef(endpoint);
+  const listEndpointRef = useRef(listEndpoint);
+  const searchParamRef = useRef(searchParam);
   const queryParamsRef = useRef(queryParams);
-  useEffect(() => {
-    queryParamsRef.current = queryParams;
-  }, [queryParams]);
-
   const initialParamsRef = useRef(initialParams);
+  const mockDataRef = useRef(mockData);
+  const minCharsRef = useRef(minChars);
+  const filterFnRef = useRef(mockFilter);
+  const extractDataRef = useRef(dataExtractor);
+  const useMockRef = useRef(useMock);
+  const labelMappingRef = useRef(labelMapping);
+  const valueKeyRef = useRef(valueKey);
+  const onSelectRef = useRef(onSelect);
+
   useEffect(() => {
+    endpointRef.current = endpoint;
+    listEndpointRef.current = listEndpoint;
+    searchParamRef.current = searchParam;
+    queryParamsRef.current = queryParams;
     initialParamsRef.current = initialParams;
-  }, [initialParams]);
+    mockDataRef.current = mockData;
+    minCharsRef.current = minChars;
+    filterFnRef.current = mockFilter;
+    extractDataRef.current = dataExtractor;
+    useMockRef.current = useMock;
+    labelMappingRef.current = labelMapping;
+    valueKeyRef.current = valueKey;
+    onSelectRef.current = onSelect;
+  }, [
+    endpoint,
+    listEndpoint,
+    searchParam,
+    queryParams,
+    initialParams,
+    mockData,
+    minChars,
+    mockFilter,
+    dataExtractor,
+    useMock,
+    labelMapping,
+    valueKey,
+    onSelect,
+  ]);
 
-  // Helper to get nested value
-  const getValue = (obj, path) => get(obj, path, '');
+  // ---------- HELPERS ----------
+  const getValue = (obj, path) => (path ? get(obj, path, '') : obj);
 
-  // ---------- Default display when labelMapping is missing ----------
+  const buildApiUrl = (endpoint) => {
+    const base = API_BASE_URL.endsWith('/')
+      ? API_BASE_URL
+      : `${API_BASE_URL}/`;
+
+    const cleanEndpoint = endpoint.startsWith('/')
+      ? endpoint.slice(1)
+      : endpoint;
+
+    return new URL(cleanEndpoint, base);
+  };
+
+  const defaultDataExtractor = (response) => {
+    if (Array.isArray(response)) return response;
+    if (response?.data && Array.isArray(response.data)) return response.data;
+    if (response?.results && Array.isArray(response.results)) return response.results;
+    if (response?.success && response?.data) return response.data;
+    return [];
+  };
+
   const getDisplayPrimary = (item) => {
-    if (labelMapping?.primary) return getValue(item, labelMapping.primary);
-    // Try common fields
-    if (valueKey) {
-      const val = getValue(item, valueKey);
-      if (val) return String(val);
+    const map = labelMappingRef.current;
+    if (map?.primary) {
+      return typeof map.primary === 'function'
+        ? map.primary(item)
+        : getValue(item, map.primary);
     }
-    if (item.name) return item.name;
-    if (item.label) return item.label;
-    if (item.title) return item.title;
-    // Fallback: stringify (limit length)
-    return JSON.stringify(item).substring(0, 50);
+    if (valueKeyRef.current) return String(getValue(item, valueKeyRef.current));
+    return item?.name || item?.label || item?.title || '';
   };
 
   const getDisplaySecondary = (item) => {
-    if (labelMapping?.secondary) return getValue(item, labelMapping.secondary);
-    return null; // no default secondary
+    const map = labelMappingRef.current;
+    if (!map?.secondary) return null;
+    return typeof map.secondary === 'function'
+      ? map.secondary(item)
+      : getValue(item, map.secondary);
   };
 
-  // ---------- Default mock filter ----------
-  const defaultMockFilter = (item, term) => {
-    const primary = String(getDisplayPrimary(item)).toLowerCase();
-    if (primary.includes(term)) return true;
-    const secondary = getDisplaySecondary(item);
-    if (secondary && String(secondary).toLowerCase().includes(term)) return true;
-    // If no match, fallback to searching in the whole item (as string)
-    return JSON.stringify(item).toLowerCase().includes(term);
-  };
-  const filterFn = mockFilter || defaultMockFilter;
-
-  // ---------- Default data extractor ----------
-  const defaultDataExtractor = (response) => {
-    if (Array.isArray(response)) return response;
-    if (response?.suggestions && Array.isArray(response.suggestions)) return response.suggestions;
-    if (response?.data && Array.isArray(response.data)) return response.data;
-    if (response?.results && Array.isArray(response.results)) return response.results;
-    return [];
-  };
-  const extractData = dataExtractor || defaultDataExtractor;
-
-  // ---------- Fetch initial list (if listEndpoint provided and not in mock mode) ----------
+  // ---------- INITIAL LIST ----------
   useEffect(() => {
-    if (useMock || (process.env.NODE_ENV === 'development' && mockData.length > 0)) {
-      return; // skip fetch in mock mode
-    }
-    if (!listEndpoint) return;
+    if (!listEndpointRef.current || useMockRef.current) return;
 
-    const fetchInitialList = async () => {
+    const fetchInitial = async () => {
       setInitialLoading(true);
-      setInitialError(null);
       try {
-        const url = new URL(listEndpoint, API_BASE_URL);
-        Object.entries(initialParamsRef.current).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            url.searchParams.append(key, String(value));
-          }
+        const url = buildApiUrl(listEndpointRef.current);
+        Object.entries(initialParamsRef.current).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) url.searchParams.append(k, v);
         });
 
-        const headers = getHeaders();
-        if (!headers) {
-          setInitialError('Authentication headers missing');
-          setInitialLoading(false);
-          return;
-        }
-
-        const response = await fetch(url.toString(), { headers });
-        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-        const json = await response.json();
-        const items = extractData(json);
+        const res = await fetch(url.toString(), { headers: getHeaders() });
+        const json = await res.json();
+        const items = (extractDataRef.current || defaultDataExtractor)(json);
         setInitialList(items);
-      } catch (err) {
-        setInitialError(err.message || 'Failed to load initial list');
+      } catch (e) {
+        setInitialError(e.message);
       } finally {
         setInitialLoading(false);
       }
     };
 
-    fetchInitialList();
-  }, [listEndpoint, initialParamsRef, extractData, useMock, mockData]);
+    fetchInitial();
+  }, []);
 
-  // ---------- Debounced search (for when searchTerm >= minChars) ----------
+  // ---------- SEARCH ----------
   const debouncedSearch = useCallback(
     debounce(async (term) => {
-      // If mock mode, filter mockData
-      if (useMock || (process.env.NODE_ENV === 'development' && mockData.length > 0)) {
-        const filtered = mockData.filter((item) => filterFn(item, term.toLowerCase()));
-        setSearchResults(filtered);
-        setLoading(false);
-        setError(null);
-        setIsOpen(true);
-        return;
-      }
-
-      // If term is too short, clear search results
-      if (term.length < minChars) {
+      if (term.length < minCharsRef.current) {
         setSearchResults([]);
         return;
       }
 
-      // Cancel previous request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      if (!endpointRef.current) return;
+
+      abortControllerRef.current?.abort();
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
       setLoading(true);
-      setError(null);
-
       try {
-        const url = new URL(endpoint, API_BASE_URL);
-        url.searchParams.append(search, term);
-        Object.entries(queryParamsRef.current).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            url.searchParams.append(key, String(value));
-          }
+        const url = buildApiUrl(endpointRef.current);
+        url.searchParams.append(searchParamRef.current, term);
+
+        Object.entries(queryParamsRef.current).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) url.searchParams.append(k, v);
         });
 
-        const headers = getHeaders();
-        if (!headers) {
-          setError('Authentication headers missing');
-          setLoading(false);
-          return;
-        }
+        console.log('🔍 FINAL SEARCH URL:', url.toString());
 
-        const response = await fetch(url.toString(), {
+        const res = await fetch(url.toString(), {
+          headers: getHeaders(),
           signal: controller.signal,
-          headers,
         });
 
-        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-        const json = await response.json();
-        const items = extractData(json);
+        const json = await res.json();
+        const items = (extractDataRef.current || defaultDataExtractor)(json);
         setSearchResults(items);
         setIsOpen(true);
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          setError(err.message || 'Failed to fetch');
-        }
+      } catch (e) {
+        if (e.name !== 'AbortError') setError(e.message);
       } finally {
         setLoading(false);
       }
     }, debounceMs),
-    [endpoint, search, useMock, mockData, minChars, filterFn, extractData]
+    [debounceMs]
   );
 
   useEffect(() => {
     debouncedSearch(searchTerm);
-    return () => {
-      debouncedSearch.cancel();
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
+    return () => debouncedSearch.cancel();
   }, [searchTerm, debouncedSearch]);
 
-  // Determine which list to show
-  const showInitial = searchTerm.length < minChars;
-  const displayList = showInitial ? initialList : searchResults;
-  const isLoading = showInitial ? initialLoading : loading;
-  const hasError = showInitial ? initialError : error;
+  // ---------- UI (UPDATED WITH ARRAY CHECK) ----------
+const list = searchTerm.length < minChars ? initialList : searchResults;
+// Ensure list is always an array
+const safeList = Array.isArray(list) ? list : [];
 
-  const handleSelect = (item) => {
-    const value = valueKey ? getValue(item, valueKey) : item;
-    onSelect?.(item, value);
-    setSearchTerm('');
-    setIsOpen(false);
-  };
+const isLoading = searchTerm.length < minChars ? initialLoading : loading;
+const hasError = searchTerm.length < minChars ? initialError : error;
 
-  const renderSuggestion = (item) => {
-    if (renderItem) return renderItem(item);
+const handleSelect = (item) => {
+  onSelectRef.current?.(item, getValue(item, valueKeyRef.current));
+  setSearchTerm('');
+  setIsOpen(false);
+};
 
-    const primary = getDisplayPrimary(item);
-    const secondary = getDisplaySecondary(item);
+const renderSuggestion = (item) => {
+  if (renderItem) return renderItem(item);
 
-    return (
-      <div className="px-4 py-2 hover:bg-gray-100 cursor-pointer">
-        <div className="font-medium">{primary}</div>
-        {secondary && <div className="text-sm text-gray-600">{secondary}</div>}
-      </div>
-    );
-  };
+  const name = getDisplayPrimary(item);
+  const phone = item?.mobile || item?.phone || '';
+  const email = item?.email || '';
 
   return (
-    <div className="relative w-full">
+    <div className="flex items-center gap-2 text-sm">
+      <span className="font-medium text-gray-900">{name}</span>
+      {phone && (
+        <>
+          <span className="text-gray-400">•</span>
+          <span className="text-gray-600">{phone}</span>
+        </>
+      )}
+      {email && (
+        <>
+          <span className="text-gray-400">•</span>
+          <span className="text-gray-500 text-xs">{email}</span>
+        </>
+      )}
+    </div>
+  );
+};
+
+return (
+  <div className="relative w-full">
+    <div className="relative">
       <input
         type="text"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         placeholder={placeholder}
-        className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
+        className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
         onFocus={() => {
-          if (displayList.length > 0 || isLoading) setIsOpen(true);
+          if (safeList.length > 0 || isLoading) setIsOpen(true);
         }}
         onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+        autoComplete="off"
       />
-      {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
-          {isLoading && <div className="px-4 py-2 text-gray-500">Loading...</div>}
-          {hasError && <div className="px-4 py-2 text-red-500">Error: {hasError}</div>}
-          {!isLoading && !hasError && displayList.length === 0 && (
-            <div className="px-4 py-2 text-gray-500">
-              {showInitial ? 'No options available' : 'No results found'}
-            </div>
-          )}
-          {displayList.map((item, index) => (
-            <div
-              key={valueKey ? getValue(item, valueKey) : index}
-              onMouseDown={() => handleSelect(item)}
-            >
-              {renderSuggestion(item)}
-            </div>
-          ))}
-        </div>
+      {searchTerm && (
+        <button
+          onClick={() => setSearchTerm('')}
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       )}
     </div>
-  );
-}
+
+    {isOpen && (
+      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        {isLoading && (
+          <div className="flex items-center justify-center px-4 py-3">
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-sm text-gray-500">Loading...</span>
+            </div>
+          </div>
+        )}
+        
+        {hasError && (
+          <div className="px-4 py-3 text-sm text-red-500">
+            Error: {hasError}
+          </div>
+        )}
+
+        {!isLoading && !hasError && safeList.length === 0 && searchTerm.length >= minChars && (
+          <div className="px-4 py-3 text-sm text-gray-500">
+            No Results Found
+          </div>
+        )}
+
+        {!isLoading && !hasError && safeList.map((item, index) => (
+          <div
+            key={valueKeyRef.current ? getValue(item, valueKeyRef.current) : index}
+            className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-150"
+            onMouseDown={() => handleSelect(item)}
+          >
+            {renderSuggestion(item)}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);}
