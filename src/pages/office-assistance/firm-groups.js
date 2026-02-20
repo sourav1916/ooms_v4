@@ -17,6 +17,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
 import DateFilter from '../../components/DateFilter';
+import getHeaders from "../../utils/get-headers";  // Add this import at top
+import axios from 'axios';  // Add this import at top if not exists
 
 const FirmGroups = () => {
     // Header/Sidebar states
@@ -41,81 +43,6 @@ const FirmGroups = () => {
         remark: ''
     });
 
-    // Mock Firm Groups data with dates
-    const mockGroupsData = [
-        {
-            group_id: 'group001',
-            name: 'GST Clients',
-            count: 25,
-            status: 1,
-            remark: 'Clients requiring GST filing services',
-            created_date: '2024-01-15',
-            updated_date: '2024-01-20'
-        },
-        {
-            group_id: 'group002',
-            name: 'Income Tax Clients',
-            count: 18,
-            status: 1,
-            remark: 'Individual and corporate tax clients',
-            created_date: '2024-01-10',
-            updated_date: '2024-01-18'
-        },
-        {
-            group_id: 'group003',
-            name: 'Corporate Clients',
-            count: 12,
-            status: 1,
-            remark: 'Registered companies and corporations',
-            created_date: '2024-01-05',
-            updated_date: '2024-01-12'
-        },
-        {
-            group_id: 'group004',
-            name: 'Individual Clients',
-            count: 35,
-            status: 0,
-            remark: 'Individual taxpayers',
-            created_date: '2024-01-20',
-            updated_date: '2024-01-25'
-        },
-        {
-            group_id: 'group005',
-            name: 'Startup Clients',
-            count: 8,
-            status: 1,
-            remark: 'Newly incorporated startups',
-            created_date: '2024-01-18',
-            updated_date: '2024-01-22'
-        },
-        {
-            group_id: 'group006',
-            name: 'NGO Clients',
-            count: 5,
-            status: 1,
-            remark: 'Non-profit organizations',
-            created_date: '2024-01-12',
-            updated_date: '2024-01-19'
-        },
-        {
-            group_id: 'group007',
-            name: 'Manufacturing Clients',
-            count: 15,
-            status: 1,
-            remark: 'Manufacturing sector companies',
-            created_date: '2024-01-08',
-            updated_date: '2024-01-15'
-        },
-        {
-            group_id: 'group008',
-            name: 'Service Sector Clients',
-            count: 22,
-            status: 1,
-            remark: 'Service industry businesses',
-            created_date: '2024-01-25',
-            updated_date: '2024-01-30'
-        }
-    ];
 
     // Persist sidebar minimized state
     useEffect(() => {
@@ -136,25 +63,70 @@ const FirmGroups = () => {
 
     // Initial data load
     useEffect(() => {
-        fetchGroupsData();
+        fetchGroupsData(searchTerm, 1, 10);  // Add searchTerm param
     }, []);
 
-    // Filter groups when search term or date range changes
+
+    // Add this new useEffect after existing ones
     useEffect(() => {
-        filterGroups();
-    }, [searchTerm, dateRange, groups]);
+        const timer = setTimeout(() => {
+            fetchGroupsData(searchTerm, 1, 10);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
-    // Simulate API call to fetch groups data
-    const fetchGroupsData = async () => {
+
+
+    const BASE_URL = 'https://api.ooms.in/api/v1';  // Add this near top
+
+    // REAL API - Replace the mock function
+    const fetchGroupsData = async (search = '', page = 1, limit = 10) => {
         setLoading(true);
+        try {
+            const headers = getHeaders();
+            const params = new URLSearchParams({
+                page: page.toString(),
+                limit: limit.toString()
+            });
 
-        // Simulate API delay
-        setTimeout(() => {
-            setGroups(mockGroupsData);
-            setFilteredGroups(mockGroupsData);
+            if (search) params.append('search', search);
+
+            const response = await axios.get(
+                `${BASE_URL}/group/list?${params.toString()}`,
+                { headers }
+            );
+
+            if (response.data.success) {
+                // Map backend → frontend fields
+                const mapGroupToUI = (item) => ({
+                    group_id: item.group_id,
+                    groupid: item.group_id,        // Frontend uses both
+                    name: item.name,
+                    count: item.count,
+                    status: item.status,
+                    remark: item.remark || '',
+                    created_date: item.created_date?.split('T')[0] || item.created_date || '',
+                    createddate: item.created_date?.split('T')[0] || item.created_date || '',
+                    updated_date: item.updated_date?.split('T')[0] || item.updated_date || '',
+                    updateddate: item.updated_date?.split('T')[0] || item.updated_date || ''
+                });
+
+                setGroups(response.data.data.map(mapGroupToUI));
+                setFilteredGroups(response.data.data.map(mapGroupToUI));
+            } else {
+                console.error('API Error:', response.data.message);
+                setGroups([]);
+                setFilteredGroups([]);
+            }
+        } catch (error) {
+            console.error('Fetch Error:', error);
+            setGroups([]);
+            setFilteredGroups([]);
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
+
 
     // Filter groups based on search term and date range
     const filterGroups = () => {
@@ -173,7 +145,7 @@ const FirmGroups = () => {
             const [from, to] = dateRange.split(' - ');
             const fromDate = new Date(from.split('/').reverse().join('-'));
             const toDate = new Date(to.split('/').reverse().join('-'));
-            
+
             filtered = filtered.filter(group => {
                 const groupDate = new Date(group.created_date);
                 return groupDate >= fromDate && groupDate <= toDate;
@@ -187,7 +159,7 @@ const FirmGroups = () => {
     const handleCreateSubmit = (e) => {
         e.preventDefault();
         console.log('Create form data:', createForm);
-        
+
         // Add new group to the list
         const newGroup = {
             group_id: `group${String(groups.length + 1).padStart(3, '0')}`,
@@ -198,9 +170,9 @@ const FirmGroups = () => {
             created_date: new Date().toISOString().split('T')[0],
             updated_date: new Date().toISOString().split('T')[0]
         };
-        
+
         setGroups(prev => [newGroup, ...prev]);
-        
+
         // Close modal and reset form
         setShowCreateModal(false);
         setCreateForm({
@@ -212,7 +184,7 @@ const FirmGroups = () => {
     // Handle status change
     const handleStatusChange = (group) => {
         console.log('Changing status for group:', group.group_id);
-        
+
         // Update status in the list
         setGroups(prev => prev.map(g =>
             g.group_id === group.group_id
@@ -460,18 +432,18 @@ const FirmGroups = () => {
                                             className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all text-sm"
                                         />
                                     </div>
-                                    
+
                                     {/* Date Filter */}
                                     <div className="flex items-center gap-2">
                                         <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-300 rounded-lg bg-white min-w-[140px]">
                                             <FiCalendar className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                                            <DateFilter 
+                                            <DateFilter
                                                 onChange={handleDateFilterChange}
                                                 className="text-sm w-full bg-transparent border-none outline-none"
                                             />
                                         </div>
                                     </div>
-                                    
+
                                     {/* Results Count */}
                                     <div className="text-sm text-gray-600 whitespace-nowrap sm:ml-auto">
                                         <span className="font-semibold">{filteredGroups.length}</span> of <span className="font-semibold">{groups.length}</span>
@@ -530,8 +502,8 @@ const FirmGroups = () => {
                                                     {groups.length === 0 ? 'No firm groups available' : 'No matching groups found'}
                                                 </p>
                                                 <p className="text-gray-400 text-sm mb-4">
-                                                    {groups.length === 0 
-                                                        ? 'Get started by creating your first firm group' 
+                                                    {groups.length === 0
+                                                        ? 'Get started by creating your first firm group'
                                                         : 'Try adjusting your search or filter criteria'}
                                                 </p>
                                                 <motion.button
@@ -593,28 +565,28 @@ const FirmGroups = () => {
                                                         </div>
 
                                                         {/* Status Column */}
-                                                     {/* Status Column */}
-<div className="col-span-2 flex items-center justify-center">
-    <button
-        onClick={() => handleStatusChange(group)}
-        className="relative inline-flex items-center cursor-pointer focus:outline-none"
-    >
-        <input
-            type="checkbox"
-            checked={group.status === 1}
-            readOnly
-            className="sr-only"
-        />
-        <div className={`w-14 h-7 rounded-full transition-colors duration-300 ease-in-out ${group.status === 1 ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-gray-300 to-gray-400'}`}>
-            <div className={`absolute top-0.5 ${group.status === 1 ? 'left-7' : 'left-0.5'} bg-white rounded-full h-6 w-6 transition-all duration-300 ease-in-out border border-gray-300 shadow-sm`}></div>
-        </div>
-        {group.status === 1 ? (
-            <span className="absolute left-1.5 top-1 text-xs text-white z-10 font-medium">ON</span>
-        ) : (
-            <span className="absolute right-1.5 top-1 text-xs text-gray-600 z-10 font-medium">OFF</span>
-        )}
-    </button>
-</div>
+                                                        {/* Status Column */}
+                                                        <div className="col-span-2 flex items-center justify-center">
+                                                            <button
+                                                                onClick={() => handleStatusChange(group)}
+                                                                className="relative inline-flex items-center cursor-pointer focus:outline-none"
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={group.status === 1}
+                                                                    readOnly
+                                                                    className="sr-only"
+                                                                />
+                                                                <div className={`w-14 h-7 rounded-full transition-colors duration-300 ease-in-out ${group.status === 1 ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gradient-to-r from-gray-300 to-gray-400'}`}>
+                                                                    <div className={`absolute top-0.5 ${group.status === 1 ? 'left-7' : 'left-0.5'} bg-white rounded-full h-6 w-6 transition-all duration-300 ease-in-out border border-gray-300 shadow-sm`}></div>
+                                                                </div>
+                                                                {group.status === 1 ? (
+                                                                    <span className="absolute left-1.5 top-1 text-xs text-white z-10 font-medium">ON</span>
+                                                                ) : (
+                                                                    <span className="absolute right-1.5 top-1 text-xs text-gray-600 z-10 font-medium">OFF</span>
+                                                                )}
+                                                            </button>
+                                                        </div>
 
                                                         {/* Actions Column */}
                                                         <div className="col-span-2 flex items-center justify-center">
