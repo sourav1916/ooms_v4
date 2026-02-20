@@ -27,6 +27,7 @@ import {
     FiUsers,
     FiExternalLink,
     FiEye,
+    FiTrash2
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
@@ -83,9 +84,8 @@ const ViewDSCRegister = () => {
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [selectedDetailDsc, setSelectedDetailDsc] = useState(null);
 
-
-
-
+    const [deleteConfirmModal, setDeleteConfirmModal] = useState(false);
+    const [dscToDelete, setDscToDelete] = useState(null);
 
     // Form states
     const [createForm, setCreateForm] = useState({
@@ -313,6 +313,42 @@ const ViewDSCRegister = () => {
         }
     };
 
+    const handleDeleteSubmit = async () => {
+        if (!dscToDelete || loading) return;
+
+        setLoading(true);
+        try {
+            const token = localStorage.getItem("user_token");
+            const username = localStorage.getItem("user_username");
+            const branch = localStorage.getItem("branch_id");
+
+            const response = await fetch(`${BASE_URL}/assistance/dsc/delete`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'token': token,
+                    'username': username,
+                    'branch': branch,
+                },
+                body: JSON.stringify({ dsc_id: dscToDelete })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Refresh table data
+                fetchDscData(1, searchQuery);
+                setDeleteConfirmModal(false);
+                setDscToDelete(null);
+            } else {
+                console.error('Delete failed:', data.message);
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
     // Handle search
@@ -338,6 +374,10 @@ const ViewDSCRegister = () => {
         setShowDetailsModal(true);
     };
 
+    const handleDeleteClick = (dscId) => {
+        setDscToDelete(dscId);
+        setDeleteConfirmModal(true);
+    };
 
     useEffect(() => {
         setTypeLoading(true);
@@ -1240,6 +1280,21 @@ const ViewDSCRegister = () => {
                                                                                     <div className="font-medium">Edit DSC</div>
                                                                                 </div>
                                                                             </button>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setActiveRowDropdown(null);
+                                                                                    handleDeleteClick(dsc.dsc_id);  // ← Pass dsc_id
+                                                                                }}
+                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-red-50 transition-colors duration-150 group"
+                                                                            >
+                                                                                <div className="p-1 bg-red-50 rounded mr-2 group-hover:bg-red-100 transition-colors">
+                                                                                    <FiTrash2 className="w-3 h-3 text-red-500" />  {/* Add FiTrash2 to imports */}
+                                                                                </div>
+                                                                                <div className="text-left">
+                                                                                    <div className="font-medium text-red-700">Delete DSC</div>
+                                                                                </div>
+                                                                            </button>
+
                                                                             <a
                                                                                 href={profileLink}
                                                                                 onClick={(e) => {
@@ -1961,6 +2016,55 @@ const ViewDSCRegister = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {deleteConfirmModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setDeleteConfirmModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.9 }}
+                            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 mx-auto bg-red-100 rounded-2xl flex items-center justify-center mb-4">
+                                    <FiTrash2 className="w-8 h-8 text-red-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 mb-2">Delete DSC?</h3>
+                                <p className="text-slate-600 mb-6">
+                                    This action cannot be undone. DSC ID <strong>{dscToDelete}</strong> will be permanently deleted.
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3 justify-end">
+                                <motion.button
+                                    onClick={() => setDeleteConfirmModal(false)}
+                                    className="flex-1 px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                                    whileHover={{ scale: 1.02 }}
+                                >
+                                    Cancel
+                                </motion.button>
+                                <motion.button
+                                    onClick={handleDeleteSubmit}
+                                    className="flex-1 px-4 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:shadow-lg rounded-lg transition-all"
+                                    whileHover={{ scale: 1.02 }}
+                                >
+                                    Delete
+                                </motion.button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
         </div>
     );
 };
