@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     FiSearch,
     FiPlus,
@@ -8,7 +8,6 @@ import {
     FiMail,
     FiMessageSquare,
     FiUser,
-    FiPhone,
     FiMail as FiEmailIcon,
     FiCalendar,
     FiClock,
@@ -16,11 +15,7 @@ import {
     FiChevronRight,
     FiChevronDown,
     FiCheck,
-    FiInfo,
-    FiDollarSign,
-    FiTrendingUp,
     FiCreditCard,
-    FiFilter,
     FiChevronLeft,
     FiChevronRight as FiChevronRightIcon,
     FiChevronUp,
@@ -65,29 +60,18 @@ const ViewDSCRegister = () => {
     const [companies, setCompanies] = useState([]);
     const [typeLoading, setTypeLoading] = useState(false);
     const [companyLoading, setCompanyLoading] = useState(false);
-
-
-    // State for dropdown menus
     const [showAddDropdown, setShowAddDropdown] = useState(false);
     const [activeRowDropdown, setActiveRowDropdown] = useState(null);
     const [exportModal, setExportModal] = useState({ open: false, type: '', data: null });
-
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [selectedEmail, setSelectedEmail] = useState('');
-
     const [isWhatsappModalOpen, setWhatsappModalOpen] = useState(false);
     const [selectedWhatsapp, setSelectedWhatsapp] = useState('');
-
     const [meta, setMeta] = useState({ total_pages: 0, current_page: 1, total: 0 });
-
-    // Add these states
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [selectedDetailDsc, setSelectedDetailDsc] = useState(null);
-
     const [deleteConfirmModal, setDeleteConfirmModal] = useState(false);
     const [dscToDelete, setDscToDelete] = useState(null);
-
-    // Form states
     const [createForm, setCreateForm] = useState({
         username: '',
         company: '',
@@ -113,13 +97,10 @@ const ViewDSCRegister = () => {
     const [itemsPerPage] = useState(10);
     const [showAll, setShowAll] = useState(false);
 
-
-    // Persist sidebar minimized state
     useEffect(() => {
         localStorage.setItem('sidebarMinimized', JSON.stringify(isMinimized));
     }, [isMinimized]);
 
-    // Lock body scroll when mobile sidebar is open
     useEffect(() => {
         if (mobileMenuOpen) {
             document.body.style.overflow = 'hidden';
@@ -131,7 +112,6 @@ const ViewDSCRegister = () => {
         };
     }, [mobileMenuOpen]);
 
-    // Initialize with current month date range
     useEffect(() => {
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -190,7 +170,6 @@ const ViewDSCRegister = () => {
 
         } catch (error) {
             console.error('Fetch DSC types failed:', error);
-            // setError(error.message); // Use your error state
         } finally {
             setLoading(false);
         }
@@ -239,9 +218,6 @@ const ViewDSCRegister = () => {
         }
     };
 
-
-
-    // Simulate API call to fetch DSC data
     const fetchDscData = async (page = 1, search = '', expires_from = '', expires_to = '') => {
         setLoading(true);
 
@@ -258,8 +234,6 @@ const ViewDSCRegister = () => {
 
             if (expires_from) params.append('expires_from', expires_from);
             if (expires_to) params.append('expires_to', expires_to);
-            // console.log("params======>>>>> " + params);
-
 
             const url = `${BASE_URL}/assistance/dsc/list?${params.toString()}`;
             const response = await fetch(url, {
@@ -279,7 +253,6 @@ const ViewDSCRegister = () => {
             }
 
             const result = await response.json();
-            // console.log("result =>>>> "+JSON.stringify(result));
             if (result.success) {
                 setDscData(result.data.map(item => ({
                     dsc_id: item.dsc_id,
@@ -336,7 +309,6 @@ const ViewDSCRegister = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Refresh table data
                 fetchDscData(1, searchQuery);
                 setDeleteConfirmModal(false);
                 setDscToDelete(null);
@@ -350,23 +322,15 @@ const ViewDSCRegister = () => {
         }
     };
 
-
-    // Handle search
     const handleSearch = () => {
         const [from, to] = dateRange.split(' - ');
         fetchDscData(1, searchQuery);
     };
 
-    // Add this handler
     const handleViewDetails = (dsc) => {
-        // 🔧 Enrich dsc with full company & type names
         const enrichedDsc = {
             ...dsc,
-
-            // Find matching company name
             companyName: companies.find(comp => comp.value === dsc.company)?.name || dsc.company || 'N/A',
-
-            // Find matching type name  
             typeName: types.find(typeItem => typeItem.value === dsc.type)?.name || dsc.type || 'N/A'
         };
 
@@ -392,7 +356,6 @@ const ViewDSCRegister = () => {
     }, []);
 
 
-    // Handle search input change with debounce
     useEffect(() => {
         const timer = setTimeout(() => {
             const [from, to] = dateRange.split(' - ');
@@ -402,17 +365,13 @@ const ViewDSCRegister = () => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-
-    // Handle key press in search input
     const handleKeyPress = (e) => {
         if (e.key === 'Enter') {
             handleSearch();
         }
     };
 
-    // Handle date filter change
     const handleDateFilterChange = (filter) => {
-        // ✅ Handle ALL cases (including clear & custom)
         setDateRange(filter.range || '');
         setFromToDate(filter.range ? `From ${filter.range}` : '');
 
@@ -422,23 +381,16 @@ const ViewDSCRegister = () => {
             return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
         };
 
-        // ✅ Convert Date objects OR empty strings
         const expires_from = filter.from instanceof Date
             ? convertToISODate(filter.from.toLocaleDateString('en-GB'))
             : '';
         const expires_to = filter.to instanceof Date
             ? convertToISODate(filter.to.toLocaleDateString('en-GB'))
             : '';
-
-        // ✅ ALWAYS call fetchDscData
         fetchDscData(1, searchQuery, expires_from, expires_to);
     };
 
 
-
-
-
-    // Handle export
     const handleExport = (type, data = null) => {
         setExportModal({ open: true, type, data });
 
@@ -451,16 +403,13 @@ const ViewDSCRegister = () => {
     const handleEmailSubmit = (email) => {
         setSelectedEmail(email);
         setIsEmailModalOpen(false);
-        // console.log('Selected email:', email);
     };
 
     const handleWhatsappSubmit = (number) => {
         setSelectedWhatsapp(number);
         setWhatsappModalOpen(false);
-        // console.log('Selected number:', number);
     };
 
-    // Handle edit button click
     const handleEditClick = (dsc) => {
         setSelectedDsc(dsc);
 
@@ -471,14 +420,12 @@ const ViewDSCRegister = () => {
         };
         console.log("companies=>>" + companies);
 
-        // 🔧 Find EXACT matching company VALUE
         const matchingCompany = companies.find(company =>
             company.label === dsc.company ||
             company.value === dsc.company ||
             company.name === dsc.company
         )?.value || '';
 
-        // 🔧 Find EXACT matching type VALUE  
         const matchingType = types.find(typeItem =>
             typeItem.label === dsc.type ||
             typeItem.value === dsc.type ||
@@ -488,16 +435,16 @@ const ViewDSCRegister = () => {
         const newEditForm = {
             dsc_id: dsc.dsc_id,
             username: dsc.username || '',
-            company: matchingCompany,     // ✅ Now correct VALUE (e.g., 'comp_123')
+            company: matchingCompany,
             duration: (dsc.duration || 1).toString(),
             validity_start: formatSafeDate(dsc.validity_start),
             validity_end: formatSafeDate(dsc.validity_end),
             password: dsc.password || '',
-            type: matchingType           // ✅ Now correct VALUE
+            type: matchingType
         };
 
-        console.log('🔍 dsc.company:', dsc.company);           // 'onesaas'
-        console.log('🔍 matchingCompany:', matchingCompany);   // 'comp_123' 
+        console.log('🔍 dsc.company:', dsc.company);
+        console.log('🔍 matchingCompany:', matchingCompany);
         console.log('🔍 companies sample:', companies.slice(0, 2));
 
         setEditForm(newEditForm);
@@ -517,13 +464,10 @@ const ViewDSCRegister = () => {
         const branch = localStorage.getItem("branch_id");
 
         try {
-            // Convert DD/MM/YYYY → YYYY-MM-DD
             const validity_start = moment(createForm.validity_start, "DD/MM/YYYY").format("YYYY-MM-DD");
             const validity_end = moment(createForm.validity_end, "DD/MM/YYYY").format("YYYY-MM-DD");
 
-            // Extract year from validity_start (example: 2026-04-01 → 2026)
             const year = moment(validity_start).year();
-
             const payload = {
                 username: createForm.username,
                 company: createForm.company,
@@ -545,12 +489,8 @@ const ViewDSCRegister = () => {
                 },
                 body: JSON.stringify(payload),
             });
-
             const data = await response.json();
-
             if (response.ok && data.success) {
-                // console.log('DSC created:', data);
-
                 setShowCreateModal(false);
 
                 setCreateForm({
@@ -575,8 +515,6 @@ const ViewDSCRegister = () => {
         }
     };
 
-
-    // Handle Edit Form Submit
     const handleEditSubmit = async (e) => {
         e.preventDefault();
 
@@ -591,7 +529,6 @@ const ViewDSCRegister = () => {
         const username = localStorage.getItem("user_username");
         const branch = localStorage.getItem("branch_id");
 
-        // Transform DD/MM/YYYY → YYYY-MM-DD for backend
         const transformDate = (dateStr) => {
             if (!dateStr) return '';
             const [day, month, year] = dateStr.split('/');
@@ -626,7 +563,6 @@ const ViewDSCRegister = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Success handling
             } else {
                 console.error('❌ Backend error:', data.message || data);
                 return;
@@ -645,9 +581,6 @@ const ViewDSCRegister = () => {
         fetchDscData(1, searchQuery);
     };
 
-
-
-    // Calculate expire date based on issue date and duration
     const calculatevalidity_end = (validity_start, duration) => {
         if (!validity_start) return '';
         const issueMoment = moment(validity_start, 'DD/MM/YYYY');
@@ -655,7 +588,6 @@ const ViewDSCRegister = () => {
         return expireMoment.format('DD/MM/YYYY');
     };
 
-    // Handle create form changes
     const handleCreateChange = (field, value) => {
         const newForm = { ...createForm, [field]: value };
 
@@ -669,24 +601,21 @@ const ViewDSCRegister = () => {
         setCreateForm(newForm);
     };
 
-    // Handle edit form changes
     const handleEditChange = (field, value) => {
         const newForm = { ...editForm, [field]: value };
 
-        // Always recalculate validity_end when validity_start OR duration changes
         if (field === 'validity_start' || field === 'duration') {
             if (newForm.validity_start) {
                 newForm.validity_end = calculatevalidity_end(newForm.validity_start, parseInt(newForm.duration || 1));
             }
         }
 
-        // Optional: Recalculate duration when both dates change manually
         if (field === 'validity_end' && newForm.validity_start && newForm.validity_end) {
             const issue = moment(newForm.validity_start, 'DD/MM/YYYY');
             const expire = moment(newForm.validity_end, 'DD/MM/YYYY');
             if (issue.isValid() && expire.isValid()) {
                 const yearsDiff = expire.diff(issue, 'years');
-                newForm.duration = Math.max(1, yearsDiff).toString(); // Minimum 1 year
+                newForm.duration = Math.max(1, yearsDiff).toString();
             }
         }
 
@@ -694,7 +623,6 @@ const ViewDSCRegister = () => {
     };
 
 
-    // Get user profile link based on user type
     const getUserProfileLink = (user) => {
         const baseUrls = {
             user: '/view-client-profile',
@@ -705,21 +633,18 @@ const ViewDSCRegister = () => {
         return `${baseUrls[user.user_type]}?username=${user.username}`;
     };
 
-    // Calculate days left until expiration
     const getDaysLeft = (validity_end) => {
         const targetDate = moment(validity_end, "YYYY-MM-DD");
         const today = moment();
         return targetDate.diff(today, 'days');
     };
 
-    // Get status badge class
     const getStatusBadgeClass = (status) => {
         return status === 1
             ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
             : 'bg-rose-100 text-rose-700 border border-rose-200';
     };
 
-    // Get urgency badge class
     const getUrgencyBadgeClass = (daysLeft) => {
         if (daysLeft < 0) return 'bg-rose-100 text-rose-700 border border-rose-200';
         if (daysLeft <= 30) return 'bg-amber-100 text-amber-700 border border-amber-200';
@@ -727,18 +652,15 @@ const ViewDSCRegister = () => {
         return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
     };
 
-    // Format date
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB');
     };
 
-    // Toggle row dropdown
     const toggleRowDropdown = (dscId) => {
         setActiveRowDropdown(activeRowDropdown === dscId ? null : dscId);
     };
 
-    // Close all dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (!event.target.closest('.dropdown-container')) {
@@ -753,29 +675,22 @@ const ViewDSCRegister = () => {
         };
     }, []);
 
-    // // Derived data
     const userOptions = users.map(user => ({
         value: user.username,
         label: `${user.name} • ${user.user_type} • ${user.mobile}`
     }));
 
-    // Get current items based on pagination
     const indexOfLastItem = showAll ? dscData.length : currentPage * itemsPerPage;
     const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
     const currentItems = dscData.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(dscData.length / itemsPerPage);
 
-    // Handle user profile click
     const handleUserProfileClick = (e, dsc) => {
         e.preventDefault();
         const profileLink = getUserProfileLink(dsc);
-        // console.log('Navigating to profile:', profileLink);
-        // You can use router.push(profileLink) if using Next.js router
-        // or window.location.href = profileLink for standard navigation
         window.open(profileLink, '_blank');
     };
 
-    // Skeleton loader component
     const SkeletonRow = () => (
         <tr className="border-b border-slate-100 animate-pulse">
             <td className="p-3 text-center">
@@ -1201,23 +1116,7 @@ const ViewDSCRegister = () => {
                                                             </div>
                                                         </motion.a>
                                                     </td>
-                                                    {/* <td className="text-center p-3 align-middle">
-                                                        <div className="space-y-1.5">
-                                                            <div className="flex items-center justify-center gap-1 text-slate-700 text-xs">
-                                                                <FiPhone className="w-3 h-3 text-slate-500" />
-                                                                {dsc.mobile}
-                                                            </div>
-                                                            <div className="flex items-center justify-center gap-1 text-slate-600 text-[10px]">
-                                                                <FiEmailIcon className="w-3 h-3 text-slate-500" />
-                                                                {dsc.email}
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="text-center p-3 align-middle">
-                                                        <span className="inline-flex items-center justify-center bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded text-xs border border-slate-300/50 shadow-xs max-w-[120px] truncate">
-                                                            {dsc.company}
-                                                        </span>
-                                                    </td> */}
+                                                    
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="space-y-2">
                                                             <span className="inline-flex items-center justify-center bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 font-bold px-3 py-1.5 rounded text-xs min-w-[120px] shadow-xs">

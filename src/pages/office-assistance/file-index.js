@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     FiSearch,
     FiPlus,
@@ -15,18 +15,12 @@ import {
     FiChevronRight,
     FiChevronDown,
     FiCheck,
-    FiInfo,
     FiDollarSign,
-    FiTrendingUp,
-    FiCreditCard,
-    FiFilter,
     FiChevronLeft,
     FiChevronRight as FiChevronRightIcon,
     FiChevronUp,
-    FiUsers,
     FiExternalLink,
     FiCalendar,
-    FiClock,
     FiEye,
     FiTrash2
 } from 'react-icons/fi';
@@ -40,7 +34,6 @@ import DateFilter from '../../components/DateFilter';
 import moment from 'moment';
 import getHeaders from "../../utils/get-headers";
 import axios from 'axios';
-import { header } from 'framer-motion/client';
 import SearchableSelect from '../../components/SearchableSelect';
 
 const ViewFileIndex = () => {
@@ -50,7 +43,6 @@ const ViewFileIndex = () => {
         const saved = localStorage.getItem('sidebarMinimized');
         return saved ? JSON.parse(saved) : false;
     });
-
     // Base Api Url
     const BASE_URL = 'https://api.ooms.in/api/v1';
 
@@ -64,27 +56,18 @@ const ViewFileIndex = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [users, setUsers] = useState([]);
-    const [userLoading, setUserLoading] = useState(false);
-
-    // State for dropdown menus
     const [showAddDropdown, setShowAddDropdown] = useState(false);
     const [activeRowDropdown, setActiveRowDropdown] = useState(null);
     const [exportModal, setExportModal] = useState({ open: false, type: '', data: null });
-
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [selectedEmail, setSelectedEmail] = useState('');
-
     const [isWhatsappModalOpen, setWhatsappModalOpen] = useState(false);
     const [selectedWhatsapp, setSelectedWhatsapp] = useState('');
-
     const [meta, setMeta] = useState({ total_pages: 0, current_page: 1, total: 0 });
     const [showViewModal, setShowViewModal] = useState(false);
     const [selectedFileToView, setSelectedFileToView] = useState(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [fileToDelete, setFileToDelete] = useState(null);
-
-
-    // Form states
     const [createForm, setCreateForm] = useState({
         username: '',
         gst: '',
@@ -101,17 +84,14 @@ const ViewFileIndex = () => {
         other: ''
     });
 
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
     const [showAll, setShowAll] = useState(false);
 
-    // Persist sidebar minimized state
     useEffect(() => {
         localStorage.setItem('sidebarMinimized', JSON.stringify(isMinimized));
     }, [isMinimized]);
 
-    // Lock body scroll when mobile sidebar is open
     useEffect(() => {
         if (mobileMenuOpen) {
             document.body.style.overflow = 'hidden';
@@ -123,7 +103,6 @@ const ViewFileIndex = () => {
         };
     }, [mobileMenuOpen]);
 
-    // Initialize with current month date range
     useEffect(() => {
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -145,7 +124,6 @@ const ViewFileIndex = () => {
         fetchFileData(true);
     }, []);
 
-    // Simulate API call to fetch file data
     const fetchFileData = async (from = '', to = '', search = '', page = 1, limit = 10) => {
         setLoading(true);
 
@@ -158,7 +136,6 @@ const ViewFileIndex = () => {
                 throw new Error("No auth token found");
             }
 
-            // Build query parameters
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: limit.toString()
@@ -167,8 +144,6 @@ const ViewFileIndex = () => {
             if (search) {
                 params.append('search', search);
             }
-
-            // Convert date format from DD/MM/YYYY to YYYY-MM-DD if both dates are provided
             if (from && to) {
                 const fromFormatted = moment(from, 'DD/MM/YYYY').format('YYYY-MM-DD');
                 const toFormatted = moment(to, 'DD/MM/YYYY').format('YYYY-MM-DD');
@@ -176,7 +151,6 @@ const ViewFileIndex = () => {
                 params.append('to', toFormatted);
             }
 
-            // ✅ FIXED: Use axios instead of fetch to bypass CORS preflight
             const response = await axios.get(
                 `${BASE_URL}/assistance/file-index/list?${params.toString()}`,
                 {
@@ -187,9 +161,7 @@ const ViewFileIndex = () => {
                     }
                 }
             );
-
             const result = response.data;
-
             if (result.success) {
                 const mapFileIndexToUI = (item) => ({
                     index_id: item.index_id,
@@ -221,51 +193,6 @@ const ViewFileIndex = () => {
         }
     };
 
-    // // Simulate fetching users
-    // const fetchUsers = async (search = "") => {
-    //     try {
-    //         const headers = getHeaders();
-    //         if (!headers) {
-    //             console.error('Cannot create firm: Missing authentication headers');
-    //             return;
-    //         }
-
-
-    //         const searchTrimmed = search.trim();
-
-    //         if (searchTrimmed.length < 3) {
-    //             setUsers([]); 
-    //             return; 
-    //         }
-
-    //         const endpoint = `${BASE_URL}/client/search?search=${encodeURIComponent(searchTrimmed)}`;
-
-    //         const response = await fetch(endpoint, {
-    //             method: "GET",
-    //             headers: headers
-    //         });
-
-    //         const result = await response.json();
-
-    //         if (response.ok && result.success) {
-    //             setUsers(result.data || []);
-    //         } else {
-    //             console.error("Failed:", result.message);
-    //             setUsers([]);
-    //         }
-
-    //     } catch (error) {
-    //         console.error("Error fetching users:", error);
-    //         setUsers([]);
-    //     }
-    // };
-
-    // useEffect(() => {
-    //     setUserLoading(true);
-    //     fetchUsers();
-    //     setUserLoading(false);
-    // },[]);
-
     const handleDeleteFile = async (file) => {
         try {
             setLoading(true);
@@ -294,13 +221,11 @@ const ViewFileIndex = () => {
         }
     };
 
-    // Handle search
     const handleSearch = () => {
         const [from, to] = dateRange.split(' - ');
         fetchFileData(from, to);
     };
 
-    // Handle search input change with debounce
     useEffect(() => {
         const timer = setTimeout(() => {
             if (searchQuery !== '') {
@@ -311,14 +236,12 @@ const ViewFileIndex = () => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // Handle key press in search input
     const handleKeyPress = (e) => {
         if (e.key === 'Enter') {
             handleSearch();
         }
     };
 
-    // Handle date filter change
     const handleDateFilterChange = (filter) => {
         console.log('Selected filter:', filter);
         if (filter.range) {
@@ -329,7 +252,6 @@ const ViewFileIndex = () => {
         }
     };
 
-    // Handle export
     const handleExport = (type, data = null) => {
         setExportModal({ open: true, type, data });
 
@@ -351,7 +273,6 @@ const ViewFileIndex = () => {
         console.log('Selected number:', number);
     };
 
-    // Handle edit button click
     const handleEditClick = (file) => {
         setSelectedFile(file);
         setEditForm({
@@ -364,7 +285,6 @@ const ViewFileIndex = () => {
         setShowEditModal(true);
     };
 
-    // Handle create form submit
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         const headers = getHeaders();
@@ -421,7 +341,6 @@ const ViewFileIndex = () => {
                     other: ''
                 });
 
-                // Refresh list after create
                 fetchFileData(1, searchQuery);
 
             } else {
@@ -436,7 +355,6 @@ const ViewFileIndex = () => {
     };
 
 
-    // Handle edit form submit
     const handleEditSubmit = async (e) => {
         e.preventDefault();
 
@@ -454,9 +372,8 @@ const ViewFileIndex = () => {
         setLoading(true);
 
 
-        // 🔁 Transform UI form → API payload
         const apiPayload = {
-            index_id: editForm.index_id,          // REQUIRED
+            index_id: editForm.index_id,   
             gst: editForm.gst || null,
             audit: editForm.audit || null,
             it: editForm.income_tax || null,
@@ -476,7 +393,6 @@ const ViewFileIndex = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                console.log("✅ File index updated:", data);
             } else {
                 console.error("❌ Backend error:", data.message || data);
                 return;
@@ -488,17 +404,13 @@ const ViewFileIndex = () => {
         } finally {
             setLoading(false);
         }
-
-        // UI cleanup + refresh
         setShowEditModal(false);
         setSelectedFile(null);
-
         const [from, to] = dateRange.split(" - ");
         fetchFileData(from, to, searchQuery);
     };
 
 
-    // Handle form changes
     const handleCreateChange = (field, value) => {
         setCreateForm(prev => ({
             ...prev,
@@ -513,7 +425,6 @@ const ViewFileIndex = () => {
         }));
     };
 
-    // Get user profile link based on user type
     const getUserProfileLink = (user) => {
         const baseUrls = {
             user: '/view-client-profile',
@@ -524,13 +435,11 @@ const ViewFileIndex = () => {
         return `${baseUrls[user.user_type]}?username=${user.username}`;
     };
 
-    // Format date
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB');
     };
 
-    // Get file badge class
     const getFileBadgeClass = (fileType) => {
         const baseClasses = 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border shadow-xs';
 
@@ -548,12 +457,10 @@ const ViewFileIndex = () => {
         }
     };
 
-    // Toggle row dropdown
     const toggleRowDropdown = (indexId) => {
         setActiveRowDropdown(activeRowDropdown === indexId ? null : indexId);
     };
 
-    // Close all dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (!event.target.closest('.dropdown-container')) {
@@ -568,7 +475,6 @@ const ViewFileIndex = () => {
         };
     }, []);
 
-    // Handle user profile click
     const handleUserProfileClick = (e, file) => {
         e.preventDefault();
         const profileLink = getUserProfileLink(file);
@@ -576,13 +482,11 @@ const ViewFileIndex = () => {
         window.open(profileLink, '_blank');
     };
 
-    // Get current items based on pagination
     const indexOfLastItem = showAll ? fileData.length : currentPage * itemsPerPage;
     const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
     const currentItems = fileData.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(fileData.length / itemsPerPage);
 
-    // Skeleton loader component
     const SkeletonRow = () => (
         <tr className="border-b border-slate-100 animate-pulse">
             <td className="p-3 text-center">
@@ -615,7 +519,6 @@ const ViewFileIndex = () => {
         </tr>
     );
 
-    // Skeleton Loading Component for full page
     const SkeletonLoader = () => (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
