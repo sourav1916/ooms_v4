@@ -37,7 +37,9 @@ import DateFilter from '../../components/DateFilter';
 import DatePickerComponent from '../../components/DatePickerComponent';
 import moment from 'moment';
 import SearchableSelect from '../../components/SearchableSelect'
-import { companies } from '../../constants/defaultValues';
+import SearchableSelectOptions from "../../components/SelectSearchableOptionsComponent";
+
+
 
 const ViewDSCRegister = () => {
     // Header/Sidebar states
@@ -57,6 +59,11 @@ const ViewDSCRegister = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedDsc, setSelectedDsc] = useState(null);
     const [users, setUsers] = useState([]);
+    const [types, setTypes] = useState([]);
+    const [companies, setCompanies] = useState([]);
+    const [typeLoading, setTypeLoading] = useState(false);
+    const [companyLoading, setCompanyLoading] = useState(false);
+
 
     // State for dropdown menus
     const [showAddDropdown, setShowAddDropdown] = useState(false);
@@ -70,6 +77,8 @@ const ViewDSCRegister = () => {
     const [selectedWhatsapp, setSelectedWhatsapp] = useState('');
 
     const [meta, setMeta] = useState({ total_pages: 0, current_page: 1, total: 0 });
+    const [selectedType, setSelectedType] = useState("");
+
 
     // Form states
     const [createForm, setCreateForm] = useState({
@@ -78,7 +87,8 @@ const ViewDSCRegister = () => {
         duration: '1',
         validity_start: '',
         validity_end: '',
-        password: ''
+        password: '',
+        type: ''
     });
 
     const [editForm, setEditForm] = useState({
@@ -87,7 +97,8 @@ const ViewDSCRegister = () => {
         duration: '1',
         validity_start: '',
         validity_end: '',
-        password: ''
+        password: '',
+        type: ''
     });
 
     // Pagination state
@@ -135,6 +146,94 @@ const ViewDSCRegister = () => {
         fetchDscData(1, '', from, to);
     }, []);
 
+    const fetchDscType = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem("user_token");
+            const username = localStorage.getItem("user_username");
+            const branch = localStorage.getItem("branch_id");
+
+            if (!token) {
+                throw new Error("No auth token found");
+            }
+
+            const url = `${BASE_URL}/assistance/dsc/types`;
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'token': token,
+                    'username': username,
+                    'branch': branch
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (data.success && Array.isArray(data.data)) {
+                setTypes(data.data);
+            } else {
+                console.error('Invalid API response:', data);
+                setTypes([]);
+            }
+
+        } catch (error) {
+            console.error('Fetch DSC types failed:', error);
+            // setError(error.message); // Use your error state
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchCompanies = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem("user_token");
+            const username = localStorage.getItem("user_username");
+            const branch = localStorage.getItem("branch_id");
+
+            if (!token) {
+                throw new Error("No auth token found");
+            }
+
+            const url = `${BASE_URL}/assistance/dsc/companies`;
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'token': token,
+                    'username': username,
+                    'branch': branch
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (data.success && Array.isArray(data.data)) {
+                setCompanies(data.data);
+            } else {
+                console.error('Invalid API response:', data);
+                setCompanies([]);
+            }
+
+        } catch (error) {
+            console.error('Fetch Companies failed:', error);
+            // setError(error.message); // Use your error state
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+
     // Simulate API call to fetch DSC data
     const fetchDscData = async (page = 1, search = '', expires_from = '', expires_to = '') => {
         setLoading(true);
@@ -152,7 +251,7 @@ const ViewDSCRegister = () => {
 
             if (expires_from) params.append('expires_from', expires_from);
             if (expires_to) params.append('expires_to', expires_to);
-            console.log("params======>>>>> " + params);
+            // console.log("params======>>>>> " + params);
 
 
             const url = `${BASE_URL}/assistance/dsc/list?${params.toString()}`;
@@ -173,7 +272,7 @@ const ViewDSCRegister = () => {
             }
 
             const result = await response.json();
-
+            // console.log("result =>>>> "+JSON.stringify(result));
             if (result.success) {
                 setDscData(result.data.map(item => ({
                     dsc_id: item.dsc_id,
@@ -188,7 +287,9 @@ const ViewDSCRegister = () => {
                     validity_end: item.validity_end,
                     status: item.status || 1,
                     duration: item.year || 1,
-                    password: item.password
+                    password: item.password,
+                    modify_by: username,
+                    type: item.type
                 })));
 
                 setMeta(result.meta || {});
@@ -214,6 +315,19 @@ const ViewDSCRegister = () => {
     };
 
 
+    useEffect(() => {
+        setTypeLoading(true);
+        fetchDscType();
+        setTypeLoading(false);
+    }, []);
+
+    useEffect(() => {
+        setCompanyLoading(true);
+        fetchCompanies();
+        setCompanyLoading(false);
+    }, []);
+
+
     // Handle search input change with debounce
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -234,7 +348,7 @@ const ViewDSCRegister = () => {
 
     // Handle date filter change
     const handleDateFilterChange = (filter) => {
-        console.log('Selected filter:', filter);
+        // console.log('Selected filter:', filter);
         if (filter.range && filter.from && filter.to) {
             setDateRange(filter.range);
             setFromToDate(`From ${filter.range}`);
@@ -249,7 +363,7 @@ const ViewDSCRegister = () => {
             const expires_from = convertToISODate(filter.from.toLocaleDateString('en-GB'));
             const expires_to = convertToISODate(filter.to.toLocaleDateString('en-GB'));
 
-            console.log("going to called for => " + expires_from + "--" + expires_to);
+            // console.log("going to called for => " + expires_from + "--" + expires_to);
 
             // Backend receives: 2026-02-01 & 2026-02-19 ✅
             fetchDscData(1, searchQuery, expires_from, expires_to);
@@ -272,44 +386,58 @@ const ViewDSCRegister = () => {
     const handleEmailSubmit = (email) => {
         setSelectedEmail(email);
         setIsEmailModalOpen(false);
-        console.log('Selected email:', email);
+        // console.log('Selected email:', email);
     };
 
     const handleWhatsappSubmit = (number) => {
         setSelectedWhatsapp(number);
         setWhatsappModalOpen(false);
-        console.log('Selected number:', number);
+        // console.log('Selected number:', number);
     };
 
     // Handle edit button click
     const handleEditClick = (dsc) => {
         setSelectedDsc(dsc);
 
-        // Map correct field names and format dates safely
         const formatSafeDate = (dateStr) => {
             if (!dateStr) return '';
-            const parsed = moment(dateStr, ['DD/MM/YYYY', 'YYYY-MM-DD']); // Try both formats
+            const parsed = moment(dateStr, ['DD/MM/YYYY', 'YYYY-MM-DD']);
             return parsed.isValid() ? parsed.format('DD/MM/YYYY') : '';
         };
+        console.log("companies=>>" + companies);
+
+        // 🔧 Find EXACT matching company VALUE
+        const matchingCompany = companies.find(company =>
+            company.label === dsc.company ||
+            company.value === dsc.company ||
+            company.name === dsc.company
+        )?.value || '';
+
+        // 🔧 Find EXACT matching type VALUE  
+        const matchingType = types.find(typeItem =>
+            typeItem.label === dsc.type ||
+            typeItem.value === dsc.type ||
+            typeItem.name === dsc.type
+        )?.value || '';
 
         const newEditForm = {
             dsc_id: dsc.dsc_id,
             username: dsc.username || '',
-            company: dsc.company || '',
+            company: matchingCompany,     // ✅ Now correct VALUE (e.g., 'comp_123')
             duration: (dsc.duration || 1).toString(),
-            validity_start: formatSafeDate(dsc.validity_start || dsc.validity_start),  // Use correct field
-            validity_end: formatSafeDate(dsc.validity_end || dsc.validity_end),  // Use correct field
-            password: dsc.password || ''
+            validity_start: formatSafeDate(dsc.validity_start),
+            validity_end: formatSafeDate(dsc.validity_end),
+            password: dsc.password || '',
+            type: matchingType           // ✅ Now correct VALUE
         };
 
-        // Log the NEW form data (not old state)
-        // console.log('Setting EditForm:', newEditForm);
+        console.log('🔍 dsc.company:', dsc.company);           // 'onesaas'
+        console.log('🔍 matchingCompany:', matchingCompany);   // 'comp_123' 
+        console.log('🔍 companies sample:', companies.slice(0, 2));
 
         setEditForm(newEditForm);
         setShowEditModal(true);
     };
-
-
 
 
 
@@ -337,8 +465,9 @@ const ViewDSCRegister = () => {
                 password: createForm.password || null,
                 validity_start,
                 validity_end,
-                type: "premium",
-                year: createForm.duration
+                type: createForm.type,
+                year: createForm.duration,
+                modify_by: username
             };
 
             const response = await fetch(`${BASE_URL}/assistance/dsc/create`, {
@@ -410,7 +539,7 @@ const ViewDSCRegister = () => {
             password: editForm.password,
             validity_start: transformDate(editForm.validity_start),
             validity_end: transformDate(editForm.validity_end),
-            type: 'premium',
+            type: editForm.type,
             year: editForm.duration
         };
 
@@ -575,7 +704,7 @@ const ViewDSCRegister = () => {
     const handleUserProfileClick = (e, dsc) => {
         e.preventDefault();
         const profileLink = getUserProfileLink(dsc);
-        console.log('Navigating to profile:', profileLink);
+        // console.log('Navigating to profile:', profileLink);
         // You can use router.push(profileLink) if using Next.js router
         // or window.location.href = profileLink for standard navigation
         window.open(profileLink, '_blank');
@@ -1318,20 +1447,41 @@ const ViewDSCRegister = () => {
                                             <label className="block text-xs font-semibold text-slate-700 mb-2">
                                                 Company <span className="text-rose-500">*</span>
                                             </label>
-                                            <select
+                                            <SearchableSelectOptions
+                                                options={companies}
                                                 value={createForm.company}
-                                                onChange={(e) => handleCreateChange('company', e.target.value)}
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
+                                                onChange={(val) => handleCreateChange("company", val)}
+                                                placeholder={companyLoading ? "Loading..." : "Select a Company"}
+                                            />
+
+                                            <input
+                                                type="hidden"
+                                                value={createForm.company}
                                                 required
-                                            >
-                                                <option value="">Select a company</option>
-                                                {companies.map((company) => (
-                                                    <option key={company.value} value={company.value}>
-                                                        {company.label}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            />
+
                                         </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Type <span className="text-rose-500">*</span>
+                                            </label>
+
+                                            <SearchableSelectOptions
+                                                options={types}
+                                                value={createForm.type}
+                                                onChange={(val) => handleCreateChange("type", val)}
+                                                placeholder={typeLoading ? "Loading..." : "Select a Type"}
+                                            />
+
+                                            {/* Hidden input for required validation */}
+                                            <input
+                                                type="hidden"
+                                                value={createForm.type}
+                                                required
+                                            />
+                                        </div>
+
 
 
                                         {/* Duration */}
@@ -1501,28 +1651,47 @@ const ViewDSCRegister = () => {
                                             )}
                                         </div>
                                     </div>
-
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         {/* Company */}
                                         <div>
                                             <label className="block text-xs font-semibold text-slate-700 mb-2">
                                                 Company <span className="text-rose-500">*</span>
                                             </label>
-                                            <select
+                                            <SearchableSelectOptions
+                                                options={companies}
                                                 value={editForm.company}
-                                                onChange={(e) => handleEditChange('company', e.target.value)}
-                                                className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors appearance-none bg-white"
-                                                required
-                                            >
-                                                <option value="">Select a company</option>
-                                                {companies.map((company) => (
-                                                    <option key={company.value} value={company.value}>
-                                                        {company.label}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
+                                                onChange={(val) => handleEditChange("company", val)}
+                                                placeholder={companyLoading ? "Loading..." : "Select a Company"}
+                                                labelKey="name"
+                                                valueKey="value"
+                                            />
 
+                                            <input
+                                                type="hidden"
+                                                value={editForm.company}
+                                                required
+                                            />
+                                        </div>
+<div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                                Type <span className="text-rose-500">*</span>
+                                            </label>
+
+                                            <SearchableSelectOptions
+                                                options={types}
+                                                value={editForm.type}
+                                                onChange={(val) => handleEditChange("type", val)}
+                                                placeholder={typeLoading ? "Loading..." : "Select a Type"}
+                                                labelKey="name"   // your type API uses {name, value}
+                                                valueKey="value"
+                                            />
+
+                                            <input
+                                                type="hidden"
+                                                value={editForm.type}
+                                                required
+                                            />
+                                        </div>
 
                                         {/* Duration */}
                                         <div>
