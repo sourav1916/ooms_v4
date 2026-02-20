@@ -1396,15 +1396,15 @@ const ClientProfile = () => {
             />,
             firms: <FirmsTab clientUsername={username} />,
             password: <PasswordTab clientUsername={username} />,
-            quotation: <QuotationTab />,
-            task: <TaskTab />,
-            billing: <BillingTab />,
-            ledger: <LedgerTab />,
-            notes: <NotesTab clientUsername={username}/>,
-            recurring: <RecurringTab />,
-            documents: <DocumentsTab />,
-            chatting: <ChattingTab />,
-            automation: <AutomationTab />
+            quotation: <QuotationTab clientUsername={username} />,
+            task: <TaskTab clientUsername={username} />,
+            billing: <BillingTab clientUsername={username} />,
+            ledger: <LedgerTab clientUsername={username} />,
+            notes: <NotesTab clientUsername={username} />,
+            recurring: <RecurringTab clientUsername={username} />,
+            documents: <DocumentsTab clientUsername={username} />,
+            chatting: <ChattingTab clientUsername={username} />,
+            automation: <AutomationTab clientUsername={username} />
         };
 
         return tabComponents[componentKey] || tabComponents['basic'];
