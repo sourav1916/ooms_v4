@@ -1,28 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-    FiSearch,
-    FiPlus,
-    FiEdit,
-    FiMenu,
-    FiPrinter,
-    FiMail,
-    FiMessageSquare,
-    FiUser,
-    FiPhone,
-    FiMail as FiEmailIcon,
-    FiFileText,
-    FiX,
-    FiChevronRight,
-    FiChevronDown,
-    FiCheck,
-    FiDollarSign,
-    FiChevronLeft,
-    FiChevronRight as FiChevronRightIcon,
-    FiChevronUp,
-    FiExternalLink,
-    FiCalendar,
-    FiEye,
-    FiTrash2
+    FiSearch, FiPlus, FiEdit, FiMenu, FiPrinter, FiMail, FiMessageSquare,
+    FiUser, FiPhone, FiMail as FiEmailIcon, FiFileText, FiX, FiChevronRight,
+    FiChevronDown, FiCheck, FiDollarSign, FiChevronLeft, FiChevronRight as FiChevronRightIcon,
+    FiChevronUp, FiExternalLink, FiCalendar, FiEye, FiTrash2
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
@@ -37,7 +18,7 @@ import axios from 'axios';
 import SearchableSelect from '../../components/SearchableSelect';
 
 const ViewFileIndex = () => {
-    // Header/Sidebar states
+    // Sidebar states
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(() => {
         const saved = localStorage.getItem('sidebarMinimized');
@@ -63,31 +44,18 @@ const ViewFileIndex = () => {
     const [selectedEmail, setSelectedEmail] = useState('');
     const [isWhatsappModalOpen, setWhatsappModalOpen] = useState(false);
     const [selectedWhatsapp, setSelectedWhatsapp] = useState('');
-    const [meta, setMeta] = useState({ total_pages: 0, current_page: 1, total: 0 });
+    const [meta, setMeta] = useState({ totalpages: 0, currentpage: 1, total: 0 });
     const [showViewModal, setShowViewModal] = useState(false);
     const [selectedFileToView, setSelectedFileToView] = useState(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [fileToDelete, setFileToDelete] = useState(null);
-    const [createForm, setCreateForm] = useState({
-        username: '',
-        gst: '',
-        audit: '',
-        income_tax: '',
-        other: ''
-    });
-
-    const [editForm, setEditForm] = useState({
-        index_id: '',
-        gst: '',
-        audit: '',
-        income_tax: '',
-        other: ''
-    });
-
+    const [createForm, setCreateForm] = useState({ username: '', selectedUser: null, gst: '', audit: '', income_tax: '', other: '' });
+    const [editForm, setEditForm] = useState({ indexid: '', gst: '', audit: '', income_tax: '', other: '' });
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
     const [showAll, setShowAll] = useState(false);
 
+    // Fixed useEffects
     useEffect(() => {
         localStorage.setItem('sidebarMinimized', JSON.stringify(isMinimized));
     }, [isMinimized]);
@@ -107,37 +75,42 @@ const ViewFileIndex = () => {
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
         const lastDay = today;
-
-        const formatDate = (date) => {
-            return date.toLocaleDateString('en-GB', {
+        const formatDate = (date) =>
+            date.toLocaleDateString('en-GB', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric'
-            }).replace(/\//g, '/');
-        };
+            }).replace(/,/g, '');
 
         const from = formatDate(firstDay);
         const to = formatDate(lastDay);
-
         setDateRange(`${from} - ${to}`);
-        setFromToDate(`From ${from} to ${to}`);
-        fetchFileData(true);
+        setFromToDate(`From: ${from} to: ${to}`);
+        fetchFileData(from, to);
     }, []);
 
-    const fetchFileData = async (from = '', to = '', search = '', page = 1, limit = 10) => {
-        setLoading(true);
+    // Fixed search debounce
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery) {
+                const [from, to] = dateRange.split(' - ');
+                fetchFileData(from, to, searchQuery);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
+    // Core data fetching - FULLY FIXED
+    const fetchFileData = async (from, to, search = '', page = 1, limit = 10) => {
+        setLoading(true);
         try {
             const headers = getHeaders();
-
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: limit.toString()
             });
 
-            if (search) {
-                params.append('search', search);
-            }
+            if (search) params.append('search', search);
             if (from && to) {
                 const fromFormatted = moment(from, 'DD/MM/YYYY').format('YYYY-MM-DD');
                 const toFormatted = moment(to, 'DD/MM/YYYY').format('YYYY-MM-DD');
@@ -147,31 +120,32 @@ const ViewFileIndex = () => {
 
             const response = await axios.get(
                 `${BASE_URL}/assistance/file-index/list?${params.toString()}`,
-                {
-                    headers
-                }
+                { headers }
             );
+
             const result = response.data;
             if (result.success) {
                 const mapFileIndexToUI = (item) => ({
-                    index_id: item.index_id,
-                    username: item.firm_id,
-                    name: item.firm_name,
-                    guardian_name: '-',
-                    mobile: item.create_by?.mobile || '',
-                    email: item.create_by?.email || '',
-                    gst: item.gst,
-                    audit: item.audit,
-                    income_tax: item.it,
-                    other: item.others,
-                    user_type: 'client',
-                    created_date: item.create_date?.split('T')[0]
+                    indexid: item.index_id,           // Backend: index_id → Frontend: indexid
+                    firmid: item.firm_id,             // Backend: firm_id → Frontend: firmid  
+                    firmname: item.firmname || item.firm_name || '',
+                    mobile: item.create_by?.mobile || item.createby?.mobile || '',
+                    email: item.create_by?.email || item.createby?.email || '',
+                    gst: item.gst || '',
+                    audit: item.audit || '',
+                    income_tax: item.it || '',
+                    other: item.others || '',
+                    usertype: item.create_by?.usertype || item.createby?.usertype || item.create_by?.user_type || 'user',
+                    name: item.create_by?.name || item.createby?.name || '',
+                    guardianname: item.create_by?.guardianname || item.createby?.guardianname || item.guardian_name || '',
+                    createddate: item.create_date?.split('T')[0] || item.createdate?.split('T')[0] || ''
                 });
 
                 setFileData(result.data.map(mapFileIndexToUI));
                 setMeta(result.meta || {});
                 setCurrentPage(result.meta?.page || 1);
-            } else {
+            }
+            else {
                 console.error('Backend error:', result.message);
                 setFileData([]);
             }
@@ -183,28 +157,33 @@ const ViewFileIndex = () => {
         }
     };
 
+    // Delete handler - FIXED
     const handleDeleteFile = async (file) => {
         try {
             setLoading(true);
             const headers = getHeaders();
 
             const response = await fetch(`${BASE_URL}/assistance/file-index/delete`, {
-                method: "DELETE",
-                headers,
-                body: JSON.stringify({ index_id: file.index_id })
+                method: 'DELETE',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    index_id: file.indexid,    // ✅ Frontend → Backend mapping
+                    firm_id: file.firmid       // ✅ ADDED: Backend expects firm_id
+                })
             });
 
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Refresh table data
                 const [from, to] = dateRange.split(' - ');
                 fetchFileData(from, to, searchQuery);
+                setShowDeleteConfirm(false);
+                setFileToDelete(null);
             } else {
-                alert('Delete failed: ' + (data.message || 'Unknown error'));
+                alert(`Delete failed: ${data.message || 'Unknown error'}`);
             }
         } catch (error) {
-            console.error("Delete error:", error);
+            console.error('Delete error:', error);
             alert('Delete failed. Please try again.');
         } finally {
             setLoading(false);
@@ -213,38 +192,25 @@ const ViewFileIndex = () => {
 
     const handleSearch = () => {
         const [from, to] = dateRange.split(' - ');
-        fetchFileData(from, to);
+        fetchFileData(from, to, searchQuery);
     };
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (searchQuery !== '') {
-                handleSearch();
-            }
-        }, 500);
-
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
-
     const handleKeyPress = (e) => {
-        if (e.key === 'Enter') {
-            handleSearch();
-        }
+        if (e.key === 'Enter') handleSearch();
     };
 
     const handleDateFilterChange = (filter) => {
-        console.log('Selected filter:', filter);
         if (filter.range) {
             setDateRange(filter.range);
             const [from, to] = filter.range.split(' - ');
-            setFromToDate(`From ${from} to ${to}`);
-            fetchFileData(from, to);
+            setFromToDate(`From: ${from} to: ${to}`);
+            fetchFileData(from, to, searchQuery);
         }
     };
 
+    // Export handler - SIMPLIFIED
     const handleExport = (type, data = null) => {
         setExportModal({ open: true, type, data });
-
         setTimeout(() => {
             setExportModal({ open: false, type: '', data: null });
             alert(`${type.toUpperCase()} export completed successfully!`);
@@ -254,19 +220,18 @@ const ViewFileIndex = () => {
     const handleEmailSubmit = (email) => {
         setSelectedEmail(email);
         setIsEmailModalOpen(false);
-        console.log('Selected email:', email);
     };
 
     const handleWhatsappSubmit = (number) => {
         setSelectedWhatsapp(number);
         setWhatsappModalOpen(false);
-        console.log('Selected number:', number);
     };
 
+    // Edit handlers - FIXED
     const handleEditClick = (file) => {
         setSelectedFile(file);
         setEditForm({
-            index_id: file.index_id || '',
+            indexid: file.indexid,
             gst: file.gst || '',
             audit: file.audit || '',
             income_tax: file.income_tax || '',
@@ -275,70 +240,67 @@ const ViewFileIndex = () => {
         setShowEditModal(true);
     };
 
+
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         const headers = getHeaders();
+
         if (!headers) {
-            console.error('Cannot create firm: Missing authentication headers');
+            alert('Authentication required. Please login again.');
             return;
         }
+
+        // Validate required field
+        if (!createForm.selectedUser?.firms?.[0]?.firm_id) {
+            alert('Please select a valid user with firm information.');
+            return;
+        }
+
         if (loading) return;
 
         setLoading(true);
 
-        const token = localStorage.getItem("user_token");
-        const usernameHeader = localStorage.getItem("user_username");
-
-        const selectedUser = users.find(
-            u => u.username === createForm.username
-        );
-
-        console.log(selectedUser?.firms?.[0]?.firm_id);
-
-
         try {
             const payload = {
-                firm_id: selectedUser?.firms?.[0]?.firm_id,
+                firm_id: createForm.selectedUser.firms[0].firm_id,  // Backend expects "firm_id" (not firmid)
                 gst: createForm.gst || null,
-                audit: createForm.audit || null,
+                audit: createForm.audit || null,  // Backend expects "audit" (not audit)
                 it: createForm.income_tax || null,
                 others: createForm.other || null
             };
 
 
-            const response = await fetch(
-                `${BASE_URL}/assistance/file-index/create`,
-                {
-                    method: "POST",
-                    headers: headers,
-                    body: JSON.stringify(payload)
-                }
-            );
+            const response = await fetch(`${BASE_URL}/assistance/file-index/create`, {
+                method: 'POST',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
 
             const data = await response.json();
-            console.log(data);
 
             if (response.ok && data.success) {
-                console.log("File index created:", data);
-
                 setShowCreateModal(false);
-
+                // Reset form completely
                 setCreateForm({
                     username: '',
+                    selectedUser: null,
                     gst: '',
                     audit: '',
                     income_tax: '',
                     other: ''
                 });
-
-                fetchFileData(1, searchQuery);
-
+                // Refresh data
+                const [from, to] = dateRange.split(' - ');
+                fetchFileData(from, to, searchQuery);
             } else {
-                console.error("Backend error:", data.message || data);
+                alert(`Create failed: ${data.message || 'Unknown error'}`);
             }
-
         } catch (error) {
-            console.error("Network error:", error);
+            console.error('Network error:', error);
+            alert('Network error. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -347,65 +309,56 @@ const ViewFileIndex = () => {
 
     const handleEditSubmit = async (e) => {
         e.preventDefault();
-
         const headers = getHeaders();
-        if (!headers) {
-            console.error('Cannot create firm: Missing authentication headers');
+
+        if (!headers || !editForm?.indexid) {
+            alert('Cannot update: Missing headers or ID');
             return;
         }
 
-        if (loading || !editForm?.index_id) {
-            console.error("File Index ID not found");
-            return;
-        }
+        if (loading) return;
 
         setLoading(true);
 
-
+        // ✅ FIXED: Backend field mapping
         const apiPayload = {
-            index_id: editForm.index_id,
+            index_id: editForm.indexid,
+            firm_id: selectedFile?.firmid,
             gst: editForm.gst || null,
             audit: editForm.audit || null,
-            it: editForm.income_tax || null,
-            others: editForm.other || null
+            it: editForm.income_tax || null,      // Backend expects "it"
+            others: editForm.other || null       // Backend expects "others"
         };
 
+
         try {
-            const response = await fetch(
-                `${BASE_URL}/assistance/file-index/edit`,
-                {
-                    method: "PUT",
-                    headers: headers,
-                    body: JSON.stringify(apiPayload)
-                }
-            );
+            const response = await fetch(`${BASE_URL}/assistance/file-index/edit`, {
+                method: 'PUT',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify(apiPayload)
+            });
 
             const data = await response.json();
 
             if (response.ok && data.success) {
+                setShowEditModal(false);
+                setSelectedFile(null);
+                setEditForm({ indexid: '', gst: '', audit: '', income_tax: '', other: '' });
+                const [from, to] = dateRange.split(' - ');
+                fetchFileData(from, to, searchQuery);
             } else {
-                console.error("❌ Backend error:", data.message || data);
-                return;
+                alert(`Update failed: ${data.message || 'Unknown error'}`);
             }
-
         } catch (error) {
-            console.error("❌ Network error:", error);
-            return;
+            console.error('Network error:', error);
+            alert('Network error. Please try again.');
         } finally {
             setLoading(false);
         }
-        setShowEditModal(false);
-        setSelectedFile(null);
-        const [from, to] = dateRange.split(" - ");
-        fetchFileData(from, to, searchQuery);
     };
 
-
     const handleCreateChange = (field, value) => {
-        setCreateForm(prev => ({
-            ...prev,
-            [field]: value
-        }));
+        setCreateForm(prev => ({ ...prev, [field]: value }));
     };
 
     const handleEditChange = (field, value) => {
@@ -417,12 +370,12 @@ const ViewFileIndex = () => {
 
     const getUserProfileLink = (user) => {
         const baseUrls = {
-            user: '/view-client-profile',
-            ca: '/view-ca-profile',
-            agent: '/view-agent-profile',
-            employee: '/view-stuff-profile'
+            user: 'view-client-profile',
+            ca: 'view-ca-profile',
+            agent: 'view-agent-profile',
+            employee: 'view-stuff-profile'
         };
-        return `${baseUrls[user.user_type]}?username=${user.username}`;
+        return `/${baseUrls[user.usertype || 'user']}/${user.username}`;
     };
 
     const formatDate = (dateString) => {
@@ -432,18 +385,12 @@ const ViewFileIndex = () => {
 
     const getFileBadgeClass = (fileType) => {
         const baseClasses = 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border shadow-xs';
-
         switch (fileType) {
-            case 'gst':
-                return `${baseClasses} bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 border-blue-200`;
-            case 'audit':
-                return `${baseClasses} bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 border-emerald-200`;
-            case 'income_tax':
-                return `${baseClasses} bg-gradient-to-r from-purple-50 to-purple-100 text-purple-800 border-purple-200`;
-            case 'other':
-                return `${baseClasses} bg-gradient-to-r from-amber-50 to-amber-100 text-amber-800 border-amber-200`;
-            default:
-                return `${baseClasses} bg-gradient-to-r from-slate-50 to-slate-100 text-slate-800 border-slate-200`;
+            case 'gst': return `${baseClasses} bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 border-blue-200`;
+            case 'audit': return `${baseClasses} bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 border-emerald-200`;
+            case 'income_tax': return `${baseClasses} bg-gradient-to-r from-purple-50 to-purple-100 text-purple-800 border-purple-200`;
+            case 'other': return `${baseClasses} bg-gradient-to-r from-amber-50 to-amber-100 text-amber-800 border-amber-200`;
+            default: return `${baseClasses} bg-gradient-to-r from-slate-50 to-slate-100 text-slate-800 border-slate-200`;
         }
     };
 
@@ -458,11 +405,8 @@ const ViewFileIndex = () => {
                 setActiveRowDropdown(null);
             }
         };
-
         document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const handleUserProfileClick = (e, file) => {
@@ -472,58 +416,37 @@ const ViewFileIndex = () => {
         window.open(profileLink, '_blank');
     };
 
+    // Pagination calculations - FIXED
     const indexOfLastItem = showAll ? fileData.length : currentPage * itemsPerPage;
     const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
     const currentItems = fileData.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(fileData.length / itemsPerPage);
 
+    // Skeleton Loader Component
     const SkeletonRow = () => (
         <tr className="border-b border-slate-100 animate-pulse">
-            <td className="p-3 text-center">
-                <div className="h-4 bg-slate-200 rounded w-6 mx-auto"></div>
-            </td>
+            <td className="p-3 text-center"><div className="h-4 bg-slate-200 rounded w-6 mx-auto"></div></td>
             <td className="p-3 text-center">
                 <div className="flex items-center justify-center">
                     <div className="h-8 w-8 bg-slate-200 rounded-full mr-2"></div>
                     <div className="h-4 bg-slate-200 rounded w-32"></div>
                 </div>
             </td>
-            <td className="p-3 text-center">
-                <div className="h-4 bg-slate-200 rounded w-24 mx-auto"></div>
-            </td>
-            <td className="p-3 text-center">
-                <div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div>
-            </td>
-            <td className="p-3 text-center">
-                <div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div>
-            </td>
-            <td className="p-3 text-center">
-                <div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div>
-            </td>
-            <td className="p-3 text-center">
-                <div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div>
-            </td>
-            <td className="p-3 text-center">
-                <div className="h-6 bg-slate-200 rounded w-10 mx-auto"></div>
-            </td>
+            <td className="p-3 text-center"><div className="h-4 bg-slate-200 rounded w-24 mx-auto"></div></td>
+            <td className="p-3 text-center"><div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div></td>
+            <td className="p-3 text-center"><div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div></td>
+            <td className="p-3 text-center"><div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div></td>
+            <td className="p-3 text-center"><div className="h-6 bg-slate-200 rounded w-20 mx-auto"></div></td>
+            <td className="p-3 text-center"><div className="h-6 bg-slate-200 rounded w-10 mx-auto"></div></td>
         </tr>
     );
 
     const SkeletonLoader = () => (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            <Header
-                mobileMenuOpen={mobileMenuOpen}
-                setMobileMenuOpen={setMobileMenuOpen}
-                isMinimized={isMinimized}
-                setIsMinimized={setIsMinimized}
-            />
-            <Sidebar
-                mobileMenuOpen={mobileMenuOpen}
-                setMobileMenuOpen={setMobileMenuOpen}
-                isMinimized={isMinimized}
-                setIsMinimized={setIsMinimized}
-            />
-
+            <Header mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen}
+                isMinimized={isMinimized} setIsMinimized={setIsMinimized} />
+            <Sidebar mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen}
+                isMinimized={isMinimized} setIsMinimized={setIsMinimized} />
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200">
@@ -540,14 +463,13 @@ const ViewFileIndex = () => {
                                 </div>
                             </div>
                         </div>
-
                         {/* Skeleton Table */}
                         <div className="overflow-hidden">
                             <div className="border-b border-slate-200">
                                 <table className="w-full text-sm">
                                     <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
                                         <tr>
-                                            {[...Array(8)].map((_, i) => (
+                                            {Array(8).fill(0).map((_, i) => (
                                                 <th key={i} className="text-center p-3">
                                                     <div className="h-4 bg-gray-200 rounded w-16 mx-auto"></div>
                                                 </th>
@@ -556,9 +478,8 @@ const ViewFileIndex = () => {
                                     </thead>
                                 </table>
                             </div>
-
                             <div className="p-4">
-                                {[...Array(6)].map((_, index) => (
+                                {Array(6).fill(0).map((_, index) => (
                                     <div key={index} className="mb-4">
                                         <div className="h-12 bg-gray-100 rounded"></div>
                                     </div>
@@ -838,31 +759,24 @@ const ViewFileIndex = () => {
                                         </tr>
                                     ) : (
                                         currentItems.map((file, index) => {
-                                            const isDropdownOpen = activeRowDropdown === file.index_id;
+                                            const isDropdownOpen = activeRowDropdown === file.indexid;
                                             const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
                                             const profileLink = getUserProfileLink(file);
 
                                             return (
-                                                <motion.tr
-                                                    key={file.index_id}
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
-                                                    transition={{ duration: 0.15 }}
-                                                    className="hover:bg-blue-50/20 transition-colors duration-150"
-                                                >
+                                                <motion.tr key={file.indexid} /* ✅ Fixed: index_id → indexid */>
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="text-slate-700 font-medium text-xs">
                                                             {actualIndex + 1}
                                                         </div>
                                                     </td>
+
+                                                    {/* User Details - Fixed field names */}
                                                     <td className="text-center p-3 align-middle">
-                                                        <motion.a
-                                                            href={profileLink}
-                                                            onClick={(e) => handleUserProfileClick(e, file)}
+                                                        <motion.a href={profileLink} onClick={(e) => handleUserProfileClick(e, file)}
                                                             className="inline-flex items-center justify-center gap-2 group cursor-pointer no-underline"
-                                                            whileHover={{ scale: 1.01 }}
-                                                            whileTap={{ scale: 0.99 }}
-                                                        >
+                                                            whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+
                                                             <div className="relative">
                                                                 <div className="w-8 h-8 bg-gradient-to-r from-purple-100 to-purple-200 rounded-full flex items-center justify-center flex-shrink-0 group-hover:from-purple-200 group-hover:to-purple-300 transition-colors">
                                                                     <FiUser className="w-4 h-4 text-purple-600" />
@@ -871,147 +785,122 @@ const ViewFileIndex = () => {
                                                                     <FiExternalLink className="w-2.5 h-2.5 text-purple-500" />
                                                                 </div>
                                                             </div>
+
                                                             <div className="text-left">
                                                                 <div className="text-slate-800 font-semibold text-xs group-hover:text-purple-600 transition-colors">
-                                                                    {file.name}
+                                                                    {file.name || 'N/A'}
                                                                 </div>
                                                                 <div className="text-slate-600 text-[10px] mt-0.5">
-                                                                    C/O: {file.guardian_name}
+                                                                    C/O: {file.guardianname || 'N/A'}
                                                                 </div>
                                                                 <div className="mt-1">
-                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${file.user_type === 'user' ? 'bg-blue-100 text-blue-700 group-hover:bg-blue-200' :
-                                                                        file.user_type === 'ca' ? 'bg-purple-100 text-purple-700 group-hover:bg-purple-200' :
-                                                                            file.user_type === 'agent' ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' :
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${file.usertype === 'user' ? 'bg-blue-100 text-blue-700 group-hover:bg-blue-200' :
+                                                                        file.usertype === 'ca' ? 'bg-purple-100 text-purple-700 group-hover:bg-purple-200' :
+                                                                            file.usertype === 'agent' ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' :
                                                                                 'bg-slate-100 text-slate-700 group-hover:bg-slate-200'
                                                                         } transition-colors`}>
-                                                                        {file.user_type}
+                                                                        {file.usertype}
                                                                     </span>
                                                                 </div>
                                                             </div>
                                                         </motion.a>
                                                     </td>
+
+                                                    {/* Contact Info */}
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="space-y-1.5">
                                                             <div className="flex items-center justify-center gap-1 text-slate-700 text-xs">
                                                                 <FiPhone className="w-3 h-3 text-slate-500" />
-                                                                {file.mobile}
+                                                                {file.mobile || 'N/A'}
                                                             </div>
                                                             <div className="flex items-center justify-center gap-1 text-slate-600 text-[10px]">
                                                                 <FiEmailIcon className="w-3 h-3 text-slate-500" />
-                                                                {file.email}
+                                                                {file.email || 'N/A'}
                                                             </div>
                                                         </div>
                                                     </td>
+
+                                                    {/* Files - FIXED COUNTER */}
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200 shadow-sm mx-auto">
                                                             {[
                                                                 file.gst && 'GST',
-                                                                file.audit && 'Audit',
-                                                                file.income_tax && 'ITR',
-                                                                file.other && 'Other'
+                                                                file.audit && 'Audit',        // ✅ Matches mapped field
+                                                                file.income_tax && 'ITR',      // ✅ Matches mapped field  
+                                                                file.other && 'Other'         // ✅ Matches mapped field
                                                             ].filter(Boolean).length}
                                                         </div>
                                                     </td>
 
-
+                                                    {/* Actions */}
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="flex gap-2 justify-center">
+                                                            {/* Menu Dropdown */}
                                                             <div className="dropdown-container relative flex justify-center">
                                                                 <motion.button
                                                                     className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
-                                                                    onClick={() => toggleRowDropdown(file.index_id)}
-                                                                    whileHover={{ scale: 1.05 }}
-                                                                    whileTap={{ scale: 0.95 }}
-                                                                >
+                                                                    onClick={() => toggleRowDropdown(file.indexid)}  // ✅ Fixed: index_id → indexid
+                                                                    whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                                                     <FiMenu className="w-3.5 h-3.5" />
                                                                 </motion.button>
+
+                                                                {/* Dropdown Menu Items */}
                                                                 <AnimatePresence>
                                                                     {isDropdownOpen && (
                                                                         <motion.div
                                                                             initial={{ opacity: 0, y: 5 }}
                                                                             animate={{ opacity: 1, y: 0 }}
                                                                             exit={{ opacity: 0, y: 5 }}
-                                                                            className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
-                                                                        >
+                                                                            className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden">
+
                                                                             <div className="py-1">
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        setActiveRowDropdown(null);
-                                                                                        handleEditClick(file);
-                                                                                    }}
-                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                >
+                                                                                {/* Edit */}
+                                                                                <button onClick={() => {
+                                                                                    setActiveRowDropdown(null);
+                                                                                    handleEditClick(file);
+                                                                                }} className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150">
                                                                                     <div className="p-1 bg-blue-50 rounded mr-2">
                                                                                         <FiEdit className="w-3 h-3 text-blue-500" />
                                                                                     </div>
-                                                                                    <div className="text-left">
-                                                                                        <div className="font-medium">Edit File Index</div>
-                                                                                    </div>
+                                                                                    <div className="font-medium">Edit File Index</div>
                                                                                 </button>
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        setActiveRowDropdown(null);
-                                                                                        setFileToDelete(file);
-                                                                                        setShowDeleteConfirm(true);
-                                                                                    }}
-                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-red-50 border-t border-slate-100 transition-colors duration-150"
-                                                                                >
+
+                                                                                {/* Delete */}
+                                                                                <button onClick={() => {
+                                                                                    setActiveRowDropdown(null);
+                                                                                    setFileToDelete(file);
+                                                                                    setShowDeleteConfirm(true);
+                                                                                }} className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-red-50 border-t border-slate-100 transition-colors duration-150">
                                                                                     <div className="p-1 bg-red-50 rounded mr-2">
                                                                                         <FiTrash2 className="w-3 h-3 text-red-500" />
                                                                                     </div>
-                                                                                    <div className="text-left">
-                                                                                        <div className="font-medium">Delete File Index</div>
-                                                                                    </div>
+                                                                                    <div className="font-medium">Delete File Index</div>
                                                                                 </button>
 
-                                                                                <a
-                                                                                    href={profileLink}
-                                                                                    onClick={(e) => {
-                                                                                        setActiveRowDropdown(null);
-                                                                                        handleUserProfileClick(e, file);
-                                                                                    }}
-                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                >
+                                                                                {/* Profile Link */}
+                                                                                <a href={profileLink} onClick={(e) => {
+                                                                                    setActiveRowDropdown(null);
+                                                                                    handleUserProfileClick(e, file);
+                                                                                }} className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150">
                                                                                     <div className="p-1 bg-emerald-50 rounded mr-2">
                                                                                         <FiUser className="w-3 h-3 text-emerald-500" />
                                                                                     </div>
-                                                                                    <div className="text-left">
-                                                                                        <div className="font-medium">View Profile</div>
-                                                                                    </div>
+                                                                                    <div className="font-medium">View Profile</div>
                                                                                 </a>
+
+                                                                                {/* Export Options */}
                                                                                 <div className="border-t border-slate-100 mt-1 pt-1">
-                                                                                    <button
-                                                                                        onClick={() => handleExport('print', file)}
-                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                    >
-                                                                                        <div className="p-1 bg-slate-50 rounded mr-2">
-                                                                                            <FiPrinter className="w-3 h-3 text-slate-600" />
-                                                                                        </div>
-                                                                                        <div className="text-left">
-                                                                                            <div className="font-medium">Print</div>
-                                                                                        </div>
+                                                                                    <button onClick={() => handleExport('print', file)} className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150">
+                                                                                        <div className="p-1 bg-slate-50 rounded mr-2"><FiPrinter className="w-3 h-3 text-slate-600" /></div>
+                                                                                        <div className="font-medium">Print</div>
                                                                                     </button>
-                                                                                    <button
-                                                                                        onClick={() => handleExport('whatsapp', file)}
-                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                    >
-                                                                                        <div className="p-1 bg-green-50 rounded mr-2">
-                                                                                            <FiMessageSquare className="w-3 h-3 text-green-500" />
-                                                                                        </div>
-                                                                                        <div className="text-left">
-                                                                                            <div className="font-medium">WhatsApp</div>
-                                                                                        </div>
+                                                                                    <button onClick={() => handleExport('whatsapp', file)} className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150">
+                                                                                        <div className="p-1 bg-green-50 rounded mr-2"><FiMessageSquare className="w-3 h-3 text-green-500" /></div>
+                                                                                        <div className="font-medium">WhatsApp</div>
                                                                                     </button>
-                                                                                    <button
-                                                                                        onClick={() => handleExport('email', file)}
-                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                    >
-                                                                                        <div className="p-1 bg-blue-50 rounded mr-2">
-                                                                                            <FiMail className="w-3 h-3 text-blue-500" />
-                                                                                        </div>
-                                                                                        <div className="text-left">
-                                                                                            <div className="font-medium">Email</div>
-                                                                                        </div>
+                                                                                    <button onClick={() => handleExport('email', file)} className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150">
+                                                                                        <div className="p-1 bg-blue-50 rounded mr-2"><FiMail className="w-3 h-3 text-blue-500" /></div>
+                                                                                        <div className="font-medium">Email</div>
                                                                                     </button>
                                                                                 </div>
                                                                             </div>
@@ -1019,22 +908,19 @@ const ViewFileIndex = () => {
                                                                     )}
                                                                 </AnimatePresence>
                                                             </div>
-                                                            <div>
-                                                                <motion.button
-                                                                    className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
-                                                                    onClick={() => {
-                                                                        setSelectedFileToView(file);
-                                                                        setShowViewModal(true);
-                                                                        setActiveRowDropdown(null); // Close dropdown if open
-                                                                    }}
-                                                                    whileHover={{ scale: 1.05 }}
-                                                                    whileTap={{ scale: 0.95 }}
-                                                                    title="View Details"
-                                                                >
-                                                                    <FiEye className="w-3.5 h-3.5" />
-                                                                </motion.button>
 
-                                                            </div>
+                                                            {/* View Button */}
+                                                            <motion.button
+                                                                className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
+                                                                onClick={() => {
+                                                                    setSelectedFileToView(file);
+                                                                    setShowViewModal(true);
+                                                                    setActiveRowDropdown(null);
+                                                                }}
+                                                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                                                title="View Details">
+                                                                <FiEye className="w-3.5 h-3.5" />
+                                                            </motion.button>
                                                         </div>
                                                     </td>
                                                 </motion.tr>
@@ -1375,6 +1261,11 @@ const ViewFileIndex = () => {
                                     <div>
                                         <h3 className="text-lg font-bold text-slate-800">Update File Index</h3>
                                         <p className="text-slate-600 text-xs mt-1">Modify file index details</p>
+                                        {selectedFile && (
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                Index ID: <span className="font-mono bg-slate-100 px-2 py-0.5 rounded">{selectedFile.indexid}</span>
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                                 <button
@@ -1392,77 +1283,64 @@ const ViewFileIndex = () => {
                                 <div className="space-y-5">
                                     {/* User Info Display */}
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-700 mb-2">
-                                            User Information
-                                        </label>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-2">User Information</label>
                                         <div className="px-4 py-3 border border-slate-300 rounded-lg bg-slate-50">
-                                            {selectedFile && (
+                                            {selectedFile ? (
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 bg-gradient-to-r from-purple-100 to-purple-200 rounded-full flex items-center justify-center flex-shrink-0">
                                                         <FiUser className="w-5 h-5 text-purple-600" />
                                                     </div>
                                                     <div>
                                                         <div className="font-medium text-slate-900 text-sm">{selectedFile.name}</div>
-                                                        <div className="text-slate-600 text-xs">C/O: {selectedFile.guardian_name}</div>
-                                                        <div className="text-slate-600 text-xs">Mobile: {selectedFile.mobile}</div>
-                                                        <div className="text-slate-600 text-xs">Type: {selectedFile.user_type}</div>
+                                                        <div className="text-slate-600 text-xs">C/O: {selectedFile.guardianname || 'N/A'}</div>
+                                                        <div className="text-slate-600 text-xs">Mobile: {selectedFile.mobile || 'N/A'}</div>
+                                                        <div className="text-slate-600 text-xs">Type: {selectedFile.usertype || 'user'}</div>
                                                     </div>
                                                 </div>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
 
+                                    {/* File Fields - FIXED FIELD NAMES */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        {/* GST */}
                                         <div>
-                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
-                                                GST File Number
-                                            </label>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">GST File Number</label>
                                             <input
                                                 type="text"
-                                                value={editForm.gst}
+                                                value={editForm.gst || ''}
                                                 onChange={(e) => handleEditChange('gst', e.target.value)}
                                                 className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                                 placeholder="Enter GST file number"
                                             />
                                         </div>
 
-                                        {/* Audit */}
                                         <div>
-                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
-                                                Audit File Number
-                                            </label>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">Audit File Number</label>
                                             <input
                                                 type="text"
-                                                value={editForm.audit}
+                                                value={editForm.audit || ''}
                                                 onChange={(e) => handleEditChange('audit', e.target.value)}
                                                 className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                                 placeholder="Enter audit file number"
                                             />
                                         </div>
 
-                                        {/* Income Tax */}
                                         <div>
-                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
-                                                Income Tax File
-                                            </label>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">Income Tax File</label>
                                             <input
                                                 type="text"
-                                                value={editForm.income_tax}
+                                                value={editForm.income_tax || ''}
                                                 onChange={(e) => handleEditChange('income_tax', e.target.value)}
                                                 className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                                 placeholder="Enter income tax file number"
                                             />
                                         </div>
 
-                                        {/* Other */}
                                         <div>
-                                            <label className="block text-xs font-semibold text-slate-700 mb-2">
-                                                Other File
-                                            </label>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-2">Other File</label>
                                             <input
                                                 type="text"
-                                                value={editForm.other}
+                                                value={editForm.other || ''}
                                                 onChange={(e) => handleEditChange('other', e.target.value)}
                                                 className="w-full px-4 py-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-400 transition-colors"
                                                 placeholder="Enter other file number"
@@ -1486,12 +1364,12 @@ const ViewFileIndex = () => {
                                     </motion.button>
                                     <motion.button
                                         type="submit"
-                                        onClick={handleEditSubmit}
-                                        className="px-5 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:shadow transition-all duration-200"
+                                        disabled={loading}
+                                        className="px-5 py-2.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
-                                        Update File Index
+                                        {loading ? 'Updating...' : 'Update File Index'}
                                     </motion.button>
                                 </div>
                             </form>
@@ -1499,7 +1377,8 @@ const ViewFileIndex = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
-            {/* Compact File Index Modal */}
+
+            {/* Compact File Index details Modal */}
             <AnimatePresence>
                 {showViewModal && selectedFileToView && (
                     <motion.div
@@ -1507,13 +1386,16 @@ const ViewFileIndex = () => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2"
-                        onClick={() => setShowViewModal(false)}
+                        onClick={() => {
+                            setShowViewModal(false);
+                            setSelectedFileToView(null);
+                        }}
                     >
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-2xl max-w-4xl max-h-[75vh] w-full shadow-2xl border border-slate-200 p-4"
+                            className="bg-white rounded-2xl max-w-4xl max-h-[75vh] w-full shadow-2xl border border-slate-200 p-4 overflow-y-auto"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Compact Header */}
@@ -1538,7 +1420,7 @@ const ViewFileIndex = () => {
                             </div>
 
                             {/* Ultra Compact Content */}
-                            <div className="p-6">
+                            <div className="p-6 space-y-6">
                                 {/* Compact Header Card */}
                                 <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg mb-4">
                                     <div className="w-10 h-10 bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -1546,23 +1428,27 @@ const ViewFileIndex = () => {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="font-semibold text-slate-900 text-base truncate">{selectedFileToView.name}</div>
-                                        <div className="text-xs text-slate-600 truncate">ID: {selectedFileToView.index_id}</div>
+                                        <div className="text-xs text-slate-600 truncate">
+                                            ID: <span className="font-mono bg-slate-100 px-2 py-0.5 rounded">{selectedFileToView.indexid}</span>
+                                        </div>
                                     </div>
                                 </div>
+
                                 {/* Username */}
                                 <div>
                                     <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Username</span>
                                     <div className="font-mono bg-slate-100 px-2 py-1.5 rounded-md text-xs text-slate-900 border border-slate-200 truncate min-h-[32px] flex items-center">
-                                        {selectedFileToView.username}
+                                        {selectedFileToView.firmname || 'N/A'}
                                     </div>
                                 </div>
+
                                 {/* Compact Single Row */}
                                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mt-4 mb-4 text-xs">
                                     {/* Created */}
                                     <div>
                                         <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Created</span>
                                         <div className="font-medium text-slate-900 min-h-[32px] flex items-center">
-                                            {selectedFileToView.created_date}
+                                            {selectedFileToView.createddate || 'N/A'}
                                         </div>
                                     </div>
 
@@ -1570,11 +1456,19 @@ const ViewFileIndex = () => {
                                     <div className="md:col-span-2">
                                         <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Contact</span>
                                         <div className="space-y-0.5 text-xs min-h-[32px] leading-tight">
-                                            <div className="truncate">{selectedFileToView.mobile}</div>
-                                            <div className="text-blue-600 font-medium truncate">{selectedFileToView.email}</div>
+                                            <div className="truncate">{selectedFileToView.mobile || 'N/A'}</div>
+                                            <div className="text-blue-600 font-medium truncate">{selectedFileToView.email || 'N/A'}</div>
                                             <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs inline-block">
-                                                {selectedFileToView.user_type}
+                                                {selectedFileToView.usertype || 'user'}
                                             </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Guardian */}
+                                    <div>
+                                        <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Guardian</span>
+                                        <div className="font-medium text-slate-900 min-h-[32px] flex items-center">
+                                            {selectedFileToView.guardianname || 'N/A'}
                                         </div>
                                     </div>
 
@@ -1663,8 +1557,6 @@ const ViewFileIndex = () => {
             </AnimatePresence>
 
 
-
-
             {/* Export Confirmation Modal */}
             <AnimatePresence>
                 {exportModal.open && (
@@ -1703,6 +1595,7 @@ const ViewFileIndex = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
             {/* Delete Confirmation Modal */}
             <AnimatePresence>
                 {showDeleteConfirm && fileToDelete && (

@@ -142,7 +142,7 @@ const ViewDSCRegister = () => {
 
             const response = await fetch(url, {
                 method: 'GET',
-                headers
+                headers: headers
             });
 
             if (!response.ok) {
@@ -173,7 +173,7 @@ const ViewDSCRegister = () => {
 
             const response = await fetch(url, {
                 method: 'GET',
-                headers
+                headers: headers
             });
 
             if (!response.ok) {
@@ -215,7 +215,8 @@ const ViewDSCRegister = () => {
             const url = `${BASE_URL}/assistance/dsc/list?${params.toString()}`;
             const response = await fetch(url, {
                 method: "GET",
-                headers
+                headers: headers
+
             });
 
             if (!response.ok) {
@@ -268,10 +269,7 @@ const ViewDSCRegister = () => {
 
             const response = await fetch(`${BASE_URL}/assistance/dsc/delete`, {
                 method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    headers
-                },
+                headers: headers,
                 body: JSON.stringify({ dsc_id: dscToDelete })
             });
 
@@ -387,7 +385,6 @@ const ViewDSCRegister = () => {
             const parsed = moment(dateStr, ['DD/MM/YYYY', 'YYYY-MM-DD']);
             return parsed.isValid() ? parsed.format('DD/MM/YYYY') : '';
         };
-        console.log("companies=>>" + companies);
 
         const matchingCompany = companies.find(company =>
             company.label === dsc.company ||
@@ -411,11 +408,6 @@ const ViewDSCRegister = () => {
             password: dsc.password || '',
             type: matchingType
         };
-
-        console.log('🔍 dsc.company:', dsc.company);
-        console.log('🔍 matchingCompany:', matchingCompany);
-        console.log('🔍 companies sample:', companies.slice(0, 2));
-
         setEditForm(newEditForm);
         setShowEditModal(true);
     };
@@ -429,13 +421,9 @@ const ViewDSCRegister = () => {
         setLoading(true);
         const headers = getHeaders();
 
-        // const token = localStorage.getItem("user_token");
-        const username = localStorage.getItem("user_username");
-        // const branch = localStorage.getItem("branch_id");
         try {
             const validity_start = moment(createForm.validity_start, "DD/MM/YYYY").format("YYYY-MM-DD");
             const validity_end = moment(createForm.validity_end, "DD/MM/YYYY").format("YYYY-MM-DD");
-
             const year = moment(validity_start).year();
             const payload = {
                 username: createForm.username,
@@ -445,15 +433,11 @@ const ViewDSCRegister = () => {
                 validity_end,
                 type: createForm.type,
                 year: createForm.duration,
-                modify_by: username
             };
 
             const response = await fetch(`${BASE_URL}/assistance/dsc/create`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    headers
-                },
+                headers: headers,
                 body: JSON.stringify(payload),
             });
             const data = await response.json();
@@ -514,10 +498,7 @@ const ViewDSCRegister = () => {
                 `${BASE_URL}/assistance/dsc/edit`,
                 {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        headers
-                    },
+                    headers:headers,
                     body: JSON.stringify(apiPayload),
                 }
             );
@@ -551,16 +532,21 @@ const ViewDSCRegister = () => {
     };
 
     const handleCreateChange = (field, value) => {
-        const newForm = { ...createForm, [field]: value };
+        setCreateForm((prev) => {
+            const next = { ...prev, [field]: value };
 
-        if (field === 'validity_start' || field === 'duration') {
-            newForm.validity_end = calculatevalidity_end(
-                field === 'validity_start' ? value : createForm.validity_start,
-                field === 'duration' ? parseInt(value) : parseInt(createForm.duration)
-            );
-        }
+            if (field === "validity_start" || field === "duration") {
+                const start = field === "validity_start" ? value : prev.validity_start;
+                const durationRaw = field === "duration" ? value : prev.duration;
+                const duration = Number(durationRaw);
 
-        setCreateForm(newForm);
+                next.validity_end =
+                    start && Number.isFinite(duration)
+                        ? calculatevalidity_end(start, duration)
+                        : "";
+            }
+            return next;
+        });
     };
 
     const handleEditChange = (field, value) => {
@@ -1025,7 +1011,6 @@ const ViewDSCRegister = () => {
                                             const daysLeft = getDaysLeft(dsc.validity_end);
                                             const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
                                             const profileLink = getUserProfileLink(dsc);
-                                            // console.log(currentItems.map(item => item.dsc_id));
 
                                             return (
                                                 <motion.tr
@@ -1483,9 +1468,9 @@ const ViewDSCRegister = () => {
                                                 primary: 'name',
                                                 secondary: (item) => `${item.user_type || ''} • ${item.mobile || ''} • ${item.email || ''}`
                                             }}
-                                            onSelect={(item, value) => {
-                                                handleCreateChange('username', value);
-                                                handleCreateChange('selectedUser', item);
+                                            onSelect={(value) => {
+                                                handleCreateChange('username', value.username);
+                                                handleCreateChange('selectedUser', value);
                                             }}
                                             placeholder="Search user by name, type or mobile..."
                                             dataExtractor={(response) => {
