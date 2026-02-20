@@ -280,7 +280,7 @@ return (
 
         {!isLoading && !hasError && safeList.length === 0 && searchTerm.length >= minChars && (
           <div className="px-4 py-3 text-sm text-gray-500">
-            No results found
+            No Results Found
           </div>
         )}
 
