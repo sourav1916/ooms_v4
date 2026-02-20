@@ -3,7 +3,7 @@ import { FiCalendar, FiChevronDown, FiSearch } from 'react-icons/fi';
 
 const DateFilter = ({ onChange, onSearch }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [selectedOption, setSelectedOption] = useState('This Month');
+    const [selectedOption, setSelectedOption] = useState('↑↓ Expires On');
     const [showCustomPicker, setShowCustomPicker] = useState(false);
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
@@ -25,6 +25,7 @@ const DateFilter = ({ onChange, onSearch }) => {
     }, []);
 
     const options = [
+        { label: 'Clear', value: 'clear' },
         { label: 'Today', value: 'today' },
         { label: 'This Week', value: 'this_week' },
         { label: 'This Month', value: 'this_month' },
@@ -38,12 +39,22 @@ const DateFilter = ({ onChange, onSearch }) => {
     };
 
     const formatDateForDisplay = (date) => {
-        return date.toLocaleDateString('en-GB', {
+        if (!date || date === '') {
+            return '';
+        }
+
+        const dateObj = new Date(date);
+        if (isNaN(dateObj.getTime())) {
+            return '';
+        }
+
+        return dateObj.toLocaleDateString('en-GB', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric'
         }).replace(/\//g, '/');
     };
+
 
     const handleSelect = (option) => {
         if (option.value === 'custom') {
@@ -55,12 +66,16 @@ const DateFilter = ({ onChange, onSearch }) => {
         setSelectedOption(option.label);
         setIsOpen(false);
         setShowCustomPicker(false);
-        
+
         // Calculate date range based on selection
         const today = new Date();
         let from, to;
 
         switch (option.value) {
+            case 'clear':
+                from = '';
+                to = '';
+                break;
             case 'today':
                 from = today;
                 to = today;
@@ -80,28 +95,27 @@ const DateFilter = ({ onChange, onSearch }) => {
             case 'this_fy':
                 // Financial year logic (April to March)
                 const currentYear = today.getFullYear();
-                const fiscalYearStart = today.getMonth() >= 3 ? 
-                    new Date(currentYear, 3, 1) : 
+                const fiscalYearStart = today.getMonth() >= 3 ?
+                    new Date(currentYear, 3, 1) :
                     new Date(currentYear - 1, 3, 1);
-                const fiscalYearEnd = today.getMonth() >= 3 ? 
-                    new Date(currentYear + 1, 2, 31) : 
+                const fiscalYearEnd = today.getMonth() >= 3 ?
+                    new Date(currentYear + 1, 2, 31) :
                     new Date(currentYear, 2, 31);
                 from = fiscalYearStart;
                 to = fiscalYearEnd;
                 break;
             case 'prev_fy':
-                // Previous financial year
                 const prevYear = today.getFullYear() - 1;
                 from = new Date(prevYear, 3, 1);
                 to = new Date(prevYear + 1, 2, 31);
                 break;
             default:
-                from = new Date(today.getFullYear(), today.getMonth(), 1);
-                to = today;
+                from = '';
+                to = '';
         }
 
         const range = `${formatDateForDisplay(from)} - ${formatDateForDisplay(to)}`;
-        
+
         if (onChange) {
             onChange({
                 type: option.value,
@@ -125,7 +139,7 @@ const DateFilter = ({ onChange, onSearch }) => {
 
         const start = new Date(customStartDate);
         const end = new Date(customEndDate);
-        
+
         if (start > end) {
             alert('Start date cannot be after end date');
             return;
@@ -136,7 +150,7 @@ const DateFilter = ({ onChange, onSearch }) => {
         setShowCustomPicker(false);
 
         const range = `${formatDateForDisplay(start)} - ${formatDateForDisplay(end)}`;
-        
+
         if (onChange) {
             onChange({
                 type: 'custom',
@@ -163,7 +177,7 @@ const DateFilter = ({ onChange, onSearch }) => {
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
         const lastDay = today;
-        
+
         setCustomStartDate(formatDateForInput(firstDay));
         setCustomEndDate(formatDateForInput(lastDay));
     }, []);
@@ -202,7 +216,7 @@ const DateFilter = ({ onChange, onSearch }) => {
                             // Custom date picker
                             <div className="p-4">
                                 <h4 className="font-semibold text-slate-800 mb-3">Select Date Range</h4>
-                                
+
                                 <div className="space-y-3">
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -215,7 +229,7 @@ const DateFilter = ({ onChange, onSearch }) => {
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                                         />
                                     </div>
-                                    
+
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">
                                             End Date
@@ -249,7 +263,7 @@ const DateFilter = ({ onChange, onSearch }) => {
                 )}
             </div>
 
-            {/* Search Button */}
+            {/* Search Button
             <button
                 onClick={() => {
                     // Get current date range and trigger search
@@ -297,7 +311,7 @@ const DateFilter = ({ onChange, onSearch }) => {
             >
                 <FiSearch className="w-4 h-4" />
                 Search
-            </button>
+            </button> */}
         </div>
     );
 };

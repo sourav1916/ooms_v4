@@ -27,3 +27,13 @@
 .animate-fade-in {
   animation: fade-in 0.2s ease-out forwards;
 }
+
+@media (min-width: 1024px) and (max-width: 1240px) {
+
+  .header{
+    flex-direction: column!important;
+  }
+  .options-parent{
+    width: 100%;
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     FiSearch,
     FiPlus,
@@ -15,18 +15,14 @@ import {
     FiChevronRight,
     FiChevronDown,
     FiCheck,
-    FiInfo,
     FiDollarSign,
-    FiTrendingUp,
-    FiCreditCard,
-    FiFilter,
     FiChevronLeft,
     FiChevronRight as FiChevronRightIcon,
     FiChevronUp,
-    FiUsers,
     FiExternalLink,
     FiCalendar,
-    FiClock
+    FiEye,
+    FiTrash2
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
@@ -38,7 +34,6 @@ import DateFilter from '../../components/DateFilter';
 import moment from 'moment';
 import getHeaders from "../../utils/get-headers";
 import axios from 'axios';
-import { header } from 'framer-motion/client';
 import SearchableSelect from '../../components/SearchableSelect';
 
 const ViewFileIndex = () => {
@@ -48,7 +43,6 @@ const ViewFileIndex = () => {
         const saved = localStorage.getItem('sidebarMinimized');
         return saved ? JSON.parse(saved) : false;
     });
-
     // Base Api Url
     const BASE_URL = 'https://api.ooms.in/api/v1';
 
@@ -62,21 +56,18 @@ const ViewFileIndex = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [users, setUsers] = useState([]);
-
-    // State for dropdown menus
     const [showAddDropdown, setShowAddDropdown] = useState(false);
     const [activeRowDropdown, setActiveRowDropdown] = useState(null);
     const [exportModal, setExportModal] = useState({ open: false, type: '', data: null });
-
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [selectedEmail, setSelectedEmail] = useState('');
-
     const [isWhatsappModalOpen, setWhatsappModalOpen] = useState(false);
     const [selectedWhatsapp, setSelectedWhatsapp] = useState('');
-
     const [meta, setMeta] = useState({ total_pages: 0, current_page: 1, total: 0 });
-
-    // Form states
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [selectedFileToView, setSelectedFileToView] = useState(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [fileToDelete, setFileToDelete] = useState(null);
     const [createForm, setCreateForm] = useState({
         username: '',
         gst: '',
@@ -93,133 +84,14 @@ const ViewFileIndex = () => {
         other: ''
     });
 
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
     const [showAll, setShowAll] = useState(false);
 
-    // // Mock File Index data
-    // const mockFileData = [
-    // {
-    //     index_id: 'index001',
-    //     username: 'user001',
-    //     name: 'John Doe',
-    //     guardian_name: 'Robert Doe',
-    //     mobile: '+91 9876543210',
-    //     email: 'john.doe@company.com',
-    //     gst: 'GST/2024/001',
-    //     audit: 'AUD/2024/001',
-    //     income_tax: 'ITR/2024/001',
-    //     other: 'MISC/2024/001',
-    //     user_type: 'user',
-    //     created_date: '2024-01-15'
-    // },
-    //     {
-    //         index_id: 'index002',
-    //         username: 'ca001',
-    //         name: 'Jane Smith',
-    //         guardian_name: 'William Smith',
-    //         mobile: '+91 9876543211',
-    //         email: 'jane.smith@ca.com',
-    //         gst: 'GST/2024/002',
-    //         audit: 'AUD/2024/002',
-    //         income_tax: 'ITR/2024/002',
-    //         other: 'MISC/2024/002',
-    //         user_type: 'ca',
-    //         created_date: '2024-01-20'
-    //     },
-    //     {
-    //         index_id: 'index003',
-    //         username: 'agent001',
-    //         name: 'Mike Johnson',
-    //         guardian_name: 'David Johnson',
-    //         mobile: '+91 9876543212',
-    //         email: 'mike.johnson@agent.com',
-    //         gst: 'GST/2024/003',
-    //         audit: 'AUD/2024/003',
-    //         income_tax: 'ITR/2024/003',
-    //         other: 'MISC/2024/003',
-    //         user_type: 'agent',
-    //         created_date: '2024-02-05'
-    //     },
-    //     {
-    //         index_id: 'index004',
-    //         username: 'emp001',
-    //         name: 'Sarah Wilson',
-    //         guardian_name: 'James Wilson',
-    //         mobile: '+91 9876543213',
-    //         email: 'sarah.wilson@company.com',
-    //         gst: 'GST/2024/004',
-    //         audit: 'AUD/2024/004',
-    //         income_tax: 'ITR/2024/004',
-    //         other: 'MISC/2024/004',
-    //         user_type: 'employee',
-    //         created_date: '2024-02-10'
-    //     },
-    //     {
-    //         index_id: 'index005',
-    //         username: 'user002',
-    //         name: 'Robert Brown',
-    //         guardian_name: 'Thomas Brown',
-    //         mobile: '+91 9876543214',
-    //         email: 'robert.brown@company.com',
-    //         gst: 'GST/2024/005',
-    //         audit: 'AUD/2024/005',
-    //         income_tax: 'ITR/2024/005',
-    //         other: 'MISC/2024/005',
-    //         user_type: 'user',
-    //         created_date: '2024-02-15'
-    //     },
-    //     {
-    //         index_id: 'index006',
-    //         username: 'user003',
-    //         name: 'Emily Davis',
-    //         guardian_name: 'Michael Davis',
-    //         mobile: '+91 9876543215',
-    //         email: 'emily.davis@company.com',
-    //         gst: 'GST/2024/006',
-    //         audit: 'AUD/2024/006',
-    //         income_tax: 'ITR/2024/006',
-    //         other: 'MISC/2024/006',
-    //         user_type: 'user',
-    //         created_date: '2024-02-20'
-    //     }
-    // ];
-
-    // // Mock users data for dropdown
-    // const mockUsers = [
-    //     {
-    //         username: 'user001',
-    //         name: 'John Doe',
-    //         guardian_name: 'Robert Doe',
-    //         mobile: '+91 9876543210',
-    //         user_type: 'user',
-    //         state: 'active'
-    //     },
-    //     {
-    //         username: 'ca001',
-    //         name: 'Jane Smith',
-    //         guardian_name: 'William Smith',
-    //         mobile: '+91 9876543211',
-    //         user_type: 'ca',
-    //         state: 'active'
-    //     },
-    //     {
-    //         username: 'agent001',
-    //         name: 'Mike Johnson',
-    //         guardian_name: 'David Johnson',
-    //         mobile: '+91 9876543212',
-    //         user_type: 'agent',
-    //         state: 'active'
-    //     }
-    // ];
-
-    // Persist sidebar minimized state
     useEffect(() => {
         localStorage.setItem('sidebarMinimized', JSON.stringify(isMinimized));
     }, [isMinimized]);
 
-    // Lock body scroll when mobile sidebar is open
     useEffect(() => {
         if (mobileMenuOpen) {
             document.body.style.overflow = 'hidden';
@@ -231,7 +103,6 @@ const ViewFileIndex = () => {
         };
     }, [mobileMenuOpen]);
 
-    // Initialize with current month date range
     useEffect(() => {
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -251,20 +122,20 @@ const ViewFileIndex = () => {
         setDateRange(`${from} - ${to}`);
         setFromToDate(`From ${from} to ${to}`);
         fetchFileData(true);
-        fetchUsers();
     }, []);
 
-    // Simulate API call to fetch file data
     const fetchFileData = async (from = '', to = '', search = '', page = 1, limit = 10) => {
         setLoading(true);
 
         try {
-            const headers = getHeaders();
-            if (!headers) {
-                console.error('Cannot create firm: Missing authentication headers');
-                return;
+            const token = localStorage.getItem("user_token");
+            const username = localStorage.getItem("user_username");
+            const branch = localStorage.getItem("branch_id");
+
+            if (!token) {
+                throw new Error("No auth token found");
             }
-            // Build query parameters
+
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: limit.toString()
@@ -273,28 +144,25 @@ const ViewFileIndex = () => {
             if (search) {
                 params.append('search', search);
             }
-
-            // Convert date format from DD/MM/YYYY to YYYY-MM-DD if both dates are provided
             if (from && to) {
-                // Assuming moment is available; otherwise use vanilla JS date parsing
                 const fromFormatted = moment(from, 'DD/MM/YYYY').format('YYYY-MM-DD');
                 const toFormatted = moment(to, 'DD/MM/YYYY').format('YYYY-MM-DD');
                 params.append('from', fromFormatted);
                 params.append('to', toFormatted);
             }
 
-            const response = await fetch(
+            const response = await axios.get(
                 `${BASE_URL}/assistance/file-index/list?${params.toString()}`,
                 {
-                    method: "GET",
-                    headers: headers
+                    headers: {
+                        'token': token,
+                        'username': username,
+                        'branch': branch
+                    }
                 }
             );
-
-            const result = await response.json();
-
-            if (response.ok && result.success) {
-
+            const result = response.data;
+            if (result.success) {
                 const mapFileIndexToUI = (item) => ({
                     index_id: item.index_id,
                     username: item.firm_id,
@@ -306,7 +174,7 @@ const ViewFileIndex = () => {
                     audit: item.audit,
                     income_tax: item.it,
                     other: item.others,
-                    user_type: 'user',
+                    user_type: 'client',
                     created_date: item.create_date?.split('T')[0]
                 });
 
@@ -325,50 +193,39 @@ const ViewFileIndex = () => {
         }
     };
 
-    // Simulate fetching users
-    const fetchUsers = async (search = "") => {
+    const handleDeleteFile = async (file) => {
         try {
+            setLoading(true);
             const headers = getHeaders();
-            if (!headers) {
-                console.error('Cannot create firm: Missing authentication headers');
-                return;
-            }
 
-            const searchTrimmed = search.trim();
-
-            // 🔁 Decide endpoint dynamically
-            const endpoint =
-                searchTrimmed.length >= 3
-                    ? `${BASE_URL}/client/search?search=${encodeURIComponent(searchTrimmed)}`
-                    : `${BASE_URL}/client/list`;  // your fetch-all API
-
-            const response = await fetch(endpoint, {
-                method: "GET",
-                headers: headers
+            const response = await fetch(`${BASE_URL}/assistance/file-index/delete`, {
+                method: "DELETE",
+                headers,
+                body: JSON.stringify({ index_id: file.index_id })
             });
 
-            const result = await response.json();
+            const data = await response.json();
 
-            if (response.ok && result.success) {
-                setUsers(result.data || []);
+            if (response.ok && data.success) {
+                // Refresh table data
+                const [from, to] = dateRange.split(' - ');
+                fetchFileData(from, to, searchQuery);
             } else {
-                console.error("Failed:", result.message);
-                setUsers([]);
+                alert('Delete failed: ' + (data.message || 'Unknown error'));
             }
-
         } catch (error) {
-            console.error("Error fetching users:", error);
-            setUsers([]);
+            console.error("Delete error:", error);
+            alert('Delete failed. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
-    // Handle search
     const handleSearch = () => {
         const [from, to] = dateRange.split(' - ');
         fetchFileData(from, to);
     };
 
-    // Handle search input change with debounce
     useEffect(() => {
         const timer = setTimeout(() => {
             if (searchQuery !== '') {
@@ -379,14 +236,12 @@ const ViewFileIndex = () => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // Handle key press in search input
     const handleKeyPress = (e) => {
         if (e.key === 'Enter') {
             handleSearch();
         }
     };
 
-    // Handle date filter change
     const handleDateFilterChange = (filter) => {
         console.log('Selected filter:', filter);
         if (filter.range) {
@@ -397,7 +252,6 @@ const ViewFileIndex = () => {
         }
     };
 
-    // Handle export
     const handleExport = (type, data = null) => {
         setExportModal({ open: true, type, data });
 
@@ -419,7 +273,6 @@ const ViewFileIndex = () => {
         console.log('Selected number:', number);
     };
 
-    // Handle edit button click
     const handleEditClick = (file) => {
         setSelectedFile(file);
         setEditForm({
@@ -432,7 +285,6 @@ const ViewFileIndex = () => {
         setShowEditModal(true);
     };
 
-    // Handle create form submit
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         const headers = getHeaders();
@@ -489,7 +341,6 @@ const ViewFileIndex = () => {
                     other: ''
                 });
 
-                // Refresh list after create
                 fetchFileData(1, searchQuery);
 
             } else {
@@ -504,7 +355,6 @@ const ViewFileIndex = () => {
     };
 
 
-    // Handle edit form submit
     const handleEditSubmit = async (e) => {
         e.preventDefault();
 
@@ -522,9 +372,8 @@ const ViewFileIndex = () => {
         setLoading(true);
 
 
-        // 🔁 Transform UI form → API payload
         const apiPayload = {
-            index_id: editForm.index_id,          // REQUIRED
+            index_id: editForm.index_id,
             gst: editForm.gst || null,
             audit: editForm.audit || null,
             it: editForm.income_tax || null,
@@ -544,7 +393,6 @@ const ViewFileIndex = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                console.log("✅ File index updated:", data);
             } else {
                 console.error("❌ Backend error:", data.message || data);
                 return;
@@ -556,17 +404,13 @@ const ViewFileIndex = () => {
         } finally {
             setLoading(false);
         }
-
-        // UI cleanup + refresh
         setShowEditModal(false);
         setSelectedFile(null);
-
         const [from, to] = dateRange.split(" - ");
         fetchFileData(from, to, searchQuery);
     };
 
 
-    // Handle form changes
     const handleCreateChange = (field, value) => {
         setCreateForm(prev => ({
             ...prev,
@@ -581,7 +425,6 @@ const ViewFileIndex = () => {
         }));
     };
 
-    // Get user profile link based on user type
     const getUserProfileLink = (user) => {
         const baseUrls = {
             user: '/view-client-profile',
@@ -592,13 +435,11 @@ const ViewFileIndex = () => {
         return `${baseUrls[user.user_type]}?username=${user.username}`;
     };
 
-    // Format date
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB');
     };
 
-    // Get file badge class
     const getFileBadgeClass = (fileType) => {
         const baseClasses = 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border shadow-xs';
 
@@ -616,12 +457,10 @@ const ViewFileIndex = () => {
         }
     };
 
-    // Toggle row dropdown
     const toggleRowDropdown = (indexId) => {
         setActiveRowDropdown(activeRowDropdown === indexId ? null : indexId);
     };
 
-    // Close all dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (!event.target.closest('.dropdown-container')) {
@@ -636,7 +475,6 @@ const ViewFileIndex = () => {
         };
     }, []);
 
-    // Handle user profile click
     const handleUserProfileClick = (e, file) => {
         e.preventDefault();
         const profileLink = getUserProfileLink(file);
@@ -644,13 +482,11 @@ const ViewFileIndex = () => {
         window.open(profileLink, '_blank');
     };
 
-    // Get current items based on pagination
     const indexOfLastItem = showAll ? fileData.length : currentPage * itemsPerPage;
     const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
     const currentItems = fileData.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(fileData.length / itemsPerPage);
 
-    // Skeleton loader component
     const SkeletonRow = () => (
         <tr className="border-b border-slate-100 animate-pulse">
             <td className="p-3 text-center">
@@ -683,7 +519,6 @@ const ViewFileIndex = () => {
         </tr>
     );
 
-    // Skeleton Loading Component for full page
     const SkeletonLoader = () => (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
@@ -840,20 +675,20 @@ const ViewFileIndex = () => {
                     >
                         {/* Card Header */}
                         <div className="border-b border-slate-200 px-6 py-4 bg-gradient-to-r from-slate-50 to-white sticky top-0 z-10">
-                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                                <div>
+                            <div className="header flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                                <div className="options-parent">
                                     <div className="flex items-center gap-3 mb-1">
                                         <div className="p-2 bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg">
                                             <FiFileText className="w-5 h-5 text-purple-600" />
                                         </div>
                                         <div>
-                                            <h5 className="text-lg font-bold text-slate-800">
+                                            <h5 className="text-lg font-bold text-slate-800 whitespace-nowrap">
                                                 File Index Register
                                             </h5>
                                             {fromToDate && (
                                                 <div className="flex items-center gap-1 text-slate-600">
                                                     <FiCalendar className="w-3 h-3" />
-                                                    <p className="text-xs font-medium">
+                                                    <p className="text-xs font-medium whitespace-nowrap">
                                                         {fromToDate}
                                                     </p>
                                                 </div>
@@ -862,9 +697,9 @@ const ViewFileIndex = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+                                <div className="flex flex-col lg:flex-row gap-3 w-full justify-end">
                                     {/* Search Input */}
-                                    <div className="relative">
+                                    <div className="relative flex justify-center items-center ">
                                         <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
                                         <input
                                             type="text"
@@ -875,23 +710,22 @@ const ViewFileIndex = () => {
                                             className="pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full lg:w-64"
                                         />
                                     </div>
-
-                                    {/* Date Filter Component */}
-                                    <div className="w-full lg:w-auto">
-                                        <DateFilter onChange={handleDateFilterChange} />
-                                    </div>
-
                                     <div className="flex gap-2">
+
+                                        {/* Date Filter Component */}
+                                        <div className="w-full lg:w-auto whitespace-nowrap">
+                                            <DateFilter onChange={handleDateFilterChange} />
+                                        </div>
+
                                         {/* Export Dropdown */}
                                         <div className="dropdown-container relative">
                                             <motion.button
                                                 onClick={() => setShowAddDropdown(!showAddDropdown)}
-                                                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
+                                                className="px-4 h-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
                                                 <PiExportBold className="w-4 h-4" />
-                                                Export
                                                 <FiChevronRight className={`w-3 h-3 transition-transform ${showAddDropdown ? 'rotate-90' : ''}`} />
                                             </motion.button>
 
@@ -961,7 +795,7 @@ const ViewFileIndex = () => {
                                             whileTap={{ scale: 0.98 }}
                                         >
                                             <FiPlus className="w-4 h-4" />
-                                            Add File Index
+
                                         </motion.button>
                                     </div>
                                 </div>
@@ -982,18 +816,10 @@ const ViewFileIndex = () => {
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
                                             Contact Info
                                         </th>
-                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
-                                            GST File
+                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
+                                            Files
                                         </th>
-                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
-                                            Audit File
-                                        </th>
-                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
-                                            Income Tax
-                                        </th>
-                                        <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
-                                            Other File
-                                        </th>
+
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]">
                                             Actions
                                         </th>
@@ -1087,120 +913,138 @@ const ViewFileIndex = () => {
                                                         </div>
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
-                                                        {file.gst && (
-                                                            <span className={getFileBadgeClass('gst')}>
-                                                                {file.gst}
-                                                            </span>
-                                                        )}
+                                                        <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200 shadow-sm mx-auto">
+                                                            {[
+                                                                file.gst && 'GST',
+                                                                file.audit && 'Audit',
+                                                                file.income_tax && 'ITR',
+                                                                file.other && 'Other'
+                                                            ].filter(Boolean).length}
+                                                        </div>
                                                     </td>
+
+
                                                     <td className="text-center p-3 align-middle">
-                                                        {file.audit && (
-                                                            <span className={getFileBadgeClass('audit')}>
-                                                                {file.audit}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="text-center p-3 align-middle">
-                                                        {file.income_tax && (
-                                                            <span className={getFileBadgeClass('income_tax')}>
-                                                                {file.income_tax}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="text-center p-3 align-middle">
-                                                        {file.other && (
-                                                            <span className={getFileBadgeClass('other')}>
-                                                                {file.other}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="text-center p-3 align-middle">
-                                                        <div className="dropdown-container relative flex justify-center">
-                                                            <motion.button
-                                                                className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
-                                                                onClick={() => toggleRowDropdown(file.index_id)}
-                                                                whileHover={{ scale: 1.05 }}
-                                                                whileTap={{ scale: 0.95 }}
-                                                            >
-                                                                <FiMenu className="w-3.5 h-3.5" />
-                                                            </motion.button>
-                                                            <AnimatePresence>
-                                                                {isDropdownOpen && (
-                                                                    <motion.div
-                                                                        initial={{ opacity: 0, y: 5 }}
-                                                                        animate={{ opacity: 1, y: 0 }}
-                                                                        exit={{ opacity: 0, y: 5 }}
-                                                                        className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
-                                                                    >
-                                                                        <div className="py-1">
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    setActiveRowDropdown(null);
-                                                                                    handleEditClick(file);
-                                                                                }}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                            >
-                                                                                <div className="p-1 bg-blue-50 rounded mr-2">
-                                                                                    <FiEdit className="w-3 h-3 text-blue-500" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">Edit File Index</div>
-                                                                                </div>
-                                                                            </button>
-                                                                            <a
-                                                                                href={profileLink}
-                                                                                onClick={(e) => {
-                                                                                    setActiveRowDropdown(null);
-                                                                                    handleUserProfileClick(e, file);
-                                                                                }}
-                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                            >
-                                                                                <div className="p-1 bg-emerald-50 rounded mr-2">
-                                                                                    <FiUser className="w-3 h-3 text-emerald-500" />
-                                                                                </div>
-                                                                                <div className="text-left">
-                                                                                    <div className="font-medium">View Profile</div>
-                                                                                </div>
-                                                                            </a>
-                                                                            <div className="border-t border-slate-100 mt-1 pt-1">
+                                                        <div className="flex gap-2 justify-center">
+                                                            <div className="dropdown-container relative flex justify-center">
+                                                                <motion.button
+                                                                    className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
+                                                                    onClick={() => toggleRowDropdown(file.index_id)}
+                                                                    whileHover={{ scale: 1.05 }}
+                                                                    whileTap={{ scale: 0.95 }}
+                                                                >
+                                                                    <FiMenu className="w-3.5 h-3.5" />
+                                                                </motion.button>
+                                                                <AnimatePresence>
+                                                                    {isDropdownOpen && (
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, y: 5 }}
+                                                                            animate={{ opacity: 1, y: 0 }}
+                                                                            exit={{ opacity: 0, y: 5 }}
+                                                                            className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden"
+                                                                        >
+                                                                            <div className="py-1">
                                                                                 <button
-                                                                                    onClick={() => handleExport('print', file)}
-                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                >
-                                                                                    <div className="p-1 bg-slate-50 rounded mr-2">
-                                                                                        <FiPrinter className="w-3 h-3 text-slate-600" />
-                                                                                    </div>
-                                                                                    <div className="text-left">
-                                                                                        <div className="font-medium">Print</div>
-                                                                                    </div>
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => handleExport('whatsapp', file)}
-                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                >
-                                                                                    <div className="p-1 bg-green-50 rounded mr-2">
-                                                                                        <FiMessageSquare className="w-3 h-3 text-green-500" />
-                                                                                    </div>
-                                                                                    <div className="text-left">
-                                                                                        <div className="font-medium">WhatsApp</div>
-                                                                                    </div>
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => handleExport('email', file)}
+                                                                                    onClick={() => {
+                                                                                        setActiveRowDropdown(null);
+                                                                                        handleEditClick(file);
+                                                                                    }}
                                                                                     className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                 >
                                                                                     <div className="p-1 bg-blue-50 rounded mr-2">
-                                                                                        <FiMail className="w-3 h-3 text-blue-500" />
+                                                                                        <FiEdit className="w-3 h-3 text-blue-500" />
                                                                                     </div>
                                                                                     <div className="text-left">
-                                                                                        <div className="font-medium">Email</div>
+                                                                                        <div className="font-medium">Edit File Index</div>
                                                                                     </div>
                                                                                 </button>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setActiveRowDropdown(null);
+                                                                                        setFileToDelete(file);
+                                                                                        setShowDeleteConfirm(true);
+                                                                                    }}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-red-50 border-t border-slate-100 transition-colors duration-150"
+                                                                                >
+                                                                                    <div className="p-1 bg-red-50 rounded mr-2">
+                                                                                        <FiTrash2 className="w-3 h-3 text-red-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">Delete File Index</div>
+                                                                                    </div>
+                                                                                </button>
+
+                                                                                <a
+                                                                                    href={profileLink}
+                                                                                    onClick={(e) => {
+                                                                                        setActiveRowDropdown(null);
+                                                                                        handleUserProfileClick(e, file);
+                                                                                    }}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                >
+                                                                                    <div className="p-1 bg-emerald-50 rounded mr-2">
+                                                                                        <FiUser className="w-3 h-3 text-emerald-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">View Profile</div>
+                                                                                    </div>
+                                                                                </a>
+                                                                                <div className="border-t border-slate-100 mt-1 pt-1">
+                                                                                    <button
+                                                                                        onClick={() => handleExport('print', file)}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    >
+                                                                                        <div className="p-1 bg-slate-50 rounded mr-2">
+                                                                                            <FiPrinter className="w-3 h-3 text-slate-600" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Print</div>
+                                                                                        </div>
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleExport('whatsapp', file)}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    >
+                                                                                        <div className="p-1 bg-green-50 rounded mr-2">
+                                                                                            <FiMessageSquare className="w-3 h-3 text-green-500" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">WhatsApp</div>
+                                                                                        </div>
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleExport('email', file)}
+                                                                                        className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    >
+                                                                                        <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                            <FiMail className="w-3 h-3 text-blue-500" />
+                                                                                        </div>
+                                                                                        <div className="text-left">
+                                                                                            <div className="font-medium">Email</div>
+                                                                                        </div>
+                                                                                    </button>
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
-                                                                    </motion.div>
-                                                                )}
-                                                            </AnimatePresence>
+                                                                        </motion.div>
+                                                                    )}
+                                                                </AnimatePresence>
+                                                            </div>
+                                                            <div>
+                                                                <motion.button
+                                                                    className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
+                                                                    onClick={() => {
+                                                                        setSelectedFileToView(file);
+                                                                        setShowViewModal(true);
+                                                                        setActiveRowDropdown(null); // Close dropdown if open
+                                                                    }}
+                                                                    whileHover={{ scale: 1.05 }}
+                                                                    whileTap={{ scale: 0.95 }}
+                                                                    title="View Details"
+                                                                >
+                                                                    <FiEye className="w-3.5 h-3.5" />
+                                                                </motion.button>
+
+                                                            </div>
                                                         </div>
                                                     </td>
                                                 </motion.tr>
@@ -1361,34 +1205,67 @@ const ViewFileIndex = () => {
                                         <label className="block text-xs font-semibold text-slate-700 mb-2">
                                             Select User <span className="text-rose-500">*</span>
                                         </label>
-                                        <div className="relative">
-<SearchableSelect
-  endpoint="/clients/search"
-  listEndpoint="/clients/list"
+                                        <SearchableSelect
+                                            endpoint="/client/search"
+                                            searchParam="search"
+                                            valueKey="username"
+                                            labelMapping={{
+                                                primary: 'name',
+                                                secondary: (item) => `${item.user_type || ''} • ${item.mobile || ''} • ${item.email || ''}`
+                                            }}
+                                            onSelect={(item, value) => {
+                                                handleCreateChange('username', value);
+                                                handleCreateChange('selectedUser', item);
+                                            }}
+                                            placeholder="Search user by name, type or mobile..."
+                                            dataExtractor={(response) => {
+                                                // Your API returns { success: true, data: [...] }
+                                                return response?.data || [];
+                                            }}
+                                        />
 
-  search="search"
-  minChars={3}
-
-  valueKey="username"
-
-  labelMapping={{
-    primary: "name",
-    secondary: "mobile"
-  }}
-
-  dataExtractor={(res) => res.data || []}
-
-  
-
-  placeholder="Search client by name, mobile, email..."
-
-  onSelect={(item, value) => {
-    console.log("Selected client:", item);
-    console.log("Username:", value);
-  }}
-/>
-                                            <FiChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                                        </div>
+                                        {/* Show selected user info */}
+                                        {createForm.selectedUser && (
+                                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                                            <FiUser className="w-4 h-4 text-blue-600" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="font-medium text-sm">
+                                                                    {createForm.selectedUser.name}
+                                                                </span>
+                                                                <span className="text-gray-400">•</span>
+                                                                <span className="text-sm text-gray-600">
+                                                                    {createForm.selectedUser.mobile}
+                                                                </span>
+                                                                <span className="text-gray-400">•</span>
+                                                                <span className="text-xs text-gray-500">
+                                                                    {createForm.selectedUser.email}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                                                    {createForm.selectedUser.user_type}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            handleCreateChange('username', '');
+                                                            handleCreateChange('selectedUser', null);
+                                                        }}
+                                                        className="p-1 hover:bg-blue-100 rounded-full"
+                                                    >
+                                                        <FiX className="w-4 h-4 text-gray-500" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -1632,6 +1509,171 @@ const ViewFileIndex = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+            {/* Compact File Index Modal */}
+            <AnimatePresence>
+                {showViewModal && selectedFileToView && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2"
+                        onClick={() => setShowViewModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-2xl max-w-4xl max-h-[75vh] w-full shadow-2xl border border-slate-200 p-4"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Compact Header */}
+                            <div className="sticky top-0 bg-white border-b border-slate-200 px-4 py-3 rounded-t-2xl z-10">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                        <FiEye className="w-5 h-5 text-blue-600" />
+                                        File Index Details
+                                    </h3>
+                                    <motion.button
+                                        onClick={() => {
+                                            setShowViewModal(false);
+                                            setSelectedFileToView(null);
+                                        }}
+                                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                    >
+                                        <FiX className="w-4 h-4" />
+                                    </motion.button>
+                                </div>
+                            </div>
+
+                            {/* Ultra Compact Content */}
+                            <div className="p-6">
+                                {/* Compact Header Card */}
+                                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg mb-4">
+                                    <div className="w-10 h-10 bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                                        <FiFileText className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="font-semibold text-slate-900 text-base truncate">{selectedFileToView.name}</div>
+                                        <div className="text-xs text-slate-600 truncate">ID: {selectedFileToView.index_id}</div>
+                                    </div>
+                                </div>
+                                {/* Username */}
+                                <div>
+                                    <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Username</span>
+                                    <div className="font-mono bg-slate-100 px-2 py-1.5 rounded-md text-xs text-slate-900 border border-slate-200 truncate min-h-[32px] flex items-center">
+                                        {selectedFileToView.username}
+                                    </div>
+                                </div>
+                                {/* Compact Single Row */}
+                                <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mt-4 mb-4 text-xs">
+                                    {/* Created */}
+                                    <div>
+                                        <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Created</span>
+                                        <div className="font-medium text-slate-900 min-h-[32px] flex items-center">
+                                            {selectedFileToView.created_date}
+                                        </div>
+                                    </div>
+
+                                    {/* Contact - Compact */}
+                                    <div className="md:col-span-2">
+                                        <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Contact</span>
+                                        <div className="space-y-0.5 text-xs min-h-[32px] leading-tight">
+                                            <div className="truncate">{selectedFileToView.mobile}</div>
+                                            <div className="text-blue-600 font-medium truncate">{selectedFileToView.email}</div>
+                                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs inline-block">
+                                                {selectedFileToView.user_type}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Files Count */}
+                                    <div>
+                                        <span className="text-slate-500 block text-xs uppercase tracking-wide font-medium mb-1">Files</span>
+                                        <div className="font-medium text-slate-900 min-h-[32px] flex items-center">
+                                            {[
+                                                selectedFileToView.gst && 'GST',
+                                                selectedFileToView.audit && 'Audit',
+                                                selectedFileToView.income_tax && 'ITR',
+                                                selectedFileToView.other && 'Other'
+                                            ].filter(Boolean).length}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Compact File Cards */}
+                                <div className="border-t border-slate-200 pt-4">
+                                    <h4 className="font-semibold text-slate-900 mb-3 text-sm flex items-center gap-1">
+                                        <FiFileText className="w-4 h-4" />
+                                        File References
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                        {selectedFileToView.gst && (
+                                            <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-200 hover:shadow-sm transition-all">
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <div className="w-6 h-6 bg-blue-200 rounded-md flex items-center justify-center flex-shrink-0">
+                                                        <FiCheck className="w-3 h-3 text-blue-600" />
+                                                    </div>
+                                                    <span className="font-medium text-blue-900 text-xs whitespace-nowrap">GST</span>
+                                                </div>
+                                                <div className="font-mono bg-white px-2 py-1 rounded-md text-xs text-blue-900 border border-blue-200 truncate">
+                                                    {selectedFileToView.gst}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {selectedFileToView.audit && (
+                                            <div className="p-2.5 bg-emerald-50 rounded-lg border border-emerald-200 hover:shadow-sm transition-all">
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <div className="w-6 h-6 bg-emerald-200 rounded-md flex items-center justify-center flex-shrink-0">
+                                                        <FiCheck className="w-3 h-3 text-emerald-600" />
+                                                    </div>
+                                                    <span className="font-medium text-emerald-900 text-xs whitespace-nowrap">Audit</span>
+                                                </div>
+                                                <div className="font-mono bg-white px-2 py-1 rounded-md text-xs text-emerald-900 border border-emerald-200 truncate">
+                                                    {selectedFileToView.audit}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {selectedFileToView.income_tax && (
+                                            <div className="p-2.5 bg-purple-50 rounded-lg border border-purple-200 hover:shadow-sm transition-all">
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <div className="w-6 h-6 bg-purple-200 rounded-md flex items-center justify-center flex-shrink-0">
+                                                        <FiDollarSign className="w-3 h-3 text-purple-600" />
+                                                    </div>
+                                                    <span className="font-medium text-purple-900 text-xs whitespace-nowrap">Income Tax</span>
+                                                </div>
+                                                <div className="font-mono bg-white px-2 py-1 rounded-md text-xs text-purple-900 border border-purple-200 truncate">
+                                                    {selectedFileToView.income_tax}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {selectedFileToView.other && (
+                                            <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-200 hover:shadow-sm transition-all">
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    <div className="w-6 h-6 bg-amber-200 rounded-md flex items-center justify-center flex-shrink-0">
+                                                        <FiFileText className="w-3 h-3 text-amber-600" />
+                                                    </div>
+                                                    <span className="font-medium text-amber-900 text-xs whitespace-nowrap">Other</span>
+                                                </div>
+                                                <div className="font-mono bg-white px-2 py-1 rounded-md text-xs text-amber-900 border border-amber-200 truncate">
+                                                    {selectedFileToView.other}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+
+
 
             {/* Export Confirmation Modal */}
             <AnimatePresence>
@@ -1671,6 +1713,73 @@ const ViewFileIndex = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {showDeleteConfirm && fileToDelete && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setShowDeleteConfirm(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Header */}
+                            <div className="p-6 border-b border-slate-200">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                        <FiTrash2 className="w-6 h-6 text-red-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-900">Delete File Index</h3>
+                                        <p className="text-sm text-slate-600">File Index ID: <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-xs">{fileToDelete.index_id}</span></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-6">
+                                <p className="text-slate-700 mb-6 text-sm leading-relaxed">
+                                    Are you sure you want to delete <strong className="font-semibold text-slate-900">{fileToDelete.name}</strong>?
+                                </p>
+                                <p className="text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-200 mb-6">
+                                    This action cannot be undone. All file references will be permanently deleted.
+                                </p>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 rounded-b-2xl flex gap-3 justify-end">
+                                <motion.button
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    Cancel
+                                </motion.button>
+                                <motion.button
+                                    onClick={async () => {
+                                        setShowDeleteConfirm(false);
+                                        await handleDeleteFile(fileToDelete);
+                                    }}
+                                    className="px-4 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    Delete Permanently
+                                </motion.button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
         </div>
     );
 };
