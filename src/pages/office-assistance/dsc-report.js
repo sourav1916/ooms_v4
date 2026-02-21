@@ -498,7 +498,7 @@ const ViewDSCRegister = () => {
                 `${BASE_URL}/assistance/dsc/edit`,
                 {
                     method: 'PUT',
-                    headers:headers,
+                    headers: headers,
                     body: JSON.stringify(apiPayload),
                 }
             );
@@ -1468,9 +1468,9 @@ const ViewDSCRegister = () => {
                                                 primary: 'name',
                                                 secondary: (item) => `${item.user_type || ''} • ${item.mobile || ''} • ${item.email || ''}`
                                             }}
-                                            onSelect={(value) => {
-                                                handleCreateChange('username', value.username);
-                                                handleCreateChange('selectedUser', value);
+                                            onSelect={(item, value) => {
+                                                handleCreateChange('username', value);
+                                                handleCreateChange('selectedUser', item);
                                             }}
                                             placeholder="Search user by name, type or mobile..."
                                             dataExtractor={(response) => {

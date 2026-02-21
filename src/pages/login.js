@@ -85,7 +85,7 @@ const Login = () => {
             const newOtpDigits = [...otpDigits];
             newOtpDigits[index] = value;
             setOtpDigits(newOtpDigits);
-            
+
             // Update formData
             const otpValue = newOtpDigits.join('');
             setFormData(prev => ({ ...prev, otp: otpValue }));
@@ -94,7 +94,7 @@ const Login = () => {
             if (value && index < 5) {
                 otpRefs.current[index + 1]?.current?.focus();
             }
-            
+
             // Auto-focus previous input on backspace
             if (!value && index > 0) {
                 otpRefs.current[index - 1]?.current?.focus();
@@ -110,7 +110,7 @@ const Login = () => {
 
     const handleSendOtp = async (e) => {
         e.preventDefault();
-        
+
         if (!formData.email || !formData.password) {
             alert('Please enter both email and password');
             return;
@@ -143,7 +143,7 @@ const Login = () => {
             if (result.success) {
                 setPhase(2);
                 setOtpExpireTime(result.expire);
-                
+
                 // Show success message
                 alert(result.message);
             } else {
@@ -159,7 +159,7 @@ const Login = () => {
 
     const handleOtpSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (formData.otp.length !== 6) {
             alert('Please enter 6-digit OTP');
             return;
@@ -184,11 +184,11 @@ const Login = () => {
 
             if (result.success) {
                 setLoginResponse(result);
-                
+
                 // Store branches from response
                 if (result.branches && result.branches.length > 0) {
                     setBranches(result.branches);
-                    
+
                     // If only one branch, auto-select it
                     if (result.branches.length === 1) {
                         setSelectedBranch(result.branches[0].branch_id);
@@ -226,7 +226,7 @@ const Login = () => {
         localStorage.setItem('user_username', result.username);
         localStorage.setItem('user_branches', JSON.stringify(result.branches || []));
         localStorage.setItem('token_expire', result.expire_date);
-        
+
         if (branchId) {
             localStorage.setItem('branch_id', branchId);
             // Also find and store the selected branch name
@@ -236,13 +236,13 @@ const Login = () => {
                 localStorage.setItem('branch_owned', selectedBranchInfo.owned ? 'true' : 'false');
             }
         }
-        
+
         setLoginSuccess(true);
         setShowBranchSelection(false);
-        
+
         // Show success message
         alert('Login successful!');
-        
+
         console.log('Login successful:', result);
         console.log('Token stored:', result.token);
         console.log('Selected branch:', branchId);
@@ -331,7 +331,7 @@ const Login = () => {
                                     <p className="text-blue-200 text-sm">Secure Enterprise Login</p>
                                 </div>
                             </div>
-                            
+
                             <div className="flex-grow flex flex-col justify-center">
                                 <div className="mb-8">
                                     <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 mx-auto">
@@ -342,7 +342,7 @@ const Login = () => {
                                         Access all your enterprise tools with a single, secure authentication.
                                     </p>
                                 </div>
-                                
+
                                 <div className="space-y-4">
                                     <div className="flex items-center space-x-3 bg-white/10 p-3 rounded-lg">
                                         <FiCheckCircle className="text-green-300 flex-shrink-0" />
@@ -373,14 +373,14 @@ const Login = () => {
                         {/* Header */}
                         <div className="mb-8">
                             <h1 className="text-2xl font-bold text-gray-900">
-                                {showBranchSelection ? 'Select Branch' : 
-                                 loginSuccess ? 'Welcome Back!' :
-                                 phase === 1 ? 'Sign in to your account' : 'Verify Your Identity'}
+                                {showBranchSelection ? 'Select Branch' :
+                                    loginSuccess ? 'Welcome Back!' :
+                                        phase === 1 ? 'Sign in to your account' : 'Verify Your Identity'}
                             </h1>
                             <p className="text-gray-600 mt-2">
-                                {showBranchSelection ? 'Choose your branch to continue' : 
-                                 loginSuccess ? 'You have successfully logged in' :
-                                 phase === 1 ? 'Enter your credentials to continue' : 'Enter the 6-digit verification code'}
+                                {showBranchSelection ? 'Choose your branch to continue' :
+                                    loginSuccess ? 'You have successfully logged in' :
+                                        phase === 1 ? 'Enter your credentials to continue' : 'Enter the 6-digit verification code'}
                             </p>
                         </div>
 
@@ -419,7 +419,7 @@ const Login = () => {
                                             )}
                                         </button>
                                     </div>
-                                    
+
                                     <div className="flex items-center my-6">
                                         <div className="flex-grow border-t border-gray-300"></div>
                                         <span className="mx-4 text-gray-500 text-sm font-medium">OR CONTINUE WITH EMAIL</span>
@@ -441,17 +441,15 @@ const Login = () => {
                                                 name="email"
                                                 value={formData.email}
                                                 onChange={handleInputChange}
-                                                className={`w-full pl-12 pr-4 py-4 bg-gray-50/50 border-2 rounded-xl focus:ring-4 outline-none transition-all duration-300 group-hover:border-blue-400 ${
-                                                    isValidEmail 
-                                                        ? 'border-gray-300 focus:border-blue-500 focus:ring-blue-100' 
-                                                        : 'border-red-300 focus:border-red-500 focus:ring-red-100'
-                                                }`}
+                                                className={`w-full pl-12 pr-4 py-4 bg-gray-50/50 border-2 rounded-xl focus:ring-4 outline-none transition-all duration-300 group-hover:border-blue-400 ${isValidEmail
+                                                    ? 'border-gray-300 focus:border-blue-500 focus:ring-blue-100'
+                                                    : 'border-red-300 focus:border-red-500 focus:ring-red-100'
+                                                    }`}
                                                 placeholder="your.email@company.com"
                                                 required
                                             />
-                                            <FiMail className={`absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-colors ${
-                                                isValidEmail ? 'text-gray-400 group-focus-within:text-blue-500' : 'text-red-400'
-                                            }`} />
+                                            <FiMail className={`absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-colors ${isValidEmail ? 'text-gray-400 group-focus-within:text-blue-500' : 'text-red-400'
+                                                }`} />
                                         </div>
                                         {!isValidEmail && formData.email && (
                                             <p className="text-red-500 text-sm flex items-center">
@@ -467,7 +465,7 @@ const Login = () => {
                                             <label className="block text-sm font-medium text-gray-700">
                                                 Password
                                             </label>
-                                            <button 
+                                            <button
                                                 type="button"
                                                 className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline"
                                             >
@@ -555,8 +553,8 @@ const Login = () => {
                                                 onClick={() => handleBranchSelect(branch.branch_id)}
                                                 disabled={loading}
                                                 className={`w-full p-5 text-left rounded-xl border-2 transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-between group
-                                                    ${selectedBranch === branch.branch_id ? 
-                                                        'border-blue-500 bg-blue-50 shadow-lg shadow-blue-100' : 
+                                                    ${selectedBranch === branch.branch_id ?
+                                                        'border-blue-500 bg-blue-50 shadow-lg shadow-blue-100' :
                                                         'border-gray-200 hover:border-blue-300 hover:shadow-lg'
                                                     }`}
                                             >
@@ -625,7 +623,7 @@ const Login = () => {
                                 <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-2xl p-6">
                                     <div className="absolute -top-10 -right-10 w-20 h-20 bg-blue-200 rounded-full opacity-20"></div>
                                     <div className="absolute -bottom-10 -left-10 w-20 h-20 bg-purple-200 rounded-full opacity-20"></div>
-                                    
+
                                     <div className="relative z-10 flex flex-col items-center text-center">
                                         <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg animate-pulse-slow">
                                             <FiMail className="text-white text-3xl" />
@@ -666,9 +664,8 @@ const Login = () => {
                                                     maxLength="1"
                                                     required
                                                 />
-                                                <div className={`absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-10 h-1 rounded-full transition-all duration-300 ${
-                                                    digit ? 'bg-blue-500' : 'bg-gray-300'
-                                                }`}></div>
+                                                <div className={`absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-10 h-1 rounded-full transition-all duration-300 ${digit ? 'bg-blue-500' : 'bg-gray-300'
+                                                    }`}></div>
                                             </div>
                                         ))}
                                     </div>
@@ -678,8 +675,8 @@ const Login = () => {
                                         <div className="inline-flex items-center space-x-2 bg-gray-50 px-4 py-2 rounded-lg">
                                             <div className={`w-2 h-2 rounded-full ${formData.otp.length === 6 ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
                                             <span className="text-sm text-gray-600">
-                                                {formData.otp.length === 6 
-                                                    ? '✓ All digits entered' 
+                                                {formData.otp.length === 6
+                                                    ? '✓ All digits entered'
                                                     : `${formData.otp.length}/6 digits entered`
                                                 }
                                             </span>
@@ -782,10 +779,10 @@ const Login = () => {
                                         </h4>
                                         <div className="space-y-3">
                                             {branches.map((branch) => (
-                                                <div 
+                                                <div
                                                     key={branch.branch_id}
-                                                    className={`p-4 rounded-lg border ${selectedBranch === branch.branch_id ? 
-                                                        'border-blue-500 bg-white shadow-sm' : 
+                                                    className={`p-4 rounded-lg border ${selectedBranch === branch.branch_id ?
+                                                        'border-blue-500 bg-white shadow-sm' :
                                                         'border-gray-200 bg-white/50'}`}
                                                 >
                                                     <div className="flex justify-between items-center">
