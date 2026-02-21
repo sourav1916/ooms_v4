@@ -32,6 +32,10 @@ const GroupFirms = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [editFirm, setEditFirm] = useState(null);
     const [groupDetails, setGroupDetails] = useState(null);
+    const [isBulkMode, setIsBulkMode] = useState(false);
+    const [selectedFirms, setSelectedFirms] = useState([]);
+    const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+
 
 
     const [searchParams] = useSearchParams();
@@ -218,6 +222,57 @@ const GroupFirms = () => {
         setActiveDropdownFirmId(null);
     };
 
+
+    // Toggle header checkbox (Select All)
+    const handleSelectAll = () => {
+        if (selectedFirms.length === filteredFirms.length) {
+            setSelectedFirms([]);
+        } else {
+            const allIds = filteredFirms.map(f => f.firm_id);
+            setSelectedFirms(allIds);
+        }
+    };
+
+    // Toggle single firm checkbox
+    const handleSelectFirm = (firmId) => {
+        setSelectedFirms(prev =>
+            prev.includes(firmId)
+                ? prev.filter(id => id !== firmId)
+                : [...prev, firmId]
+        );
+    };
+
+    const handleBulkDelete = async () => {
+        try {
+            const headers = getHeaders();
+
+            const response = await fetch(
+                `${BASE_URL}/group/group-firms/remove`,
+                {
+                    method: "DELETE",
+                    headers,
+                    body: JSON.stringify({
+                        group_id: groupDetails?.group_id,
+                        firm_ids: selectedFirms
+                    })
+                }
+            );
+
+            const data = await response.json();
+
+            if (data.success) {
+                setSelectedFirms([]);
+                setIsBulkMode(false);
+                setShowBulkDeleteModal(false);
+                fetchGroupFirmsData(searchTerm);
+            }
+
+        } catch (error) {
+            console.error("Bulk delete error:", error);
+        }
+    };
+
+
     // Effects
     useEffect(() => {
         localStorage.setItem('sidebarMinimized', JSON.stringify(isMinimized));
@@ -394,15 +449,35 @@ const GroupFirms = () => {
                             {/* Table Content */}
                             <div className="flex-1 flex flex-col overflow-hidden">
                                 {/* Table Header */}
-                                <div className="bg-gradient-to-r from-gray-50 to-indigo-50">
-                                    <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-gray-200">
-                                        <div className="col-span-1 text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">#</div>
-                                        <div className="col-span-4 text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">Firm Name</div>
-                                        <div className="col-span-2 text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">Status</div>
-                                        <div className="col-span-3 text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">GSTIN</div>
-                                        <div className="col-span-2 text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">Actions</div>
+                                <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-gray-200">
+
+                                    {/* Header Checkbox */}
+                                    <div className="col-span-1 flex items-center justify-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedFirms.length === filteredFirms.length && filteredFirms.length > 0}
+                                            onChange={() => {
+                                                setIsBulkMode(true);
+                                                handleSelectAll();
+                                            }}
+                                            className="w-4 h-4"
+                                        />
+                                    </div>
+
+                                    <div className="col-span-4 text-xs font-semibold text-gray-700 uppercase text-center">
+                                        Firm Name
+                                    </div>
+                                    <div className="col-span-2 text-xs font-semibold text-gray-700 uppercase text-center">
+                                        Status
+                                    </div>
+                                    <div className="col-span-3 text-xs font-semibold text-gray-700 uppercase text-center">
+                                        GSTIN
+                                    </div>
+                                    <div className="col-span-2 text-xs font-semibold text-gray-700 uppercase text-center">
+                                        Actions
                                     </div>
                                 </div>
+
 
                                 {/* Table Body */}
                                 <div className="flex-1 overflow-y-auto">
@@ -428,11 +503,23 @@ const GroupFirms = () => {
                                                     animate={{ opacity: 1, y: 0 }}
                                                     className="grid grid-cols-12 gap-2 px-5 py-4 hover:bg-gray-50 transition-colors group"
                                                 >
-                                                    <div className="col-span-1 flex items-center justify-center">
+                                                    <div className="col-span-1 flex items-center justify-center gap-2">
+
+                                                        {isBulkMode && (
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedFirms.includes(firm.firm_id)}
+                                                                onChange={() => handleSelectFirm(firm.firm_id)}
+                                                                className="w-4 h-4"
+                                                            />
+                                                        )}
+
                                                         <span className="w-8 h-8 bg-gray-100 text-gray-700 font-semibold rounded-lg flex items-center justify-center text-xs">
                                                             {index + 1}
                                                         </span>
+
                                                     </div>
+
                                                     <div className="col-span-4 flex items-center">
                                                         <div className="font-semibold text-sm text-gray-800 truncate">
                                                             {firm.name}
@@ -515,11 +602,39 @@ const GroupFirms = () => {
 
                                     {/* Footer */}
                                     <div className="border-t border-gray-200 bg-gray-50 px-5 py-3">
-                                        <div className="text-sm text-gray-600">
-                                            Showing <span className="font-semibold">{filteredFirms.length}</span> of{' '}
-                                            <span className="font-semibold">{firms.length}</span> firms
-                                        </div>
+                                        {isBulkMode && selectedFirms.length > 0 ? (
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-medium text-gray-700">
+                                                    {selectedFirms.length} firm(s) selected
+                                                </span>
+
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        onClick={() => {
+                                                            setIsBulkMode(false);
+                                                            setSelectedFirms([]);
+                                                        }}
+                                                        className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm"
+                                                    >
+                                                        Cancel
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => setShowBulkDeleteModal(true)}
+                                                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
+                                                    >
+                                                        Delete Selected
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm text-gray-600">
+                                                Showing <span className="font-semibold">{filteredFirms.length}</span> of{" "}
+                                                <span className="font-semibold">{firms.length}</span> firms
+                                            </div>
+                                        )}
                                     </div>
+
                                 </div>
                             </div>
                         </div>
@@ -837,6 +952,44 @@ const GroupFirms = () => {
                         </motion.div>
                     </div>
                 )}
+            </AnimatePresence>
+
+            {/* Delete bulk Confirmation Modal */}
+            <AnimatePresence>
+                {showBulkDeleteModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                                Confirm Bulk Delete
+                            </h3>
+
+                            <p className="text-sm text-gray-600 mb-6">
+                                Are you sure you want to remove{" "}
+                                <span className="font-semibold">
+                                    {selectedFirms.length}
+                                </span>{" "}
+                                firm(s) from this group?
+                            </p>
+
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    onClick={() => setShowBulkDeleteModal(false)}
+                                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm"
+                                >
+                                    Cancel
+                                </button>
+
+                                <button
+                                    onClick={handleBulkDelete}
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </AnimatePresence>
 
         </div>
