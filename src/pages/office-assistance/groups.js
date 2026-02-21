@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
     FiPlus,
     FiEye,
@@ -787,29 +788,36 @@ const Groups = () => {
 
                                                         {/* Number Of Firms Column */}
                                                         <div className="col-span-2 flex items-center justify-center">
-                                                            <a
-                                                                href={`/view-group-firms?group_id=${group.group_id}`}
+                                                            <Link
+                                                                to={`/staff/office-assistance/group-firms?group_id=${group.group_id}`}
                                                                 className="inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-700 font-semibold text-sm rounded-lg border border-indigo-200 hover:from-indigo-100 hover:to-blue-100 transition-all min-w-[80px] shadow-sm"
                                                             >
                                                                 <FiUsers className="w-3 h-3 mr-1" />
                                                                 {group.count}
-                                                            </a>
+                                                            </Link>
                                                         </div>
+
+
 
                                                         {/* Status Column */}
                                                         <div className="col-span-2 flex items-center justify-center">
                                                             <button
-                                                                onClick={() => handleStatusChange(group)}
                                                                 className="relative inline-flex items-center cursor-pointer focus:outline-none"
+                                                                onClick={() => handleStatusChange(group)}
+                                                                role="switch"
+                                                                aria-checked={group.is_active}
+                                                                aria-labelledby={`group-${group.group_id}-label`}
                                                             >
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={group.is_active}
+                                                                    onChange={() => handleStatusChange(group)} // Add this to fix warning
                                                                     className="sr-only"
+                                                                    id={`group-${group.group_id}-switch`}
                                                                 />
                                                                 <div className={`w-14 h-7 rounded-full transition-colors duration-300 ease-in-out ${group.is_active
-                                                                    ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                                                                    : 'bg-gradient-to-r from-gray-300 to-gray-400'
+                                                                        ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                                                                        : 'bg-gradient-to-r from-gray-300 to-gray-400'
                                                                     }`}>
                                                                     <div className={`absolute top-0.5 ${group.is_active ? 'left-7' : 'left-0.5'
                                                                         } bg-white rounded-full h-6 w-6 transition-all duration-300 ease-in-out border border-gray-300 shadow-sm`}></div>
@@ -820,6 +828,7 @@ const Groups = () => {
                                                                     <span className="absolute right-1.5 top-1 text-xs text-gray-600 z-10 font-medium">OFF</span>
                                                                 )}
                                                             </button>
+
                                                         </div>
 
 
