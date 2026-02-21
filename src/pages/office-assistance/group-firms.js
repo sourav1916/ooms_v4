@@ -176,15 +176,21 @@ const GroupFirms = () => {
         setDeleteLoading(true);
         try {
             const headers = getHeaders();
-            const response = await axios.post(`${BASE_URL}/group/remove-firm`, {
-                group_id: groupId,
-                firm_id: firmToDelete.firm_id
-            }, { headers });
+            const response = await axios.delete(`${BASE_URL}/group/group-firms/remove`, {
+                headers,
+                data: {  // Send body with DELETE request
+                    group_id: groupId,
+                    firm_ids: [firmToDelete.firm_id]
+                }
+            });
 
             if (response.data.success) {
                 fetchGroupFirmsData(searchTerm);
                 setShowDeleteModal(false);
                 setFirmToDelete(null);
+
+                // Optional: Show success message with details from backend
+                console.log('Firms removed:', response.data.data?.firms_removed);
             } else {
                 window.alert('Failed: ' + (response.data.message || 'Unknown error'));
             }
@@ -195,6 +201,8 @@ const GroupFirms = () => {
             setDeleteLoading(false);
         }
     };
+
+
 
     // NEW: Cancel Delete
     const handleCancelDelete = () => {
@@ -795,7 +803,7 @@ const GroupFirms = () => {
                                 </p>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                            <div className="flex justify-between gap-3 pt-6 border-t border-gray-200">
                                 <motion.button
                                     onClick={handleCancelDelete}
                                     disabled={deleteLoading}
