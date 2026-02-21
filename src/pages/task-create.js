@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import { Sidebar, Header } from '../components/header';
 import Select from 'react-select';
+import getHeaders from '../utils/get-headers';
+import API_BASE_URL from '../utils/api-controller';
 import {
     FiUsers,
     FiBriefcase,
@@ -70,32 +73,46 @@ const TaskCreate = () => {
     });
     const [showSubTaskForm, setShowSubTaskForm] = useState(false);
 
-    // Service categories
-    const [serviceCategories] = useState([
-        { category_id: '1', name: 'Tax Services' },
-        { category_id: '2', name: 'Audit & Assurance' },
-        { category_id: '3', name: 'Compliance' },
-        { category_id: '4', name: 'Registration' },
-        { category_id: '5', name: 'Accounting' }
-    ]);
+    // Service categories (fetched from API)
+    const [serviceCategories, setServiceCategories] = useState([]);
 
-    // Updated services with categories
-    const [services] = useState([
-        { service_id: '1', name: 'Income Tax Filing', fees: '5000', has_ay: 1, category_id: '1' },
-        { service_id: '2', name: 'Tax Planning', fees: '8000', has_ay: 0, category_id: '1' },
-        { service_id: '3', name: 'Tax Audit', fees: '12000', has_ay: 1, category_id: '1' },
-        { service_id: '4', name: 'Statutory Audit', fees: '15000', has_ay: 0, category_id: '2' },
-        { service_id: '5', name: 'Internal Audit', fees: '10000', has_ay: 0, category_id: '2' },
-        { service_id: '6', name: 'GST Return', fees: '3000', has_ay: 1, category_id: '3' },
-        { service_id: '7', name: 'ROC Compliance', fees: '6000', has_ay: 0, category_id: '3' },
-        { service_id: '8', name: 'Company Registration', fees: '8000', has_ay: 0, category_id: '4' },
-        { service_id: '9', name: 'LLP Registration', fees: '5000', has_ay: 0, category_id: '4' },
-        { service_id: '10', name: 'Bookkeeping', fees: '7000', has_ay: 1, category_id: '5' },
-        { service_id: '11', name: 'Financial Statements', fees: '9000', has_ay: 1, category_id: '5' }
-    ]);
+    useEffect(() => {
+        const fetchServiceCategories = async () => {
+            const headers = getHeaders();
+            if (!headers) return;
+            try {
+                const res = await axios.get(`${API_BASE_URL}/service/category/list`, { headers });
+                if (res.data?.success && Array.isArray(res.data.data)) {
+                    setServiceCategories(res.data.data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch service categories:', err);
+            }
+        };
+        fetchServiceCategories();
+    }, []);
+
+    // Services (fetched from API)
+    const [services, setServices] = useState([]);
 
     // Filtered services based on selected category
-    const [filteredServices, setFilteredServices] = useState(services);
+    const [filteredServices, setFilteredServices] = useState([]);
+
+    useEffect(() => {
+        const fetchServices = async () => {
+            const headers = getHeaders();
+            if (!headers) return;
+            try {
+                const res = await axios.get(`${API_BASE_URL}/service/list`, { headers });
+                if (res.data?.success && Array.isArray(res.data.data)) {
+                    setServices(res.data.data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch services:', err);
+            }
+        };
+        fetchServices();
+    }, []);
 
     // Dummy data arrays
     const [firms] = useState([
@@ -207,7 +224,7 @@ const TaskCreate = () => {
         };
     }, [mobileMenuOpen]);
 
-    // Filter services when category changes
+    // Filter services when category or services list changes
     useEffect(() => {
         if (formData.service_category) {
             const filtered = services.filter(service => service.category_id === formData.service_category);
@@ -226,7 +243,7 @@ const TaskCreate = () => {
                 }));
             }
         }
-    }, [formData.service_category]);
+    }, [formData.service_category, formData.service_id, services]);
 
     // Navigation functions
     const nextStep = () => {
@@ -544,8 +561,8 @@ const TaskCreate = () => {
         if (name === 'service_id') {
             const selectedService = services.find(service => service.service_id === value);
             if (selectedService) {
-                setShowAyDiv(selectedService.has_ay === 1);
-                if (selectedService.has_ay === 1) {
+                setShowAyDiv(Number(selectedService.has_ay) === 1);
+                if (Number(selectedService.has_ay) === 1) {
                     setFormData(prev => ({
                         ...prev,
                         fees: selectedService.fees
