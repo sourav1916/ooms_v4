@@ -152,7 +152,7 @@ const OfficeAssistance = () => {
                     <path d="M3 13v-1a2 2 0 0 1 2 -2h2"></path>
                 </svg>
             ),
-            link: "/firm-groups",
+            link: "/groups",
             gradient: "from-cyan-500 to-blue-500",
             bgGradient: "from-cyan-50 to-cyan-100/30",
             shadowColor: "hover:shadow-cyan-100/50"
