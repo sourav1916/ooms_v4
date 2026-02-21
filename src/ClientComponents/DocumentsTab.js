@@ -47,9 +47,9 @@ const ViewModal = ({ document, onClose }) => (
           {document?.file_url && (
             <div className="flex justify-center mb-4">
               {document.mime_type?.startsWith('image/') ? (
-                <img 
-                  src={document.file_url} 
-                  alt="Document" 
+                <img
+                  src={document.file_url}
+                  alt="Document"
                   className="max-w-full max-h-64 rounded-lg border border-gray-200"
                 />
               ) : (
@@ -60,7 +60,7 @@ const ViewModal = ({ document, onClose }) => (
               )}
             </div>
           )}
-          {document && Object.entries(document).map(([key, value]) => 
+          {document && Object.entries(document).map(([key, value]) =>
             key !== 'id' && key !== 'firm_id' && key !== 'file_url' && key !== 'mime_type' && key !== 'size' && key !== 'create_date' && key !== 'type_value' && (
               <div key={key} className="flex border-b border-gray-100 pb-3">
                 <span className="w-1/3 text-sm font-medium text-gray-600 capitalize">
@@ -174,7 +174,7 @@ const CreateCategoryModal = ({ onClose, onCreate, loading }) => {
             >
               Cancel
             </button>
-            <button 
+            <button
               onClick={handleSubmit}
               disabled={loading || !name.trim()}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:shadow-lg hover:shadow-blue-500/25 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -269,7 +269,7 @@ const EditCategoryModal = ({ onClose, onEdit, loading, category }) => {
             >
               Cancel
             </button>
-            <button 
+            <button
               onClick={handleSubmit}
               disabled={loading || !name.trim()}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:shadow-lg hover:shadow-blue-500/25 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -359,11 +359,10 @@ const SendModal = ({ document, selectedDocuments, onClose, onSubmit, loading }) 
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setSendOption('whatsapp')}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                    sendOption === 'whatsapp'
+                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${sendOption === 'whatsapp'
                       ? 'border-green-500 bg-green-50 text-green-700'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                    }`}
                   type="button"
                 >
                   <SiWhatsapp className="w-5 h-5" />
@@ -371,11 +370,10 @@ const SendModal = ({ document, selectedDocuments, onClose, onSubmit, loading }) 
                 </button>
                 <button
                   onClick={() => setSendOption('email')}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                    sendOption === 'email'
+                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all ${sendOption === 'email'
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                    }`}
                   type="button"
                 >
                   <FiMail className="w-5 h-5" />
@@ -489,14 +487,318 @@ const SendModal = ({ document, selectedDocuments, onClose, onSubmit, loading }) 
   );
 };
 
-// Upload Modal Component
-const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, financialYears, loadingYears, documentTypes, loadingTypes, categories, loadingCategories, months, onSubmit, uploadLoading, uploadProgress, fileInputRef, uploadForm, handleUploadFormChange, handleFileSelect, removeFile }) => {
+// Document Entry Component for Multiple Uploads
+const DocumentEntry = ({ index, document, onUpdate, onRemove, showRemove, tab, documentTypes, loadingTypes, months, uploadLoading }) => {
   const currentTabTypes = (() => {
     if (tab === 'income-tax') return documentTypes.it || [];
     if (tab === 'gst') return documentTypes.gst || [];
     if (tab === 'mca') return documentTypes.mca || [];
     return [];
   })();
+
+  const handleChange = (field, value) => {
+    onUpdate(index, { ...document, [field]: value });
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const maxSize = 10 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      alert(`File exceeds the 10MB limit. Please upload a smaller file.`);
+      return;
+    }
+
+    handleChange('file', file);
+
+    if (tab === 'general' && !document.name) {
+      const fileNameWithoutExt = file.name.split('.').slice(0, -1).join('.');
+      handleChange('name', fileNameWithoutExt);
+    }
+  };
+
+  const removeFile = () => {
+    handleChange('file', null);
+    if (document.fileInputRef?.current) {
+      document.fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+      <div className="flex justify-between items-center mb-3">
+        <h4 className="text-sm font-semibold text-gray-700">Document #{index + 1}</h4>
+        {showRemove && (
+          <button
+            onClick={() => onRemove(index)}
+            className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            disabled={uploadLoading}
+          >
+            <FiX className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* File Upload */}
+        <div className="col-span-2">
+          {!document.file ? (
+            <div
+              className="border-2 border-dashed border-gray-300 rounded-xl p-3 text-center hover:border-blue-500 transition-colors cursor-pointer"
+              onClick={() => document.fileInputRef?.current?.click()}
+            >
+              <input
+                type="file"
+                ref={document.fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={uploadLoading}
+              />
+              <FiUpload className="w-5 h-5 text-gray-400 mx-auto mb-1" />
+              <p className="text-xs text-gray-600">Click to upload file</p>
+            </div>
+          ) : (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <FiFile className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-900 truncate max-w-[150px]">{document.file.name}</p>
+                    <p className="text-xs text-gray-500">{(document.file.size / 1024).toFixed(2)} KB</p>
+                  </div>
+                </div>
+                <button
+                  onClick={removeFile}
+                  className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  disabled={uploadLoading}
+                >
+                  <FiX className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Name Field (for General tab) */}
+        {tab === 'general' && (
+          <div className="col-span-2">
+            <input
+              type="text"
+              placeholder="Document Name *"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={document.name || ''}
+              onChange={(e) => handleChange('name', e.target.value)}
+              disabled={uploadLoading}
+            />
+          </div>
+        )}
+
+        {/* Year Field */}
+        {(tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
+          <div>
+            <input
+              type="text"
+              placeholder={tab === 'income-tax' ? 'AY (e.g., 2025-26)' : 'FY (e.g., 2025-26)'}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={document.year || ''}
+              onChange={(e) => handleChange('year', e.target.value)}
+              disabled={uploadLoading}
+            />
+          </div>
+        )}
+
+        {/* Month Field (for GST) */}
+        {tab === 'gst' && (
+          <div>
+            <select
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={document.month || ''}
+              onChange={(e) => handleChange('month', e.target.value)}
+              disabled={uploadLoading}
+            >
+              <option value="">Select Month</option>
+              {months.map(month => (
+                <option key={month} value={month.split(' ')[0].toLowerCase()}>{month}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Type Field */}
+        {(tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
+          <div>
+            <select
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={document.type || ''}
+              onChange={(e) => handleChange('type', e.target.value)}
+              disabled={uploadLoading || loadingTypes}
+            >
+              <option value="">Select Type</option>
+              {loadingTypes ? (
+                <option disabled>Loading...</option>
+              ) : (
+                currentTabTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+        )}
+
+        {/* Category Field (for General) */}
+        {tab === 'general' && (
+          <div>
+            <input
+              type="text"
+              placeholder="Category *"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={document.category || ''}
+              onChange={(e) => handleChange('category', e.target.value)}
+              disabled={uploadLoading}
+            />
+          </div>
+        )}
+
+        {/* Remark Field */}
+        <div className={tab === 'gst' ? 'col-span-2' : 'col-span-1'}>
+          <input
+            type="text"
+            placeholder="Remark"
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            value={document.remark || ''}
+            onChange={(e) => handleChange('remark', e.target.value)}
+            disabled={uploadLoading}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Upload Modal Component
+const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, financialYears, loadingYears, documentTypes, loadingTypes, categories, loadingCategories, months, onSubmit, uploadLoading, uploadProgress }) => {
+  const [documents, setDocuments] = useState([]);
+  const [selectedFirm, setSelectedFirm] = useState('');
+  const fileInputRefs = useRef([]);
+
+
+  // Get current tab's years
+  const getYearOptions = () => {
+    if (tab === 'income-tax') return assessmentYears;
+    if (tab === 'gst' || tab === 'mca') return financialYears;
+    return [];
+  };
+
+  const getYearLabel = () => {
+    if (tab === 'income-tax') return 'Assessment Year';
+    if (tab === 'gst' || tab === 'mca') return 'Financial Year';
+    return 'Year';
+  };
+
+  // Get current tab's document types
+  const getCurrentTabTypes = () => {
+    if (tab === 'income-tax') return documentTypes.it || [];
+    if (tab === 'gst') return documentTypes.gst || [];
+    if (tab === 'mca') return documentTypes.mca || [];
+    return [];
+  };
+
+  // Add first document entry on mount
+  useEffect(() => {
+    addDocumentEntry();
+  }, []);
+
+  const addDocumentEntry = () => {
+    const newDoc = {
+      file: null,
+      year: '',
+      month: '',
+      type: '',
+      name: '',
+      category: '',
+      remark: '',
+      fileInputRef: React.createRef()
+    };
+    setDocuments([...documents, newDoc]);
+  };
+
+  const removeDocumentEntry = (index) => {
+    setDocuments(documents.filter((_, i) => i !== index));
+  };
+
+  const updateDocument = (index, updatedDoc) => {
+    const newDocs = [...documents];
+    newDocs[index] = updatedDoc;
+    setDocuments(newDocs);
+  };
+
+  const handleFileSelect = (index, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const maxSize = 10 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      alert(`File size exceeds 10MB limit`);
+      return;
+    }
+
+    const updatedDoc = { ...documents[index], file };
+
+    if (tab === 'general' && !documents[index].name) {
+      const fileNameWithoutExt = file.name.split('.').slice(0, -1).join('.');
+      updatedDoc.name = fileNameWithoutExt;
+    }
+
+    updateDocument(index, updatedDoc);
+  };
+
+  const removeFile = (index) => {
+    const updatedDoc = { ...documents[index], file: null };
+    updateDocument(index, updatedDoc);
+    if (fileInputRefs.current[index]) {
+      fileInputRefs.current[index].value = '';
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!selectedFirm) {
+      alert('Please select a firm');
+      return;
+    }
+
+    const invalidDocs = documents.filter(doc => {
+      if (!doc.file) return true;
+      if (tab === 'general') return !doc.name || !doc.category;
+      if (!doc.type) return true;
+      if (!doc.year) return true;
+      if (tab === 'gst' && !doc.month) return true;
+      return false;
+    });
+
+    if (invalidDocs.length > 0) {
+      alert('Please complete all required fields');
+      return;
+    }
+
+    onSubmit(selectedFirm, documents);
+  };
+
+  const getTabTitle = () => {
+    switch (tab) {
+      case 'income-tax': return 'Income Tax Documents';
+      case 'gst': return 'GST Documents';
+      case 'mca': return 'MCA Documents';
+      case 'general': return 'General Documents';
+      default: return 'Documents';
+    }
+  };
 
   return (
     <motion.div
@@ -507,255 +809,287 @@ const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, finan
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.9, y: 20 }}
+        initial={{ scale: 0.95, y: 10 }}
         animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 20 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+        exit={{ scale: 0.95, y: 10 }}
+        className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
-          <h3 className="text-xl font-bold text-gray-900">Upload Document</h3>
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <FiUpload className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800">Upload {getTabTitle()}</h2>
+              <p className="text-sm text-gray-500">Add multiple documents at once</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            disabled={uploadLoading}
           >
             <FiX className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Select Firm *</label>
-              <select 
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={uploadForm.firm_id}
-                onChange={(e) => handleUploadFormChange('firm_id', e.target.value)}
+        {/* Firm Selection */}
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-center space-x-4">
+            <div className="flex-1 max-w-md">
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                Select Firm <span className="text-red-500">*</span>
+              </label>
+              <select
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={selectedFirm}
+                onChange={(e) => setSelectedFirm(e.target.value)}
                 disabled={uploadLoading || loadingFirms}
               >
                 <option value="">Choose a firm</option>
-                {loadingFirms ? (
-                  <option disabled>Loading firms...</option>
-                ) : (
-                  firms.map(firm => {
-                    const firmId = firm.firm_id || firm.id;
-                    const firmName = firm.firm_name || firm.name;
-                    return (
-                      <option key={firmId} value={firmId}>
-                        {firmName}
-                      </option>
-                    );
-                  })
-                )}
+                {firms.map(firm => {
+                  const firmId = firm.firm_id || firm.id;
+                  const firmName = firm.firm_name || firm.name;
+                  return (
+                    <option key={firmId} value={firmId}>{firmName}</option>
+                  );
+                })}
               </select>
             </div>
-
-            {(tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  {tab === 'income-tax' ? 'Select Assessment Year *' : 'Select Financial Year *'}
-                </label>
-                <select 
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={uploadForm.year}
-                  onChange={(e) => handleUploadFormChange('year', e.target.value)}
-                  disabled={uploadLoading || loadingYears}
-                >
-                  <option value="">
-                    {tab === 'income-tax' ? 'Choose assessment year' : 'Choose financial year'}
-                  </option>
-                  {loadingYears ? (
-                    <option disabled>Loading years...</option>
-                  ) : (
-                    (tab === 'income-tax' ? assessmentYears : financialYears).map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))
-                  )}
-                </select>
-              </div>
-            )}
-
-            {tab === 'gst' && (
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Select Month *</label>
-                <select 
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={uploadForm.month}
-                  onChange={(e) => handleUploadFormChange('month', e.target.value)}
-                  disabled={uploadLoading}
-                >
-                  <option value="">Choose a month</option>
-                  {months.map(month => (
-                    <option key={month} value={month}>{month}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {(tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Select Type *</label>
-                <select 
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={uploadForm.type}
-                  onChange={(e) => handleUploadFormChange('type', e.target.value)}
-                  disabled={uploadLoading || loadingTypes}
-                >
-                  <option value="">Choose type</option>
-                  {loadingTypes ? (
-                    <option disabled>Loading types...</option>
-                  ) : (
-                    currentTabTypes.map(type => (
-                      <option key={type.value} value={type.value}>
-                        {type.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-            )}
-
-            {tab === 'general' && (
-              <>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Name *</label>
-                  <input
-                    type="text"
-                    placeholder="Enter document name"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value={uploadForm.name}
-                    onChange={(e) => handleUploadFormChange('name', e.target.value)}
-                    disabled={uploadLoading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Category *</label>
-                  <select 
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value={uploadForm.category}
-                    onChange={(e) => handleUploadFormChange('category', e.target.value)}
-                    disabled={uploadLoading || loadingCategories}
-                  >
-                    <option value="">Choose category</option>
-                    {loadingCategories ? (
-                      <option disabled>Loading categories...</option>
-                    ) : (
-                      categories.map(cat => (
-                        <option key={cat.category_id} value={cat.name}>
-                          {cat.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-              </>
-            )}
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">File *</label>
-              {!uploadForm.file ? (
-                <div 
-                  className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-500 transition-colors cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    disabled={uploadLoading}
-                  />
-                  <FiUpload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                  <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG up to 10MB</p>
-                </div>
-              ) : (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <FiFile className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{uploadForm.file.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {(uploadForm.file.size / 1024).toFixed(2)} KB
-                        </p>
-                      </div>
-                    </div>
-                    <motion.button
-                      onClick={removeFile}
-                      className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      disabled={uploadLoading}
-                    >
-                      <FiX className="w-5 h-5" />
-                    </motion.button>
-                  </div>
-                </div>
-              )}
-              
-              {uploadProgress > 0 && uploadProgress < 100 && (
-                <div className="mt-2">
-                  <div className="flex justify-between text-xs text-gray-600 mb-1">
-                    <span>Uploading...</span>
-                    <span>{uploadProgress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-blue-600 to-indigo-700 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Remark</label>
-              <textarea
-                rows="3"
-                placeholder="Enter remark (If any)"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={uploadForm.remark}
-                onChange={(e) => handleUploadFormChange('remark', e.target.value)}
-                disabled={uploadLoading}
-              ></textarea>
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <FiHardDrive className="w-4 h-4" />
+              <span>{documents.length} document{documents.length !== 1 ? 's' : ''}</span>
             </div>
           </div>
         </div>
 
-        <div className="p-6 border-t border-gray-200 sticky bottom-0 bg-white">
-          <div className="flex gap-3">
+        {/* Document List */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {documents.map((doc, index) => (
+            <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
+              {/* Document Header */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-600">
+                    {index + 1}
+                  </span>
+                  <span className="text-sm font-medium text-gray-700">Document Details</span>
+                  {!doc.file && (
+                    <span className="px-2 py-0.5 bg-red-50 text-red-600 text-xs rounded-full">File Required</span>
+                  )}
+                </div>
+                {documents.length > 1 && (
+                  <button
+                    onClick={() => removeDocumentEntry(index)}
+                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                  >
+                    <FiTrash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Document Fields - Reordered: Type, Year, File, Remark */}
+              <div className="grid grid-cols-4 gap-3">
+                {/* Document Type - Column 1 */}
+                {(tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Document Type *</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      value={doc.type}
+                      onChange={(e) => updateDocument(index, { ...doc, type: e.target.value })}
+                    >
+                      <option value="">Select type</option>
+                      {getCurrentTabTypes().map(type => (
+                        <option key={type.value} value={type.value}>{type.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Year Field - Column 2 */}
+                {(tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">{getYearLabel()} *</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      value={doc.year}
+                      onChange={(e) => updateDocument(index, { ...doc, year: e.target.value })}
+                    >
+                      <option value="">Select year</option>
+                      {getYearOptions().map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Month Field - For GST only (between Year and File) */}
+                {tab === 'gst' && (
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Month *</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      value={doc.month}
+                      onChange={(e) => updateDocument(index, { ...doc, month: e.target.value })}
+                    >
+                      <option value="">Select month</option>
+                      {months.map(month => (
+                        <option key={month} value={month.split(' ')[0].toLowerCase()}>
+                          {month}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* File Upload - Column 3 (or 4 for GST) */}
+                <div className={tab === 'gst' ? 'col-span-1' : 'col-span-1'}>
+                  <label className="block text-xs text-gray-500 mb-1">Upload File *</label>
+                  {!doc.file ? (
+                    <div
+                      onClick={() => fileInputRefs.current[index]?.click()}
+                      className="border border-gray-300 border-dashed rounded-lg p-3 text-center hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors h-[72px] flex flex-col items-center justify-center"
+                    >
+                      <input
+                        type="file"
+                        ref={el => fileInputRefs.current[index] = el}
+                        onChange={(e) => handleFileSelect(index, e)}
+                        className="hidden"
+                      />
+                      <FiUpload className="w-4 h-4 text-gray-400 mb-1" />
+                      <span className="text-xs text-gray-500">Choose file</span>
+                    </div>
+                  ) : (
+                    <div className="border border-green-200 bg-green-50 rounded-lg p-2 h-[72px] flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 truncate">
+                          <FiFile className="w-3 h-3 text-green-600 flex-shrink-0" />
+                          <span className="text-xs text-gray-700 truncate">{doc.file.name}</span>
+                        </div>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="text-gray-400 hover:text-red-500"
+                        >
+                          <FiX className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <span className="text-xs text-green-600">{(doc.file.size / 1024).toFixed(1)} KB</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* General Tab Fields (if applicable) */}
+                {tab === 'general' && (
+                  <>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Document Name *</label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        value={doc.name || ''}
+                        onChange={(e) => updateDocument(index, { ...doc, name: e.target.value })}
+                        placeholder="Enter name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Category *</label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        value={doc.category}
+                        onChange={(e) => updateDocument(index, { ...doc, category: e.target.value })}
+                      >
+                        <option value="">Select category</option>
+                        {categories.map(cat => (
+                          <option key={cat.category_id} value={cat.name}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* Remark Field - Column 4 (always last) */}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Remark</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    value={doc.remark || ''}
+                    onChange={(e) => updateDocument(index, { ...doc, remark: e.target.value })}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
+              {/* Required Fields Note */}
+              <div className="mt-2 flex items-center space-x-2">
+                {!doc.type && (tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
+                  <span className="text-xs text-amber-600">Type required</span>
+                )}
+                {!doc.year && (tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
+                  <span className="text-xs text-amber-600">Year required</span>
+                )}
+                {tab === 'gst' && !doc.month && (
+                  <span className="text-xs text-amber-600">Month required</span>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Add More Button */}
+          <button
+            onClick={addDocumentEntry}
+            className="w-full py-3 border border-gray-300 border-dashed rounded-lg text-gray-500 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center justify-center space-x-2"
+          >
+            <FiPlus className="w-4 h-4" />
+            <span className="text-sm">Add Another Document</span>
+          </button>
+
+          {/* Progress Bar */}
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex justify-between text-xs text-blue-700 mb-1">
+                <span>Uploading...</span>
+                <span className="font-medium">{uploadProgress}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-blue-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+          <div className="text-xs text-gray-500">
+            <span className="text-gray-700 font-medium">{documents.length}</span> document(s) ready to upload
+          </div>
+          <div className="flex space-x-3">
             <button
               onClick={onClose}
-              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
-              disabled={uploadLoading}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors"
             >
               Cancel
             </button>
-            <button 
-              onClick={onSubmit}
-              disabled={
-                uploadLoading || 
-                !uploadForm.firm_id || 
-                ((tab === 'income-tax' || tab === 'gst' || tab === 'mca') && !uploadForm.year) ||
-                (tab === 'gst' && !uploadForm.month) ||
-                ((tab === 'income-tax' || tab === 'gst' || tab === 'mca') && !uploadForm.type) ||
-                (tab === 'general' && (!uploadForm.name || !uploadForm.category)) ||
-                !uploadForm.file
-              }
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:shadow-lg hover:shadow-blue-500/25 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            <button
+              onClick={handleSubmit}
+              disabled={!selectedFirm || documents.some(d => !d.file) || uploadLoading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               {uploadLoading ? (
                 <>
-                  <FiLoader className="w-5 h-5 animate-spin" />
-                  {uploadProgress > 0 ? `Uploading ${uploadProgress}%` : 'Uploading...'}
+                  <FiLoader className="w-4 h-4 animate-spin" />
+                  <span>Uploading...</span>
                 </>
               ) : (
-                'Upload Document'
+                <>
+                  <FiUpload className="w-4 h-4" />
+                  <span>Upload {documents.length} Document{documents.length !== 1 ? 's' : ''}</span>
+                </>
               )}
             </button>
           </div>
@@ -764,7 +1098,6 @@ const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, finan
     </motion.div>
   );
 };
-
 // Main DocumentsTab Component
 const DocumentsTab = ({ clientUsername }) => {
   const [activeTab, setActiveTab] = useState('income-tax');
@@ -793,6 +1126,8 @@ const DocumentsTab = ({ clientUsername }) => {
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [sendLoading, setSendLoading] = useState(false);
   const actionMenuRef = useRef(null);
+  // Add this with your other useState declarations
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // API Data States
   const [assessmentYears, setAssessmentYears] = useState([]);
@@ -800,7 +1135,7 @@ const DocumentsTab = ({ clientUsername }) => {
   const [loadingYears, setLoadingYears] = useState(false);
   const [firms, setFirms] = useState([]);
   const [loadingFirms, setLoadingFirms] = useState(false);
-  
+
   // Document Types State
   const [documentTypes, setDocumentTypes] = useState({
     it: [],
@@ -832,22 +1167,14 @@ const DocumentsTab = ({ clientUsername }) => {
     ]
   });
 
-  // Upload Form State
-  const [uploadForm, setUploadForm] = useState({
-    firm_id: '',
-    year: '',
-    type: '',
-    month: '',
-    name: '',
-    category: '',
-    remark: '',
-    file: null
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    total_pages: 1,
+    is_last_page: true
   });
-
-  
-
-  // File input ref
-  const fileInputRef = useRef(null);
 
   // Months Data
   const months = useMemo(() => [
@@ -900,7 +1227,7 @@ const DocumentsTab = ({ clientUsername }) => {
         console.error('Client username is required to fetch firms');
         return;
       }
-      
+
       setLoadingFirms(true);
       const headers = getHeaders();
       if (!headers) {
@@ -1088,6 +1415,7 @@ const DocumentsTab = ({ clientUsername }) => {
   }, [activeTab, searchTerm]);
 
   // Fetch Documents based on active tab
+  // Fetch Documents based on active tab
   useEffect(() => {
     const fetchDocuments = async () => {
       if (!clientUsername) {
@@ -1107,30 +1435,28 @@ const DocumentsTab = ({ clientUsername }) => {
 
         // Build query parameters
         const params = new URLSearchParams();
-        
-        // Add username as query parameter (required by backend)
+
         params.append('username', clientUsername);
         params.append('page', currentPage);
         params.append('limit', itemsPerPage);
-        
+
         if (selectedFirm !== 'all') {
           params.append('firm_id', selectedFirm);
         }
-        
+
         if (selectedYear !== 'all') {
           params.append('year', selectedYear);
         }
-        
+
         if (selectedType !== 'all') {
           params.append('type', selectedType);
         }
-        
+
         if (activeTab === 'gst' && selectedMonth !== 'all') {
-          // Convert month format to match backend (e.g., "January 2024" to "january")
           const monthName = selectedMonth.split(' ')[0].toLowerCase();
           params.append('month', monthName);
         }
-        
+
         if (searchTerm) {
           params.append('search', searchTerm);
         }
@@ -1149,7 +1475,6 @@ const DocumentsTab = ({ clientUsername }) => {
           const result = await response.json();
 
           if (result.success && Array.isArray(result.data)) {
-            // Create a map of firm_id to firm_name for quick lookup
             const firmMap = {};
             firms.forEach(firm => {
               const firmId = firm.firm_id || firm.id;
@@ -1159,12 +1484,9 @@ const DocumentsTab = ({ clientUsername }) => {
               }
             });
 
-            // Transform API data to match your existing document structure
             const transformedData = result.data.map((doc, index) => {
-              // Get firm name from the map using firm_id
               const firmName = firmMap[doc.firm_id] || 'Unknown Firm';
-              
-              // Get type name from document types if available
+
               let typeName = doc.type;
               if (documentTypes[endpoint]) {
                 const typeObj = documentTypes[endpoint].find(t => t.value === doc.type);
@@ -1172,7 +1494,7 @@ const DocumentsTab = ({ clientUsername }) => {
                   typeName = typeObj.name;
                 }
               }
-              
+
               const baseDoc = {
                 id: doc.document_id || index + 1,
                 firm_id: doc.firm_id,
@@ -1202,7 +1524,6 @@ const DocumentsTab = ({ clientUsername }) => {
               [activeTab]: transformedData
             }));
 
-            // Update pagination
             if (result.pagination) {
               setPagination(result.pagination);
             }
@@ -1226,8 +1547,20 @@ const DocumentsTab = ({ clientUsername }) => {
     };
 
     fetchDocuments();
-  }, [activeTab, currentPage, itemsPerPage, selectedFirm, selectedYear, selectedType, selectedMonth, searchTerm, clientUsername, firms, documentTypes]);
-
+  }, [
+    activeTab,
+    currentPage,
+    itemsPerPage,
+    selectedFirm,
+    selectedYear,
+    selectedType,
+    selectedMonth,
+    searchTerm,
+    clientUsername,
+    firms,
+    documentTypes,
+    refreshTrigger // Add this to dependency array
+  ]);
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -1245,7 +1578,7 @@ const DocumentsTab = ({ clientUsername }) => {
 
     try {
       setUploadProgress(0);
-      
+
       const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
         headers: {
           ...headers,
@@ -1293,91 +1626,12 @@ const DocumentsTab = ({ clientUsername }) => {
     }
   };
 
-  // Handle upload form changes
-  const handleUploadFormChange = (field, value) => {
-    setUploadForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  // Handle file selection for upload
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    const maxSize = 10 * 1024 * 1024;
-    
-    if (file.size > maxSize) {
-      alert(`File exceeds the 10MB limit. Please upload a smaller file.`);
-      return;
-    }
-    
-    setUploadForm(prev => ({
-      ...prev,
-      file: file
-    }));
-    
-    if (activeTab === 'general' && !uploadForm.name) {
-      const fileNameWithoutExt = file.name.split('.').slice(0, -1).join('.');
-      setUploadForm(prev => ({
-        ...prev,
-        name: fileNameWithoutExt
-      }));
-    }
-  };
-
-  // Remove selected file
-  const removeFile = () => {
-    setUploadForm(prev => ({
-      ...prev,
-      file: null
-    }));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
   // Handle upload submit
-  const handleUploadSubmit = async () => {
+  // Handle upload submit
+  // Handle upload submit
+  const handleUploadSubmit = async (firmId, documents) => {
     if (!clientUsername) {
       alert('Client username is required');
-      return;
-    }
-
-    if (!uploadForm.firm_id) {
-      alert('Please select a firm');
-      return;
-    }
-
-    if ((activeTab === 'income-tax' || activeTab === 'gst' || activeTab === 'mca') && !uploadForm.year) {
-      alert(`Please select ${activeTab === 'income-tax' ? 'assessment year' : 'financial year'}`);
-      return;
-    }
-
-    if (activeTab === 'gst' && !uploadForm.month) {
-      alert('Please select month');
-      return;
-    }
-
-    if ((activeTab === 'income-tax' || activeTab === 'gst' || activeTab === 'mca') && !uploadForm.type) {
-      alert('Please select document type');
-      return;
-    }
-
-    if (activeTab === 'general') {
-      if (!uploadForm.name) {
-        alert('Please enter document name');
-        return;
-      }
-      if (!uploadForm.category) {
-        alert('Please select category');
-        return;
-      }
-    }
-
-    if (!uploadForm.file) {
-      alert('Please select a file to upload');
       return;
     }
 
@@ -1385,34 +1639,49 @@ const DocumentsTab = ({ clientUsername }) => {
     setUploadProgress(0);
 
     try {
-      const uploadResult = await uploadFileToServer(uploadForm.file);
-      
-      if (!uploadResult.success || !uploadResult.url) {
-        throw new Error('File upload failed');
-      }
+      // Upload all files first
+      const uploadedDocs = [];
+      let totalProgress = 0;
 
-      const documentData = {
-        name: uploadForm.name || uploadForm.file.name.split('.')[0],
-        url: uploadResult.url,
-        year: uploadForm.year,
-        type: uploadForm.type,
-        remark: uploadForm.remark || ''
-      };
+      for (let i = 0; i < documents.length; i++) {
+        const doc = documents[i];
+        const uploadResult = await uploadFileToServer(doc.file);
 
-      if (activeTab === 'gst' && uploadForm.month) {
-        const monthMap = {
-          'January': '01', 'February': '02', 'March': '03', 'April': '04',
-          'May': '05', 'June': '06', 'July': '07', 'August': '08',
-          'September': '09', 'October': '10', 'November': '11', 'December': '12'
+        if (!uploadResult.success || !uploadResult.url) {
+          throw new Error(`Failed to upload file for document #${i + 1}`);
+        }
+
+        // Calculate progress based on number of files
+        totalProgress = Math.round(((i + 1) / documents.length) * 100);
+        setUploadProgress(totalProgress);
+
+        const docData = {
+          url: uploadResult.url,
+          name: doc.name || doc.file.name.split('.')[0],
+          remark: doc.remark || ''
         };
-        const monthName = uploadForm.month.split(' ')[0];
-        documentData.month = monthMap[monthName] || '01';
+
+        if (activeTab === 'income-tax' || activeTab === 'gst' || activeTab === 'mca') {
+          docData.year = doc.year;
+          docData.type = doc.type;
+
+          if (activeTab === 'gst') {
+            docData.month = doc.month;
+          }
+        }
+
+        if (activeTab === 'general') {
+          docData.category = doc.category;
+        }
+
+        uploadedDocs.push(docData);
       }
 
+      // Prepare request body
       const requestBody = {
         username: clientUsername,
-        firm_id: uploadForm.firm_id,
-        documents: [documentData]
+        firm_id: firmId,
+        documents: uploadedDocs
       };
 
       let endpoint = '';
@@ -1437,31 +1706,41 @@ const DocumentsTab = ({ clientUsername }) => {
       );
 
       if (response.data && response.data.success) {
-        alert('Document uploaded successfully');
+        alert(`${documents.length} document(s) uploaded successfully`);
         setShowUploadModal(false);
-        setUploadForm({
-          firm_id: '',
-          year: '',
-          type: '',
-          month: '',
-          name: '',
-          category: '',
-          remark: '',
-          file: null
-        });
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+
+        // Force a refresh of the documents list
+        setCurrentPage(1); // Reset to first page
+
+        // Create a timestamp to force re-fetch
+        const refreshTimestamp = Date.now();
+
+        // Manually trigger the documents fetch by updating a state that's in the useEffect dependency
+        // Option 1: Update a refresh trigger state
+        setRefreshTrigger(refreshTimestamp);
+
+        // Option 2: If you don't want to add new state, you can temporarily change and reset selected filters
+        // This will trigger the useEffect that depends on these values
+        if (selectedYear !== 'all') {
+          setSelectedYear('all');
+          setTimeout(() => setSelectedYear(selectedYear), 100);
+        } else {
+          setSelectedType('all');
+          setTimeout(() => setSelectedType(selectedType), 100);
         }
-        setCurrentPage(1);
       } else {
-        alert('Failed to upload document: ' + (response.data?.message || 'Unknown error'));
+        alert('Failed to upload documents: ' + (response.data?.message || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error in upload flow:', error);
       if (error.response) {
         const { status, data } = error.response;
         if (status === 400) {
-          alert(`Bad request: ${data?.message || 'Invalid data'}`);
+          if (data.message === 'Username is required') {
+            alert('Username is required. Please check your login session.');
+          } else {
+            alert(`Bad request: ${data?.message || 'Invalid data'}`);
+          }
         } else if (status === 401) {
           alert('Authentication failed. Please login again.');
         } else if (status === 404) {
@@ -1469,19 +1748,18 @@ const DocumentsTab = ({ clientUsername }) => {
         } else if (status === 500) {
           alert('Server error. Please try again later.');
         } else {
-          alert(data?.message || `Error ${status}: Failed to upload document`);
+          alert(data?.message || `Error ${status}: Failed to upload documents`);
         }
       } else if (error.request) {
         alert('No response from server. Check your internet connection.');
       } else {
-        alert(error.message || 'Error uploading document. Please try again.');
+        alert(error.message || 'Error uploading documents. Please try again.');
       }
     } finally {
       setUploadLoading(false);
       setUploadProgress(0);
     }
   };
-
   // Handle create category
   const handleCreateCategory = async (categoryData) => {
     setCategoryLoading(true);
@@ -1501,7 +1779,7 @@ const DocumentsTab = ({ clientUsername }) => {
       if (response.data && response.data.success) {
         alert('Category created successfully');
         setShowCreateCategoryModal(false);
-        
+
         const fetchResponse = await fetch(`${API_BASE_URL}/client/details/documents/category-list`, {
           method: 'GET',
           headers: headers
@@ -1550,7 +1828,7 @@ const DocumentsTab = ({ clientUsername }) => {
         alert('Category updated successfully');
         setShowEditCategoryModal(false);
         setSelectedCategoryForEdit(null);
-        
+
         const fetchResponse = await fetch(`${API_BASE_URL}/client/details/documents/category-list`, {
           method: 'GET',
           headers: headers
@@ -1597,7 +1875,7 @@ const DocumentsTab = ({ clientUsername }) => {
 
       if (response.data && response.data.success) {
         alert('Category deleted successfully');
-        
+
         const fetchResponse = await fetch(`${API_BASE_URL}/client/details/documents/category-list`, {
           method: 'GET',
           headers: headers
@@ -1640,7 +1918,7 @@ const DocumentsTab = ({ clientUsername }) => {
     formData.append('sendOption', sendData.sendOption);
     formData.append('recipient', sendData.recipient);
     formData.append('message', sendData.message);
-    
+
     if (selectedDocument) {
       formData.append('document_id', selectedDocument.id);
     } else {
@@ -1663,7 +1941,7 @@ const DocumentsTab = ({ clientUsername }) => {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         alert('Documents sent successfully');
         setShowSendModal(false);
@@ -1805,15 +2083,6 @@ const DocumentsTab = ({ clientUsername }) => {
   const currentItems = filteredDocuments.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredDocuments.length / itemsPerPage);
 
-  // Pagination state
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    total_pages: 1,
-    is_last_page: true
-  });
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -1896,11 +2165,10 @@ const DocumentsTab = ({ clientUsername }) => {
                   setSelectedYear('all');
                   setSelectedType('all');
                 }}
-                className={`flex items-center gap-2 px-6 py-3 rounded-t-xl font-medium transition-all relative whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 px-6 py-3 rounded-t-xl font-medium transition-all relative whitespace-nowrap ${activeTab === tab.id
                     ? `text-${tab.color}-600 bg-white border-t-2 border-l border-r border-gray-200 -mb-px`
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <Icon className={`w-5 h-5 ${activeTab === tab.id ? `text-${tab.color}-600` : ''}`} />
                 {tab.label}
@@ -2196,9 +2464,8 @@ const DocumentsTab = ({ clientUsername }) => {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
                           transition={{ delay: index * 0.05 }}
-                          className={`hover:bg-gray-50 transition-colors ${
-                            selectedDocuments.includes(doc.id) ? 'bg-blue-50/50' : ''
-                          }`}
+                          className={`hover:bg-gray-50 transition-colors ${selectedDocuments.includes(doc.id) ? 'bg-blue-50/50' : ''
+                            }`}
                         >
                           <td className="px-6 py-4 align-middle">
                             <button
@@ -2501,8 +2768,8 @@ const DocumentsTab = ({ clientUsername }) => {
       {/* Modals */}
       <AnimatePresence>
         {showUploadModal && (
-          <UploadModal 
-            onClose={() => setShowUploadModal(false)} 
+          <UploadModal
+            onClose={() => setShowUploadModal(false)}
             tab={activeTab}
             firms={firms}
             loadingFirms={loadingFirms}
@@ -2517,26 +2784,21 @@ const DocumentsTab = ({ clientUsername }) => {
             onSubmit={handleUploadSubmit}
             uploadLoading={uploadLoading}
             uploadProgress={uploadProgress}
-            fileInputRef={fileInputRef}
-            uploadForm={uploadForm}
-            handleUploadFormChange={handleUploadFormChange}
-            handleFileSelect={handleFileSelect}
-            removeFile={removeFile}
           />
         )}
         {showCreateCategoryModal && (
-          <CreateCategoryModal 
-            onClose={() => setShowCreateCategoryModal(false)} 
+          <CreateCategoryModal
+            onClose={() => setShowCreateCategoryModal(false)}
             onCreate={handleCreateCategory}
             loading={categoryLoading}
           />
         )}
         {showEditCategoryModal && (
-          <EditCategoryModal 
+          <EditCategoryModal
             onClose={() => {
               setShowEditCategoryModal(false);
               setSelectedCategoryForEdit(null);
-            }} 
+            }}
             onEdit={handleEditCategory}
             loading={categoryLoading}
             category={selectedCategoryForEdit}
