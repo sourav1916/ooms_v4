@@ -1484,41 +1484,45 @@ const DocumentsTab = ({ clientUsername }) => {
               }
             });
 
-            const transformedData = result.data.map((doc, index) => {
-              const firmName = firmMap[doc.firm_id] || 'Unknown Firm';
+          // First, filter documents to only include those with valid firms in the firmMap
+const validDocuments = result.data.filter(doc => {
+  return firmMap[doc.firm_id] !== undefined;
+});
 
-              let typeName = doc.type;
-              if (documentTypes[endpoint]) {
-                const typeObj = documentTypes[endpoint].find(t => t.value === doc.type);
-                if (typeObj) {
-                  typeName = typeObj.name;
-                }
-              }
+const transformedData = validDocuments.map((doc, index) => {
+  const firmName = firmMap[doc.firm_id]; // No need for fallback since we filtered
 
-              const baseDoc = {
-                id: doc.document_id || index + 1,
-                firm_id: doc.firm_id,
-                firm: firmName,
-                year: doc.f_year,
-                type: typeName,
-                type_value: doc.type,
-                remark: doc.remark,
-                file_url: doc.file,
-                size: doc.size,
-                mime_type: doc.mime_type,
-                create_date: doc.create_date
-              };
+  let typeName = doc.type;
+  if (documentTypes[endpoint]) {
+    const typeObj = documentTypes[endpoint].find(t => t.value === doc.type);
+    if (typeObj) {
+      typeName = typeObj.name;
+    }
+  }
 
-              if (activeTab === 'gst') {
-                return {
-                  ...baseDoc,
-                  month: doc.month ? doc.month.charAt(0).toUpperCase() + doc.month.slice(1) + ' ' + doc.f_year?.split('-')[0] : ''
-                };
-              }
+  const baseDoc = {
+    id: doc.document_id || index + 1,
+    firm_id: doc.firm_id,
+    firm: firmName,
+    year: doc.f_year,
+    type: typeName,
+    type_value: doc.type,
+    remark: doc.remark,
+    file_url: doc.file,
+    size: doc.size,
+    mime_type: doc.mime_type,
+    create_date: doc.create_date
+  };
 
-              return baseDoc;
-            });
+  if (activeTab === 'gst') {
+    return {
+      ...baseDoc,
+      month: doc.month ? doc.month.charAt(0).toUpperCase() + doc.month.slice(1) + ' ' + doc.f_year?.split('-')[0] : ''
+    };
+  }
 
+  return baseDoc;
+});
             setDocuments(prev => ({
               ...prev,
               [activeTab]: transformedData
@@ -2078,7 +2082,7 @@ const DocumentsTab = ({ clientUsername }) => {
   const filteredDocuments = getFilteredDocuments();
 
   // Pagination
-  const indexOfLastItem = currentPage * itemsPerPage;
+ const indexOfLastItem = currentPage * itemsPerPage; 
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredDocuments.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredDocuments.length / itemsPerPage);
