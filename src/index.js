@@ -36,7 +36,8 @@ import PasswordGroups from './pages/office-assistance/password-group';
 import ImportantLinks from './pages/office-assistance/important-link';
 import Services from './pages/office-assistance/services';
 import RecurringGroups from './pages/office-assistance/recurring-group';
-import Groups from './pages/office-assistance/firm-groups';
+import Groups from './pages/office-assistance/groups';
+import GroupFirms from './pages/office-assistance/group-firms';
 import ViewInactiveClients from './pages/office-assistance/inactive-client';
 import CAList from './pages/office-assistance/ca-list';
 import AutoReminder from './pages/office-assistance/auto-reminder';
@@ -318,11 +319,11 @@ root.render(
         </ProtectedRoute>
       } />
 
-      {/* <Route path="/staff/office-assistance/group-firms" element={
+      <Route path="/staff/office-assistance/group-firms" element={
         <ProtectedRoute>
-          <FirmGroups />
+          <GroupFirms />
         </ProtectedRoute>
-      } /> */}
+      } />
 
       <Route path="/staff/office-assistance/inactive-client" element={
         <ProtectedRoute>

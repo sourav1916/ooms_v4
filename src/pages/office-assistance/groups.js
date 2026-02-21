@@ -77,12 +77,13 @@ const Groups = () => {
     }, []);
 
 
-    // Add this new useEffect after existing ones
     useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchGroupsData(searchTerm);
-        }, 1500);
-        return () => clearTimeout(timer);
+        if (searchTerm.trim()) {
+            const timer = setTimeout(() => {
+                fetchGroupsData(searchTerm);
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
     }, [searchTerm]);
 
     // REAL API - Replace the mock function
