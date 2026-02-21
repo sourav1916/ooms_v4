@@ -16,11 +16,11 @@ import {
     FiBarChart2,
     FiKey,
     FiUser,
-    FiLink
+    FiLink,
+    FiX
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
-import DateFilter from '../../components/DateFilter';
 import Pagination from '../../components/paging-nation-component';
 import API_BASE_URL from '../../utils/api-controller';
 import getHeaders from '../../utils/get-headers';
@@ -37,13 +37,13 @@ const ImportantLinks = () => {
     // Main states
     const [loading, setLoading] = useState(false);
     const [links, setLinks] = useState([]);
-    const [filteredLinks, setFilteredLinks] = useState([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showViewModal, setShowViewModal] = useState(false);
     const [selectedLink, setSelectedLink] = useState(null);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [dateRange, setDateRange] = useState('');
+    const [dateFilter, setDateFilter] = useState({ from: null, to: null });
     const [showPassword, setShowPassword] = useState({});
     const [apiError, setApiError] = useState(null);
     const [apiSuccess, setApiSuccess] = useState(null);
@@ -52,7 +52,7 @@ const ImportantLinks = () => {
     // Pagination states
     const [pagination, setPagination] = useState({
         page: 1,
-        limit: 20,
+        limit: 7, // Set to 7 items per page
         total: 0,
         total_pages: 1,
         is_last_page: true
@@ -92,6 +92,42 @@ const ImportantLinks = () => {
         return date.toLocaleDateString('en-GB');
     }, []);
 
+    // Format datetime
+    const formatDateTime = useCallback((dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }, []);
+
+    // Extract domain from URL
+    const extractDomain = useCallback((url) => {
+        try {
+            const urlObj = new URL(url);
+            return urlObj.hostname;
+        } catch (e) {
+            // If URL doesn't have protocol, try adding https://
+            try {
+                const urlObj = new URL('https://' + url);
+                return urlObj.hostname;
+            } catch (e) {
+                return url;
+            }
+        }
+    }, []);
+
+    // Truncate text with ellipsis
+    const truncateText = useCallback((text, maxLength = 50) => {
+        if (!text) return '';
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
+    }, []);
+
     // Get category color
     const getCategoryColor = useCallback((category) => {
         const colors = {
@@ -101,62 +137,6 @@ const ImportantLinks = () => {
             'General': 'bg-gray-100 text-gray-800'
         };
         return colors[category] || colors['General'];
-    }, []);
-
-    // Filter links based on search term and date range
-    const filterLinks = useCallback(() => {
-        let filtered = links;
-
-        // Filter by search term
-        if (searchTerm) {
-            filtered = filtered.filter(link =>
-                link.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (link.remark && link.remark.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                link.url.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (link.category && link.category.toLowerCase().includes(searchTerm.toLowerCase()))
-            );
-        }
-
-        // Filter by date range
-        if (dateRange) {
-            const [from, to] = dateRange.split(' - ');
-            const fromDate = new Date(from.split('/').reverse().join('-'));
-            const toDate = new Date(to.split('/').reverse().join('-'));
-
-            filtered = filtered.filter(link => {
-                const linkDate = new Date(link.create_date);
-                return linkDate >= fromDate && linkDate <= toDate;
-            });
-        }
-
-        setFilteredLinks(filtered);
-    }, [searchTerm, dateRange, links]);
-
-    // Handle search
-    const handleSearch = useCallback(() => {
-        filterLinks();
-    }, [filterLinks]);
-
-    // Handle form changes
-    const handleCreateChange = useCallback((field, value) => {
-        setCreateForm(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    }, []);
-
-    const handleEditChange = useCallback((field, value) => {
-        setEditForm(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    }, []);
-
-    // Handle date filter change
-    const handleDateFilterChange = useCallback((filter) => {
-        if (filter?.range) {
-            setDateRange(filter.range);
-        }
     }, []);
 
     // Toggle password visibility
@@ -185,52 +165,77 @@ const ImportantLinks = () => {
         setEditForm(initialEditForm);
     }, [initialEditForm]);
 
-    // Handle copy link
-    const handleCopyLink = useCallback((link) => {
-        navigator.clipboard.writeText(link.url).then(() => {
-            setApiSuccess('Link copied to clipboard!');
+    // Reset view modal
+    const resetViewModal = useCallback(() => {
+        setShowViewModal(false);
+        setSelectedLink(null);
+    }, []);
+
+    // Handle copy to clipboard
+    const handleCopy = useCallback((text, type) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setApiSuccess(`${type} copied to clipboard!`);
         }).catch(err => {
             console.error('Failed to copy: ', err);
-            setApiError('Failed to copy link');
+            setApiError(`Failed to copy ${type}`);
         });
     }, []);
 
     // Handle edit button click
-   // Handle edit button click - get data from existing links state
-// Handle edit button click
-const handleEditClick = useCallback((link) => {
-    console.log('Editing link with ID:', link.link_id); // Debug
-    console.log('Full link object:', link); // Debug
-    
-    setSelectedLink(link);
-    setEditForm({
-        link_id: link.link_id,  // Make sure this matches exactly
-        name: link.name,
-        username: link.username || '',
-        password: '', // Don't populate password
-        url: link.url,
-        remark: link.remark || '',
-        category: link.category || 'Government'
-    });
-    setShowEditModal(true);
-    setActiveDropdown(null);
-}, []);
-    // API call to fetch links data
-    // API call to fetch links data
-    const fetchLinksData = useCallback(async (page = 1, limit = 20) => {
+    const handleEditClick = useCallback((link) => {
+        setSelectedLink(link);
+        setEditForm({
+            link_id: link.link_id,
+            name: link.name,
+            username: link.username || '',
+            password: '',
+            url: link.url,
+            remark: link.remark || '',
+            category: link.category || 'Government'
+        });
+        setShowEditModal(true);
+        setActiveDropdown(null);
+    }, []);
+
+    // Handle view button click
+    const handleViewClick = useCallback((link) => {
+        setSelectedLink(link);
+        setShowViewModal(true);
+        setActiveDropdown(null);
+    }, []);
+
+    // API call to fetch links data with search and date filters
+    const fetchLinksData = useCallback(async (page = 1, limit = 7, search = '') => {
         setLoading(true);
         setApiError(null);
 
         try {
             const headers = getHeaders();
+            const params = { 
+                page, 
+                limit
+            };
+            
+            // Add search parameter if provided
+            if (search) {
+                params.search = search;
+            }
+
+            // Add date filters if provided
+            if (dateFilter.from) {
+                params.from_date = dateFilter.from.toISOString().split('T')[0];
+            }
+            if (dateFilter.to) {
+                params.to_date = dateFilter.to.toISOString().split('T')[0];
+            }
+
             const response = await axios.get(`${API_BASE_URL}/assistance/important-link/list`, {
                 headers,
-                params: { page, limit }
+                params
             });
 
             if (response.data.success) {
                 setLinks(response.data.data);
-                setFilteredLinks(response.data.data);
                 setPagination(response.data.meta);
             } else {
                 setApiError(response.data.message || 'Failed to fetch links');
@@ -241,7 +246,50 @@ const handleEditClick = useCallback((link) => {
         } finally {
             setLoading(false);
         }
+    }, [dateFilter]);
+
+    // Debounced search
+    useEffect(() => {
+        const debounceTimer = setTimeout(() => {
+            fetchLinksData(1, pagination.limit, searchTerm);
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(debounceTimer);
+    }, [searchTerm, pagination.limit, fetchLinksData]);
+
+    // Handle form changes
+    const handleCreateChange = useCallback((field, value) => {
+        setCreateForm(prev => ({
+            ...prev,
+            [field]: value
+        }));
     }, []);
+
+    const handleEditChange = useCallback((field, value) => {
+        setEditForm(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    }, []);
+
+    // Handle date filter change
+    const handleDateFilterChange = useCallback((type, date) => {
+        setDateFilter(prev => ({
+            ...prev,
+            [type]: date
+        }));
+    }, []);
+
+    // Apply date filters
+    const applyDateFilters = useCallback(() => {
+        fetchLinksData(1, pagination.limit, searchTerm);
+    }, [fetchLinksData, pagination.limit, searchTerm]);
+
+    // Clear date filters
+    const clearDateFilters = useCallback(() => {
+        setDateFilter({ from: null, to: null });
+        fetchLinksData(1, pagination.limit, searchTerm);
+    }, [fetchLinksData, pagination.limit, searchTerm]);
 
     // API call to create link
     const handleCreateSubmit = useCallback(async (e) => {
@@ -267,7 +315,7 @@ const handleEditClick = useCallback((link) => {
 
             if (response.data.success) {
                 setApiSuccess('Link created successfully!');
-                await fetchLinksData();
+                await fetchLinksData(1, pagination.limit, searchTerm);
                 resetCreateModal();
             } else {
                 setApiError(response.data.message || 'Failed to create link');
@@ -278,90 +326,53 @@ const handleEditClick = useCallback((link) => {
         } finally {
             setIsSubmitting(false);
         }
-    }, [createForm, fetchLinksData, resetCreateModal]);
+    }, [createForm, fetchLinksData, pagination.limit, searchTerm, resetCreateModal]);
 
     // API call to edit link
-   // API call to edit link - DEBUG VERSION
-const handleEditSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setApiError(null);
-    setApiSuccess(null);
+    const handleEditSubmit = useCallback(async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        setApiError(null);
+        setApiSuccess(null);
 
-    // Debug: Log everything
-    console.log('===== EDIT DEBUG =====');
-    console.log('1. Edit Form Data:', editForm);
-    console.log('2. Link ID being sent:', editForm.link_id);
-    console.log('3. Link ID type:', typeof editForm.link_id);
-    console.log('4. Link ID length:', editForm.link_id.length);
-    
-    // Check if this link exists in current state
-    const linkInState = links.find(l => l.link_id === editForm.link_id);
-    console.log('5. Link exists in state:', linkInState ? 'YES' : 'NO');
-    if (linkInState) {
-        console.log('6. Link state data:', linkInState);
-    }
+        try {
+            const headers = getHeaders();
 
-    // Check localStorage values
-    console.log('7. localStorage branch:', localStorage.getItem('branchId'));
-    console.log('8. localStorage userName:', localStorage.getItem('userName'));
-    console.log('9. localStorage token:', localStorage.getItem('token') ? 'Present' : 'Missing');
+            // Prepare data - ONLY include fields that exist
+            const editData = {
+                link_id: editForm.link_id,
+                name: editForm.name,
+                category: editForm.category,
+                url: editForm.url,
+                username: editForm.username,
+                remark: editForm.remark
+            };
 
-    try {
-        const headers = getHeaders();
-        console.log('10. Headers being sent:', headers);
+            // Only include password if it's provided (not empty)
+            if (editForm.password && editForm.password.trim() !== '') {
+                editData.password = editForm.password;
+            }
 
-        // Prepare data - ONLY include fields that exist
-        const editData = {
-            link_id: editForm.link_id,
-            name: editForm.name,
-            category: editForm.category,
-            url: editForm.url,
-            username: editForm.username,
-            remark: editForm.remark
-        };
+            const response = await axios.put(
+                `${API_BASE_URL}/assistance/important-link/edit`,
+                editData,
+                { headers }
+            );
 
-        // Only include password if it's provided (not empty)
-        if (editForm.password && editForm.password.trim() !== '') {
-            editData.password = editForm.password;
-        }
-
-        console.log('11. Request data:', editData);
-
-        const response = await axios.put(
-            `${API_BASE_URL}/assistance/important-link/edit`,
-            editData,
-            { headers }
-        );
-
-        console.log('12. Response:', response.data);
-
-        if (response.data.success) {
-            setApiSuccess('Link updated successfully!');
-            await fetchLinksData();
-            resetEditModal();
-        } else {
-            setApiError(response.data.message || 'Failed to update link');
-        }
-    } catch (error) {
-        console.error('===== ERROR DEBUG =====');
-        console.error('Error object:', error);
-        console.error('Error response:', error.response);
-        console.error('Error status:', error.response?.status);
-        console.error('Error data:', error.response?.data);
-        console.error('Error message:', error.response?.data?.message);
-        
-        if (error.response?.status === 404) {
-            setApiError(`Link not found. ID: ${editForm.link_id}`);
-        } else if (error.response?.status === 403) {
-            setApiError('You do not have permission to edit this link');
-        } else {
+            if (response.data.success) {
+                setApiSuccess('Link updated successfully!');
+                await fetchLinksData(pagination.page, pagination.limit, searchTerm);
+                resetEditModal();
+            } else {
+                setApiError(response.data.message || 'Failed to update link');
+            }
+        } catch (error) {
+            console.error('Error updating link:', error);
             setApiError(error.response?.data?.message || 'Network error. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
-    } finally {
-        setIsSubmitting(false);
-    }
-}, [editForm, links, fetchLinksData, resetEditModal]);
+    }, [editForm, fetchLinksData, pagination.page, pagination.limit, searchTerm, resetEditModal]);
 
     // API call to delete link
     const handleDeleteLink = useCallback(async (link) => {
@@ -385,7 +396,7 @@ const handleEditSubmit = useCallback(async (e) => {
 
             if (response.data.success) {
                 setApiSuccess('Link deleted successfully!');
-                await fetchLinksData();
+                await fetchLinksData(pagination.page, pagination.limit, searchTerm);
             } else {
                 setApiError(response.data.message || 'Failed to delete link');
             }
@@ -396,34 +407,27 @@ const handleEditSubmit = useCallback(async (e) => {
             setIsSubmitting(false);
             setActiveDropdown(null);
         }
-    }, [fetchLinksData]);
+    }, [fetchLinksData, pagination.page, pagination.limit, searchTerm]);
 
- // Handle page change
-const handlePageChange = useCallback((newPage) => {
-    if (newPage >= 1 && newPage <= pagination.total_pages) {
-        fetchLinksData(newPage, pagination.limit);
-    }
-}, [pagination.total_pages, pagination.limit, fetchLinksData]);
-// Handle limit change
-const handleLimitChange = useCallback((newLimit) => {
-    setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
-    fetchLinksData(1, newLimit);
-}, [fetchLinksData]);
+    // Handle page change
+    const handlePageChange = useCallback((newPage) => {
+        if (newPage >= 1 && newPage <= pagination.total_pages) {
+            fetchLinksData(newPage, pagination.limit, searchTerm);
+        }
+    }, [pagination.total_pages, pagination.limit, searchTerm, fetchLinksData]);
 
-// Handle custom page change
-const handleCustomPageChange = useCallback((pageNum) => {
-    if (pageNum >= 1 && pageNum <= pagination.total_pages) {
-        fetchLinksData(pageNum, pagination.limit);
-    }
-}, [pagination.limit, fetchLinksData]);
+    // Handle limit change
+    const handleLimitChange = useCallback((newLimit) => {
+        setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
+        fetchLinksData(1, newLimit, searchTerm);
+    }, [searchTerm, fetchLinksData]);
 
-    // Calculate summary
-    const summary = useMemo(() => ({
-        totalLinks: filteredLinks.length,
-        linksWithCredentials: filteredLinks.filter(link => link.username).length,
-        totalCredentials: filteredLinks.filter(link => link.username).length,
-        totalVisits: filteredLinks.reduce((sum, link) => sum + (link.visits || 0), 0)
-    }), [filteredLinks]);
+    // Handle custom page change
+    const handleCustomPageChange = useCallback((pageNum) => {
+        if (pageNum >= 1 && pageNum <= pagination.total_pages) {
+            fetchLinksData(pageNum, pagination.limit, searchTerm);
+        }
+    }, [pagination.limit, pagination.total_pages, searchTerm, fetchLinksData]);
 
     // ========== EFFECTS ==========
 
@@ -446,13 +450,8 @@ const handleCustomPageChange = useCallback((pageNum) => {
 
     // Initial data load
     useEffect(() => {
-        fetchLinksData();
-    }, [fetchLinksData]);
-
-    // Filter links when search term or date range changes
-    useEffect(() => {
-        filterLinks();
-    }, [searchTerm, dateRange, links, filterLinks]);
+        fetchLinksData(1, 7); // Start with 7 items per page
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Clear messages after 3 seconds
     useEffect(() => {
@@ -505,22 +504,12 @@ const handleCustomPageChange = useCallback((pageNum) => {
                         <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-64"></div>
                     </div>
 
-                    {/* Stats Skeleton */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                        {[...Array(4)].map((_, i) => (
-                            <div key={i} className="h-24 bg-gradient-to-r from-gray-200 to-gray-300 rounded-xl shadow-sm"></div>
-                        ))}
-                    </div>
-
                     {/* Controls Skeleton */}
                     <div className="flex flex-col lg:flex-row gap-4 mb-6">
                         <div className="flex-1">
                             <div className="h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg"></div>
                         </div>
                         <div className="w-48">
-                            <div className="h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg"></div>
-                        </div>
-                        <div className="w-32">
                             <div className="h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg"></div>
                         </div>
                     </div>
@@ -586,9 +575,7 @@ const handleCustomPageChange = useCallback((pageNum) => {
                                     onClick={onClose}
                                     className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
+                                    <FiX className="w-5 h-5" />
                                 </button>
                             </div>
                             {children}
@@ -653,7 +640,7 @@ const handleCustomPageChange = useCallback((pageNum) => {
                         )}
                     </AnimatePresence>
 
-                    {/* Header with Gradient */}
+                    {/* Header */}
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -668,96 +655,14 @@ const handleCustomPageChange = useCallback((pageNum) => {
                                     Secure management of all your important links and credentials
                                 </p>
                             </div>
-
-                            <motion.button
-                                onClick={() => setShowCreateModal(true)}
-                                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                disabled={isSubmitting}
-                            >
-                                <FiPlus className="w-4 h-4" />
-                                Add New Link
-                            </motion.button>
-                        </div>
-
-                        {/* Stats Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                            <motion.div
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.1 }}
-                                className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow duration-300"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-gray-500 text-sm font-medium">Total Links</p>
-                                        <p className="text-2xl font-bold text-gray-800 mt-1">{pagination.total}</p>
-                                    </div>
-                                    <div className="p-3 bg-blue-50 rounded-lg">
-                                        <FiGlobe className="w-6 h-6 text-blue-600" />
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            <motion.div
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow duration-300"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-gray-500 text-sm font-medium">With Credentials</p>
-                                        <p className="text-2xl font-bold text-gray-800 mt-1">{summary.linksWithCredentials}</p>
-                                    </div>
-                                    <div className="p-3 bg-green-50 rounded-lg">
-                                        <FiKey className="w-6 h-6 text-green-600" />
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            <motion.div
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.3 }}
-                                className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow duration-300"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-gray-500 text-sm font-medium">Categories</p>
-                                        <p className="text-2xl font-bold text-gray-800 mt-1">{categories.length}</p>
-                                    </div>
-                                    <div className="p-3 bg-purple-50 rounded-lg">
-                                        <FiFilter className="w-6 h-6 text-purple-600" />
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            <motion.div
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.4 }}
-                                className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow duration-300"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-gray-500 text-sm font-medium">Page {pagination.page}</p>
-                                        <p className="text-2xl font-bold text-gray-800 mt-1">{pagination.total_pages}</p>
-                                    </div>
-                                    <div className="p-3 bg-indigo-50 rounded-lg">
-                                        <FiBarChart2 className="w-6 h-6 text-indigo-600" />
-                                    </div>
-                                </div>
-                            </motion.div>
                         </div>
                     </motion.div>
 
-                    {/* Search and Filter Bar */}
+                    {/* Search and Add New Bar */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
+                        transition={{ delay: 0.3 }}
                         className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm"
                     >
                         <div className="flex flex-col lg:flex-row gap-4">
@@ -767,43 +672,42 @@ const handleCustomPageChange = useCallback((pageNum) => {
                                         type="text"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                                        placeholder="Search by name, category, or remark..."
+                                        placeholder="Search by name, username, password, remark, or URL..."
                                         className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all duration-300"
                                     />
                                     <FiSearch className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
-                                    <button
-                                        onClick={handleSearch}
-                                        className="absolute right-3 top-2.5 px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
-                                    >
-                                        Search
-                                    </button>
                                 </div>
                             </div>
-                            <div className="w-full lg:w-auto">
-                                <div className="flex items-center gap-2 p-2 border border-gray-300 rounded-xl">
-                                    <FiFilter className="w-4 h-4 text-gray-500 ml-2" />
-                                    <DateFilter onChange={handleDateFilterChange} />
-                                </div>
-                            </div>
+                            <motion.button
+                                onClick={() => setShowCreateModal(true)}
+                                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 whitespace-nowrap"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                disabled={isSubmitting}
+                            >
+                                <FiPlus className="w-4 h-4" />
+                                Add New Link
+                            </motion.button>
                         </div>
                     </motion.div>
+
+                   
 
                     {/* Main Card */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.6 }}
+                        transition={{ delay: 0.4 }}
                         className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden"
                     >
                         {/* Table Header */}
                         <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                             <div className="grid grid-cols-12 gap-4 p-4 text-sm font-semibold text-gray-700">
                                 <div className="col-span-1">#</div>
-                                <div className="col-span-3">Link Details</div>
-                                <div className="col-span-2">Credentials</div>
-                                <div className="col-span-2">Category & Created By</div>
-                                <div className="col-span-3">Remarks</div>
+                                <div className="col-span-4">Link Details</div>
+                                <div className="col-span-3">Credentials</div>
+                                <div className="col-span-2">Remarks</div>
+                                <div className="col-span-1 text-center">View</div>
                                 <div className="col-span-1 text-center">Actions</div>
                             </div>
                         </div>
@@ -816,14 +720,14 @@ const handleCustomPageChange = useCallback((pageNum) => {
                                         <div className="h-16 bg-gradient-to-r from-gray-100 to-gray-200 rounded-lg"></div>
                                     </div>
                                 ))
-                            ) : filteredLinks.length === 0 ? (
+                            ) : links.length === 0 ? (
                                 <div className="text-center py-12">
                                     <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full mb-4">
                                         <FiLink className="w-8 h-8 text-gray-400" />
                                     </div>
                                     <h3 className="text-lg font-medium text-gray-700 mb-2">No links found</h3>
                                     <p className="text-gray-500 mb-6">
-                                        {links.length === 0 ? 'Get started by adding your first important link' : 'Try adjusting your search or filter'}
+                                        Get started by adding your first important link
                                     </p>
                                     <motion.button
                                         onClick={() => setShowCreateModal(true)}
@@ -837,7 +741,7 @@ const handleCustomPageChange = useCallback((pageNum) => {
                                 </div>
                             ) : (
                                 <AnimatePresence>
-                                    {filteredLinks.map((link, index) => (
+                                    {links.map((link, index) => (
                                         <motion.div
                                             key={link.link_id}
                                             initial={{ opacity: 0, y: 10 }}
@@ -849,21 +753,32 @@ const handleCustomPageChange = useCallback((pageNum) => {
                                                 {/* Index */}
                                                 <div className="col-span-1">
                                                     <div className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 font-semibold rounded-lg">
-                                                        {index + 1}
+                                                        {((pagination.page - 1) * pagination.limit) + index + 1}
                                                     </div>
                                                 </div>
 
                                                 {/* Link Details */}
-                                                <div className="col-span-3">
+                                                <div className="col-span-4">
                                                     <div className="flex items-start gap-3">
                                                         <div className="p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
                                                             <FiGlobe className="w-5 h-5 text-indigo-600" />
                                                         </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-800">{link.name}</h4>
-                                                            <p className="text-gray-500 text-sm mt-1 truncate max-w-xs">
-                                                                {link.url?.replace(/^https?:\/\//, '')}
-                                                            </p>
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center justify-between">
+                                                                <h4 className="font-semibold text-gray-800">{truncateText(link.name, 30)}</h4>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <p className="text-gray-500 text-sm truncate">
+                                                                    {extractDomain(link.url)}
+                                                                </p>
+                                                                <button
+                                                                    onClick={() => handleCopy(link.url, 'URL')}
+                                                                    className="text-gray-400 hover:text-indigo-600 transition-colors flex-shrink-0"
+                                                                    title="Copy URL"
+                                                                >
+                                                                    <FiCopy className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
                                                             <div className="flex items-center gap-2 mt-2">
                                                                 <span className="text-xs text-gray-500">
                                                                     <FiCalendar className="w-3 h-3 inline mr-1" />
@@ -875,82 +790,92 @@ const handleCustomPageChange = useCallback((pageNum) => {
                                                 </div>
 
                                                 {/* Credentials */}
-                                                <div className="col-span-2">
+                                                <div className="col-span-3">
                                                     <div className="space-y-2">
                                                         <div className="flex items-center gap-2">
                                                             <FiUser className="w-4 h-4 text-gray-400" />
-                                                            <span className="text-sm font-medium text-gray-700 truncate">
-                                                                {link.username || 'No username'}
+                                                            <span className="text-sm font-medium text-gray-700 truncate max-w-[100px]">
+                                                                {truncateText(link.username || 'No username', 20)}
                                                             </span>
+                                                            {link.username && (
+                                                                <button
+                                                                    onClick={() => handleCopy(link.username, 'Username')}
+                                                                    className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                                                    title="Copy Username"
+                                                                >
+                                                                    <FiCopy className="w-3 h-3" />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                         <div className="flex items-center gap-2">
                                                             <FiKey className="w-4 h-4 text-gray-400" />
                                                             <div className="flex items-center gap-1">
                                                                 <span className="text-sm font-medium text-gray-700">
                                                                     {showPassword[link.link_id]
-                                                                        ? link.password || 'No password'
+                                                                        ? truncateText(link.password || 'No password', 20)
                                                                         : '••••••••'
                                                                     }
                                                                 </span>
                                                                 {link.username && (
-                                                                    <button
-                                                                        onClick={() => togglePasswordVisibility(link.link_id)}
-                                                                        className="text-gray-400 hover:text-gray-600"
-                                                                    >
-                                                                        {showPassword[link.link_id] ? (
-                                                                            <FiEyeOff className="w-3 h-3" />
-                                                                        ) : (
-                                                                            <FiEye className="w-3 h-3" />
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => togglePasswordVisibility(link.link_id)}
+                                                                            className="text-gray-400 hover:text-gray-600"
+                                                                            title={showPassword[link.link_id] ? "Hide Password" : "Show Password"}
+                                                                        >
+                                                                            {showPassword[link.link_id] ? (
+                                                                                <FiEyeOff className="w-3 h-3" />
+                                                                            ) : (
+                                                                                <FiEye className="w-3 h-3" />
+                                                                            )}
+                                                                        </button>
+                                                                        {link.password && (
+                                                                            <button
+                                                                                onClick={() => handleCopy(link.password, 'Password')}
+                                                                                className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                                                                title="Copy Password"
+                                                                            >
+                                                                                <FiCopy className="w-3 h-3" />
+                                                                            </button>
                                                                         )}
-                                                                    </button>
+                                                                    </>
                                                                 )}
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                {/* Category & Created By */}
+                                                {/* Remarks */}
                                                 <div className="col-span-2">
-                                                    <div className="space-y-2">
-                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getCategoryColor(link.category)}`}>
-                                                            {link.category || 'General'}
-                                                        </span>
-                                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                            <FiUser className="w-3 h-3" />
-                                                            <span className="truncate">{link.create_by?.name || 'Unknown'}</span>
-                                                        </div>
-                                                    </div>
+                                                    <p className="text-gray-600 text-sm line-clamp-2">{truncateText(link.remark || 'No remarks', 50)}</p>
                                                 </div>
 
-                                                {/* Remarks */}
-                                                <div className="col-span-3">
-                                                    <p className="text-gray-600 text-sm line-clamp-2">{link.remark || 'No remarks'}</p>
+                                                {/* View Button */}
+                                                <div className="col-span-1 text-center">
+                                                    <motion.button
+                                                        onClick={() => handleViewClick(link)}
+                                                        className="p-2 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors duration-200"
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.9 }}
+                                                        title="View Details"
+                                                    >
+                                                        <FiEye className="w-4 h-4" />
+                                                    </motion.button>
                                                 </div>
 
                                                 {/* Actions */}
                                                 <div className="col-span-1">
                                                     <div className="dropdown-container relative flex justify-center">
-                                                        <div className="flex items-center gap-2">
-                                                            <motion.button
-                                                                onClick={() => handleCopyLink(link)}
-                                                                className="p-2 bg-gradient-to-r from-green-50 to-emerald-50 text-green-600 hover:text-green-700 hover:bg-green-100 rounded-lg transition-colors duration-200"
-                                                                whileHover={{ scale: 1.1 }}
-                                                                whileTap={{ scale: 0.9 }}
-                                                                title="Copy Link"
-                                                                disabled={isSubmitting}
-                                                            >
-                                                                <FiCopy className="w-4 h-4" />
-                                                            </motion.button>
-                                                            <motion.button
-                                                                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-                                                                onClick={() => toggleDropdown(link.link_id)}
-                                                                whileHover={{ scale: 1.1 }}
-                                                                whileTap={{ scale: 0.9 }}
-                                                                disabled={isSubmitting}
-                                                            >
-                                                                <FiMoreVertical className="w-4 h-4" />
-                                                            </motion.button>
-                                                        </div>
+                                                        <motion.button
+                                                            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                                                            onClick={() => toggleDropdown(link.link_id)}
+                                                            whileHover={{ scale: 1.1 }}
+                                                            whileTap={{ scale: 0.9 }}
+                                                            disabled={isSubmitting}
+                                                        >
+                                                            <FiMoreVertical className="w-4 h-4" />
+                                                        </motion.button>
+                                                        
                                                         {activeDropdown === link.link_id && (
                                                             <motion.div
                                                                 initial={{ opacity: 0, scale: 0.95 }}
@@ -961,7 +886,6 @@ const handleCustomPageChange = useCallback((pageNum) => {
                                                                     <button
                                                                         onClick={() => handleEditClick(link)}
                                                                         className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
-                                                                        disabled={isSubmitting}
                                                                     >
                                                                         <FiEdit className="w-4 h-4 mr-3 text-indigo-600" />
                                                                         Edit Link
@@ -969,16 +893,14 @@ const handleCustomPageChange = useCallback((pageNum) => {
                                                                     <button
                                                                         onClick={() => window.open(link.url, '_blank')}
                                                                         className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
-                                                                        disabled={isSubmitting}
                                                                     >
                                                                         <FiExternalLink className="w-4 h-4 mr-3 text-blue-600" />
-                                                                        Open Link
+                                                                        Visit Link
                                                                     </button>
                                                                     <div className="border-t border-gray-100">
                                                                         <button
                                                                             onClick={() => handleDeleteLink(link)}
                                                                             className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
-                                                                            disabled={isSubmitting}
                                                                         >
                                                                             <FiTrash className="w-4 h-4 mr-3" />
                                                                             Delete
@@ -997,8 +919,7 @@ const handleCustomPageChange = useCallback((pageNum) => {
                         </div>
 
                         {/* Footer with Pagination */}
-                        {/* Find this section in your return statement - around where you had the Pagination component */}
-                        {filteredLinks.length > 0 && (
+                        {links.length > 0 && (
                             <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                                 <Pagination
                                     pagination={pagination}
@@ -1011,9 +932,6 @@ const handleCustomPageChange = useCallback((pageNum) => {
                                     showCustomInput={true}
                                     className=""
                                 />
-                                <div className="flex justify-center pb-4 text-sm text-gray-600">
-                                    <span className="font-semibold text-indigo-600">{summary.linksWithCredentials}</span>&nbsp;with credentials
-                                </div>
                             </div>
                         )}
                     </motion.div>
@@ -1271,6 +1189,204 @@ const handleCustomPageChange = useCallback((pageNum) => {
                         </motion.button>
                     </div>
                 </div>
+            </ModalWrapper>
+
+            {/* View Modal */}
+            <ModalWrapper
+                isOpen={showViewModal}
+                onClose={resetViewModal}
+                title="Link Details"
+                size="max-w-2xl"
+            >
+                {selectedLink && (
+                    <>
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="space-y-6">
+                                {/* Link Info */}
+                                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="p-2 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg">
+                                            <FiLink className="w-5 h-5 text-white" />
+                                        </div>
+                                        <h3 className="text-lg font-semibold text-gray-800">Link Information</h3>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs text-gray-500">Name</label>
+                                            <p className="text-sm font-medium text-gray-800 mt-1">{selectedLink.name}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-gray-500">Category</label>
+                                            <div className="mt-1">
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    {selectedLink.category || 'General'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs text-gray-500">URL</label>
+                                            <button
+                                                onClick={() => handleCopy(selectedLink.url, 'URL')}
+                                                className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center gap-1"
+                                            >
+                                                <FiCopy className="w-3 h-3" />
+                                                Copy URL
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center justify-between mt-1">
+                                            <a 
+                                                href={selectedLink.url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-sm text-indigo-600 hover:text-indigo-800 break-all flex items-center gap-1"
+                                            >
+                                                {selectedLink.url}
+                                                <FiExternalLink className="w-3 h-3" />
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Credentials */}
+                                {(selectedLink.username || selectedLink.password) && (
+                                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="p-2 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg">
+                                                <FiKey className="w-5 h-5 text-white" />
+                                            </div>
+                                            <h3 className="text-lg font-semibold text-gray-800">Credentials</h3>
+                                        </div>
+
+                                        {selectedLink.username && (
+                                            <div className="mb-3">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-xs text-gray-500">Username</label>
+                                                    <button
+                                                        onClick={() => handleCopy(selectedLink.username, 'Username')}
+                                                        className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center gap-1"
+                                                    >
+                                                        <FiCopy className="w-3 h-3" />
+                                                        Copy Username
+                                                    </button>
+                                                </div>
+                                                <p className="text-sm font-medium text-gray-800 mt-1">{selectedLink.username}</p>
+                                            </div>
+                                        )}
+
+                                        {selectedLink.password && (
+                                            <div>
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-xs text-gray-500">Password</label>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => togglePasswordVisibility(selectedLink.link_id)}
+                                                            className="text-gray-500 hover:text-gray-700 text-xs flex items-center gap-1"
+                                                        >
+                                                            {showPassword[selectedLink.link_id] ? (
+                                                                <>
+                                                                    <FiEyeOff className="w-3 h-3" />
+                                                                    Hide
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <FiEye className="w-3 h-3" />
+                                                                    Show
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleCopy(selectedLink.password, 'Password')}
+                                                            className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center gap-1"
+                                                        >
+                                                            <FiCopy className="w-3 h-3" />
+                                                            Copy Password
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm font-medium text-gray-800 mt-1">
+                                                    {showPassword[selectedLink.link_id] 
+                                                        ? selectedLink.password 
+                                                        : '••••••••'}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Remarks */}
+                                {selectedLink.remark && (
+                                    <div className="bg-gray-50 p-4 rounded-xl">
+                                        <label className="text-xs text-gray-500">Remarks</label>
+                                        <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{selectedLink.remark}</p>
+                                    </div>
+                                )}
+
+                                {/* Metadata */}
+                                <div className="border-t border-gray-200 pt-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {selectedLink.create_by && (
+                                            <div>
+                                                <label className="text-xs text-gray-500">Created By</label>
+                                                <p className="text-sm text-gray-700 mt-1">{selectedLink.create_by.name}</p>
+                                                <p className="text-xs text-gray-500">{selectedLink.create_by.email}</p>
+                                            </div>
+                                        )}
+                                        {selectedLink.create_date && (
+                                            <div>
+                                                <label className="text-xs text-gray-500">Created Date</label>
+                                                <p className="text-sm text-gray-700 mt-1">{formatDateTime(selectedLink.create_date)}</p>
+                                            </div>
+                                        )}
+                                        {selectedLink.modify_by && selectedLink.modify_by.name !== selectedLink.create_by?.name && (
+                                            <div>
+                                                <label className="text-xs text-gray-500">Modified By</label>
+                                                <p className="text-sm text-gray-700 mt-1">{selectedLink.modify_by.name}</p>
+                                                <p className="text-xs text-gray-500">{selectedLink.modify_by.email}</p>
+                                            </div>
+                                        )}
+                                        {selectedLink.modify_date && selectedLink.modify_date !== selectedLink.create_date && (
+                                            <div>
+                                                <label className="text-xs text-gray-500">Modified Date</label>
+                                                <p className="text-sm text-gray-700 mt-1">{formatDateTime(selectedLink.modify_date)}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50 p-6">
+                            <div className="flex justify-end gap-3">
+                                <motion.button
+                                    type="button"
+                                    onClick={() => {
+                                        resetViewModal();
+                                        handleEditClick(selectedLink);
+                                    }}
+                                    className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:opacity-90 transition-opacity text-sm font-medium shadow-sm"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    <FiEdit className="w-4 h-4 inline mr-2" />
+                                    Edit Link
+                                </motion.button>
+                                <motion.button
+                                    type="button"
+                                    onClick={resetViewModal}
+                                    className="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl text-sm font-medium transition-colors duration-200"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    Close
+                                </motion.button>
+                            </div>
+                        </div>
+                    </>
+                )}
             </ModalWrapper>
         </div>
     );
