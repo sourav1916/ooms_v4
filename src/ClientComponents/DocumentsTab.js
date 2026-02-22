@@ -8,7 +8,7 @@ import {
   FiBriefcase, FiDollarSign, FiUsers, FiHome, FiCheckSquare,
   FiSquare, FiChevronLeft, FiChevronRight, FiMoreVertical,
   FiMail, FiMessageCircle, FiSend, FiPaperclip, FiLoader,
-  FiAlertCircle, FiCheck, FiEdit2
+  FiAlertCircle, FiCheck, FiEdit2, FiMenu, FiExternalLink
 } from 'react-icons/fi';
 import { SiWhatsapp } from 'react-icons/si';
 import axios from 'axios';
@@ -17,95 +17,126 @@ import getHeaders from "../utils/get-headers";
 import API_BASE_URL from "../utils/api-controller";
 
 // View Modal Component
-const ViewModal = ({ document, onClose }) => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-    onClick={onClose}
-  >
+const ViewModal = ({ document, onClose }) => {
+  const handleDownload = () => {
+    if (document?.file_url) {
+      window.open(document.file_url, '_blank');
+    }
+  };
+
+  const handleViewInNewTab = () => {
+    if (document?.file_url) {
+      window.open(document.file_url, '_blank');
+    }
+  };
+
+  return (
     <motion.div
-      initial={{ scale: 0.9, y: 20 }}
-      animate={{ scale: 1, y: 0 }}
-      exit={{ scale: 0.9, y: 20 }}
-      className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
-      onClick={(e) => e.stopPropagation()}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={onClose}
     >
-      <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
-        <h3 className="text-xl font-bold text-gray-900">Document Details</h3>
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <FiX className="w-5 h-5 text-gray-500" />
-        </button>
-      </div>
-
-      <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
-        <div className="space-y-4">
-          {document?.file_url && (
-            <div className="flex justify-center mb-4">
-              {document.mime_type?.startsWith('image/') ? (
-                <img
-                  src={document.file_url}
-                  alt="Document"
-                  className="max-w-full max-h-64 rounded-lg border border-gray-200"
-                />
-              ) : (
-                <div className="w-full p-8 bg-gray-50 rounded-lg text-center">
-                  <FiFileText className="w-16 h-16 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Preview not available</p>
-                </div>
-              )}
-            </div>
-          )}
-          {document && Object.entries(document).map(([key, value]) =>
-            key !== 'id' && key !== 'firm_id' && key !== 'file_url' && key !== 'mime_type' && key !== 'size' && key !== 'create_date' && key !== 'type_value' && (
-              <div key={key} className="flex border-b border-gray-100 pb-3">
-                <span className="w-1/3 text-sm font-medium text-gray-600 capitalize">
-                  {key.replace(/([A-Z])/g, ' $1').trim()}:
-                </span>
-                <span className="w-2/3 text-sm text-gray-900">{value}</span>
-              </div>
-            )
-          )}
-          {document?.size && (
-            <div className="flex border-b border-gray-100 pb-3">
-              <span className="w-1/3 text-sm font-medium text-gray-600">File Size:</span>
-              <span className="w-2/3 text-sm text-gray-900">{(document.size / 1024).toFixed(2)} KB</span>
-            </div>
-          )}
-          {document?.create_date && (
-            <div className="flex border-b border-gray-100 pb-3">
-              <span className="w-1/3 text-sm font-medium text-gray-600">Uploaded On:</span>
-              <span className="w-2/3 text-sm text-gray-900">{new Date(document.create_date).toLocaleString()}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          {document?.file_url && (
-            <a
-              href={document.file_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
-            >
-              Download
-            </a>
-          )}
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
+          <h3 className="text-xl font-bold text-gray-900">Document Details</h3>
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            Close
+            <FiX className="w-5 h-5 text-gray-500" />
           </button>
         </div>
-      </div>
+
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
+          <div className="space-y-4">
+            {document?.file_url && (
+              <div className="flex justify-center mb-4">
+                {document.mime_type?.startsWith('image/') ? (
+                  <img
+                    src={document.file_url}
+                    alt="Document"
+                    className="max-w-full max-h-64 rounded-lg border border-gray-200 cursor-pointer"
+                    onClick={handleViewInNewTab}
+                  />
+                ) : (
+                  <div className="w-full p-8 bg-gray-50 rounded-lg text-center">
+                    <FiFileText className="w-16 h-16 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 mb-4">Preview not available</p>
+                    <button
+                      onClick={handleViewInNewTab}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <FiExternalLink className="w-4 h-4" />
+                      View in New Tab
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            {document && Object.entries(document).map(([key, value]) =>
+              key !== 'id' && key !== 'firm_id' && key !== 'file_url' && key !== 'mime_type' && key !== 'size' && key !== 'create_date' && key !== 'type_value' && (
+                <div key={key} className="flex border-b border-gray-100 pb-3">
+                  <span className="w-1/3 text-sm font-medium text-gray-600 capitalize">
+                    {key.replace(/([A-Z])/g, ' $1').trim()}:
+                  </span>
+                  <span className="w-2/3 text-sm text-gray-900 break-words">{value || '-'}</span>
+                </div>
+              )
+            )}
+            {document?.size && (
+              <div className="flex border-b border-gray-100 pb-3">
+                <span className="w-1/3 text-sm font-medium text-gray-600">File Size:</span>
+                <span className="w-2/3 text-sm text-gray-900">{(document.size / 1024).toFixed(2)} KB</span>
+              </div>
+            )}
+            {document?.create_date && (
+              <div className="flex border-b border-gray-100 pb-3">
+                <span className="w-1/3 text-sm font-medium text-gray-600">Uploaded On:</span>
+                <span className="w-2/3 text-sm text-gray-900">{new Date(document.create_date).toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 flex justify-end gap-2">
+            {document?.file_url && (
+              <>
+                <button
+                  onClick={handleViewInNewTab}
+                  className="px-6 py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors font-medium flex items-center gap-2"
+                >
+                  <FiExternalLink className="w-4 h-4" />
+                  View
+                </button>
+                <a
+                  href={document.file_url}
+                  download
+                  className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+                >
+                  <FiDownload className="w-4 h-4" />
+                  Download
+                </a>
+              </>
+            )}
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </motion.div>
     </motion.div>
-  </motion.div>
-);
+  );
+};
 
 // Create Category Modal
 const CreateCategoryModal = ({ onClose, onCreate, loading }) => {
@@ -556,7 +587,7 @@ const DocumentEntry = ({ index, document, onUpdate, onRemove, showRemove, tab, d
                 className="hidden"
                 disabled={uploadLoading}
               />
-              <FiUpload className="w-5 h-5 text-gray-400 mx-auto mb-1" />
+              <FiPaperclip className="w-5 h-5 text-gray-400 mx-auto mb-1" />
               <p className="text-xs text-gray-600">Click to upload file</p>
             </div>
           ) : (
@@ -686,7 +717,14 @@ const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, finan
   const [documents, setDocuments] = useState([]);
   const [selectedFirm, setSelectedFirm] = useState('');
   const fileInputRefs = useRef([]);
-
+  
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
 
   // Get current tab's years
   const getYearOptions = () => {
@@ -958,7 +996,7 @@ const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, finan
                         onChange={(e) => handleFileSelect(index, e)}
                         className="hidden"
                       />
-                      <FiUpload className="w-4 h-4 text-gray-400 mb-1" />
+                      <FiPaperclip className="w-4 h-4 text-gray-400 mb-1" />
                       <span className="text-xs text-gray-500">Choose file</span>
                     </div>
                   ) : (
@@ -1098,6 +1136,7 @@ const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, finan
     </motion.div>
   );
 };
+
 // Main DocumentsTab Component
 const DocumentsTab = ({ clientUsername }) => {
   const [activeTab, setActiveTab] = useState('income-tax');
@@ -1120,14 +1159,18 @@ const DocumentsTab = ({ clientUsername }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showGeneralDropdown, setShowGeneralDropdown] = useState(false);
+  const [showGeneralSubTab, setShowGeneralSubTab] = useState('documents'); // 'documents' or 'categories'
   const [loading, setLoading] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [sendLoading, setSendLoading] = useState(false);
   const actionMenuRef = useRef(null);
-  // Add this with your other useState declarations
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Storage usage state
+  const [storageUsed, setStorageUsed] = useState(0);
+  const [storageTotal, setStorageTotal] = useState(5 * 1024 * 1024 * 1024); // 5GB in bytes
 
   // API Data States
   const [assessmentYears, setAssessmentYears] = useState([]);
@@ -1154,16 +1197,16 @@ const DocumentsTab = ({ clientUsername }) => {
     'gst': [],
     'mca': [],
     'task': [
-      { id: 17, firm: 'ABC Enterprises', service: 'Income Tax', name: 'ITR Filing 2024', remark: 'Complete by Jan 30' },
-      { id: 18, firm: 'XYZ Pvt Ltd', service: 'GST', name: 'GSTR-1 Filing', remark: 'Monthly return' },
-      { id: 19, firm: 'Tech Solutions', service: 'MCA', name: 'Annual Return', remark: 'Due date Feb 15' },
-      { id: 20, firm: 'Global Traders', service: 'Income Tax', name: 'Advance Tax Payment', remark: 'Q4 payment' },
+      { id: 17, firm: 'ABC Enterprises', service: 'Income Tax', name: 'ITR Filing 2024', remark: 'Complete by Jan 30 - This is a long remark that should be truncated to show ellipsis' },
+      { id: 18, firm: 'XYZ Pvt Ltd', service: 'GST', name: 'GSTR-1 Filing', remark: 'Monthly return - Another long remark that needs truncation' },
+      { id: 19, firm: 'Tech Solutions', service: 'MCA', name: 'Annual Return', remark: 'Due date Feb 15 - This is a very long remark that will be truncated' },
+      { id: 20, firm: 'Global Traders', service: 'Income Tax', name: 'Advance Tax Payment', remark: 'Q4 payment - Long remark example for testing truncation' },
     ],
     'general': [
-      { id: 21, firm: 'ABC Enterprises', name: 'PAN Card', category: 'Identity', remark: 'Verified document' },
-      { id: 22, firm: 'XYZ Pvt Ltd', name: 'Bank Statement', category: 'Financial', remark: 'December 2023' },
-      { id: 23, firm: 'Tech Solutions', name: 'GST Certificate', category: 'Registration', remark: 'New registration' },
-      { id: 24, firm: 'Global Traders', name: 'Partnership Deed', category: 'Legal', remark: 'Original' },
+      { id: 21, firm: 'ABC Enterprises', name: 'PAN Card', category: 'Identity', remark: 'Verified document - This is a long remark that should be truncated' },
+      { id: 22, firm: 'XYZ Pvt Ltd', name: 'Bank Statement', category: 'Financial', remark: 'December 2023 - Another long remark example' },
+      { id: 23, firm: 'Tech Solutions', name: 'GST Certificate', category: 'Registration', remark: 'New registration - Very long remark that needs to be truncated' },
+      { id: 24, firm: 'Global Traders', name: 'Partnership Deed', category: 'Legal', remark: 'Original - Long remark for testing purposes' },
     ]
   });
 
@@ -1414,7 +1457,23 @@ const DocumentsTab = ({ clientUsername }) => {
     fetchCategories();
   }, [activeTab, searchTerm]);
 
-  // Fetch Documents based on active tab
+  // Calculate total storage used
+  useEffect(() => {
+    const calculateStorage = () => {
+      let total = 0;
+      Object.values(documents).forEach(docArray => {
+        docArray.forEach(doc => {
+          if (doc.size) {
+            total += doc.size;
+          }
+        });
+      });
+      setStorageUsed(total);
+    };
+
+    calculateStorage();
+  }, [documents]);
+
   // Fetch Documents based on active tab
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -1484,45 +1543,45 @@ const DocumentsTab = ({ clientUsername }) => {
               }
             });
 
-          // First, filter documents to only include those with valid firms in the firmMap
-const validDocuments = result.data.filter(doc => {
-  return firmMap[doc.firm_id] !== undefined;
-});
+            // First, filter documents to only include those with valid firms in the firmMap
+            const validDocuments = result.data.filter(doc => {
+              return firmMap[doc.firm_id] !== undefined;
+            });
 
-const transformedData = validDocuments.map((doc, index) => {
-  const firmName = firmMap[doc.firm_id]; // No need for fallback since we filtered
+            const transformedData = validDocuments.map((doc, index) => {
+              const firmName = firmMap[doc.firm_id]; // No need for fallback since we filtered
 
-  let typeName = doc.type;
-  if (documentTypes[endpoint]) {
-    const typeObj = documentTypes[endpoint].find(t => t.value === doc.type);
-    if (typeObj) {
-      typeName = typeObj.name;
-    }
-  }
+              let typeName = doc.type;
+              if (documentTypes[endpoint]) {
+                const typeObj = documentTypes[endpoint].find(t => t.value === doc.type);
+                if (typeObj) {
+                  typeName = typeObj.name;
+                }
+              }
 
-  const baseDoc = {
-    id: doc.document_id || index + 1,
-    firm_id: doc.firm_id,
-    firm: firmName,
-    year: doc.f_year,
-    type: typeName,
-    type_value: doc.type,
-    remark: doc.remark,
-    file_url: doc.file,
-    size: doc.size,
-    mime_type: doc.mime_type,
-    create_date: doc.create_date
-  };
+              const baseDoc = {
+                id: doc.document_id || index + 1,
+                firm_id: doc.firm_id,
+                firm: firmName,
+                year: doc.f_year,
+                type: typeName,
+                type_value: doc.type,
+                remark: doc.remark,
+                file_url: doc.file,
+                size: doc.size,
+                mime_type: doc.mime_type,
+                create_date: doc.create_date
+              };
 
-  if (activeTab === 'gst') {
-    return {
-      ...baseDoc,
-      month: doc.month ? doc.month.charAt(0).toUpperCase() + doc.month.slice(1) + ' ' + doc.f_year?.split('-')[0] : ''
-    };
-  }
+              if (activeTab === 'gst') {
+                return {
+                  ...baseDoc,
+                  month: doc.month ? doc.month.charAt(0).toUpperCase() + doc.month.slice(1) + ' ' + doc.f_year?.split('-')[0] : ''
+                };
+              }
 
-  return baseDoc;
-});
+              return baseDoc;
+            });
             setDocuments(prev => ({
               ...prev,
               [activeTab]: transformedData
@@ -1563,8 +1622,9 @@ const transformedData = validDocuments.map((doc, index) => {
     clientUsername,
     firms,
     documentTypes,
-    refreshTrigger // Add this to dependency array
+    refreshTrigger
   ]);
+  
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -1630,8 +1690,6 @@ const transformedData = validDocuments.map((doc, index) => {
     }
   };
 
-  // Handle upload submit
-  // Handle upload submit
   // Handle upload submit
   const handleUploadSubmit = async (firmId, documents) => {
     if (!clientUsername) {
@@ -1714,24 +1772,9 @@ const transformedData = validDocuments.map((doc, index) => {
         setShowUploadModal(false);
 
         // Force a refresh of the documents list
-        setCurrentPage(1); // Reset to first page
-
-        // Create a timestamp to force re-fetch
+        setCurrentPage(1);
         const refreshTimestamp = Date.now();
-
-        // Manually trigger the documents fetch by updating a state that's in the useEffect dependency
-        // Option 1: Update a refresh trigger state
         setRefreshTrigger(refreshTimestamp);
-
-        // Option 2: If you don't want to add new state, you can temporarily change and reset selected filters
-        // This will trigger the useEffect that depends on these values
-        if (selectedYear !== 'all') {
-          setSelectedYear('all');
-          setTimeout(() => setSelectedYear(selectedYear), 100);
-        } else {
-          setSelectedType('all');
-          setTimeout(() => setSelectedType(selectedType), 100);
-        }
       } else {
         alert('Failed to upload documents: ' + (response.data?.message || 'Unknown error'));
       }
@@ -1764,6 +1807,7 @@ const transformedData = validDocuments.map((doc, index) => {
       setUploadProgress(0);
     }
   };
+  
   // Handle create category
   const handleCreateCategory = async (categoryData) => {
     setCategoryLoading(true);
@@ -2082,10 +2126,26 @@ const transformedData = validDocuments.map((doc, index) => {
   const filteredDocuments = getFilteredDocuments();
 
   // Pagination
- const indexOfLastItem = currentPage * itemsPerPage; 
+  const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredDocuments.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredDocuments.length / itemsPerPage);
+
+  // Format storage for display
+  const formatStorage = (bytes) => {
+    if (bytes === 0) return '0 MB';
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(2)} MB`;
+  };
+
+  const storagePercentage = (storageUsed / storageTotal) * 100;
+
+  // Truncate text function
+  const truncateText = (text, maxLength = 30) => {
+    if (!text) return '-';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
 
   return (
     <motion.div
@@ -2094,12 +2154,30 @@ const transformedData = validDocuments.map((doc, index) => {
       exit={{ opacity: 0, y: -20 }}
       className="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-100 shadow-xl"
     >
-      {/* Header with Tabs */}
+      {/* Header with Tabs and Storage Info */}
       <div className="border-b border-gray-200 px-6 pt-6">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
-            Document Management System
-          </h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
+              Document Management System
+            </h2>
+            {/* Storage Usage Indicator */}
+            <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-xl border border-gray-200">
+              <FiHardDrive className="w-5 h-5 text-gray-500" />
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">Storage:</span>
+                  <span className="text-sm text-gray-600">{formatStorage(storageUsed)} / 5 GB</span>
+                </div>
+                <div className="w-32 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${storagePercentage > 90 ? 'bg-red-500' : 'bg-green-500'}`}
+                    style={{ width: `${Math.min(storagePercentage, 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="flex items-center gap-3">
             {activeTab === 'general' ? (
               <div className="relative dropdown-container">
@@ -2168,6 +2246,7 @@ const transformedData = validDocuments.map((doc, index) => {
                   setActiveActionMenu(null);
                   setSelectedYear('all');
                   setSelectedType('all');
+                  setShowGeneralSubTab('documents');
                 }}
                 className={`flex items-center gap-2 px-6 py-3 rounded-t-xl font-medium transition-all relative whitespace-nowrap ${activeTab === tab.id
                     ? `text-${tab.color}-600 bg-white border-t-2 border-l border-r border-gray-200 -mb-px`
@@ -2188,494 +2267,524 @@ const transformedData = validDocuments.map((doc, index) => {
         </div>
       </div>
 
-      {/* Filters Bar */}
-      <div className="p-6 border-b border-gray-200 bg-gray-50/50">
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
-            <FiUsers className="w-5 h-5 text-gray-400" />
-            <select
-              value={selectedFirm}
-              onChange={(e) => setSelectedFirm(e.target.value)}
-              className="bg-transparent border-none focus:ring-0 text-sm font-medium"
-              disabled={loadingFirms}
+      {/* General Tab Sub-tabs */}
+      {activeTab === 'general' && (
+        <div className="px-6 pt-4 border-b border-gray-200">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowGeneralSubTab('documents')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${showGeneralSubTab === 'documents'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+                }`}
             >
-              <option value="all">All Firms</option>
-              {loadingFirms ? (
-                <option disabled>Loading...</option>
-              ) : (
-                firms.map(firm => {
-                  const firmId = firm.firm_id || firm.id;
-                  const firmName = firm.firm_name || firm.name;
-                  return (
-                    <option key={firmId} value={firmId}>
-                      {firmName}
-                    </option>
-                  );
-                })
-              )}
-            </select>
+              Documents
+            </button>
+            <button
+              onClick={() => setShowGeneralSubTab('categories')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${showGeneralSubTab === 'categories'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+                }`}
+            >
+              Categories
+            </button>
           </div>
+        </div>
+      )}
 
-          {(activeTab === 'income-tax' || activeTab === 'gst' || activeTab === 'mca') && (
+      {/* Filters Bar - Show only for documents view */}
+      {(activeTab !== 'general' || (activeTab === 'general' && showGeneralSubTab === 'documents')) && (
+        <div className="p-6 border-b border-gray-200 bg-gray-50/50">
+          <div className="flex flex-wrap gap-4 items-center">
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
-              <FiCalendar className="w-5 h-5 text-gray-400" />
+              <FiUsers className="w-5 h-5 text-gray-400" />
               <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
+                value={selectedFirm}
+                onChange={(e) => setSelectedFirm(e.target.value)}
                 className="bg-transparent border-none focus:ring-0 text-sm font-medium"
-                disabled={loadingYears}
+                disabled={loadingFirms}
               >
-                <option value="all">{getYearLabel()}</option>
-                {loadingYears ? (
+                <option value="all">All Firms</option>
+                {loadingFirms ? (
                   <option disabled>Loading...</option>
                 ) : (
-                  getYearOptions().map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))
+                  firms.map(firm => {
+                    const firmId = firm.firm_id || firm.id;
+                    const firmName = firm.firm_name || firm.name;
+                    return (
+                      <option key={firmId} value={firmId}>
+                        {firmName}
+                      </option>
+                    );
+                  })
                 )}
               </select>
             </div>
-          )}
 
-          {(activeTab === 'income-tax' || activeTab === 'gst' || activeTab === 'mca') && (
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
-              <FiFileText className="w-5 h-5 text-gray-400" />
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="bg-transparent border-none focus:ring-0 text-sm font-medium"
-                disabled={loadingTypes}
-              >
-                <option value="all">All Types</option>
-                {loadingTypes ? (
-                  <option disabled>Loading...</option>
-                ) : (
-                  getCurrentTabTypes().map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-          )}
-
-          {activeTab === 'gst' && (
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
-              <FiCalendar className="w-5 h-5 text-gray-400" />
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-transparent border-none focus:ring-0 text-sm font-medium"
-              >
-                <option value="all">All Months</option>
-                {months.map(month => (
-                  <option key={month} value={month}>{month}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {activeTab === 'task' && (
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
-              <FiBriefcase className="w-5 h-5 text-gray-400" />
-              <select
-                value={selectedService}
-                onChange={(e) => setSelectedService(e.target.value)}
-                className="bg-transparent border-none focus:ring-0 text-sm font-medium"
-              >
-                <option value="all">All Services</option>
-                {serviceTypes.map(service => (
-                  <option key={service} value={service}>{service}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {activeTab === 'general' && (
-            <>
+            {(activeTab === 'income-tax' || activeTab === 'gst' || activeTab === 'mca') && (
               <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
-                <FiGrid className="w-5 h-5 text-gray-400" />
+                <FiCalendar className="w-5 h-5 text-gray-400" />
                 <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
                   className="bg-transparent border-none focus:ring-0 text-sm font-medium"
-                  disabled={loadingCategories}
+                  disabled={loadingYears}
                 >
-                  <option value="all">All Categories</option>
-                  {loadingCategories ? (
+                  <option value="all">{getYearLabel()}</option>
+                  {loadingYears ? (
                     <option disabled>Loading...</option>
                   ) : (
-                    categories.map(cat => (
-                      <option key={cat.category_id} value={cat.name}>{cat.name}</option>
+                    getYearOptions().map(year => (
+                      <option key={year} value={year}>{year}</option>
                     ))
                   )}
                 </select>
               </div>
-              <div className="flex-1 relative min-w-[200px]">
-                <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search categories..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+            )}
+
+            {(activeTab === 'income-tax' || activeTab === 'gst' || activeTab === 'mca') && (
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
+                <FiFileText className="w-5 h-5 text-gray-400" />
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="bg-transparent border-none focus:ring-0 text-sm font-medium"
+                  disabled={loadingTypes}
+                >
+                  <option value="all">All Types</option>
+                  {loadingTypes ? (
+                    <option disabled>Loading...</option>
+                  ) : (
+                    getCurrentTabTypes().map(type => (
+                      <option key={type.value} value={type.value}>
+                        {type.name}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
-            </>
+            )}
+
+            {activeTab === 'gst' && (
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
+                <FiCalendar className="w-5 h-5 text-gray-400" />
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="bg-transparent border-none focus:ring-0 text-sm font-medium"
+                >
+                  <option value="all">All Months</option>
+                  {months.map(month => (
+                    <option key={month} value={month}>{month}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {activeTab === 'task' && (
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
+                <FiBriefcase className="w-5 h-5 text-gray-400" />
+                <select
+                  value={selectedService}
+                  onChange={(e) => setSelectedService(e.target.value)}
+                  className="bg-transparent border-none focus:ring-0 text-sm font-medium"
+                >
+                  <option value="all">All Services</option>
+                  {serviceTypes.map(service => (
+                    <option key={service} value={service}>{service}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {activeTab === 'general' && showGeneralSubTab === 'documents' && (
+              <>
+                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm">
+                  <FiGrid className="w-5 h-5 text-gray-400" />
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="bg-transparent border-none focus:ring-0 text-sm font-medium"
+                    disabled={loadingCategories}
+                  >
+                    <option value="all">All Categories</option>
+                    {loadingCategories ? (
+                      <option disabled>Loading...</option>
+                    ) : (
+                      categories.map(cat => (
+                        <option key={cat.category_id} value={cat.name}>{cat.name}</option>
+                      ))
+                    )}
+                  </select>
+                </div>
+                <div className="flex-1 relative min-w-[200px]">
+                  <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Search documents..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Bulk Actions Bar */}
+          {selectedDocuments.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 flex items-center justify-between bg-blue-50 p-3 rounded-xl border border-blue-200"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-blue-700">
+                  {selectedDocuments.length} document(s) selected
+                </span>
+                <button
+                  onClick={() => setSelectedDocuments([])}
+                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  Clear selection
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBulkSend}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                >
+                  <FiSend className="w-4 h-4" />
+                  Send Selected
+                </button>
+                <button
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                >
+                  <FiTrash2 className="w-4 h-4" />
+                  Delete Selected
+                </button>
+              </div>
+            </motion.div>
           )}
         </div>
+      )}
 
-        {/* Bulk Actions Bar */}
-        {selectedDocuments.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 flex items-center justify-between bg-blue-50 p-3 rounded-xl border border-blue-200"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-blue-700">
-                {selectedDocuments.length} document(s) selected
-              </span>
-              <button
-                onClick={() => setSelectedDocuments([])}
-                className="text-xs text-blue-600 hover:text-blue-800 underline"
-              >
-                Clear selection
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleBulkSend}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-              >
-                <FiSend className="w-4 h-4" />
-                Send Selected
-              </button>
-              <button
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-              >
-                <FiTrash2 className="w-4 h-4" />
-                Delete Selected
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </div>
+      {/* Table Section - Documents */}
+      {(activeTab !== 'general' || (activeTab === 'general' && showGeneralSubTab === 'documents')) && (
+        <div className="p-6">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              </div>
+            )}
 
-      {/* Table Section */}
-      <div className="p-6">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-          {/* Loading State */}
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          )}
-
-          {/* Table Container */}
-          {!loading && (
-            <div className="overflow-x-auto">
-              <table className="w-full table-fixed">
-                <thead>
-                  <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-                    <th className="w-16 px-6 py-4 text-left">
-                      <button
-                        onClick={handleSelectAll}
-                        className="text-gray-500 hover:text-gray-700"
-                        title={selectedDocuments.length === currentItems.length ? "Deselect all" : "Select all"}
-                      >
-                        {selectedDocuments.length === currentItems.length && currentItems.length > 0 ? (
-                          <div className="relative inline-block">
-                            <div className="w-10 h-5 bg-blue-600 rounded-full transition-colors"></div>
-                            <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
-                          </div>
-                        ) : (
-                          <div className="relative inline-block">
-                            <div className="w-10 h-5 bg-gray-300 rounded-full transition-colors"></div>
-                            <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
-                          </div>
-                        )}
-                      </button>
-                    </th>
-
-                    {/* Dynamic Table Headers based on active tab */}
-                    {activeTab === 'income-tax' && (
-                      <>
-                        <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Assessment Year</th>
-                        <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
-                        <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
-                        <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
-                        <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                      </>
-                    )}
-
-                    {activeTab === 'gst' && (
-                      <>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Financial Year</th>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Month</th>
-                        <th className="w-1/4 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
-                        <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
-                        <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                      </>
-                    )}
-
-                    {activeTab === 'mca' && (
-                      <>
-                        <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Financial Year</th>
-                        <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
-                        <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
-                        <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
-                        <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                      </>
-                    )}
-
-                    {activeTab === 'task' && (
-                      <>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Service</th>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                        <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
-                        <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
-                        <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                      </>
-                    )}
-
-                    {activeTab === 'general' && (
-                      <>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                        <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</th>
-                        <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
-                        <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
-                        <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-gray-200">
-                  <AnimatePresence>
-                    {currentItems.length > 0 ? (
-                      currentItems.map((doc, index) => (
-                        <motion.tr
-                          key={doc.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ delay: index * 0.05 }}
-                          className={`hover:bg-gray-50 transition-colors ${selectedDocuments.includes(doc.id) ? 'bg-blue-50/50' : ''
-                            }`}
+            {/* Table Container */}
+            {!loading && (
+              <div className="overflow-x-auto">
+                <table className="w-full table-fixed">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                      <th className="w-16 px-6 py-4 text-left">
+                        <button
+                          onClick={handleSelectAll}
+                          className="text-gray-500 hover:text-gray-700"
+                          title={selectedDocuments.length === currentItems.length ? "Deselect all" : "Select all"}
                         >
-                          <td className="px-6 py-4 align-middle">
-                            <button
-                              onClick={() => handleSelect(doc.id)}
-                              className="text-gray-500 hover:text-gray-700"
-                              title={selectedDocuments.includes(doc.id) ? "Deselect" : "Select"}
-                            >
-                              {selectedDocuments.includes(doc.id) ? (
-                                <div className="relative inline-block">
-                                  <div className="w-10 h-5 bg-blue-600 rounded-full transition-colors"></div>
-                                  <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
-                                </div>
-                              ) : (
-                                <div className="relative inline-block">
-                                  <div className="w-10 h-5 bg-gray-300 rounded-full transition-colors"></div>
-                                  <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
-                                </div>
-                              )}
-                            </button>
-                          </td>
-
-                          {/* Dynamic Table Cells based on active tab */}
-                          {activeTab === 'income-tax' && (
-                            <>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm text-gray-600">{doc.year}</div>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
-                                  {doc.type}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
-                              </td>
-                            </>
+                          {selectedDocuments.length === currentItems.length && currentItems.length > 0 ? (
+                            <div className="relative inline-block">
+                              <div className="w-10 h-5 bg-blue-600 rounded-full transition-colors"></div>
+                              <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
+                            </div>
+                          ) : (
+                            <div className="relative inline-block">
+                              <div className="w-10 h-5 bg-gray-300 rounded-full transition-colors"></div>
+                              <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
+                            </div>
                           )}
+                        </button>
+                      </th>
 
-                          {activeTab === 'gst' && (
-                            <>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm text-gray-600">{doc.year}</div>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
-                                  {doc.type}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm text-gray-600 truncate" title={doc.month}>{doc.month}</div>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
-                              </td>
-                            </>
-                          )}
+                      {/* Dynamic Table Headers based on active tab */}
+                      {activeTab === 'income-tax' && (
+                        <>
+                          <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Assessment Year</th>
+                          <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                          <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
+                          <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
+                          <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                        </>
+                      )}
 
-                          {activeTab === 'mca' && (
-                            <>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm text-gray-600">{doc.year}</div>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
-                                  {doc.type}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
-                              </td>
-                            </>
-                          )}
+                      {activeTab === 'gst' && (
+                        <>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Financial Year</th>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Month</th>
+                          <th className="w-1/4 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
+                          <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
+                          <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                        </>
+                      )}
 
-                          {activeTab === 'task' && (
-                            <>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <span className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.service}>
-                                  {doc.service}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm font-medium text-gray-900 truncate" title={doc.name}>{doc.name}</div>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
-                              </td>
-                            </>
-                          )}
+                      {activeTab === 'mca' && (
+                        <>
+                          <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Financial Year</th>
+                          <th className="w-1/5 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                          <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
+                          <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
+                          <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                        </>
+                      )}
 
-                          {activeTab === 'general' && (
-                            <>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm font-medium text-gray-900 truncate" title={doc.name}>{doc.name}</div>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <span className="px-3 py-1 bg-gray-50 text-gray-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.category}>
-                                  {doc.category}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="text-sm text-gray-600 truncate" title={doc.remark}>{doc.remark}</div>
-                              </td>
-                            </>
-                          )}
+                      {activeTab === 'task' && (
+                        <>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Service</th>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                          <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
+                          <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
+                          <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                        </>
+                      )}
 
-                          {/* View Column */}
-                          <td className="px-6 py-4 text-center align-middle">
-                            <button
-                              onClick={() => handleView(doc)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="View"
-                            >
-                              <FiEye className="w-5 h-5" />
-                            </button>
-                          </td>
+                      {activeTab === 'general' && (
+                        <>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Firm</th>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                          <th className="w-1/6 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</th>
+                          <th className="w-1/3 px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Remark</th>
+                          <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">View</th>
+                          <th className="w-24 px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                        </>
+                      )}
+                    </tr>
+                  </thead>
 
-                          {/* Actions Column with 3-dot menu */}
-                          <td className="px-6 py-4 text-center align-middle relative action-menu-container" ref={actionMenuRef}>
-                            <button
-                              onClick={() => setActiveActionMenu(activeActionMenu === doc.id ? null : doc.id)}
-                              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                              <FiMoreVertical className="w-5 h-5" />
-                            </button>
+                  <tbody className="divide-y divide-gray-200">
+                    <AnimatePresence>
+                      {currentItems.length > 0 ? (
+                        currentItems.map((doc, index) => (
+                          <motion.tr
+                            key={doc.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ delay: index * 0.05 }}
+                            className={`hover:bg-gray-50 transition-colors ${selectedDocuments.includes(doc.id) ? 'bg-blue-50/50' : ''
+                              }`}
+                          >
+                            <td className="px-6 py-4 align-middle">
+                              <button
+                                onClick={() => handleSelect(doc.id)}
+                                className="text-gray-500 hover:text-gray-700"
+                                title={selectedDocuments.includes(doc.id) ? "Deselect" : "Select"}
+                              >
+                                {selectedDocuments.includes(doc.id) ? (
+                                  <div className="relative inline-block">
+                                    <div className="w-10 h-5 bg-blue-600 rounded-full transition-colors"></div>
+                                    <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
+                                  </div>
+                                ) : (
+                                  <div className="relative inline-block">
+                                    <div className="w-10 h-5 bg-gray-300 rounded-full transition-colors"></div>
+                                    <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></div>
+                                  </div>
+                                )}
+                              </button>
+                            </td>
 
-                            {/* Action Menu */}
-                            {activeActionMenu === doc.id && (
-                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-50">
-                                <button
-                                  onClick={() => {
-                                    handleView(doc);
-                                    setActiveActionMenu(null);
-                                  }}
-                                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                >
-                                  <FiEye className="w-4 h-4" />
-                                  View
-                                </button>
-                                {doc.file_url && (
-                                  <a
-                                    href={doc.file_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                            {/* Dynamic Table Cells based on active tab */}
+                            {activeTab === 'income-tax' && (
+                              <>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm text-gray-600">{doc.year}</div>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
+                                    {doc.type}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm text-gray-600 truncate" title={doc.remark}>{truncateText(doc.remark, 30)}</div>
+                                </td>
+                              </>
+                            )}
+
+                            {activeTab === 'gst' && (
+                              <>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm text-gray-600">{doc.year}</div>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
+                                    {doc.type}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm text-gray-600 truncate" title={doc.month}>{doc.month}</div>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm text-gray-600 truncate" title={doc.remark}>{truncateText(doc.remark, 30)}</div>
+                                </td>
+                              </>
+                            )}
+
+                            {activeTab === 'mca' && (
+                              <>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm text-gray-600">{doc.year}</div>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.type}>
+                                    {doc.type}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm text-gray-600 truncate" title={doc.remark}>{truncateText(doc.remark, 30)}</div>
+                                </td>
+                              </>
+                            )}
+
+                            {activeTab === 'task' && (
+                              <>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <span className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.service}>
+                                    {doc.service}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm font-medium text-gray-900 truncate" title={doc.name}>{doc.name}</div>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm text-gray-600 truncate" title={doc.remark}>{truncateText(doc.remark, 30)}</div>
+                                </td>
+                              </>
+                            )}
+
+                            {activeTab === 'general' && (
+                              <>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm font-medium text-gray-900 truncate" title={doc.firm}>{doc.firm}</div>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm font-medium text-gray-900 truncate" title={doc.name}>{doc.name}</div>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <span className="px-3 py-1 bg-gray-50 text-gray-700 rounded-full text-xs font-medium truncate block max-w-[120px]" title={doc.category}>
+                                    {doc.category}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 align-middle">
+                                  <div className="text-sm text-gray-600 truncate" title={doc.remark}>{truncateText(doc.remark, 30)}</div>
+                                </td>
+                              </>
+                            )}
+
+                            {/* View Column */}
+                            <td className="px-6 py-4 text-center align-middle">
+                              <button
+                                onClick={() => handleView(doc)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="View"
+                              >
+                                <FiEye className="w-5 h-5" />
+                              </button>
+                            </td>
+
+                            {/* Actions Column with 3-dot menu */}
+                            <td className="px-6 py-4 text-center align-middle relative action-menu-container" ref={actionMenuRef}>
+                              <button
+                                onClick={() => setActiveActionMenu(activeActionMenu === doc.id ? null : doc.id)}
+                                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                              >
+                                <FiMenu className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Action Menu */}
+                              {activeActionMenu === doc.id && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-50">
+                                  <button
+                                    onClick={() => {
+                                      handleView(doc);
+                                      setActiveActionMenu(null);
+                                    }}
                                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                                   >
-                                    <FiDownload className="w-4 h-4" />
-                                    Download
-                                  </a>
-                                )}
-                                <button
-                                  onClick={() => handleSend(doc)}
-                                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                >
-                                  <FiSend className="w-4 h-4" />
-                                  Send
-                                </button>
-                                <button
-                                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                >
-                                  <FiTrash2 className="w-4 h-4" />
-                                  Delete
-                                </button>
+                                    <FiEye className="w-4 h-4" />
+                                    View
+                                  </button>
+                                  {doc.file_url && (
+                                    <a
+                                      href={doc.file_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                    >
+                                      <FiDownload className="w-4 h-4" />
+                                      Download
+                                    </a>
+                                  )}
+                                  <button
+                                    onClick={() => handleSend(doc)}
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                  >
+                                    <FiSend className="w-4 h-4" />
+                                    Send
+                                  </button>
+                                  <button
+                                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                  >
+                                    <FiTrash2 className="w-4 h-4" />
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </motion.tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="10" className="px-6 py-12 text-center">
+                            <div className="flex flex-col items-center justify-center">
+                              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                <FiFolder className="w-8 h-8 text-gray-400" />
                               </div>
-                            )}
-                          </td>
-                        </motion.tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="10" className="px-6 py-12 text-center">
-                          <div className="flex flex-col items-center justify-center">
-                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                              <FiFolder className="w-8 h-8 text-gray-400" />
+                              <h3 className="text-lg font-semibold text-gray-900 mb-2">No documents found</h3>
+                              <p className="text-gray-600">Try adjusting your search or filter criteria</p>
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">No documents found</h3>
-                            <p className="text-gray-600">Try adjusting your search or filter criteria</p>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-            </div>
-          )}
+                          </td>
+                        </tr>
+                      )}
+                    </AnimatePresence>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Categories Table for General Tab */}
-      {activeTab === 'general' && categories.length > 0 && (
-        <div className="px-6 pb-6">
+      {activeTab === 'general' && showGeneralSubTab === 'categories' && (
+        <div className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Categories</h3>
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
