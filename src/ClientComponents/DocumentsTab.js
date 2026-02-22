@@ -17,16 +17,42 @@ import getHeaders from "../utils/get-headers";
 import API_BASE_URL from "../utils/api-controller";
 
 // View Modal Component
-const ViewModal = ({ document, onClose }) => {
-  const handleDownload = () => {
-    if (document?.file_url) {
-      window.open(document.file_url, '_blank');
+const ViewModal = ({ document: doc, onClose }) => {
+ const handleDownload = async () => {
+  if (!doc?.file_url) return;
+
+  try {
+    const response = await fetch(doc.file_url, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
     }
-  };
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+
+    // filename
+    const fileName = doc.file_url.split('/').pop() || 'download';
+    a.download = fileName;
+
+    document.body.appendChild(a);
+    a.click();
+
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Download failed:', error);
+  }
+};
 
   const handleViewInNewTab = () => {
-    if (document?.file_url) {
-      window.open(document.file_url, '_blank');
+    if (doc?.file_url) {
+      window.open(doc.file_url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -57,11 +83,11 @@ const ViewModal = ({ document, onClose }) => {
 
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
           <div className="space-y-4">
-            {document?.file_url && (
+            {doc?.file_url && (
               <div className="flex justify-center mb-4">
-                {document.mime_type?.startsWith('image/') ? (
+                {doc.mime_type?.startsWith('image/') ? (
                   <img
-                    src={document.file_url}
+                    src={doc.file_url}
                     alt="Document"
                     className="max-w-full max-h-64 rounded-lg border border-gray-200 cursor-pointer"
                     onClick={handleViewInNewTab}
@@ -81,7 +107,7 @@ const ViewModal = ({ document, onClose }) => {
                 )}
               </div>
             )}
-            {document && Object.entries(document).map(([key, value]) =>
+            {doc && Object.entries(doc).map(([key, value]) =>
               key !== 'id' && key !== 'firm_id' && key !== 'file_url' && key !== 'mime_type' && key !== 'size' && key !== 'create_date' && key !== 'type_value' && (
                 <div key={key} className="flex border-b border-gray-100 pb-3">
                   <span className="w-1/3 text-sm font-medium text-gray-600 capitalize">
@@ -91,22 +117,22 @@ const ViewModal = ({ document, onClose }) => {
                 </div>
               )
             )}
-            {document?.size && (
+            {doc?.size && (
               <div className="flex border-b border-gray-100 pb-3">
                 <span className="w-1/3 text-sm font-medium text-gray-600">File Size:</span>
-                <span className="w-2/3 text-sm text-gray-900">{(document.size / 1024).toFixed(2)} KB</span>
+                <span className="w-2/3 text-sm text-gray-900">{(doc.size / 1024).toFixed(2)} KB</span>
               </div>
             )}
-            {document?.create_date && (
+            {doc?.create_date && (
               <div className="flex border-b border-gray-100 pb-3">
                 <span className="w-1/3 text-sm font-medium text-gray-600">Uploaded On:</span>
-                <span className="w-2/3 text-sm text-gray-900">{new Date(document.create_date).toLocaleString()}</span>
+                <span className="w-2/3 text-sm text-gray-900">{new Date(doc.create_date).toLocaleString()}</span>
               </div>
             )}
           </div>
 
           <div className="mt-6 flex justify-end gap-2">
-            {document?.file_url && (
+            {doc?.file_url && (
               <>
                 <button
                   onClick={handleViewInNewTab}
@@ -115,14 +141,13 @@ const ViewModal = ({ document, onClose }) => {
                   <FiExternalLink className="w-4 h-4" />
                   View
                 </button>
-                <a
-                  href={document.file_url}
-                  download
+                <button
+                  onClick={handleDownload}
                   className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
                 >
                   <FiDownload className="w-4 h-4" />
                   Download
-                </a>
+                </button>
               </>
             )}
             <button
@@ -927,68 +952,116 @@ const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, finan
                 )}
               </div>
 
-              {/* Document Fields - Reordered: Type, Year, File, Remark */}
-              <div className="grid grid-cols-4 gap-3">
-                {/* Document Type - Column 1 */}
-                {(tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Document Type *</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      value={doc.type}
-                      onChange={(e) => updateDocument(index, { ...doc, type: e.target.value })}
-                    >
-                      <option value="">Select type</option>
-                      {getCurrentTabTypes().map(type => (
-                        <option key={type.value} value={type.value}>{type.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+              {/* Document Fields - File Upload Now Takes Full Width in Next Row */}
+              <div className="space-y-3">
+                {/* First Row: Type, Year, Month, etc. */}
+                <div className="grid grid-cols-4 gap-3">
+                  {/* Document Type - Column 1 */}
+                  {(tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Document Type *</label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        value={doc.type}
+                        onChange={(e) => updateDocument(index, { ...doc, type: e.target.value })}
+                      >
+                        <option value="">Select type</option>
+                        {getCurrentTabTypes().map(type => (
+                          <option key={type.value} value={type.value}>{type.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                {/* Year Field - Column 2 */}
-                {(tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">{getYearLabel()} *</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      value={doc.year}
-                      onChange={(e) => updateDocument(index, { ...doc, year: e.target.value })}
-                    >
-                      <option value="">Select year</option>
-                      {getYearOptions().map(year => (
-                        <option key={year} value={year}>{year}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                  {/* Year Field - Column 2 */}
+                  {(tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">{getYearLabel()} *</label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        value={doc.year}
+                        onChange={(e) => updateDocument(index, { ...doc, year: e.target.value })}
+                      >
+                        <option value="">Select year</option>
+                        {getYearOptions().map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                {/* Month Field - For GST only (between Year and File) */}
-                {tab === 'gst' && (
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Month *</label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      value={doc.month}
-                      onChange={(e) => updateDocument(index, { ...doc, month: e.target.value })}
-                    >
-                      <option value="">Select month</option>
-                      {months.map(month => (
-                        <option key={month} value={month.split(' ')[0].toLowerCase()}>
-                          {month}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                  {/* Month Field - For GST only */}
+                  {tab === 'gst' && (
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Month *</label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        value={doc.month}
+                        onChange={(e) => updateDocument(index, { ...doc, month: e.target.value })}
+                      >
+                        <option value="">Select month</option>
+                        {months.map(month => (
+                          <option key={month} value={month.split(' ')[0].toLowerCase()}>
+                            {month}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                {/* File Upload - Column 3 (or 4 for GST) */}
-                <div className={tab === 'gst' ? 'col-span-1' : 'col-span-1'}>
+                  {/* General Tab Fields (Name and Category) */}
+                  {tab === 'general' && (
+                    <>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Document Name *</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          value={doc.name || ''}
+                          onChange={(e) => updateDocument(index, { ...doc, name: e.target.value })}
+                          placeholder="Enter name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Category *</label>
+                        <select
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          value={doc.category}
+                          onChange={(e) => updateDocument(index, { ...doc, category: e.target.value })}
+                        >
+                          <option value="">Select category</option>
+                          {categories.map(cat => (
+                            <option key={cat.category_id} value={cat.name}>{cat.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Remark Field - Takes remaining space */}
+                  <div className={`
+                    ${tab === 'gst' ? 'col-span-1' : ''}
+                    ${tab === 'income-tax' || tab === 'mca' ? 'col-span-2' : ''}
+                    ${tab === 'general' ? 'col-span-2' : ''}
+                  `}>
+                    <label className="block text-xs text-gray-500 mb-1">Remark</label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      value={doc.remark || ''}
+                      onChange={(e) => updateDocument(index, { ...doc, remark: e.target.value })}
+                      placeholder="Optional"
+                    />
+                  </div>
+                </div>
+
+                {/* Second Row: File Upload - Full Width */}
+                <div className="w-full">
                   <label className="block text-xs text-gray-500 mb-1">Upload File *</label>
                   {!doc.file ? (
                     <div
                       onClick={() => fileInputRefs.current[index]?.click()}
-                      className="border border-gray-300 border-dashed rounded-lg p-3 text-center hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors h-[72px] flex flex-col items-center justify-center"
+                      className="border-2 border-gray-300 border-dashed rounded-lg p-4 text-center hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors w-full"
                     >
                       <input
                         type="file"
@@ -996,81 +1069,30 @@ const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, finan
                         onChange={(e) => handleFileSelect(index, e)}
                         className="hidden"
                       />
-                      <FiPaperclip className="w-4 h-4 text-gray-400 mb-1" />
-                      <span className="text-xs text-gray-500">Choose file</span>
+                      <FiPaperclip className="w-5 h-5 text-gray-400 mx-auto mb-2" />
+                      <span className="text-sm text-gray-600">Click to choose file or drag and drop</span>
+                      <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG up to 10MB</p>
                     </div>
                   ) : (
-                    <div className="border border-green-200 bg-green-50 rounded-lg p-2 h-[72px] flex flex-col justify-between">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2 truncate">
-                          <FiFile className="w-3 h-3 text-green-600 flex-shrink-0" />
-                          <span className="text-xs text-gray-700 truncate">{doc.file.name}</span>
+                    <div className="border border-green-200 bg-green-50 rounded-lg p-3 w-full flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <FiFile className="w-5 h-5 text-green-600" />
                         </div>
-                        <button
-                          onClick={() => removeFile(index)}
-                          className="text-gray-400 hover:text-red-500"
-                        >
-                          <FiX className="w-3 h-3" />
-                        </button>
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">{doc.file.name}</p>
+                          <p className="text-xs text-green-600">{(doc.file.size / 1024).toFixed(1)} KB</p>
+                        </div>
                       </div>
-                      <span className="text-xs text-green-600">{(doc.file.size / 1024).toFixed(1)} KB</span>
+                      <button
+                        onClick={() => removeFile(index)}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <FiX className="w-4 h-4" />
+                      </button>
                     </div>
                   )}
                 </div>
-
-                {/* General Tab Fields (if applicable) */}
-                {tab === 'general' && (
-                  <>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Document Name *</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        value={doc.name || ''}
-                        onChange={(e) => updateDocument(index, { ...doc, name: e.target.value })}
-                        placeholder="Enter name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Category *</label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        value={doc.category}
-                        onChange={(e) => updateDocument(index, { ...doc, category: e.target.value })}
-                      >
-                        <option value="">Select category</option>
-                        {categories.map(cat => (
-                          <option key={cat.category_id} value={cat.name}>{cat.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                {/* Remark Field - Column 4 (always last) */}
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Remark</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    value={doc.remark || ''}
-                    onChange={(e) => updateDocument(index, { ...doc, remark: e.target.value })}
-                    placeholder="Optional"
-                  />
-                </div>
-              </div>
-
-              {/* Required Fields Note */}
-              <div className="mt-2 flex items-center space-x-2">
-                {!doc.type && (tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
-                  <span className="text-xs text-amber-600">Type required</span>
-                )}
-                {!doc.year && (tab === 'income-tax' || tab === 'gst' || tab === 'mca') && (
-                  <span className="text-xs text-amber-600">Year required</span>
-                )}
-                {tab === 'gst' && !doc.month && (
-                  <span className="text-xs text-amber-600">Month required</span>
-                )}
               </div>
             </div>
           ))}
