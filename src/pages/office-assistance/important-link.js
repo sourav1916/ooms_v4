@@ -4,21 +4,14 @@ import {
     FiEdit,
     FiTrash,
     FiCopy,
-    FiSettings,
-    FiMoreVertical,
-    FiSearch,
     FiExternalLink,
     FiEye,
     FiEyeOff,
-    FiGlobe,
-    FiCalendar,
-    FiFilter,
-    FiBarChart2,
     FiKey,
-    FiUser,
     FiLink,
     FiX,
-    FiMenu
+    FiMenu,
+    FiSearch
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
@@ -134,22 +127,30 @@ const ImportantLinks = () => {
     const resetCreateModal = useCallback(() => {
         setShowCreateModal(false);
         setCreateForm(initialCreateForm);
+        // Re-enable body scroll
+        document.body.style.overflow = 'auto';
     }, [initialCreateForm]);
 
     const resetEditModal = useCallback(() => {
         setShowEditModal(false);
         setSelectedLink(null);
         setEditForm(initialEditForm);
+        // Re-enable body scroll
+        document.body.style.overflow = 'auto';
     }, [initialEditForm]);
 
     const resetViewModal = useCallback(() => {
         setShowViewModal(false);
         setSelectedLink(null);
+        // Re-enable body scroll
+        document.body.style.overflow = 'auto';
     }, []);
 
     const resetDeleteModal = useCallback(() => {
         setShowDeleteModal(false);
         setSelectedLink(null);
+        // Re-enable body scroll
+        document.body.style.overflow = 'auto';
     }, []);
 
     const handleCopy = useCallback((text, type) => {
@@ -173,18 +174,24 @@ const ImportantLinks = () => {
         });
         setShowEditModal(true);
         setActiveDropdown(null);
+        // Disable body scroll
+        document.body.style.overflow = 'hidden';
     }, []);
 
     const handleViewClick = useCallback((link) => {
         setSelectedLink(link);
         setShowViewModal(true);
         setActiveDropdown(null);
+        // Disable body scroll
+        document.body.style.overflow = 'hidden';
     }, []);
 
     const handleDeleteClick = useCallback((link) => {
         setSelectedLink(link);
         setShowDeleteModal(true);
         setActiveDropdown(null);
+        // Disable body scroll
+        document.body.style.overflow = 'hidden';
     }, []);
 
     const fetchLinksData = useCallback(async (page = 1, limit = 7, search = '') => {
@@ -399,16 +406,12 @@ const ImportantLinks = () => {
         localStorage.setItem('sidebarMinimized', JSON.stringify(isMinimized));
     }, [isMinimized]);
 
+    // Clean up body scroll on unmount
     useEffect(() => {
-        if (mobileMenuOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'auto';
-        }
         return () => {
             document.body.style.overflow = 'auto';
         };
-    }, [mobileMenuOpen]);
+    }, []);
 
     useEffect(() => {
         fetchLinksData(1, 7);
@@ -495,6 +498,7 @@ const ImportantLinks = () => {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className="fixed inset-0 z-50 overflow-y-auto"
+                    style={{ overscrollBehavior: 'contain' }}
                 >
                     <div className="flex items-center justify-center min-h-screen p-4">
                         <motion.div
@@ -548,6 +552,7 @@ const ImportantLinks = () => {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className="fixed inset-0 z-50 overflow-y-auto"
+                    style={{ overscrollBehavior: 'contain' }}
                 >
                     <div className="flex items-center justify-center min-h-screen p-4">
                         <motion.div
@@ -686,7 +691,7 @@ const ImportantLinks = () => {
                         </div>
                     </motion.div>
 
-                   {/* Search and Add New Bar */} 
+                    {/* Search and Add New Bar */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -707,7 +712,10 @@ const ImportantLinks = () => {
                                 </div>
                             </div>
                             <motion.button
-                                onClick={() => setShowCreateModal(true)}
+                                onClick={() => {
+                                    setShowCreateModal(true);
+                                    document.body.style.overflow = 'hidden';
+                                }}
                                 className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 whitespace-nowrap"
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
@@ -730,9 +738,10 @@ const ImportantLinks = () => {
                         <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                             <div className="grid grid-cols-12 gap-4 p-4 text-sm font-semibold text-gray-700">
                                 <div className="col-span-1 flex items-center justify-center">#</div>
-                                <div className="col-span-5">Link Details</div>
+                                <div className="col-span-4">Link Details</div>
                                 <div className="col-span-3">Credentials</div>
                                 <div className="col-span-2">Remarks</div>
+                                <div className="col-span-1 flex items-center justify-center">View</div>
                                 <div className="col-span-1 flex items-center justify-center">Actions</div>
                             </div>
                         </div>
@@ -755,7 +764,10 @@ const ImportantLinks = () => {
                                         Get started by adding your first important link
                                     </p>
                                     <motion.button
-                                        onClick={() => setShowCreateModal(true)}
+                                        onClick={() => {
+                                            setShowCreateModal(true);
+                                            document.body.style.overflow = 'hidden';
+                                        }}
                                         className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
@@ -782,37 +794,38 @@ const ImportantLinks = () => {
                                                     </div>
                                                 </div>
 
-                                               {/* Link Details */}
-<div className="col-span-5">
-    <div className="flex items-start gap-3">
-        <div className="flex-1">
-            <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-gray-800">{truncateText(link.name, 30)}</h4>
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-                <p className="text-gray-500 text-sm truncate">
-                    {extractDomain(link.url)}
-                </p>
-                <div className="flex items-center gap-1">
-                    <button
-                        onClick={() => handleCopy(link.url, 'URL')}
-                        className="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Copy URL"
-                    >
-                        <FiCopy className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                        onClick={() => window.open(link.url, '_blank')}
-                        className="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Open in new tab"
-                    >
-                        <FiExternalLink className="w-3.5 h-3.5" />
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                                                {/* Link Details */}
+                                                <div className="col-span-4">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center justify-between">
+                                                                <h4 className="font-semibold text-gray-800">{truncateText(link.name, 30)}</h4>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <p className="text-gray-500 text-sm truncate">
+                                                                    {extractDomain(link.url)}
+                                                                </p>
+                                                                <div className="flex items-center gap-1">
+                                                                    <button
+                                                                        onClick={() => handleCopy(link.url, 'URL')}
+                                                                        className="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                                        title="Copy URL"
+                                                                    >
+                                                                        <FiCopy className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => window.open(link.url, '_blank')}
+                                                                        className="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                                        title="Open in new tab"
+                                                                    >
+                                                                        <FiExternalLink className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
                                                 {/* Credentials */}
                                                 <div className="col-span-3">
                                                     <div className="space-y-2">
@@ -874,6 +887,19 @@ const ImportantLinks = () => {
                                                     </p>
                                                 </div>
 
+                                                {/* View Button */}
+                                                <div className="col-span-1 flex items-center justify-center">
+                                                    <motion.button
+                                                        onClick={() => handleViewClick(link)}
+                                                        className="p-2 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors duration-200"
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.9 }}
+                                                        title="View Details"
+                                                    >
+                                                        <FiEye className="w-4 h-4" />
+                                                    </motion.button>
+                                                </div>
+
                                                 {/* Actions */}
                                                 <div className="col-span-1">
                                                     <div className="dropdown-container relative flex justify-center">
@@ -894,13 +920,6 @@ const ImportantLinks = () => {
                                                                 className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden"
                                                             >
                                                                 <div className="py-1">
-                                                                    <button
-                                                                        onClick={() => handleViewClick(link)}
-                                                                        className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
-                                                                    >
-                                                                        <FiEye className="w-4 h-4 mr-3 text-indigo-600" />
-                                                                        View Details
-                                                                    </button>
                                                                     <button
                                                                         onClick={() => handleEditClick(link)}
                                                                         className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
