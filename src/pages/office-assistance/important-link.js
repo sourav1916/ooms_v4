@@ -17,7 +17,8 @@ import {
     FiKey,
     FiUser,
     FiLink,
-    FiX
+    FiX,
+    FiMenu
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../../components/header';
@@ -40,6 +41,7 @@ const ImportantLinks = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedLink, setSelectedLink] = useState(null);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -52,20 +54,19 @@ const ImportantLinks = () => {
     // Pagination states
     const [pagination, setPagination] = useState({
         page: 1,
-        limit: 7, // Set to 7 items per page
+        limit: 7,
         total: 0,
         total_pages: 1,
         is_last_page: true
     });
 
-    // Form states - Memoized to prevent unnecessary re-renders
+    // Form states
     const initialCreateForm = useMemo(() => ({
         name: '',
         username: '',
         password: '',
         url: '',
-        remark: '',
-        category: 'Government'
+        remark: ''
     }), []);
 
     const initialEditForm = useMemo(() => ({
@@ -74,25 +75,19 @@ const ImportantLinks = () => {
         username: '',
         password: '',
         url: '',
-        remark: '',
-        category: 'Government'
+        remark: ''
     }), []);
 
     const [createForm, setCreateForm] = useState(initialCreateForm);
     const [editForm, setEditForm] = useState(initialEditForm);
 
-    // Categories options
-    const categories = ['Government', 'Banking', 'Financial', 'General'];
+    // ========== FUNCTION DEFINITIONS ==========
 
-    // ========== FUNCTION DEFINITIONS (in order of dependency) ==========
-
-    // Format date
     const formatDate = useCallback((dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB');
     }, []);
 
-    // Format datetime
     const formatDateTime = useCallback((dateString) => {
         const date = new Date(dateString);
         return date.toLocaleString('en-GB', {
@@ -105,13 +100,11 @@ const ImportantLinks = () => {
         });
     }, []);
 
-    // Extract domain from URL
     const extractDomain = useCallback((url) => {
         try {
             const urlObj = new URL(url);
             return urlObj.hostname;
         } catch (e) {
-            // If URL doesn't have protocol, try adding https://
             try {
                 const urlObj = new URL('https://' + url);
                 return urlObj.hostname;
@@ -121,25 +114,12 @@ const ImportantLinks = () => {
         }
     }, []);
 
-    // Truncate text with ellipsis
     const truncateText = useCallback((text, maxLength = 50) => {
         if (!text) return '';
         if (text.length <= maxLength) return text;
         return text.substring(0, maxLength) + '...';
     }, []);
 
-    // Get category color
-    const getCategoryColor = useCallback((category) => {
-        const colors = {
-            'Government': 'bg-blue-100 text-blue-800',
-            'Banking': 'bg-green-100 text-green-800',
-            'Financial': 'bg-purple-100 text-purple-800',
-            'General': 'bg-gray-100 text-gray-800'
-        };
-        return colors[category] || colors['General'];
-    }, []);
-
-    // Toggle password visibility
     const togglePasswordVisibility = useCallback((linkId) => {
         setShowPassword(prev => ({
             ...prev,
@@ -147,31 +127,31 @@ const ImportantLinks = () => {
         }));
     }, []);
 
-    // Toggle dropdown
     const toggleDropdown = useCallback((linkId) => {
         setActiveDropdown(prev => prev === linkId ? null : linkId);
     }, []);
 
-    // Reset create modal
     const resetCreateModal = useCallback(() => {
         setShowCreateModal(false);
         setCreateForm(initialCreateForm);
     }, [initialCreateForm]);
 
-    // Reset edit modal
     const resetEditModal = useCallback(() => {
         setShowEditModal(false);
         setSelectedLink(null);
         setEditForm(initialEditForm);
     }, [initialEditForm]);
 
-    // Reset view modal
     const resetViewModal = useCallback(() => {
         setShowViewModal(false);
         setSelectedLink(null);
     }, []);
 
-    // Handle copy to clipboard
+    const resetDeleteModal = useCallback(() => {
+        setShowDeleteModal(false);
+        setSelectedLink(null);
+    }, []);
+
     const handleCopy = useCallback((text, type) => {
         navigator.clipboard.writeText(text).then(() => {
             setApiSuccess(`${type} copied to clipboard!`);
@@ -181,7 +161,6 @@ const ImportantLinks = () => {
         });
     }, []);
 
-    // Handle edit button click
     const handleEditClick = useCallback((link) => {
         setSelectedLink(link);
         setEditForm({
@@ -190,21 +169,24 @@ const ImportantLinks = () => {
             username: link.username || '',
             password: '',
             url: link.url,
-            remark: link.remark || '',
-            category: link.category || 'Government'
+            remark: link.remark || ''
         });
         setShowEditModal(true);
         setActiveDropdown(null);
     }, []);
 
-    // Handle view button click
     const handleViewClick = useCallback((link) => {
         setSelectedLink(link);
         setShowViewModal(true);
         setActiveDropdown(null);
     }, []);
 
-    // API call to fetch links data with search and date filters
+    const handleDeleteClick = useCallback((link) => {
+        setSelectedLink(link);
+        setShowDeleteModal(true);
+        setActiveDropdown(null);
+    }, []);
+
     const fetchLinksData = useCallback(async (page = 1, limit = 7, search = '') => {
         setLoading(true);
         setApiError(null);
@@ -216,12 +198,10 @@ const ImportantLinks = () => {
                 limit
             };
             
-            // Add search parameter if provided
             if (search) {
                 params.search = search;
             }
 
-            // Add date filters if provided
             if (dateFilter.from) {
                 params.from_date = dateFilter.from.toISOString().split('T')[0];
             }
@@ -252,12 +232,11 @@ const ImportantLinks = () => {
     useEffect(() => {
         const debounceTimer = setTimeout(() => {
             fetchLinksData(1, pagination.limit, searchTerm);
-        }, 500); // 500ms debounce
+        }, 500);
 
         return () => clearTimeout(debounceTimer);
     }, [searchTerm, pagination.limit, fetchLinksData]);
 
-    // Handle form changes
     const handleCreateChange = useCallback((field, value) => {
         setCreateForm(prev => ({
             ...prev,
@@ -272,7 +251,6 @@ const ImportantLinks = () => {
         }));
     }, []);
 
-    // Handle date filter change
     const handleDateFilterChange = useCallback((type, date) => {
         setDateFilter(prev => ({
             ...prev,
@@ -280,18 +258,15 @@ const ImportantLinks = () => {
         }));
     }, []);
 
-    // Apply date filters
     const applyDateFilters = useCallback(() => {
         fetchLinksData(1, pagination.limit, searchTerm);
     }, [fetchLinksData, pagination.limit, searchTerm]);
 
-    // Clear date filters
     const clearDateFilters = useCallback(() => {
         setDateFilter({ from: null, to: null });
         fetchLinksData(1, pagination.limit, searchTerm);
     }, [fetchLinksData, pagination.limit, searchTerm]);
 
-    // API call to create link
     const handleCreateSubmit = useCallback(async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -304,7 +279,6 @@ const ImportantLinks = () => {
                 `${API_BASE_URL}/assistance/important-link/create`,
                 {
                     name: createForm.name,
-                    category: createForm.category,
                     url: createForm.url,
                     username: createForm.username,
                     password: createForm.password,
@@ -328,7 +302,6 @@ const ImportantLinks = () => {
         }
     }, [createForm, fetchLinksData, pagination.limit, searchTerm, resetCreateModal]);
 
-    // API call to edit link
     const handleEditSubmit = useCallback(async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -338,17 +311,14 @@ const ImportantLinks = () => {
         try {
             const headers = getHeaders();
 
-            // Prepare data - ONLY include fields that exist
             const editData = {
                 link_id: editForm.link_id,
                 name: editForm.name,
-                category: editForm.category,
                 url: editForm.url,
                 username: editForm.username,
                 remark: editForm.remark
             };
 
-            // Only include password if it's provided (not empty)
             if (editForm.password && editForm.password.trim() !== '') {
                 editData.password = editForm.password;
             }
@@ -374,11 +344,8 @@ const ImportantLinks = () => {
         }
     }, [editForm, fetchLinksData, pagination.page, pagination.limit, searchTerm, resetEditModal]);
 
-    // API call to delete link
-    const handleDeleteLink = useCallback(async (link) => {
-        if (!window.confirm('Are you sure? You won\'t be able to revert this!')) {
-            return;
-        }
+    const handleDeleteLink = useCallback(async () => {
+        if (!selectedLink) return;
 
         setIsSubmitting(true);
         setApiError(null);
@@ -390,13 +357,14 @@ const ImportantLinks = () => {
                 `${API_BASE_URL}/assistance/important-link/delete`,
                 {
                     headers,
-                    data: { link_id: link.link_id }
+                    data: { link_id: selectedLink.link_id }
                 }
             );
 
             if (response.data.success) {
                 setApiSuccess('Link deleted successfully!');
                 await fetchLinksData(pagination.page, pagination.limit, searchTerm);
+                resetDeleteModal();
             } else {
                 setApiError(response.data.message || 'Failed to delete link');
             }
@@ -405,24 +373,20 @@ const ImportantLinks = () => {
             setApiError(error.response?.data?.message || 'Network error. Please try again.');
         } finally {
             setIsSubmitting(false);
-            setActiveDropdown(null);
         }
-    }, [fetchLinksData, pagination.page, pagination.limit, searchTerm]);
+    }, [selectedLink, fetchLinksData, pagination.page, pagination.limit, searchTerm, resetDeleteModal]);
 
-    // Handle page change
     const handlePageChange = useCallback((newPage) => {
         if (newPage >= 1 && newPage <= pagination.total_pages) {
             fetchLinksData(newPage, pagination.limit, searchTerm);
         }
     }, [pagination.total_pages, pagination.limit, searchTerm, fetchLinksData]);
 
-    // Handle limit change
     const handleLimitChange = useCallback((newLimit) => {
         setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
         fetchLinksData(1, newLimit, searchTerm);
     }, [searchTerm, fetchLinksData]);
 
-    // Handle custom page change
     const handleCustomPageChange = useCallback((pageNum) => {
         if (pageNum >= 1 && pageNum <= pagination.total_pages) {
             fetchLinksData(pageNum, pagination.limit, searchTerm);
@@ -431,12 +395,10 @@ const ImportantLinks = () => {
 
     // ========== EFFECTS ==========
 
-    // Persist sidebar minimized state
     useEffect(() => {
         localStorage.setItem('sidebarMinimized', JSON.stringify(isMinimized));
     }, [isMinimized]);
 
-    // Lock body scroll when mobile sidebar is open
     useEffect(() => {
         if (mobileMenuOpen) {
             document.body.style.overflow = 'hidden';
@@ -448,12 +410,10 @@ const ImportantLinks = () => {
         };
     }, [mobileMenuOpen]);
 
-    // Initial data load
     useEffect(() => {
-        fetchLinksData(1, 7); // Start with 7 items per page
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+        fetchLinksData(1, 7);
+    }, []);
 
-    // Clear messages after 3 seconds
     useEffect(() => {
         if (apiError || apiSuccess) {
             const timer = setTimeout(() => {
@@ -464,7 +424,6 @@ const ImportantLinks = () => {
         }
     }, [apiError, apiSuccess]);
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (!event.target.closest('.dropdown-container')) {
@@ -480,7 +439,6 @@ const ImportantLinks = () => {
 
     // ========== COMPONENTS ==========
 
-    // Skeleton Loading Component
     const SkeletonLoader = useCallback(() => (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
@@ -498,13 +456,11 @@ const ImportantLinks = () => {
 
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    {/* Header Skeleton */}
                     <div className="mb-6 animate-pulse">
                         <div className="h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg w-48 mb-2"></div>
                         <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-64"></div>
                     </div>
 
-                    {/* Controls Skeleton */}
                     <div className="flex flex-col lg:flex-row gap-4 mb-6">
                         <div className="flex-1">
                             <div className="h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg"></div>
@@ -514,7 +470,6 @@ const ImportantLinks = () => {
                         </div>
                     </div>
 
-                    {/* Table Skeleton */}
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm animate-pulse overflow-hidden">
                         <div className="border-b border-gray-200">
                             <div className="h-14 bg-gradient-to-r from-gray-100 to-gray-200"></div>
@@ -530,7 +485,6 @@ const ImportantLinks = () => {
         </div>
     ), [mobileMenuOpen, isMinimized]);
 
-    // Professional Modal Wrapper Component
     const ModalWrapper = useCallback(({ isOpen, onClose, title, children, size = 'max-w-2xl' }) => {
         if (!isOpen) return null;
 
@@ -543,7 +497,6 @@ const ImportantLinks = () => {
                     className="fixed inset-0 z-50 overflow-y-auto"
                 >
                     <div className="flex items-center justify-center min-h-screen p-4">
-                        {/* Overlay */}
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -552,7 +505,6 @@ const ImportantLinks = () => {
                             onClick={onClose}
                         />
 
-                        {/* Professional Modal panel */}
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -560,7 +512,6 @@ const ImportantLinks = () => {
                             transition={{ type: "spring", damping: 25 }}
                             className={`relative w-full ${size} bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-2xl border border-gray-200 flex flex-col max-h-[90vh] overflow-hidden`}
                         >
-                            {/* Professional Header */}
                             <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-white/20 rounded-lg">
@@ -586,7 +537,84 @@ const ImportantLinks = () => {
         );
     }, []);
 
-    // Show skeleton while loading and no data
+    // Delete Confirmation Modal
+    const DeleteConfirmationModal = useCallback(() => {
+        if (!showDeleteModal || !selectedLink) return null;
+
+        return (
+            <AnimatePresence>
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 overflow-y-auto"
+                >
+                    <div className="flex items-center justify-center min-h-screen p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm"
+                            onClick={resetDeleteModal}
+                        />
+
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            transition={{ type: "spring", damping: 25 }}
+                            className="relative w-full max-w-md bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+                        >
+                            <div className="p-6">
+                                <div className="flex items-center gap-4 mb-4">
+                                    <div className="p-3 bg-red-100 rounded-full">
+                                        <FiTrash className="w-6 h-6 text-red-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900">Delete Link</h3>
+                                        <p className="text-sm text-gray-500">Are you sure you want to delete this link?</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                                    <p className="font-medium text-gray-800">{selectedLink.name}</p>
+                                    <p className="text-sm text-gray-600 mt-1 truncate">{selectedLink.url}</p>
+                                </div>
+
+                                <p className="text-sm text-gray-600 mb-6">
+                                    This action cannot be undone. This will permanently delete the link and all associated data.
+                                </p>
+
+                                <div className="flex justify-end gap-3">
+                                    <motion.button
+                                        type="button"
+                                        onClick={resetDeleteModal}
+                                        className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors duration-200"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        disabled={isSubmitting}
+                                    >
+                                        Cancel
+                                    </motion.button>
+                                    <motion.button
+                                        type="button"
+                                        onClick={handleDeleteLink}
+                                        className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium shadow-sm disabled:opacity-50"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        disabled={isSubmitting}
+                                    >
+                                        {isSubmitting ? 'Deleting...' : 'Delete Link'}
+                                    </motion.button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                </motion.div>
+            </AnimatePresence>
+        );
+    }, [showDeleteModal, selectedLink, isSubmitting, handleDeleteLink, resetDeleteModal]);
+
     if (loading && links.length === 0) {
         return <SkeletonLoader />;
     }
@@ -658,7 +686,7 @@ const ImportantLinks = () => {
                         </div>
                     </motion.div>
 
-                    {/* Search and Add New Bar */}
+                   {/* Search and Add New Bar */} 
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -691,8 +719,6 @@ const ImportantLinks = () => {
                         </div>
                     </motion.div>
 
-                   
-
                     {/* Main Card */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -703,12 +729,11 @@ const ImportantLinks = () => {
                         {/* Table Header */}
                         <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                             <div className="grid grid-cols-12 gap-4 p-4 text-sm font-semibold text-gray-700">
-                                <div className="col-span-1">#</div>
-                                <div className="col-span-4">Link Details</div>
+                                <div className="col-span-1 flex items-center justify-center">#</div>
+                                <div className="col-span-5">Link Details</div>
                                 <div className="col-span-3">Credentials</div>
                                 <div className="col-span-2">Remarks</div>
-                                <div className="col-span-1 text-center">View</div>
-                                <div className="col-span-1 text-center">Actions</div>
+                                <div className="col-span-1 flex items-center justify-center">Actions</div>
                             </div>
                         </div>
 
@@ -751,49 +776,47 @@ const ImportantLinks = () => {
                                         >
                                             <div className="grid grid-cols-12 gap-4 items-center">
                                                 {/* Index */}
-                                                <div className="col-span-1">
+                                                <div className="col-span-1 flex items-center justify-center">
                                                     <div className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 font-semibold rounded-lg">
                                                         {((pagination.page - 1) * pagination.limit) + index + 1}
                                                     </div>
                                                 </div>
 
-                                                {/* Link Details */}
-                                                <div className="col-span-4">
-                                                    <div className="flex items-start gap-3">
-                                                        <div className="p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
-                                                            <FiGlobe className="w-5 h-5 text-indigo-600" />
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center justify-between">
-                                                                <h4 className="font-semibold text-gray-800">{truncateText(link.name, 30)}</h4>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <p className="text-gray-500 text-sm truncate">
-                                                                    {extractDomain(link.url)}
-                                                                </p>
-                                                                <button
-                                                                    onClick={() => handleCopy(link.url, 'URL')}
-                                                                    className="text-gray-400 hover:text-indigo-600 transition-colors flex-shrink-0"
-                                                                    title="Copy URL"
-                                                                >
-                                                                    <FiCopy className="w-3 h-3" />
-                                                                </button>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 mt-2">
-                                                                <span className="text-xs text-gray-500">
-                                                                    <FiCalendar className="w-3 h-3 inline mr-1" />
-                                                                    {formatDate(link.create_date)}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
+                                               {/* Link Details */}
+<div className="col-span-5">
+    <div className="flex items-start gap-3">
+        <div className="flex-1">
+            <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-gray-800">{truncateText(link.name, 30)}</h4>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+                <p className="text-gray-500 text-sm truncate">
+                    {extractDomain(link.url)}
+                </p>
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => handleCopy(link.url, 'URL')}
+                        className="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Copy URL"
+                    >
+                        <FiCopy className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        onClick={() => window.open(link.url, '_blank')}
+                        className="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Open in new tab"
+                    >
+                        <FiExternalLink className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
                                                 {/* Credentials */}
                                                 <div className="col-span-3">
                                                     <div className="space-y-2">
                                                         <div className="flex items-center gap-2">
-                                                            <FiUser className="w-4 h-4 text-gray-400" />
                                                             <span className="text-sm font-medium text-gray-700 truncate max-w-[100px]">
                                                                 {truncateText(link.username || 'No username', 20)}
                                                             </span>
@@ -808,7 +831,6 @@ const ImportantLinks = () => {
                                                             )}
                                                         </div>
                                                         <div className="flex items-center gap-2">
-                                                            <FiKey className="w-4 h-4 text-gray-400" />
                                                             <div className="flex items-center gap-1">
                                                                 <span className="text-sm font-medium text-gray-700">
                                                                     {showPassword[link.link_id]
@@ -847,20 +869,9 @@ const ImportantLinks = () => {
 
                                                 {/* Remarks */}
                                                 <div className="col-span-2">
-                                                    <p className="text-gray-600 text-sm line-clamp-2">{truncateText(link.remark || 'No remarks', 50)}</p>
-                                                </div>
-
-                                                {/* View Button */}
-                                                <div className="col-span-1 text-center">
-                                                    <motion.button
-                                                        onClick={() => handleViewClick(link)}
-                                                        className="p-2 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors duration-200"
-                                                        whileHover={{ scale: 1.1 }}
-                                                        whileTap={{ scale: 0.9 }}
-                                                        title="View Details"
-                                                    >
-                                                        <FiEye className="w-4 h-4" />
-                                                    </motion.button>
+                                                    <p className="text-gray-600 text-sm line-clamp-2" title={link.remark}>
+                                                        {truncateText(link.remark || 'No remarks', 50)}
+                                                    </p>
                                                 </div>
 
                                                 {/* Actions */}
@@ -873,7 +884,7 @@ const ImportantLinks = () => {
                                                             whileTap={{ scale: 0.9 }}
                                                             disabled={isSubmitting}
                                                         >
-                                                            <FiMoreVertical className="w-4 h-4" />
+                                                            <FiMenu className="w-4 h-4" />
                                                         </motion.button>
                                                         
                                                         {activeDropdown === link.link_id && (
@@ -883,6 +894,13 @@ const ImportantLinks = () => {
                                                                 className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden"
                                                             >
                                                                 <div className="py-1">
+                                                                    <button
+                                                                        onClick={() => handleViewClick(link)}
+                                                                        className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
+                                                                    >
+                                                                        <FiEye className="w-4 h-4 mr-3 text-indigo-600" />
+                                                                        View Details
+                                                                    </button>
                                                                     <button
                                                                         onClick={() => handleEditClick(link)}
                                                                         className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 transition-colors duration-200"
@@ -899,7 +917,7 @@ const ImportantLinks = () => {
                                                                     </button>
                                                                     <div className="border-t border-gray-100">
                                                                         <button
-                                                                            onClick={() => handleDeleteLink(link)}
+                                                                            onClick={() => handleDeleteClick(link)}
                                                                             className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
                                                                         >
                                                                             <FiTrash className="w-4 h-4 mr-3" />
@@ -948,7 +966,7 @@ const ImportantLinks = () => {
                 <div className="flex-1 overflow-y-auto p-6">
                     <form onSubmit={handleCreateSubmit} id="create-form">
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Link Name <span className="text-red-500">*</span>
@@ -961,21 +979,6 @@ const ImportantLinks = () => {
                                         placeholder="e.g., GST Portal"
                                         required
                                     />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Category <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        value={createForm.category}
-                                        onChange={(e) => handleCreateChange('category', e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                        required
-                                    >
-                                        {categories.map(cat => (
-                                            <option key={cat} value={cat}>{cat}</option>
-                                        ))}
-                                    </select>
                                 </div>
                             </div>
 
@@ -1075,7 +1078,7 @@ const ImportantLinks = () => {
                     <form onSubmit={handleEditSubmit} id="edit-form">
                         <input type="hidden" name="link_id" value={editForm.link_id} />
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Link Name <span className="text-red-500">*</span>
@@ -1088,21 +1091,6 @@ const ImportantLinks = () => {
                                         placeholder="Enter link name"
                                         required
                                     />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Category <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        value={editForm.category}
-                                        onChange={(e) => handleEditChange('category', e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white outline-none transition-all"
-                                        required
-                                    >
-                                        {categories.map(cat => (
-                                            <option key={cat} value={cat}>{cat}</option>
-                                        ))}
-                                    </select>
                                 </div>
                             </div>
 
@@ -1211,31 +1199,32 @@ const ImportantLinks = () => {
                                         <h3 className="text-lg font-semibold text-gray-800">Link Information</h3>
                                     </div>
                                     
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
                                         <div>
                                             <label className="text-xs text-gray-500">Name</label>
                                             <p className="text-sm font-medium text-gray-800 mt-1">{selectedLink.name}</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs text-gray-500">Category</label>
-                                            <div className="mt-1">
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    {selectedLink.category || 'General'}
-                                                </span>
-                                            </div>
                                         </div>
                                     </div>
 
                                     <div className="mt-4">
                                         <div className="flex items-center justify-between">
                                             <label className="text-xs text-gray-500">URL</label>
-                                            <button
-                                                onClick={() => handleCopy(selectedLink.url, 'URL')}
-                                                className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center gap-1"
-                                            >
-                                                <FiCopy className="w-3 h-3" />
-                                                Copy URL
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleCopy(selectedLink.url, 'URL')}
+                                                    className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center gap-1"
+                                                >
+                                                    <FiCopy className="w-3 h-3" />
+                                                    Copy URL
+                                                </button>
+                                                <button
+                                                    onClick={() => window.open(selectedLink.url, '_blank')}
+                                                    className="text-indigo-600 hover:text-indigo-800 text-xs flex items-center gap-1"
+                                                >
+                                                    <FiExternalLink className="w-3 h-3" />
+                                                    Open
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="flex items-center justify-between mt-1">
                                             <a 
@@ -1324,38 +1313,6 @@ const ImportantLinks = () => {
                                         <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{selectedLink.remark}</p>
                                     </div>
                                 )}
-
-                                {/* Metadata */}
-                                <div className="border-t border-gray-200 pt-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {selectedLink.create_by && (
-                                            <div>
-                                                <label className="text-xs text-gray-500">Created By</label>
-                                                <p className="text-sm text-gray-700 mt-1">{selectedLink.create_by.name}</p>
-                                                <p className="text-xs text-gray-500">{selectedLink.create_by.email}</p>
-                                            </div>
-                                        )}
-                                        {selectedLink.create_date && (
-                                            <div>
-                                                <label className="text-xs text-gray-500">Created Date</label>
-                                                <p className="text-sm text-gray-700 mt-1">{formatDateTime(selectedLink.create_date)}</p>
-                                            </div>
-                                        )}
-                                        {selectedLink.modify_by && selectedLink.modify_by.name !== selectedLink.create_by?.name && (
-                                            <div>
-                                                <label className="text-xs text-gray-500">Modified By</label>
-                                                <p className="text-sm text-gray-700 mt-1">{selectedLink.modify_by.name}</p>
-                                                <p className="text-xs text-gray-500">{selectedLink.modify_by.email}</p>
-                                            </div>
-                                        )}
-                                        {selectedLink.modify_date && selectedLink.modify_date !== selectedLink.create_date && (
-                                            <div>
-                                                <label className="text-xs text-gray-500">Modified Date</label>
-                                                <p className="text-sm text-gray-700 mt-1">{formatDateTime(selectedLink.modify_date)}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
@@ -1388,6 +1345,9 @@ const ImportantLinks = () => {
                     </>
                 )}
             </ModalWrapper>
+
+            {/* Delete Confirmation Modal */}
+            <DeleteConfirmationModal />
         </div>
     );
 };
