@@ -64,7 +64,7 @@ import LedgerGroup from './finance/ledger-group';
 import ExpenseDetails from './pages/expense-details';
 import DiscountVoucherDetails from './pages/discount';
 import MyProfile from './components/myProfile';
-
+import PasswordGroupFirms from './components/PasswordGroupFirms';
 // Authentication wrapper component
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = () => {
@@ -294,6 +294,12 @@ root.render(
           <PasswordGroups />
         </ProtectedRoute>
       } />
+<Route path="/staff/office-assistance/password-group/:group_id/firms" element={
+  <ProtectedRoute>
+    <PasswordGroupFirms /> 
+  </ProtectedRoute>
+} />
+     
 
       <Route path="/staff/office-assistance/important-links" element={
         <ProtectedRoute>
