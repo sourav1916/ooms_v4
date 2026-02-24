@@ -15,7 +15,114 @@ import axios from 'axios';
 import Pagination from '../components/paging-nation-component';
 import getHeaders from "../utils/get-headers";
 import API_BASE_URL from "../utils/api-controller";
-// import { SearchableDropdown } from '../ClientComponents/SearchComponent';
+import { toast, Toaster } from 'react-hot-toast';
+
+// Professional Toast Configuration - No Icons
+const toastConfig = {
+    duration: 4000,
+    position: 'top-right',
+    style: {
+        borderRadius: '8px',
+        background: '#fff',
+        fontSize: '14px',
+        fontWeight: '500',
+        padding: '12px 16px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        border: '1px solid #e2e8f0',
+        maxWidth: '380px',
+    },
+    success: {
+        duration: 4000,
+        style: {
+            background: '#f0fdf4',
+            color: '#166534',
+            border: '1px solid #86efac',
+        },
+    },
+    error: {
+        duration: 5000,
+        style: {
+            background: '#fef2f2',
+            color: '#991b1b',
+            border: '1px solid #fca5a5',
+        },
+    },
+    warning: {
+        duration: 4500,
+        style: {
+            background: '#fffbeb',
+            color: '#92400e',
+            border: '1px solid #fcd34d',
+        },
+    },
+    loading: {
+        duration: Infinity,
+        style: {
+            background: '#eff6ff',
+            color: '#1e40af',
+            border: '1px solid #93c5fd',
+        },
+    },
+    info: {
+        duration: 4000,
+        style: {
+            background: '#eff6ff',
+            color: '#1e40af',
+            border: '1px solid #93c5fd',
+        },
+    },
+};
+
+// Custom toast functions - No Icons
+const showToast = {
+    success: (message, options = {}) => {
+        toast.success(message, {
+            ...toastConfig,
+            ...toastConfig.success,
+            ...options,
+            icon: null,
+        });
+    },
+    error: (message, options = {}) => {
+        toast.error(message, {
+            ...toastConfig,
+            ...toastConfig.error,
+            ...options,
+            icon: null,
+        });
+    },
+    warning: (message, options = {}) => {
+        toast(message, {
+            ...toastConfig,
+            ...toastConfig.warning,
+            ...options,
+            icon: null,
+        });
+    },
+    loading: (message, options = {}) => {
+        return toast.loading(message, {
+            ...toastConfig,
+            ...toastConfig.loading,
+            ...options,
+            icon: null,
+        });
+    },
+    info: (message, options = {}) => {
+        toast(message, {
+            ...toastConfig,
+            ...toastConfig.info,
+            ...options,
+            icon: null,
+        });
+    },
+    dismiss: (toastId) => {
+        toast.dismiss(toastId);
+    },
+    dismissAll: () => {
+        toast.dismiss();
+    },
+};
+
 // View Modal Component
 const ViewModal = ({ document: doc, onClose }) => {
  const handleDownload = async () => {
@@ -47,6 +154,7 @@ const ViewModal = ({ document: doc, onClose }) => {
     window.URL.revokeObjectURL(url);
   } catch (error) {
     console.error('Download failed:', error);
+    showToast.error('Download failed');
   }
 };
 
@@ -563,7 +671,7 @@ const DocumentEntry = ({ index, document, onUpdate, onRemove, showRemove, tab, d
     const maxSize = 10 * 1024 * 1024;
 
     if (file.size > maxSize) {
-      alert(`File exceeds the 10MB limit. Please upload a smaller file.`);
+      showToast.error(`File exceeds the 10MB limit. Please upload a smaller file.`);
       return;
     }
 
@@ -808,7 +916,7 @@ const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, finan
     const maxSize = 10 * 1024 * 1024;
 
     if (file.size > maxSize) {
-      alert(`File size exceeds 10MB limit`);
+      showToast.error(`File size exceeds 10MB limit`);
       return;
     }
 
@@ -832,7 +940,7 @@ const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, finan
 
   const handleSubmit = () => {
     if (!selectedFirm) {
-      alert('Please select a firm');
+      showToast.error('Please select a firm');
       return;
     }
 
@@ -846,7 +954,7 @@ const UploadModal = ({ onClose, tab, firms, loadingFirms, assessmentYears, finan
     });
 
     if (invalidDocs.length > 0) {
-      alert('Please complete all required fields');
+      showToast.error('Please complete all required fields');
       return;
     }
 
@@ -1715,7 +1823,7 @@ const DocumentsTab = ({ clientUsername }) => {
   // Handle upload submit
   const handleUploadSubmit = async (firmId, documents) => {
     if (!clientUsername) {
-      alert('Client username is required');
+      showToast.error('Client username is required');
       return;
     }
 
@@ -1773,7 +1881,7 @@ const DocumentsTab = ({ clientUsername }) => {
       else if (activeTab === 'gst') endpoint = 'gst';
       else if (activeTab === 'mca') endpoint = 'mca';
       else if (activeTab === 'general') {
-        alert('General tab upload not implemented yet');
+        showToast.error('General tab upload not implemented yet');
         setUploadLoading(false);
         return;
       }
@@ -1790,7 +1898,7 @@ const DocumentsTab = ({ clientUsername }) => {
       );
 
       if (response.data && response.data.success) {
-        alert(`${documents.length} document(s) uploaded successfully`);
+        showToast.success(`${documents.length} document(s) uploaded successfully`);
         setShowUploadModal(false);
 
         // Force a refresh of the documents list
@@ -1798,7 +1906,7 @@ const DocumentsTab = ({ clientUsername }) => {
         const refreshTimestamp = Date.now();
         setRefreshTrigger(refreshTimestamp);
       } else {
-        alert('Failed to upload documents: ' + (response.data?.message || 'Unknown error'));
+        showToast.error('Failed to upload documents: ' + (response.data?.message || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error in upload flow:', error);
@@ -1806,23 +1914,23 @@ const DocumentsTab = ({ clientUsername }) => {
         const { status, data } = error.response;
         if (status === 400) {
           if (data.message === 'Username is required') {
-            alert('Username is required. Please check your login session.');
+            showToast.error('Username is required. Please check your login session.');
           } else {
-            alert(`Bad request: ${data?.message || 'Invalid data'}`);
+            showToast.error(`Bad request: ${data?.message || 'Invalid data'}`);
           }
         } else if (status === 401) {
-          alert('Authentication failed. Please login again.');
+          showToast.error('Authentication failed. Please login again.');
         } else if (status === 404) {
-          alert('API endpoint not found.');
+          showToast.error('API endpoint not found.');
         } else if (status === 500) {
-          alert('Server error. Please try again later.');
+          showToast.error('Server error. Please try again later.');
         } else {
-          alert(data?.message || `Error ${status}: Failed to upload documents`);
+          showToast.error(data?.message || `Error ${status}: Failed to upload documents`);
         }
       } else if (error.request) {
-        alert('No response from server. Check your internet connection.');
+        showToast.error('No response from server. Check your internet connection.');
       } else {
-        alert(error.message || 'Error uploading documents. Please try again.');
+        showToast.error(error.message || 'Error uploading documents. Please try again.');
       }
     } finally {
       setUploadLoading(false);
@@ -1847,7 +1955,7 @@ const DocumentsTab = ({ clientUsername }) => {
       );
 
       if (response.data && response.data.success) {
-        alert('Category created successfully');
+        showToast.success('Category created successfully');
         setShowCreateCategoryModal(false);
 
         const fetchResponse = await fetch(`${API_BASE_URL}/client/details/documents/category-list`, {
@@ -1859,14 +1967,14 @@ const DocumentsTab = ({ clientUsername }) => {
           setCategories(data.data);
         }
       } else {
-        alert('Failed to create category: ' + (response.data?.message || 'Unknown error'));
+        showToast.error('Failed to create category: ' + (response.data?.message || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error creating category:', error);
       if (error.response) {
-        alert(error.response.data?.message || 'Failed to create category');
+        showToast.error(error.response.data?.message || 'Failed to create category');
       } else {
-        alert('Failed to create category. Please try again.');
+        showToast.error('Failed to create category. Please try again.');
       }
     } finally {
       setCategoryLoading(false);
@@ -1895,7 +2003,7 @@ const DocumentsTab = ({ clientUsername }) => {
       );
 
       if (response.data && response.data.success) {
-        alert('Category updated successfully');
+        showToast.success('Category updated successfully');
         setShowEditCategoryModal(false);
         setSelectedCategoryForEdit(null);
 
@@ -1908,14 +2016,14 @@ const DocumentsTab = ({ clientUsername }) => {
           setCategories(data.data);
         }
       } else {
-        alert('Failed to update category: ' + (response.data?.message || 'Unknown error'));
+        showToast.error('Failed to update category: ' + (response.data?.message || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error updating category:', error);
       if (error.response) {
-        alert(error.response.data?.message || 'Failed to update category');
+        showToast.error(error.response.data?.message || 'Failed to update category');
       } else {
-        alert('Failed to update category. Please try again.');
+        showToast.error('Failed to update category. Please try again.');
       }
     } finally {
       setCategoryLoading(false);
@@ -1944,7 +2052,7 @@ const DocumentsTab = ({ clientUsername }) => {
       });
 
       if (response.data && response.data.success) {
-        alert('Category deleted successfully');
+        showToast.success('Category deleted successfully');
 
         const fetchResponse = await fetch(`${API_BASE_URL}/client/details/documents/category-list`, {
           method: 'GET',
@@ -1955,14 +2063,14 @@ const DocumentsTab = ({ clientUsername }) => {
           setCategories(data.data);
         }
       } else {
-        alert('Failed to delete category: ' + (response.data?.message || 'Unknown error'));
+        showToast.error('Failed to delete category: ' + (response.data?.message || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error deleting category:', error);
       if (error.response) {
-        alert(error.response.data?.message || 'Failed to delete category');
+        showToast.error(error.response.data?.message || 'Failed to delete category');
       } else {
-        alert('Failed to delete category. Please try again.');
+        showToast.error('Failed to delete category. Please try again.');
       }
     } finally {
       setCategoryLoading(false);
@@ -2013,17 +2121,17 @@ const DocumentsTab = ({ clientUsername }) => {
       const result = await response.json();
 
       if (result.success) {
-        alert('Documents sent successfully');
+        showToast.success('Documents sent successfully');
         setShowSendModal(false);
         if (!selectedDocument) {
           setSelectedDocuments([]);
         }
       } else {
-        alert('Failed to send documents: ' + (result.message || 'Unknown error'));
+        showToast.error('Failed to send documents: ' + (result.message || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error sending documents:', error);
-      alert('Failed to send documents. Please try again.');
+      showToast.error('Failed to send documents. Please try again.');
     } finally {
       setSendLoading(false);
     }
@@ -2176,6 +2284,28 @@ const DocumentsTab = ({ clientUsername }) => {
       exit={{ opacity: 0, y: -20 }}
       className="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-100 shadow-xl"
     >
+      {/* Toaster Component */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          ...toastConfig,
+          className: '',
+          style: toastConfig.style,
+          success: {
+            ...toastConfig.success,
+            icon: null,
+          },
+          error: {
+            ...toastConfig.error,
+            icon: null,
+          },
+          loading: {
+            ...toastConfig.loading,
+            icon: null,
+          },
+        }}
+      />
+
       {/* Header with Tabs and Storage Info */}
       <div className="border-b border-gray-200 px-6 pt-6">
         <div className="flex justify-between items-center mb-6">
