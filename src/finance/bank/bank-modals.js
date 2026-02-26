@@ -1,8 +1,11 @@
 // finance/bank/bank-modals.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiUser, FiDollarSign, FiShoppingBag, FiTruck, FiFileText, FiRepeat, FiPlus, FiTrash2 } from 'react-icons/fi';
+import { FiX, FiUser, FiDollarSign, FiShoppingBag, FiTruck, FiFileText, FiRepeat, FiPlus, FiTrash2, FiSearch, FiMail, FiPhone, FiCreditCard, FiHome } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import API_BASE_URL from '../../utils/api-controller';
+import getHeaders from '../../utils/get-headers';
+import axios from 'axios';
 
 // Base Modal Component
 const BaseModal = ({ isOpen, onClose, title, children }) => {
@@ -44,12 +47,105 @@ const BaseModal = ({ isOpen, onClose, title, children }) => {
     );
 };
 
-// Receive Modal
+// Receive Modal - Updated with correct API response mapping
 export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency, summary }) => {
-    const handleSubmit = (e) => {
+    const [loading, setLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [firms, setFirms] = useState([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [selectedFirm, setSelectedFirm] = useState(null);
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    // Search clients API
+    const searchClients = async (term) => {
+        if (!term || term.length < 2) {
+            setFirms([]);
+            return;
+        }
+
+        setSearchLoading(true);
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/firm/search?search=${term}`,
+                { headers: getHeaders() }
+            );
+            
+            if (response.data.success) {
+                console.log('Search response:', response.data); // For debugging
+                setFirms(response.data.data || []);
+                setShowDropdown(true);
+            }
+        } catch (error) {
+            console.error('Error searching clients:', error);
+            toast.error('Failed to search clients');
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    // Debounce search
+    useEffect(() => {
+        const debounceTimer = setTimeout(() => {
+            if (searchTerm) {
+                searchClients(searchTerm);
+            }
+        }, 500);
+
+        return () => clearTimeout(debounceTimer);
+    }, [searchTerm]);
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (!selectedFirm) {
+            toast.error('Please select a client');
+            return;
+        }
+
         const formData = new FormData(e.target);
-        onSubmit('RECEIVE', Object.fromEntries(formData));
+        const amount = formData.get('amount');
+        const date = formData.get('date');
+        const description = formData.get('description');
+
+        if (!amount || parseFloat(amount) <= 0) {
+            toast.error('Please enter a valid amount');
+            return;
+        }
+
+        setLoading(true);
+        
+        const payload = {
+            amount: parseFloat(amount),
+            party1_id: bankId,
+            party2_id: selectedFirm.client?.username, // Using username from nested client object
+            party1_type: "bank",
+            party2_type: "client",
+            remark: description || `Payment received from ${selectedFirm.client?.name}`,
+            transaction_date: date
+        };
+
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/transaction/payment/receive`,
+                payload,
+                { headers: getHeaders() }
+            );
+
+            if (response.data.success) {
+                toast.success(response.data.message || 'Payment received successfully');
+                onSubmit('RECEIVE', response.data.data);
+                onClose();
+                // Reset form
+                setSearchTerm('');
+                setSelectedFirm(null);
+                setFirms([]);
+            }
+        } catch (error) {
+            console.error('Error creating receive transaction:', error);
+            toast.error(error.response?.data?.message || 'Failed to create receive transaction');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -77,19 +173,155 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                 </div>
 
                 <div className="space-y-4">
+                    {/* Client Search */}
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Select Client <span className="text-red-500">*</span>
+                            Search Client <span className="text-red-500">*</span>
                         </label>
-                        <select
-                            name="client"
-                            required
-                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                            <option value="">Select Client</option>
-                            <option value="1">Client 1</option>
-                            <option value="2">Client 2</option>
-                        </select>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    if (!e.target.value) {
+                                        setSelectedFirm(null);
+                                        setFirms([]);
+                                        setShowDropdown(false);
+                                    }
+                                }}
+                                onFocus={() => searchTerm && setShowDropdown(true)}
+                                placeholder="Type client name, mobile or PAN to search..."
+                                className="w-full px-4 py-3 pl-10 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                            {searchLoading && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Search Results Dropdown */}
+                        {showDropdown && firms.length > 0 && (
+                            <div className="absolute z-10 mt-1 w-full max-w-[calc(100%-3rem)] bg-white border-2 border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                                {firms.map((firm) => (
+                                    <button
+                                        key={firm.firm_id}
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedFirm(firm);
+                                            setSearchTerm(firm.firm_name);
+                                            setShowDropdown(false);
+                                            setFirms([]);
+                                        }}
+                                        className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-slate-100 last:border-0 transition-colors"
+                                    >
+                                        <div className="font-medium text-slate-800">{firm.firm_name}</div>
+                                        <div className="text-sm text-slate-500 flex items-center gap-3 mt-1">
+                                            <span className="flex items-center gap-1">
+                                                <FiUser className="w-3 h-3" />
+                                                {firm.client?.name || 'N/A'}
+                                            </span>
+                                            <span>•</span>
+                                            <span className="flex items-center gap-1">
+                                                <FiPhone className="w-3 h-3" />
+                                                {firm.client?.mobile || 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-slate-400 mt-1">
+                                            PAN: {firm.client?.pan_number || firm.pan_no || 'N/A'}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Selected Firm Details Card - Complete Information */}
+                        {selectedFirm && (
+                            <div className="mt-4 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-lg font-semibold text-blue-800">Selected Client Details</h3>
+                                    <span className="px-3 py-1 bg-blue-600 text-white text-xs rounded-full">Active</span>
+                                </div>
+                                
+                                {/* Firm Details */}
+                                <div className="mb-4 p-3 bg-white rounded-lg border border-blue-200">
+                                    <p className="text-xs text-blue-600 font-medium mb-1">Firm Information</p>
+                                    <p className="text-base font-semibold text-slate-800">{selectedFirm.firm_name}</p>
+                                    <p className="text-xs text-slate-600 mt-1">
+                                        {selectedFirm.firm_type} • GST: {selectedFirm.gst_no || 'N/A'}
+                                    </p>
+                                </div>
+                                
+                                {/* Client Details - Nested inside firm object */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* Left Column */}
+                                    <div className="space-y-3">
+                                        <div>
+                                            <p className="text-xs text-blue-600 font-medium mb-1">Client Name</p>
+                                            <p className="text-base font-semibold text-slate-800">{selectedFirm.client?.name}</p>
+                                        </div>
+                                        
+                                        <div>
+                                            <p className="text-xs text-blue-600 font-medium mb-1 flex items-center gap-1">
+                                                <FiPhone className="w-3 h-3" /> Mobile Number
+                                            </p>
+                                            <p className="text-sm text-slate-700">{selectedFirm.client?.mobile || 'Not provided'}</p>
+                                        </div>
+                                        
+                                        <div>
+                                            <p className="text-xs text-blue-600 font-medium mb-1 flex items-center gap-1">
+                                                <FiMail className="w-3 h-3" /> Email Address
+                                            </p>
+                                            <p className="text-sm text-slate-700">{selectedFirm.client?.email || 'Not provided'}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Right Column */}
+                                    <div className="space-y-3">
+                                        <div>
+                                            <p className="text-xs text-blue-600 font-medium mb-1 flex items-center gap-1">
+                                                <FiCreditCard className="w-3 h-3" /> PAN Number
+                                            </p>
+                                            <p className="text-sm font-mono text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-blue-200">
+                                                {selectedFirm.client?.pan_number || selectedFirm.pan_no || 'Not provided'}
+                                            </p>
+                                        </div>
+                                        
+                                        <div>
+                                            <p className="text-xs text-blue-600 font-medium mb-1">Username (ID)</p>
+                                            <p className="text-xs font-mono text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-blue-200 break-all">
+                                                {selectedFirm.client?.username}
+                                            </p>
+                                        </div>
+                                        
+                                        {selectedFirm.gst_no && (
+                                            <div>
+                                                <p className="text-xs text-blue-600 font-medium mb-1">GST Number</p>
+                                                <p className="text-xs font-mono text-slate-600">{selectedFirm.gst_no}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                {/* Address if available */}
+                                {(selectedFirm.address_line_1 || selectedFirm.city || selectedFirm.state) && (
+                                    <div className="mt-3 pt-3 border-t border-blue-200">
+                                        <p className="text-xs text-blue-600 font-medium mb-1">Address</p>
+                                        <p className="text-sm text-slate-700">
+                                            {[
+                                                selectedFirm.address_line_1,
+                                                selectedFirm.address_line_2,
+                                                selectedFirm.city,
+                                                selectedFirm.state,
+                                                selectedFirm.pincode
+                                            ].filter(Boolean).join(', ')}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -141,7 +373,8 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                         <select
                             name="bank"
                             required
-                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            disabled
+                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-50"
                         >
                             <option value={bankId}>
                                 {bankDetails?.bank || 'Current Bank'} - Balance: ₹{formatCurrency(bankDetails?.balance || 0)}
@@ -153,14 +386,26 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                 <div className="flex gap-3 pt-4 border-t border-slate-200">
                     <button
                         type="submit"
-                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-base font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
+                        disabled={loading || !selectedFirm}
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-base font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center"
                     >
-                        Submit
+                        {loading ? (
+                            <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Processing...
+                            </>
+                        ) : (
+                            'Receive Payment'
+                        )}
                     </button>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 px-6 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-lg text-base font-medium hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all duration-200"
+                        disabled={loading}
+                        className="flex-1 px-6 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-lg text-base font-medium hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
                     >
                         Cancel
                     </button>
@@ -170,12 +415,106 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
     );
 };
 
-// Payment Modal
-export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency , summary}) => {
-    const handleSubmit = (e) => {
+// Payment Modal - Updated with API integration
+export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency, summary }) => {
+    const [loading, setLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [firms, setFirms] = useState([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [selectedFirm, setSelectedFirm] = useState(null);
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    // Search clients API
+    const searchClients = async (term) => {
+        if (!term || term.length < 2) {
+            setFirms([]);
+            return;
+        }
+
+        setSearchLoading(true);
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/firm/search?search=${term}`,
+                { headers: getHeaders() }
+            );
+            
+            if (response.data.success) {
+                console.log('Search response:', response.data);
+                setFirms(response.data.data || []);
+                setShowDropdown(true);
+            }
+        } catch (error) {
+            console.error('Error searching clients:', error);
+            toast.error('Failed to search clients');
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    // Debounce search
+    useEffect(() => {
+        const debounceTimer = setTimeout(() => {
+            if (searchTerm) {
+                searchClients(searchTerm);
+            }
+        }, 500);
+
+        return () => clearTimeout(debounceTimer);
+    }, [searchTerm]);
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (!selectedFirm) {
+            toast.error('Please select a client');
+            return;
+        }
+
         const formData = new FormData(e.target);
-        onSubmit('PAYMENT', Object.fromEntries(formData));
+        const amount = formData.get('amount');
+        const date = formData.get('date');
+        const description = formData.get('description');
+        const paymentMode = formData.get('payment_mode');
+
+        if (!amount || parseFloat(amount) <= 0) {
+            toast.error('Please enter a valid amount');
+            return;
+        }
+
+        setLoading(true);
+        
+        const payload = {
+            amount: parseFloat(amount),
+            party1_id: bankId,
+            party2_id: selectedFirm.client?.username,
+            party1_type: "bank",
+            party2_type: "client",
+            remark: description || `Payment made to ${selectedFirm.client?.name} via ${paymentMode}`,
+            transaction_date: date
+        };
+
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/transaction/payment/payment`,
+                payload,
+                { headers: getHeaders() }
+            );
+
+            if (response.data.success) {
+                toast.success(response.data.message || 'Payment made successfully');
+                onSubmit('PAYMENT', response.data.data);
+                onClose();
+                // Reset form
+                setSearchTerm('');
+                setSelectedFirm(null);
+                setFirms([]);
+            }
+        } catch (error) {
+            console.error('Error creating payment transaction:', error);
+            toast.error(error.response?.data?.message || 'Failed to create payment transaction');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -203,19 +542,137 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                 </div>
 
                 <div className="space-y-4">
+                    {/* Client Search */}
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Select Client <span className="text-red-500">*</span>
+                            Search Client <span className="text-red-500">*</span>
                         </label>
-                        <select
-                            name="client"
-                            required
-                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                            <option value="">Select Client</option>
-                            <option value="1">Client 1</option>
-                            <option value="2">Client 2</option>
-                        </select>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    if (!e.target.value) {
+                                        setSelectedFirm(null);
+                                        setFirms([]);
+                                        setShowDropdown(false);
+                                    }
+                                }}
+                                onFocus={() => searchTerm && setShowDropdown(true)}
+                                placeholder="Type client name, mobile or PAN to search..."
+                                className="w-full px-4 py-3 pl-10 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                            {searchLoading && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Search Results Dropdown */}
+                        {showDropdown && firms.length > 0 && (
+                            <div className="absolute z-10 mt-1 w-full max-w-[calc(100%-3rem)] bg-white border-2 border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                                {firms.map((firm) => (
+                                    <button
+                                        key={firm.firm_id}
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedFirm(firm);
+                                            setSearchTerm(firm.firm_name);
+                                            setShowDropdown(false);
+                                            setFirms([]);
+                                        }}
+                                        className="w-full px-4 py-3 text-left hover:bg-red-50 border-b border-slate-100 last:border-0 transition-colors"
+                                    >
+                                        <div className="font-medium text-slate-800">{firm.firm_name}</div>
+                                        <div className="text-sm text-slate-500 flex items-center gap-3 mt-1">
+                                            <span className="flex items-center gap-1">
+                                                <FiUser className="w-3 h-3" />
+                                                {firm.client?.name || 'N/A'}
+                                            </span>
+                                            <span>•</span>
+                                            <span className="flex items-center gap-1">
+                                                <FiPhone className="w-3 h-3" />
+                                                {firm.client?.mobile || 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-slate-400 mt-1">
+                                            PAN: {firm.client?.pan_number || firm.pan_no || 'N/A'}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Selected Firm Details Card */}
+                        {selectedFirm && (
+                            <div className="mt-4 p-5 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-lg font-semibold text-red-800">Selected Client Details</h3>
+                                    <span className="px-3 py-1 bg-red-600 text-white text-xs rounded-full">Active</span>
+                                </div>
+                                
+                                {/* Firm Details */}
+                                <div className="mb-4 p-3 bg-white rounded-lg border border-red-200">
+                                    <p className="text-xs text-red-600 font-medium mb-1">Firm Information</p>
+                                    <p className="text-base font-semibold text-slate-800">{selectedFirm.firm_name}</p>
+                                    <p className="text-xs text-slate-600 mt-1">
+                                        {selectedFirm.firm_type} • GST: {selectedFirm.gst_no || 'N/A'}
+                                    </p>
+                                </div>
+                                
+                                {/* Client Details */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-3">
+                                        <div>
+                                            <p className="text-xs text-red-600 font-medium mb-1">Client Name</p>
+                                            <p className="text-base font-semibold text-slate-800">{selectedFirm.client?.name}</p>
+                                        </div>
+                                        
+                                        <div>
+                                            <p className="text-xs text-red-600 font-medium mb-1 flex items-center gap-1">
+                                                <FiPhone className="w-3 h-3" /> Mobile Number
+                                            </p>
+                                            <p className="text-sm text-slate-700">{selectedFirm.client?.mobile || 'Not provided'}</p>
+                                        </div>
+                                        
+                                        <div>
+                                            <p className="text-xs text-red-600 font-medium mb-1 flex items-center gap-1">
+                                                <FiMail className="w-3 h-3" /> Email Address
+                                            </p>
+                                            <p className="text-sm text-slate-700">{selectedFirm.client?.email || 'Not provided'}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-3">
+                                        <div>
+                                            <p className="text-xs text-red-600 font-medium mb-1 flex items-center gap-1">
+                                                <FiCreditCard className="w-3 h-3" /> PAN Number
+                                            </p>
+                                            <p className="text-sm font-mono text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-red-200">
+                                                {selectedFirm.client?.pan_number || selectedFirm.pan_no || 'Not provided'}
+                                            </p>
+                                        </div>
+                                        
+                                        <div>
+                                            <p className="text-xs text-red-600 font-medium mb-1">Username (ID)</p>
+                                            <p className="text-xs font-mono text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-red-200 break-all">
+                                                {selectedFirm.client?.username}
+                                            </p>
+                                        </div>
+                                        
+                                        {selectedFirm.gst_no && (
+                                            <div>
+                                                <p className="text-xs text-red-600 font-medium mb-1">GST Number</p>
+                                                <p className="text-xs font-mono text-slate-600">{selectedFirm.gst_no}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -283,7 +740,8 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                         <select
                             name="bank"
                             required
-                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            disabled
+                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-50"
                         >
                             <option value={bankId}>
                                 {bankDetails?.bank || 'Current Bank'} - Balance: ₹{formatCurrency(bankDetails?.balance || 0)}
@@ -295,14 +753,26 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                 <div className="flex gap-3 pt-4 border-t border-slate-200">
                     <button
                         type="submit"
-                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-base font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
+                        disabled={loading || !selectedFirm}
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg text-base font-medium hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center"
                     >
-                        Submit
+                        {loading ? (
+                            <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Processing...
+                            </>
+                        ) : (
+                            'Make Payment'
+                        )}
                     </button>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 px-6 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-lg text-base font-medium hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all duration-200"
+                        disabled={loading}
+                        className="flex-1 px-6 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-lg text-base font-medium hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
                     >
                         Cancel
                     </button>
