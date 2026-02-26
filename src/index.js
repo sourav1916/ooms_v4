@@ -65,6 +65,7 @@ import ExpenseDetails from './pages/expense-details';
 import DiscountVoucherDetails from './pages/discount';
 import MyProfile from './components/myProfile';
 import PasswordGroupFirms from './components/PasswordGroupFirms';
+import TransactionHistory from './finance/bank/transaction-history';
 // Authentication wrapper component
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = () => {
@@ -462,6 +463,13 @@ root.render(
           <Subscription />
         </ProtectedRoute>
       } />
+
+ <Route path="/finance/bank/transaction-history" element={
+        <ProtectedRoute>
+          <TransactionHistory />
+        </ProtectedRoute>
+      } />
+      
 
       {/* Catch-all route for 404 */}
       <Route path="*" element={

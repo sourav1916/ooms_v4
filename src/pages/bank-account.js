@@ -27,228 +27,7 @@ import toast from 'react-hot-toast';
 import API_BASE_URL from '../utils/api-controller';
 import getHeaders from '../utils/get-headers';
 import axios from 'axios';
-
-// Transaction History Modal Component
-const TransactionHistoryModal = React.memo(({ isOpen, onClose, bank, transactions, loading, fromDate, toDate, onDateChange, onSearch }) => {
-    if (!isOpen) return null;
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-IN', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(Math.abs(amount));
-    };
-
-    const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        });
-    };
-
-    const formatTime = (dateString) => {
-        return new Date(dateString).toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    const getTransactionTypeColor = (type) => {
-        switch(type?.toLowerCase()) {
-            case 'credit': return 'text-green-600 bg-green-50 border-green-200';
-            case 'debit': return 'text-red-600 bg-red-50 border-red-200';
-            default: return 'text-slate-600 bg-slate-50 border-slate-200';
-        }
-    };
-
-    const getPaymentModeIcon = (mode) => {
-        switch(mode?.toLowerCase()) {
-            case 'cash': return '💵';
-            case 'bank': return '🏦';
-            case 'cheque': return '📝';
-            case 'online': return '🌐';
-            case 'card': return '💳';
-            default: return '💵';
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen p-4">
-                {/* Overlay */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-                    onClick={onClose}
-                />
-                
-                {/* Modal panel */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl h-[90vh] flex flex-col"
-                >
-                    {/* Header */}
-                    <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-2xl">
-                        <div>
-                            <h2 className="text-2xl font-bold">Transaction History</h2>
-                            <p className="text-blue-100 text-sm mt-1">
-                                {bank?.bank} - {bank?.account_no} ({bank?.branch})
-                            </p>
-                        </div>
-                        <button
-                            onClick={onClose}
-                            className="p-2 hover:bg-blue-500 rounded-lg transition-colors"
-                        >
-                            <FiX className="w-6 h-6" />
-                        </button>
-                    </div>
-
-                    {/* Date Filter */}
-                    <div className="flex-shrink-0 p-6 border-b border-gray-200 bg-gray-50">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <FiCalendar className="text-gray-500 w-5 h-5" />
-                                <span className="text-sm font-medium text-gray-700">Date Range:</span>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <div className="relative">
-                                    <input
-                                        type="date"
-                                        value={fromDate}
-                                        onChange={(e) => onDateChange('from', e.target.value)}
-                                        className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                    />
-                                </div>
-                                <span className="text-gray-500">to</span>
-                                <div className="relative">
-                                    <input
-                                        type="date"
-                                        value={toDate}
-                                        onChange={(e) => onDateChange('to', e.target.value)}
-                                        className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                    />
-                                </div>
-                                <button
-                                    onClick={onSearch}
-                                    disabled={loading}
-                                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200 flex items-center gap-2"
-                                >
-                                    {loading ? (
-                                        <>
-                                            <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Loading...
-                                        </>
-                                    ) : (
-                                        'Search'
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Body */}
-                    <div className="flex-1 overflow-y-auto p-6">
-                        {loading ? (
-                            <div className="flex items-center justify-center h-64">
-                                <div className="text-center">
-                                    <svg className="animate-spin h-10 w-10 text-blue-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    <p className="text-gray-600">Loading transactions...</p>
-                                </div>
-                            </div>
-                        ) : transactions.length === 0 ? (
-                            <div className="flex items-center justify-center h-64">
-                                <div className="text-center">
-                                    <div className="p-4 bg-gray-100 rounded-full inline-block mb-4">
-                                        <FiRepeat className="w-8 h-8 text-gray-400" />
-                                    </div>
-                                    <p className="text-gray-600 text-lg font-medium mb-2">No transactions found</p>
-                                    <p className="text-gray-500 text-sm">No transactions available for the selected date range</p>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {transactions.map((transaction, index) => (
-                                    <motion.div
-                                        key={transaction.transaction_id || index}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.05 }}
-                                        className="bg-white border-2 border-gray-100 rounded-xl p-4 hover:border-blue-200 hover:shadow-lg transition-all duration-200"
-                                    >
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <span className={`px-3 py-1 rounded-lg text-xs font-medium border ${getTransactionTypeColor(transaction.type)}`}>
-                                                        {transaction.type?.toUpperCase()}
-                                                    </span>
-                                                    <span className="text-sm text-gray-500">
-                                                        {formatDate(transaction.transaction_date)} at {formatTime(transaction.transaction_date)}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-2xl" role="img" aria-label="payment-mode">
-                                                        {getPaymentModeIcon(transaction.payment_mode)}
-                                                    </span>
-                                                    <div>
-                                                        <p className="font-medium text-gray-800">
-                                                            {transaction.description || `${transaction.type} Transaction`}
-                                                        </p>
-                                                        <p className="text-sm text-gray-500">
-                                                            Ref: {transaction.voucher_no || 'N/A'} | Mode: {transaction.payment_mode || 'N/A'}
-                                                        </p>
-                                                        {transaction.remark && (
-                                                            <p className="text-xs text-gray-400 mt-1">
-                                                                Note: {transaction.remark}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className={`text-xl font-bold ${transaction.type?.toLowerCase() === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {transaction.type?.toLowerCase() === 'credit' ? '+' : '-'} ₹{formatCurrency(transaction.amount)}
-                                                </p>
-                                                <p className="text-xs text-gray-400 mt-1">
-                                                    Balance: ₹{formatCurrency(transaction.balance || 0)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50 p-6 rounded-b-2xl">
-                        <div className="flex justify-between items-center">
-                            <div className="text-sm text-gray-600">
-                                Total Transactions: <span className="font-semibold">{transactions.length}</span>
-                            </div>
-                            <button
-                                onClick={onClose}
-                                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </motion.div>
-            </div>
-        </div>
-    );
-});
+import { useNavigate } from 'react-router-dom';
 
 // Move ModalContent outside and memoize it
 const ModalContent = React.memo(({ 
@@ -585,6 +364,7 @@ const DeleteModal = React.memo(({ isOpen, onClose, onConfirm, bank, loading }) =
 });
 
 const BankList = () => {
+    const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(() => {
         const saved = localStorage.getItem('sidebarMinimized');
@@ -593,25 +373,12 @@ const BankList = () => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [showTransactionModal, setShowTransactionModal] = useState(false);
     const [selectedBank, setSelectedBank] = useState(null);
-    const [selectedBankTransactions, setSelectedBankTransactions] = useState([]);
-    const [transactionLoading, setTransactionLoading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [fetchLoading, setFetchLoading] = useState(true);
     const [showAddDropdown, setShowAddDropdown] = useState(false);
     const [activeRowDropdown, setActiveRowDropdown] = useState(null);
     const [exportModal, setExportModal] = useState({ open: false, type: '', data: null });
-    
-    // Transaction date filters
-    const [fromDate, setFromDate] = useState(() => {
-        const date = new Date();
-        date.setMonth(date.getMonth() - 1);
-        return date.toISOString().split('T')[0];
-    });
-    const [toDate, setToDate] = useState(() => {
-        return new Date().toISOString().split('T')[0];
-    });
     
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
@@ -769,52 +536,10 @@ const BankList = () => {
         });
     };
 
-    // Fetch bank transactions
-    const fetchBankTransactions = useCallback(async (bankId) => {
-        setTransactionLoading(true);
-        try {
-            const response = await axios.get(
-                `${API_BASE_URL}/transaction/list?page_no=1&limit=100&from_date=${fromDate}&to_date=${toDate}&party_type=bank&party_id=${bankId}`,
-                { headers: getHeaders() }
-            );
-
-            if (response.data.success) {
-                setSelectedBankTransactions(response.data.data || []);
-            } else {
-                setSelectedBankTransactions([]);
-                toast.error('Failed to fetch transactions');
-            }
-        } catch (error) {
-            console.error('Error fetching transactions:', error);
-            toast.error('Failed to fetch transactions');
-            setSelectedBankTransactions([]);
-        } finally {
-            setTransactionLoading(false);
-        }
-    }, [fromDate, toDate]);
-
-    // Handle balance click
+    // Handle balance click - redirect to transaction history page
     const handleBalanceClick = useCallback((bank) => {
-        setSelectedBank(bank);
-        setShowTransactionModal(true);
-        fetchBankTransactions(bank.bank_id);
-    }, [fetchBankTransactions]);
-
-    // Handle date change
-    const handleDateChange = useCallback((type, value) => {
-        if (type === 'from') {
-            setFromDate(value);
-        } else {
-            setToDate(value);
-        }
-    }, []);
-
-    // Handle search transactions
-    const handleSearchTransactions = useCallback(() => {
-        if (selectedBank) {
-            fetchBankTransactions(selectedBank.bank_id);
-        }
-    }, [selectedBank, fetchBankTransactions]);
+        navigate(`/finance/bank/transaction-history?bank_id=${bank.bank_id}`);
+    }, [navigate]);
 
     // Format currency
     const formatCurrency = (amount) => {
@@ -975,7 +700,6 @@ const BankList = () => {
         const loadingToast = toast.loading('Deleting bank account...');
 
         try {
-            // Note: You'll need to implement the delete endpoint
             const response = await axios.post(
                 `${API_BASE_URL}/transaction/bank/delete`,
                 { bank_id: selectedBank.bank_id },
@@ -1569,25 +1293,6 @@ const BankList = () => {
                         onConfirm={handleDeleteBank}
                         bank={selectedBank}
                         loading={loading}
-                    />
-                )}
-
-                {/* Transaction History Modal */}
-                {showTransactionModal && (
-                    <TransactionHistoryModal
-                        isOpen={showTransactionModal}
-                        onClose={() => {
-                            setShowTransactionModal(false);
-                            setSelectedBank(null);
-                            setSelectedBankTransactions([]);
-                        }}
-                        bank={selectedBank}
-                        transactions={selectedBankTransactions}
-                        loading={transactionLoading}
-                        fromDate={fromDate}
-                        toDate={toDate}
-                        onDateChange={handleDateChange}
-                        onSearch={handleSearchTransactions}
                     />
                 )}
 
