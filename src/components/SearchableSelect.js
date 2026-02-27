@@ -195,105 +195,106 @@ export default function SearchableSelect({
   }, [searchTerm, debouncedSearch]);
 
   // ---------- UI (UPDATED WITH ARRAY CHECK) ----------
-const list = searchTerm.length < minChars ? initialList : searchResults;
-// Ensure list is always an array
-const safeList = Array.isArray(list) ? list : [];
+  const list = searchTerm.length < minChars ? initialList : searchResults;
+  // Ensure list is always an array
+  const safeList = Array.isArray(list) ? list : [];
 
-const isLoading = searchTerm.length < minChars ? initialLoading : loading;
-const hasError = searchTerm.length < minChars ? initialError : error;
+  const isLoading = searchTerm.length < minChars ? initialLoading : loading;
+  const hasError = searchTerm.length < minChars ? initialError : error;
 
-const handleSelect = (item) => {
-  onSelectRef.current?.(item, getValue(item, valueKeyRef.current));
-  setSearchTerm('');
-  setIsOpen(false);
-};
+  const handleSelect = (item) => {
+    onSelectRef.current?.(item, getValue(item, valueKeyRef.current));
+    setSearchTerm('');
+    setIsOpen(false);
+  };
 
-const renderSuggestion = (item) => {
-  if (renderItem) return renderItem(item);
+  const renderSuggestion = (item) => {
+    if (renderItem) return renderItem(item);
 
-  const name = getDisplayPrimary(item);
-  const phone = item?.mobile || item?.phone || '';
-  const email = item?.email || '';
+    const name = getDisplayPrimary(item);
+    const phone = item?.mobile || item?.phone || '';
+    const email = item?.email || '';
+
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <span className="font-medium text-gray-900">{name}</span>
+        {phone && (
+          <>
+            <span className="text-gray-400">•</span>
+            <span className="text-gray-600">{phone}</span>
+          </>
+        )}
+        {email && (
+          <>
+            <span className="text-gray-400">•</span>
+            <span className="text-gray-500 text-xs">{email}</span>
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <span className="font-medium text-gray-900">{name}</span>
-      {phone && (
-        <>
-          <span className="text-gray-400">•</span>
-          <span className="text-gray-600">{phone}</span>
-        </>
-      )}
-      {email && (
-        <>
-          <span className="text-gray-400">•</span>
-          <span className="text-gray-500 text-xs">{email}</span>
-        </>
+    <div className="relative w-full">
+      <div className="relative">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder={placeholder}
+          className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+          onFocus={() => {
+            if (safeList.length > 0 || isLoading) setIsOpen(true);
+          }}
+          onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+          autoComplete="off"
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          {isLoading && (
+            <div className="flex items-center justify-center px-4 py-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-sm text-gray-500">Loading...</span>
+              </div>
+            </div>
+          )}
+
+          {hasError && (
+            <div className="px-4 py-3 text-sm text-red-500">
+              Error: {hasError}
+            </div>
+          )}
+
+          {!isLoading && !hasError && safeList.length === 0 && searchTerm.length >= minChars && (
+            <div className="px-4 py-3 text-sm text-gray-500">
+              No Results Found
+            </div>
+          )}
+
+          {!isLoading && !hasError && safeList.map((item, index) => (
+            <div
+              key={valueKeyRef.current ? getValue(item, valueKeyRef.current) : index}
+              className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-150"
+              onMouseDown={() => handleSelect(item)}
+            >
+              {renderSuggestion(item)}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
-};
-
-return (
-  <div className="relative w-full">
-    <div className="relative">
-      <input
-        type="text"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-        onFocus={() => {
-          if (safeList.length > 0 || isLoading) setIsOpen(true);
-        }}
-        onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-        autoComplete="off"
-      />
-      {searchTerm && (
-        <button
-          onClick={() => setSearchTerm('')}
-          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      )}
-    </div>
-
-    {isOpen && (
-      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-        {isLoading && (
-          <div className="flex items-center justify-center px-4 py-3">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm text-gray-500">Loading...</span>
-            </div>
-          </div>
-        )}
-        
-        {hasError && (
-          <div className="px-4 py-3 text-sm text-red-500">
-            Error: {hasError}
-          </div>
-        )}
-
-        {!isLoading && !hasError && safeList.length === 0 && searchTerm.length >= minChars && (
-          <div className="px-4 py-3 text-sm text-gray-500">
-            No Results Found
-          </div>
-        )}
-
-        {!isLoading && !hasError && safeList.map((item, index) => (
-          <div
-            key={valueKeyRef.current ? getValue(item, valueKeyRef.current) : index}
-            className="px-4 py-2.5 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors duration-150"
-            onMouseDown={() => handleSelect(item)}
-          >
-            {renderSuggestion(item)}
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-);}
+}

@@ -120,9 +120,7 @@ const Services = () => {
         sac_code: '',
         fees: '',
         gst_rate: '',
-        gst: '0',
-        has_ay: '0',
-        has_fy: '0'
+        gst: '0'
     });
 
     const [editForm, setEditForm] = useState({
@@ -133,8 +131,6 @@ const Services = () => {
         fees: '',
         gst_rate: '',
         gst: '0',
-        has_ay: '0',
-        has_fy: '0',
         status: '1'
     });
 
@@ -307,7 +303,7 @@ const Services = () => {
         setFilteredCategories(filtered);
     };
 
-    // Handle create form submit (calls API when available; payload includes financial_year)
+    // Handle create form submit (calls API when available)
     const handleCreateSubmit = async (e) => {
         e.preventDefault();
         setApiError('');
@@ -317,9 +313,7 @@ const Services = () => {
             sac_code: createForm.sac_code,
             fees: parseFloat(createForm.fees),
             gst_rate: parseFloat(createForm.gst_rate),
-            gst_value: parseFloat(createForm.gst) || 0,
-            assessment_year: createForm.has_ay === '1',
-            financial_year: createForm.has_fy === '1'
+            gst_value: parseFloat(createForm.gst) || 0
         };
         try {
             const response = await fetch(`${API_BASE_URL}/service/create`, {
@@ -331,7 +325,7 @@ const Services = () => {
             if (response.ok && data.success) {
                 fetchServicesData();
                 setShowCreateModal(false);
-                setCreateForm({ name: '', category_id: '', sac_code: '', fees: '', gst_rate: '', gst: '0', has_ay: '0', has_fy: '0' });
+                setCreateForm({ name: '', category_id: '', sac_code: '', fees: '', gst_rate: '', gst: '0' });
                 return;
             }
             setApiError(data.message || 'Failed to create service');
@@ -340,7 +334,7 @@ const Services = () => {
         }
     };
 
-    // Handle edit form submit (calls API; payload includes financial_year)
+    // Handle edit form submit (calls API)
     const handleEditSubmit = async (e) => {
         e.preventDefault();
         setApiError('');
@@ -352,8 +346,6 @@ const Services = () => {
             fees: parseFloat(editForm.fees),
             gst_rate: parseFloat(editForm.gst_rate),
             gst_value: parseFloat(editForm.gst) || 0,
-            assessment_year: editForm.has_ay === '1',
-            financial_year: editForm.has_fy === '1',
             status: editForm.status === '1'
         };
         try {
@@ -384,8 +376,7 @@ const Services = () => {
                 method: 'POST',
                 headers: getHeaders(),
                 body: JSON.stringify({
-                    name: categoryCreateForm.name,
-                    financial_year: false
+                    name: categoryCreateForm.name
                 })
             });
 
@@ -419,8 +410,7 @@ const Services = () => {
                 headers: getHeaders(),
                 body: JSON.stringify({
                     name: categoryEditForm.name,
-                    category_id: categoryEditForm.category_id,
-                    financial_year: false
+                    category_id: categoryEditForm.category_id
                 })
             });
 
@@ -442,11 +432,9 @@ const Services = () => {
         }
     };
 
-    // Handle edit button click (API returns has_ay, has_fy, status as booleans; form uses '1'/'0')
+    // Handle edit button click (API returns status as boolean; form uses '1'/'0')
     const handleEditClick = (service) => {
         setSelectedService(service);
-        const hasAy = service.has_ay === true || service.has_ay === 1 || service.has_ay === '1';
-        const hasFy = service.has_fy === true || service.has_fy === 1 || service.has_fy === '1';
         const isActive = service.status === true || service.status === 1 || service.status === '1';
         const categoryId = service.category_id ?? (service.category_name && categories.find(c => c.name === service.category_name)?.category_id) ?? '';
         setEditForm({
@@ -457,8 +445,6 @@ const Services = () => {
             fees: String(service.fees ?? ''),
             gst_rate: String(service.gst_rate ?? ''),
             gst: String(service.gst_value ?? service.gst ?? ''),
-            has_ay: hasAy ? '1' : '0',
-            has_fy: hasFy ? '1' : '0',
             status: isActive ? '1' : '0'
         });
         setShowEditModal(true);
@@ -781,12 +767,6 @@ const Services = () => {
                 <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-24 mx-auto"></div>
             </td>
             <td className="p-3 text-center">
-                <div className="h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-20 mx-auto"></div>
-            </td>
-            <td className="p-3 text-center">
-                <div className="h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-24 mx-auto"></div>
-            </td>
-            <td className="p-3 text-center">
                 <div className="space-y-1 mx-auto max-w-xs">
                     <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-20 mx-auto"></div>
                     <div className="h-3 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-16 mx-auto"></div>
@@ -993,17 +973,11 @@ const Services = () => {
                                         <div className="col-span-1">
                                             <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">#</div>
                                         </div>
-                                        <div className="col-span-2">
+                                        <div className="col-span-3">
                                             <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</div>
                                         </div>
-                                        <div className="col-span-2">
+                                        <div className="col-span-3">
                                             <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Category</div>
-                                        </div>
-                                        <div className="col-span-1">
-                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">AY</div>
-                                        </div>
-                                        <div className="col-span-1">
-                                            <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">FY</div>
                                         </div>
                                         <div className="col-span-2">
                                             <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">Fees</div>
@@ -1102,9 +1076,6 @@ const Services = () => {
                                             // Services Table Content
                                             filteredServices.map((service, index) => {
                                                 const isDropdownOpen = activeDropdown === service.service_id;
-
-                                                const hasAy = service.has_ay === true || service.has_ay === 1 || service.has_ay === '1';
-                                                const hasFy = service.has_fy === true || service.has_fy === 1 || service.has_fy === '1';
                                                 return (
                                                     <motion.div
                                                         key={service.service_id}
@@ -1121,43 +1092,17 @@ const Services = () => {
                                                         </div>
 
                                                         {/* Name Column */}
-                                                        <div className="col-span-2 flex items-center">
+                                                        <div className="col-span-3 flex items-center">
                                                             <div className="text-gray-800 font-semibold text-sm truncate" title={service.name}>
                                                                 {service.name}
                                                             </div>
                                                         </div>
 
                                                         {/* Category Column */}
-                                                        <div className="col-span-2 flex items-center">
+                                                        <div className="col-span-3 flex items-center">
                                                             <span className="text-gray-600 text-sm truncate" title={service.category_name || '—'}>
                                                                 {service.category_name || '—'}
                                                             </span>
-                                                        </div>
-
-                                                        {/* AY Column */}
-                                                        <div className="col-span-1 flex items-center justify-center">
-                                                            {hasAy ? (
-                                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700" title="Assessment Year applicable">
-                                                                    <FiCheckCircle className="w-5 h-5" />
-                                                                </span>
-                                                            ) : (
-                                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-100 text-red-600" title="Assessment Year not applicable">
-                                                                    <FiXCircle className="w-5 h-5" />
-                                                                </span>
-                                                            )}
-                                                        </div>
-
-                                                        {/* FY Column */}
-                                                        <div className="col-span-1 flex items-center justify-center">
-                                                            {hasFy ? (
-                                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700" title="Financial Year applicable">
-                                                                    <FiCheckCircle className="w-5 h-5" />
-                                                                </span>
-                                                            ) : (
-                                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-100 text-red-600" title="Financial Year not applicable">
-                                                                    <FiXCircle className="w-5 h-5" />
-                                                                </span>
-                                                            )}
                                                         </div>
 
                                                         {/* Fees Column */}
@@ -1408,14 +1353,6 @@ const Services = () => {
                                 <div className="pt-3">
                                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Options</div>
                                     <div className="flex flex-wrap gap-2">
-                                        <Pill tone={(selectedService.has_ay === true || selectedService.has_ay === 1 || selectedService.has_ay === '1') ? 'green' : 'gray'}>
-                                            {(selectedService.has_ay === true || selectedService.has_ay === 1 || selectedService.has_ay === '1') ? <FiCheckCircle className="w-3.5 h-3.5" /> : <FiXCircle className="w-3.5 h-3.5" />}
-                                            {((selectedService.has_ay === true || selectedService.has_ay === 1 || selectedService.has_ay === '1') ? 'AY enabled' : 'No AY')}
-                                        </Pill>
-                                        <Pill tone={(selectedService.has_fy === true || selectedService.has_fy === 1 || selectedService.has_fy === '1') ? 'green' : 'gray'}>
-                                            {(selectedService.has_fy === true || selectedService.has_fy === 1 || selectedService.has_fy === '1') ? <FiCheckCircle className="w-3.5 h-3.5" /> : <FiXCircle className="w-3.5 h-3.5" />}
-                                            {((selectedService.has_fy === true || selectedService.has_fy === 1 || selectedService.has_fy === '1') ? 'FY enabled' : 'No FY')}
-                                        </Pill>
                                         <Pill tone={(selectedService.is_recurring === true || selectedService.is_recurring === 1 || selectedService.is_recurring === '1') ? 'amber' : 'gray'}>
                                             {(selectedService.is_recurring === true || selectedService.is_recurring === 1 || selectedService.is_recurring === '1') ? <FiCheckCircle className="w-3.5 h-3.5" /> : <FiXCircle className="w-3.5 h-3.5" />}
                                             {((selectedService.is_recurring === true || selectedService.is_recurring === 1 || selectedService.is_recurring === '1') ? 'Recurring' : 'One-time')}
@@ -1614,11 +1551,6 @@ const Services = () => {
                                     <p className="text-xs text-gray-500 mt-1">Calculated from fees and GST rate</p>
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-gray-100 bg-white p-4 space-y-2">
-                                <p className="text-sm font-semibold text-gray-900 mb-2">Options</p>
-                                <Switch label="Assessment Year (AY)" description="Applicable for assessment year" checked={createForm.has_ay === '1'} onChange={(v) => handleCreateChange('has_ay', v ? '1' : '0')} />
-                                <Switch label="Financial Year (FY)" description="Applicable for financial year" checked={createForm.has_fy === '1'} onChange={(v) => handleCreateChange('has_fy', v ? '1' : '0')} />
-                            </div>
                             {apiError && <div className="p-3 bg-red-50 text-red-700 rounded-xl text-sm">{apiError}</div>}
                         </div>
                         <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200">
@@ -1674,11 +1606,6 @@ const Services = () => {
                                         <input type="text" value={editForm.gst} readOnly className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 font-medium outline-none" />
                                     </div>
                                 </div>
-                            </div>
-                            <div className="rounded-2xl border border-gray-100 bg-white p-4 space-y-2">
-                                <p className="text-sm font-semibold text-gray-900 mb-2">Options</p>
-                                <Switch label="Assessment Year (AY)" description="Applicable for assessment year" checked={editForm.has_ay === '1'} onChange={(v) => handleEditChange('has_ay', v ? '1' : '0')} />
-                                <Switch label="Financial Year (FY)" description="Applicable for financial year" checked={editForm.has_fy === '1'} onChange={(v) => handleEditChange('has_fy', v ? '1' : '0')} />
                             </div>
                             <div className="rounded-2xl border border-gray-100 bg-white p-4">
                                 <Switch label="Status" description="Active services are visible and available" checked={editForm.status === '1'} onChange={(v) => handleEditChange('status', v ? '1' : '0')} />
