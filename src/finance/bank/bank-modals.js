@@ -48,6 +48,7 @@ const BaseModal = ({ isOpen, onClose, title, children }) => {
 };
 
 // Receive Modal - Updated with correct API response mapping
+// Receive Modal - Updated with single client display
 export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency, summary }) => {
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -71,7 +72,7 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
             );
             
             if (response.data.success) {
-                console.log('Search response:', response.data); // For debugging
+                console.log('Search response:', response.data);
                 setFirms(response.data.data || []);
                 setShowDropdown(true);
             }
@@ -117,7 +118,7 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
         const payload = {
             amount: parseFloat(amount),
             party1_id: bankId,
-            party2_id: selectedFirm.client?.username, // Using username from nested client object
+            party2_id: selectedFirm.client?.username,
             party1_type: "bank",
             party2_type: "client",
             remark: description || `Payment received from ${selectedFirm.client?.name}`,
@@ -237,89 +238,43 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                             </div>
                         )}
 
-                        {/* Selected Firm Details Card - Complete Information */}
+                        {/* Selected Client Details Card - Simplified */}
                         {selectedFirm && (
-                            <div className="mt-4 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-lg font-semibold text-blue-800">Selected Client Details</h3>
-                                    <span className="px-3 py-1 bg-blue-600 text-white text-xs rounded-full">Active</span>
+                            <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-sm font-semibold text-blue-800">Selected Client</h3>
+                                    <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">Active</span>
                                 </div>
                                 
-                                {/* Firm Details */}
-                                <div className="mb-4 p-3 bg-white rounded-lg border border-blue-200">
-                                    <p className="text-xs text-blue-600 font-medium mb-1">Firm Information</p>
-                                    <p className="text-base font-semibold text-slate-800">{selectedFirm.firm_name}</p>
-                                    <p className="text-xs text-slate-600 mt-1">
-                                        {selectedFirm.firm_type} • GST: {selectedFirm.gst_no || 'N/A'}
-                                    </p>
-                                </div>
-                                
-                                {/* Client Details - Nested inside firm object */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    {/* Left Column */}
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-xs text-blue-600 font-medium mb-1">Client Name</p>
-                                            <p className="text-base font-semibold text-slate-800">{selectedFirm.client?.name}</p>
-                                        </div>
-                                        
-                                        <div>
-                                            <p className="text-xs text-blue-600 font-medium mb-1 flex items-center gap-1">
-                                                <FiPhone className="w-3 h-3" /> Mobile Number
-                                            </p>
-                                            <p className="text-sm text-slate-700">{selectedFirm.client?.mobile || 'Not provided'}</p>
-                                        </div>
-                                        
-                                        <div>
-                                            <p className="text-xs text-blue-600 font-medium mb-1 flex items-center gap-1">
-                                                <FiMail className="w-3 h-3" /> Email Address
-                                            </p>
-                                            <p className="text-sm text-slate-700">{selectedFirm.client?.email || 'Not provided'}</p>
-                                        </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                        <p className="text-xs text-blue-600 font-medium mb-1">Client Name</p>
+                                        <p className="text-sm font-semibold text-slate-800">{selectedFirm.client?.name}</p>
                                     </div>
                                     
-                                    {/* Right Column */}
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-xs text-blue-600 font-medium mb-1 flex items-center gap-1">
-                                                <FiCreditCard className="w-3 h-3" /> PAN Number
-                                            </p>
-                                            <p className="text-sm font-mono text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-blue-200">
-                                                {selectedFirm.client?.pan_number || selectedFirm.pan_no || 'Not provided'}
-                                            </p>
-                                        </div>
-                                        
-                                        <div>
-                                            <p className="text-xs text-blue-600 font-medium mb-1">Username (ID)</p>
-                                            <p className="text-xs font-mono text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-blue-200 break-all">
-                                                {selectedFirm.client?.username}
-                                            </p>
-                                        </div>
-                                        
-                                        {selectedFirm.gst_no && (
-                                            <div>
-                                                <p className="text-xs text-blue-600 font-medium mb-1">GST Number</p>
-                                                <p className="text-xs font-mono text-slate-600">{selectedFirm.gst_no}</p>
-                                            </div>
-                                        )}
+                                    <div>
+                                        <p className="text-xs text-blue-600 font-medium mb-1 flex items-center gap-1">
+                                            <FiPhone className="w-3 h-3" /> Phone
+                                        </p>
+                                        <p className="text-sm text-slate-700">{selectedFirm.client?.mobile || 'N/A'}</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p className="text-xs text-blue-600 font-medium mb-1 flex items-center gap-1">
+                                            <FiCreditCard className="w-3 h-3" /> PAN
+                                        </p>
+                                        <p className="text-sm font-mono text-slate-700">
+                                            {selectedFirm.client?.pan_number || selectedFirm.pan_no || 'N/A'}
+                                        </p>
                                     </div>
                                 </div>
                                 
-                                {/* Address if available */}
-                                {(selectedFirm.address_line_1 || selectedFirm.city || selectedFirm.state) && (
-                                    <div className="mt-3 pt-3 border-t border-blue-200">
-                                        <p className="text-xs text-blue-600 font-medium mb-1">Address</p>
-                                        <p className="text-sm text-slate-700">
-                                            {[
-                                                selectedFirm.address_line_1,
-                                                selectedFirm.address_line_2,
-                                                selectedFirm.city,
-                                                selectedFirm.state,
-                                                selectedFirm.pincode
-                                            ].filter(Boolean).join(', ')}
-                                        </p>
-                                    </div>
-                                )}
+                                {/* Hidden field to store client username */}
+                                <input 
+                                    type="hidden" 
+                                    name="client_username" 
+                                    value={selectedFirm.client?.username} 
+                                />
                             </div>
                         )}
                     </div>
@@ -415,7 +370,7 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
     );
 };
 
-// Payment Modal - Updated with API integration
+// Payment Modal - Updated with single client display
 export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency, summary }) => {
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -606,71 +561,43 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                             </div>
                         )}
 
-                        {/* Selected Firm Details Card */}
+                        {/* Selected Client Details Card - Simplified */}
                         {selectedFirm && (
-                            <div className="mt-4 p-5 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-lg font-semibold text-red-800">Selected Client Details</h3>
-                                    <span className="px-3 py-1 bg-red-600 text-white text-xs rounded-full">Active</span>
+                            <div className="mt-4 p-4 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-sm font-semibold text-red-800">Selected Client</h3>
+                                    <span className="px-2 py-0.5 bg-red-600 text-white text-xs rounded-full">Active</span>
                                 </div>
                                 
-                                {/* Firm Details */}
-                                <div className="mb-4 p-3 bg-white rounded-lg border border-red-200">
-                                    <p className="text-xs text-red-600 font-medium mb-1">Firm Information</p>
-                                    <p className="text-base font-semibold text-slate-800">{selectedFirm.firm_name}</p>
-                                    <p className="text-xs text-slate-600 mt-1">
-                                        {selectedFirm.firm_type} • GST: {selectedFirm.gst_no || 'N/A'}
-                                    </p>
-                                </div>
-                                
-                                {/* Client Details */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-xs text-red-600 font-medium mb-1">Client Name</p>
-                                            <p className="text-base font-semibold text-slate-800">{selectedFirm.client?.name}</p>
-                                        </div>
-                                        
-                                        <div>
-                                            <p className="text-xs text-red-600 font-medium mb-1 flex items-center gap-1">
-                                                <FiPhone className="w-3 h-3" /> Mobile Number
-                                            </p>
-                                            <p className="text-sm text-slate-700">{selectedFirm.client?.mobile || 'Not provided'}</p>
-                                        </div>
-                                        
-                                        <div>
-                                            <p className="text-xs text-red-600 font-medium mb-1 flex items-center gap-1">
-                                                <FiMail className="w-3 h-3" /> Email Address
-                                            </p>
-                                            <p className="text-sm text-slate-700">{selectedFirm.client?.email || 'Not provided'}</p>
-                                        </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                        <p className="text-xs text-red-600 font-medium mb-1">Client Name</p>
+                                        <p className="text-sm font-semibold text-slate-800">{selectedFirm.client?.name}</p>
                                     </div>
                                     
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-xs text-red-600 font-medium mb-1 flex items-center gap-1">
-                                                <FiCreditCard className="w-3 h-3" /> PAN Number
-                                            </p>
-                                            <p className="text-sm font-mono text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-red-200">
-                                                {selectedFirm.client?.pan_number || selectedFirm.pan_no || 'Not provided'}
-                                            </p>
-                                        </div>
-                                        
-                                        <div>
-                                            <p className="text-xs text-red-600 font-medium mb-1">Username (ID)</p>
-                                            <p className="text-xs font-mono text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-red-200 break-all">
-                                                {selectedFirm.client?.username}
-                                            </p>
-                                        </div>
-                                        
-                                        {selectedFirm.gst_no && (
-                                            <div>
-                                                <p className="text-xs text-red-600 font-medium mb-1">GST Number</p>
-                                                <p className="text-xs font-mono text-slate-600">{selectedFirm.gst_no}</p>
-                                            </div>
-                                        )}
+                                    <div>
+                                        <p className="text-xs text-red-600 font-medium mb-1 flex items-center gap-1">
+                                            <FiPhone className="w-3 h-3" /> Phone
+                                        </p>
+                                        <p className="text-sm text-slate-700">{selectedFirm.client?.mobile || 'N/A'}</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p className="text-xs text-red-600 font-medium mb-1 flex items-center gap-1">
+                                            <FiCreditCard className="w-3 h-3" /> PAN
+                                        </p>
+                                        <p className="text-sm font-mono text-slate-700">
+                                            {selectedFirm.client?.pan_number || selectedFirm.pan_no || 'N/A'}
+                                        </p>
                                     </div>
                                 </div>
+                                
+                                {/* Hidden field to store client username */}
+                                <input 
+                                    type="hidden" 
+                                    name="client_username" 
+                                    value={selectedFirm.client?.username} 
+                                />
                             </div>
                         )}
                     </div>
@@ -781,7 +708,6 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
         </BaseModal>
     );
 };
-
 // Sale Modal with Items
 export const SaleModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency }) => {
     const [items, setItems] = useState([{ id: 1, service: '', description: '', price: 0 }]);
