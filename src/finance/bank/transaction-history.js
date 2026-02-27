@@ -18,7 +18,10 @@ import {
     FiTruck,
     FiHome,
     FiGlobe,
-    FiCreditCard
+    FiCreditCard,
+    FiMoreVertical,
+    FiEdit2,
+    FiFile
 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -62,6 +65,7 @@ const TransactionHistory = () => {
     });
     const [showTransactionModal, setShowTransactionModal] = useState(false);
     const [transactionType, setTransactionType] = useState('');
+    const [showActionMenu, setShowActionMenu] = useState(null);
 
     // Fetch bank details and initial transactions
     useEffect(() => {
@@ -97,6 +101,15 @@ const TransactionHistory = () => {
             document.body.style.overflow = 'auto';
         };
     }, [mobileMenuOpen]);
+
+    // Close action menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => {
+            setShowActionMenu(null);
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
 
     // Fetch bank details
     const fetchBankDetails = async () => {
@@ -215,6 +228,26 @@ const TransactionHistory = () => {
         }
     };
 
+    // Handle action click
+    const handleActionClick = (e, transactionId) => {
+        e.stopPropagation();
+        setShowActionMenu(showActionMenu === transactionId ? null : transactionId);
+    };
+
+    // Handle edit
+    const handleEdit = (transaction) => {
+        console.log('Edit transaction:', transaction);
+        toast.success('Edit functionality coming soon');
+        setShowActionMenu(null);
+    };
+
+    // Handle view invoice
+    const handleViewInvoice = (transaction) => {
+        console.log('View invoice:', transaction);
+        toast.success('View invoice functionality coming soon');
+        setShowActionMenu(null);
+    };
+
     // Format currency
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-IN', {
@@ -252,14 +285,14 @@ const TransactionHistory = () => {
     };
 
     // Get transaction type display name
-    const getTransactionTypeDisplay = (type, transactionType) => {
-        if (type === "0") {
-            return 'DEBIT (Money In)';
-        } else if (type === "1") {
-            return 'CREDIT (Money Out)';
-        }
-        return transactionType?.toUpperCase() || 'N/A';
-    };
+    // const getTransactionTypeDisplay = (type) => {
+    //     if (type === "0") {
+    //         return 'Money In';
+    //     } else if (type === "1") {
+    //         return 'Money Out';
+    //     }
+    //     return '';
+    // };
 
     // Get payment mode icon
     const getPaymentModeIcon = (mode) => {
@@ -299,18 +332,20 @@ const TransactionHistory = () => {
         }
     };
 
-    // Get created by display
-    const getCreatedByDisplay = (transaction) => {
+    // Get particulars display
+    const getParticularsDisplay = (transaction) => {
         if (transaction.create_by) {
             return (
-                <div className="text-xs">
-                    <div className="font-medium text-slate-700">{transaction.create_by.name}</div>
-                    <div className="text-slate-400">{transaction.create_by.email}</div>
-                    <div className="text-slate-400">+{transaction.create_by.country_code} {transaction.create_by.mobile}</div>
+                <div className="flex flex-col">
+                    <div className="font-medium text-slate-800">{transaction.create_by.name || 'N/A'}</div>
+                    <div className="text-xs text-slate-500">{transaction.create_by.email || ''}</div>
+                    {transaction.create_by.mobile && (
+                        <div className="text-xs text-slate-500">+{transaction.create_by.country_code || ''} {transaction.create_by.mobile}</div>
+                    )}
                 </div>
             );
         }
-        return <span className="text-xs text-slate-400">N/A</span>;
+        return <span className="text-sm text-slate-500">N/A</span>;
     };
 
     // Loading skeleton
@@ -321,9 +356,10 @@ const TransactionHistory = () => {
             <td className="p-4"><div className="h-4 bg-slate-200 rounded w-32"></div></td>
             <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
             <td className="p-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
-            <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
-            <td className="p-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
-            <td className="p-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
+            <td className="p-4 text-right"><div className="h-4 bg-slate-200 rounded w-20 ml-auto"></div></td>
+            <td className="p-4 text-right"><div className="h-4 bg-slate-200 rounded w-20 ml-auto"></div></td>
+            <td className="p-4 text-right"><div className="h-4 bg-slate-200 rounded w-20 ml-auto"></div></td>
+            <td className="p-4 text-center"><div className="h-8 bg-slate-200 rounded w-8 mx-auto"></div></td>
         </tr>
     );
 
@@ -443,10 +479,10 @@ const TransactionHistory = () => {
                             transition={{ delay: 0.1 }}
                             className="bg-white rounded-xl p-4 shadow-lg border border-slate-200"
                         >
-                            <p className="text-sm text-slate-500 mb-1">Opening Balance</p>
+                            <p className="text-sm text-slate-500 mb-1">Opening</p>
                             <p className={`text-xl font-bold ${openingBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 ₹{formatCurrency(openingBalance)}
-                                {openingBalance < 0 && ' (Overdraft)'}
+                                {openingBalance < 0 && <span className="text-xs ml-1">(OD)</span>}
                             </p>
                         </motion.div>
 
@@ -456,7 +492,7 @@ const TransactionHistory = () => {
                             transition={{ delay: 0.2 }}
                             className="bg-white rounded-xl p-4 shadow-lg border border-slate-200"
                         >
-                            <p className="text-sm text-slate-500 mb-1">Total Debit (Money In)</p>
+                            <p className="text-sm text-slate-500 mb-1">Money In</p>
                             <p className="text-xl font-bold text-green-600">
                                 ₹{formatCurrency(summary.totalDebit)}
                             </p>
@@ -468,7 +504,7 @@ const TransactionHistory = () => {
                             transition={{ delay: 0.3 }}
                             className="bg-white rounded-xl p-4 shadow-lg border border-slate-200"
                         >
-                            <p className="text-sm text-slate-500 mb-1">Total Credit (Money Out)</p>
+                            <p className="text-sm text-slate-500 mb-1">Money Out</p>
                             <p className="text-xl font-bold text-red-600">
                                 ₹{formatCurrency(summary.totalCredit)}
                             </p>
@@ -480,10 +516,10 @@ const TransactionHistory = () => {
                             transition={{ delay: 0.4 }}
                             className="bg-white rounded-xl p-4 shadow-lg border border-slate-200"
                         >
-                            <p className="text-sm text-slate-500 mb-1">Closing Balance</p>
+                            <p className="text-sm text-slate-500 mb-1">Closing</p>
                             <p className={`text-xl font-bold ${summary.closingBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 ₹{formatCurrency(summary.closingBalance)}
-                                {summary.closingBalance < 0 && ' (Overdraft)'}
+                                {summary.closingBalance < 0 && <span className="text-xs ml-1">(OD)</span>}
                             </p>
                         </motion.div>
                     </div>
@@ -560,14 +596,15 @@ const TransactionHistory = () => {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="bg-gradient-to-r from-slate-50 to-slate-100 border-y border-slate-200">
-                                        <th className="text-left p-4 font-semibold text-slate-600 w-16">Sl</th>
+                                        <th className="text-left p-4 font-semibold text-slate-600 w-16">#</th>
                                         <th className="text-left p-4 font-semibold text-slate-600">Date</th>
-                                        <th className="text-left p-4 font-semibold text-slate-600">Created By</th>
-                                        <th className="text-left p-4 font-semibold text-slate-600">Voucher Type</th>
+                                        <th className="text-left p-4 font-semibold text-slate-600">Particulars</th>
+                                        <th className="text-left p-4 font-semibold text-slate-600">Type</th>
                                         <th className="text-left p-4 font-semibold text-slate-600">Voucher No</th>
-                                        <th className="text-right p-4 font-semibold text-slate-600">Debit (Money In)</th>
-                                        <th className="text-right p-4 font-semibold text-slate-600">Credit (Money Out)</th>
+                                        <th className="text-right p-4 font-semibold text-slate-600">Debit</th>
+                                        <th className="text-right p-4 font-semibold text-slate-600">Credit</th>
                                         <th className="text-right p-4 font-semibold text-slate-600">Balance</th>
+                                        <th className="text-center p-4 font-semibold text-slate-600 w-20">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -577,18 +614,19 @@ const TransactionHistory = () => {
                                         <td className="p-4 text-slate-800" colSpan="2">Opening Balance</td>
                                         <td className="p-4"></td>
                                         <td className="p-4"></td>
-                                        <td className="p-4 text-right text-red-600">-</td>
-                                        <td className="p-4 text-right text-green-600">-</td>
+                                        <td className="p-4 text-right text-slate-400">-</td>
+                                        <td className="p-4 text-right text-slate-400">-</td>
                                         <td className={`p-4 text-right font-bold ${openingBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                             ₹{formatCurrency(openingBalance)}
                                         </td>
+                                        <td className="p-4"></td>
                                     </tr>
 
                                     {loading || fetchingTransactions ? (
                                         [...Array(5)].map((_, index) => <SkeletonRow key={index} />)
                                     ) : transactions.length === 0 ? (
                                         <tr>
-                                            <td colSpan="8" className="text-center py-12">
+                                            <td colSpan="9" className="text-center py-12">
                                                 <div className="flex flex-col items-center justify-center">
                                                     <div className="p-4 bg-slate-100 rounded-full mb-4">
                                                         <FiRepeat className="w-8 h-8 text-slate-400" />
@@ -608,23 +646,20 @@ const TransactionHistory = () => {
                                                 className="hover:bg-blue-50/30 transition-colors duration-150"
                                             >
                                                 <td className="p-4 text-slate-600">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                                               <td className="p-3 text-slate-600 text-sm">
+    {formatDate(transaction.transaction_date)}
+</td>
                                                 <td className="p-4">
-                                                    <div className="text-sm font-medium text-slate-800">
-                                                        {formatDate(transaction.transaction_date)}
-                                                    </div>
-                                                    <div className="text-xs text-slate-400">
-                                                        Created: {formatDate(transaction.create_date)}
-                                                    </div>
+                                                    {getParticularsDisplay(transaction)}
                                                 </td>
                                                 <td className="p-4">
-                                                    {getCreatedByDisplay(transaction)}
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className={`px-3 py-1 rounded-lg text-xs font-medium border ${getTransactionTypeColor(transaction.type)}`}>
-                                                        {transaction.transaction_type?.toUpperCase()}
-                                                    </span>
-                                                    <div className="text-xs text-slate-400 mt-1">
-                                                        {getTransactionTypeDisplay(transaction.type, transaction.transaction_type)}
+                                                    <div className="flex flex-col">
+                                                        <span className={`px-3 py-1 rounded-lg text-xs font-medium border w-fit ${getTransactionTypeColor(transaction.type)}`}>
+                                                            {transaction.transaction_type?.toUpperCase()}
+                                                        </span>
+                                                        {/* <span className="text-xs text-slate-500 mt-1">
+                                                            {getTransactionTypeDisplay(transaction.type)}
+                                                        </span> */}
                                                     </div>
                                                 </td>
                                                 <td className="p-4">
@@ -653,11 +688,39 @@ const TransactionHistory = () => {
                                                 <td className="p-4 text-right">
                                                     <span className={`text-sm font-bold ${transaction.new_balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                                         ₹{formatCurrency(transaction.new_balance)}
-                                                        {transaction.new_balance < 0 && ' (OD)'}
+                                                        {transaction.new_balance < 0 && <span className="text-xs ml-1">(OD)</span>}
                                                     </span>
                                                     <div className="text-xs text-slate-400">
                                                         Prev: ₹{formatCurrency(transaction.old_balance)}
                                                     </div>
+                                                </td>
+                                                <td className="p-4 text-center relative">
+                                                    <button
+                                                        onClick={(e) => handleActionClick(e, transaction.transaction_id)}
+                                                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                                                    >
+                                                        <FiMoreVertical className="w-5 h-5 text-slate-600" />
+                                                    </button>
+                                                    
+                                                    {/* Action Menu */}
+                                                    {showActionMenu === transaction.transaction_id && (
+                                                        <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50">
+                                                            <button
+                                                                onClick={() => handleEdit(transaction)}
+                                                                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 transition-colors"
+                                                            >
+                                                                <FiEdit2 className="w-4 h-4 text-blue-600" />
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleViewInvoice(transaction)}
+                                                                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 transition-colors"
+                                                            >
+                                                                <FiFile className="w-4 h-4 text-green-600" />
+                                                                Invoice
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </td>
                                             </motion.tr>
                                         ))
@@ -671,6 +734,7 @@ const TransactionHistory = () => {
                                         <td className={`p-4 text-right ${summary.closingBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                             ₹{formatCurrency(summary.closingBalance)}
                                         </td>
+                                        <td className="p-4"></td>
                                     </tr>
                                 </tbody>
                             </table>
