@@ -49,6 +49,7 @@ const BaseModal = ({ isOpen, onClose, title, children }) => {
 
 // Receive Modal - Updated with correct API response mapping
 // Receive Modal - Updated with single client display
+// Receive Modal - Updated with fix to prevent second API call after selection
 export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency, summary }) => {
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -84,16 +85,24 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
         }
     };
 
-    // Debounce search
+    // Debounce search - but only if no firm is selected
     useEffect(() => {
+        // Don't search if a firm is already selected
+        if (selectedFirm) {
+            return;
+        }
+        
         const debounceTimer = setTimeout(() => {
-            if (searchTerm) {
+            if (searchTerm && searchTerm.length >= 2) {
                 searchClients(searchTerm);
+            } else {
+                setFirms([]);
+                setShowDropdown(false);
             }
         }, 500);
 
         return () => clearTimeout(debounceTimer);
-    }, [searchTerm]);
+    }, [searchTerm, selectedFirm]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -184,14 +193,23 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => {
-                                    setSearchTerm(e.target.value);
-                                    if (!e.target.value) {
+                                    const value = e.target.value;
+                                    setSearchTerm(value);
+                                    // Clear selected firm when user starts typing again
+                                    if (selectedFirm) {
                                         setSelectedFirm(null);
+                                    }
+                                    if (!value) {
                                         setFirms([]);
                                         setShowDropdown(false);
                                     }
                                 }}
-                                onFocus={() => searchTerm && setShowDropdown(true)}
+                                onFocus={() => {
+                                    // Only show dropdown if there are firms and no firm is selected
+                                    if (firms.length > 0 && !selectedFirm) {
+                                        setShowDropdown(true);
+                                    }
+                                }}
                                 placeholder="Type client name, mobile or PAN to search..."
                                 className="w-full px-4 py-3 pl-10 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             />
@@ -214,7 +232,7 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                                             setSelectedFirm(firm);
                                             setSearchTerm(firm.firm_name);
                                             setShowDropdown(false);
-                                            setFirms([]);
+                                            setFirms([]); // Clear the firms list
                                         }}
                                         className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-slate-100 last:border-0 transition-colors"
                                     >
@@ -370,7 +388,7 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
     );
 };
 
-// Payment Modal - Updated with single client display
+// Payment Modal - Updated with fix to prevent second API call after selection
 export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency, summary }) => {
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -406,16 +424,24 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
         }
     };
 
-    // Debounce search
+    // Debounce search - but only if no firm is selected
     useEffect(() => {
+        // Don't search if a firm is already selected
+        if (selectedFirm) {
+            return;
+        }
+        
         const debounceTimer = setTimeout(() => {
-            if (searchTerm) {
+            if (searchTerm && searchTerm.length >= 2) {
                 searchClients(searchTerm);
+            } else {
+                setFirms([]);
+                setShowDropdown(false);
             }
         }, 500);
 
         return () => clearTimeout(debounceTimer);
-    }, [searchTerm]);
+    }, [searchTerm, selectedFirm]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -507,14 +533,23 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => {
-                                    setSearchTerm(e.target.value);
-                                    if (!e.target.value) {
+                                    const value = e.target.value;
+                                    setSearchTerm(value);
+                                    // Clear selected firm when user starts typing again
+                                    if (selectedFirm) {
                                         setSelectedFirm(null);
+                                    }
+                                    if (!value) {
                                         setFirms([]);
                                         setShowDropdown(false);
                                     }
                                 }}
-                                onFocus={() => searchTerm && setShowDropdown(true)}
+                                onFocus={() => {
+                                    // Only show dropdown if there are firms and no firm is selected
+                                    if (firms.length > 0 && !selectedFirm) {
+                                        setShowDropdown(true);
+                                    }
+                                }}
                                 placeholder="Type client name, mobile or PAN to search..."
                                 className="w-full px-4 py-3 pl-10 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             />
@@ -537,7 +572,7 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                                             setSelectedFirm(firm);
                                             setSearchTerm(firm.firm_name);
                                             setShowDropdown(false);
-                                            setFirms([]);
+                                            setFirms([]); // Clear the firms list
                                         }}
                                         className="w-full px-4 py-3 text-left hover:bg-red-50 border-b border-slate-100 last:border-0 transition-colors"
                                     >
