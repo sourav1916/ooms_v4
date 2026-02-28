@@ -9,6 +9,7 @@ import Login from './pages/login';
 import PageNotFound from './pages/error/page-not-found';
 import Dashboard from './pages/dashboard';
 import TaskCreate from './pages/task-create';
+// import TaskProfileClient from './TaskComponent/taskprofile';
 import Register from './pages/register';
 import TaskDisplay from './pages/task-display';
 import CreateClient from './pages/client-create';
@@ -137,6 +138,13 @@ root.render(
           <TaskProfile />
         </ProtectedRoute>
       } />
+{/* 
+ <Route path="/task/profile/client" element={
+        <ProtectedRoute>
+          <TaskProfileClient />
+        </ProtectedRoute>
+      } /> */}
+      
 
       <Route path="/client/create" element={
         <ProtectedRoute>
