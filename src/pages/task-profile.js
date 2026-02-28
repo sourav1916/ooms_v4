@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Sidebar, Header } from '../components/header';
 import {
     FiClipboard,
@@ -23,12 +24,22 @@ import DocumentsTab from '../TaskComponent/DocumentTab';
 import LedgerTab from '../TaskComponent/LedgerTab';
 
 const TaskProfile = () => {
+    const navigate = useNavigate();
+    const { tab } = useParams();
+    
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(() => {
         const saved = localStorage.getItem('sidebarMinimized');
         return saved ? JSON.parse(saved) : false;
     });
-    const [activeTab, setActiveTab] = useState('details');
+    const [activeTab, setActiveTab] = useState(tab || 'details');
+    
+    // Update active tab when URL changes
+    useEffect(() => {
+        if (tab) {
+            setActiveTab(tab);
+        }
+    }, [tab]);
     
     // Task data
     const [taskData, setTaskData] = useState({
@@ -90,16 +101,22 @@ const TaskProfile = () => {
         closingBalance: "5,998.00"
     });
 
-    // Profile tabs
+    // Profile tabs with paths
     const profileTabs = [
-        { id: 'details', name: 'Details', icon: FiClipboard },
-        { id: 'notes', name: 'Notes', icon: FiMessageSquare },
-        { id: 'staff', name: 'Staff', icon: FiUsers },
-        { id: 'timelog', name: 'Timelog', icon: FiClock },
-        { id: 'subtask', name: 'Subtask', icon: FiCheckSquare },
-        { id: 'documents', name: 'Documents', icon: FiFile },
-        { id: 'ledger', name: 'Ledger', icon: FiDollarSign }
+        { id: 'details', name: 'Details', icon: FiClipboard, path: '/task/profile/details' },
+        { id: 'notes', name: 'Notes', icon: FiMessageSquare, path: '/task/profile/notes' },
+        { id: 'staff', name: 'Staff', icon: FiUsers, path: '/task/profile/staff' },
+        { id: 'timelog', name: 'Timelog', icon: FiClock, path: '/task/profile/timelog' },
+        { id: 'subtask', name: 'Subtask', icon: FiCheckSquare, path: '/task/profile/subtask' },
+        { id: 'documents', name: 'Documents', icon: FiFile, path: '/task/profile/documents' },
+        { id: 'ledger', name: 'Ledger', icon: FiDollarSign, path: '/task/profile/ledger' }
     ];
+
+    // Handle tab change with navigation
+    const handleTabChange = (tabId) => {
+        setActiveTab(tabId);
+        navigate(`/task/profile/${tabId}`);
+    };
 
     // Animation variants
     const tabContentVariants = {
@@ -119,17 +136,17 @@ const TaskProfile = () => {
             case 'details':
                 return <DetailsTab key="details" taskData={taskData} {...props} />;
             case 'notes':
-                return <NotesTab key="notes" notes={notes} {...props} />;
+                return <NotesTab key="notes" notes={notes} setNotes={setNotes} {...props} />;
             case 'staff':
-                return <StaffTab key="staff" staff={staff} availableStaff={availableStaff} {...props} />;
+                return <StaffTab key="staff" staff={staff} setStaff={setStaff} availableStaff={availableStaff} {...props} />;
             case 'timelog':
-                return <TimelogTab key="timelog" timelogs={timelogs} {...props} />;
+                return <TimelogTab key="timelog" timelogs={timelogs} setTimelogs={setTimelogs} {...props} />;
             case 'subtask':
-                return <SubtaskTab key="subtask" subtasks={subtasks} availableStaff={availableStaff} {...props} />;
+                return <SubtaskTab key="subtask" subtasks={subtasks} setSubtasks={setSubtasks} availableStaff={availableStaff} {...props} />;
             case 'documents':
-                return <DocumentsTab key="documents" documents={documents} {...props} />;
+                return <DocumentsTab key="documents" documents={documents} setDocuments={setDocuments} {...props} />;
             case 'ledger':
-                return <LedgerTab key="ledger" ledger={ledger} {...props} />;
+                return <LedgerTab key="ledger" ledger={ledger} setLedger={setLedger} {...props} />;
             default:
                 return null;
         }
@@ -203,7 +220,7 @@ const TaskProfile = () => {
                                 return (
                                     <motion.button
                                         key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
+                                        onClick={() => handleTabChange(tab.id)}
                                         className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md whitespace-nowrap ${
                                             isActive 
                                                 ? 'bg-blue-100 text-blue-700' 

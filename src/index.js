@@ -138,6 +138,12 @@ root.render(
           <TaskProfile />
         </ProtectedRoute>
       } />
+
+      <Route path="/task/profile/:tab?" element={
+  <ProtectedRoute>
+    <TaskProfile />
+  </ProtectedRoute>
+} />
 {/* 
  <Route path="/task/profile/client" element={
         <ProtectedRoute>
