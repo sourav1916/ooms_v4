@@ -28,6 +28,7 @@ import ViewContra from './pages/contra-display';
 import ViewJournal from './pages/journal-display';
 import ViewExpenses from './pages/expense-display';
 import ViewStaff from './pages/staff-display';
+import ViewStaffProfile from './pages/staff-profile';
 import StaffReport from './pages/staff-report';
 import ManageAttendance from './pages/staff-attendance';
 import OfficeAssistance from './pages/office-assistance';
@@ -273,6 +274,20 @@ root.render(
           <ViewStaff />
         </ProtectedRoute>
       } />
+ 
+      <Route path="/staff/view/profile" element={
+        <ProtectedRoute>
+          <ViewStaffProfile/>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/staff/view/profile/:tab?" element={
+  <ProtectedRoute>
+    <ViewStaffProfile/>
+  </ProtectedRoute>
+} />
+
+
 
       <Route path="/staff/team-report" element={
         <ProtectedRoute>
