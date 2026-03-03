@@ -1,5 +1,5 @@
 // pages/TransactionHistory.jsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, forwardRef, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Header, Sidebar } from '../../components/header';
 import {
@@ -29,6 +29,429 @@ import API_BASE_URL from '../../utils/api-controller';
 import getHeaders from '../../utils/get-headers';
 import axios from 'axios';
 import { TransactionModalManager } from './bank-modals';
+import DatePicker from 'react-datepicker';
+import { Calendar, X, ChevronDown } from 'lucide-react';
+import "react-datepicker/dist/react-datepicker.css";
+
+// Custom input component for date range
+const CustomInput = forwardRef(({ value, onClick, placeholder, onClear, isOpen }, ref) => (
+    <div className="relative group" onClick={onClick} ref={ref}>
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Calendar className="h-4 w-4 text-indigo-500" />
+        </div>
+        <input
+            type="text"
+            readOnly
+            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 text-sm cursor-pointer hover:border-indigo-400 transition-all"
+            placeholder={placeholder}
+            value={value}
+        />
+        <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
+            {value && value !== 'Select date range' && (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onClear();
+                    }}
+                    className="flex items-center text-gray-400 hover:text-red-500 transition-colors mr-1"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+            )}
+            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+    </div>
+));
+
+// DateRangePicker Component - Compact version with dropdown
+const DateRangePicker = ({
+    startDate,
+    endDate,
+    onStartDateChange,
+    onEndDateChange,
+    minDate,
+    maxDate
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [localStartDate, setLocalStartDate] = useState(startDate ? new Date(startDate) : null);
+    const [localEndDate, setLocalEndDate] = useState(endDate ? new Date(endDate) : null);
+    const [showCustomPicker, setShowCustomPicker] = useState(false);
+    const dropdownRef = useRef(null);
+    const startDatePickerRef = useRef(null);
+    const endDatePickerRef = useRef(null);
+
+    // Quick date filters - Updated with your requirements
+    const quickDateFilters = [
+        { label: 'Last Month', type: 'lastMonth' },
+        { label: 'Last 3 Months', type: 'last3Months' },
+        { label: 'Last 6 Months', type: 'last6Months' },
+        { label: 'Last Year', type: 'lastYear' },
+    ];
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            // Check if the click is on the calendar popper
+            const isCalendarPopper = event.target.closest('.react-datepicker-popper');
+            
+            // Only close if clicking outside both the dropdown and the calendar
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !isCalendarPopper) {
+                setIsOpen(false);
+                setShowCustomPicker(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Update local state when props change
+    useEffect(() => {
+        setLocalStartDate(startDate ? new Date(startDate) : null);
+        setLocalEndDate(endDate ? new Date(endDate) : null);
+    }, [startDate, endDate]);
+
+    const formatRangeDisplay = () => {
+        if (!startDate && !endDate) return 'Select Range';
+        
+        const format = (dateStr) => {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${monthNames[d.getMonth()]} ${d.getDate()}`;
+        };
+        
+        if (startDate && endDate) {
+            return `${format(startDate)} - ${format(endDate)}`;
+        }
+        return 'Select Range';
+    };
+
+    const formatDateString = (date) => {
+        if (!date) return '';
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
+    const handleQuickDateFilter = (filter) => {
+        const today = new Date();
+        let startDate = new Date();
+        let endDate = new Date();
+
+        if (filter.type === 'lastMonth') {
+            // First day of last month to last day of last month
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            startDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+            endDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+        } else if (filter.type === 'last3Months') {
+            // Last 3 months from today
+            startDate.setMonth(today.getMonth() - 3);
+            endDate = today;
+        } else if (filter.type === 'last6Months') {
+            // Last 6 months from today
+            startDate.setMonth(today.getMonth() - 6);
+            endDate = today;
+        } else if (filter.type === 'lastYear') {
+            // Last 12 months from today
+            startDate.setMonth(today.getMonth() - 12);
+            endDate = today;
+        }
+
+        setLocalStartDate(startDate);
+        setLocalEndDate(endDate);
+        
+        onStartDateChange(startDate.toISOString().split('T')[0]);
+        onEndDateChange(endDate.toISOString().split('T')[0]);
+        setIsOpen(false);
+        setShowCustomPicker(false);
+    };
+
+    const handleApplyDate = () => {
+        if (localStartDate && localEndDate) {
+            onStartDateChange(localStartDate.toISOString().split('T')[0]);
+            onEndDateChange(localEndDate.toISOString().split('T')[0]);
+            setIsOpen(false);
+            setShowCustomPicker(false);
+        }
+    };
+
+    const clearDates = () => {
+        setLocalStartDate(null);
+        setLocalEndDate(null);
+        onStartDateChange('');
+        onEndDateChange('');
+        setIsOpen(false);
+        setShowCustomPicker(false);
+    };
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <style>{`
+                .datepicker-popper-custom {
+                    z-index: 9999 !important;
+                }
+                .react-datepicker-popper {
+                    z-index: 99999 !important;
+                }
+                .react-datepicker {
+                    font-family: inherit;
+                    border: 2px solid #e5e7eb;
+                    border-radius: 0.75rem;
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                    overflow: hidden;
+                }
+                .react-datepicker__header {
+                    background: linear-gradient(to right, #eef2ff, #f5f3ff);
+                    border-bottom: 1px solid #e5e7eb;
+                    padding-top: 0.75rem;
+                }
+                .react-datepicker__current-month {
+                    color: #374151;
+                    font-weight: 600;
+                    font-size: 0.9rem;
+                    margin-bottom: 0.5rem;
+                }
+                .react-datepicker__day-names {
+                    display: flex;
+                    justify-content: space-around;
+                    padding: 0.5rem 0;
+                    margin: 0;
+                }
+                .react-datepicker__day-name {
+                    color: #6b7280;
+                    font-weight: 600;
+                    font-size: 0.7rem;
+                    width: 2rem;
+                    line-height: 2rem;
+                    margin: 0;
+                    text-transform: uppercase;
+                }
+                .react-datepicker__month {
+                    margin: 0.5rem;
+                }
+                .react-datepicker__week {
+                    display: flex;
+                    justify-content: space-around;
+                }
+                .react-datepicker__day {
+                    width: 2rem;
+                    height: 2rem;
+                    line-height: 2rem;
+                    margin: 0.125rem;
+                    border-radius: 0.375rem;
+                    color: #374151;
+                    font-weight: 500;
+                    font-size: 0.85rem;
+                    transition: all 0.15s ease;
+                }
+                .react-datepicker__day:hover {
+                    background-color: #eef2ff;
+                    color: #4f46e5;
+                }
+                .react-datepicker__day--selected,
+                .react-datepicker__day--in-range,
+                .react-datepicker__day--in-selecting-range {
+                    background-color: #4f46e5 !important;
+                    color: white !important;
+                    font-weight: 600;
+                }
+                .react-datepicker__day--range-start,
+                .react-datepicker__day--range-end {
+                    background-color: #4338ca !important;
+                }
+                .react-datepicker__day--keyboard-selected {
+                    background-color: #eef2ff;
+                    color: #4f46e5;
+                }
+                .react-datepicker__day--today {
+                    font-weight: 700;
+                    color: #4f46e5;
+                    background-color: #eef2ff;
+                }
+                .react-datepicker__day--disabled {
+                    color: #d1d5db;
+                    cursor: not-allowed;
+                }
+                .react-datepicker__day--disabled:hover {
+                    background-color: transparent;
+                }
+                .react-datepicker__day--outside-month {
+                    color: #d1d5db;
+                }
+                .react-datepicker__navigation {
+                    top: 0.75rem;
+                }
+                .react-datepicker__navigation-icon::before {
+                    border-color: #6b7280;
+                }
+                .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
+                    border-color: #4f46e5;
+                }
+            `}</style>
+
+            {/* Compact Dropdown Button */}
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center justify-between w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+            >
+                <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-indigo-500" />
+                    <span className="text-gray-700">
+                        {formatRangeDisplay()}
+                    </span>
+                </div>
+                <div className="flex items-center">
+                    {(startDate || endDate) && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                clearDates();
+                            }}
+                            className="mr-1 text-gray-400 hover:text-red-500"
+                        >
+                            <X className="h-3 w-3" />
+                        </button>
+                    )}
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </div>
+            </button>
+
+            {/* Dropdown Menu */}
+            {isOpen && (
+                <div className="absolute left-0 mt-1 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] overflow-visible">
+                    <div className="p-3">
+                        {/* Month Selection Dropdown */}
+                        <div className="mb-3">
+                            <select
+                                onChange={(e) => {
+                                    const filter = quickDateFilters.find(f => f.label === e.target.value);
+                                    if (filter) handleQuickDateFilter(filter);
+                                }}
+                                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                defaultValue=""
+                            >
+                                <option value="" disabled>Select Month Range</option>
+                                {quickDateFilters.map((filter, index) => (
+                                    <option key={index} value={filter.label}>
+                                        {filter.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Custom Range Toggle */}
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-medium text-gray-500">Custom Range</span>
+                            <button
+                                onClick={() => setShowCustomPicker(!showCustomPicker)}
+                                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                            >
+                                {showCustomPicker ? 'Hide' : 'Show'}
+                            </button>
+                        </div>
+
+                        {/* Custom Date Range Selection */}
+                        {showCustomPicker && (
+                            <div className="space-y-3 mb-3">
+                                {/* From Date */}
+                                <div className="relative" ref={startDatePickerRef}>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                                        From Date
+                                    </label>
+                                    <DatePicker
+                                        selected={localStartDate}
+                                        onChange={(date) => setLocalStartDate(date)}
+                                        customInput={
+                                            <div className="relative cursor-pointer">
+                                                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                                    <Calendar className="h-3 w-3 text-indigo-500" />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={localStartDate ? formatDateString(localStartDate) : ''}
+                                                    readOnly
+                                                    className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 cursor-pointer"
+                                                    placeholder="DD/MM/YYYY"
+                                                />
+                                            </div>
+                                        }
+                                        dateFormat="dd/MM/yyyy"
+                                        minDate={minDate ? new Date(minDate) : null}
+                                        maxDate={localEndDate || (maxDate ? new Date(maxDate) : new Date())}
+                                        popperClassName="!z-[99999]"
+                                        popperPlacement="bottom-start"
+                                        shouldCloseOnSelect={true}
+                                        withPortal={false}
+                                    />
+                                </div>
+                                
+                                {/* To Date */}
+                                <div className="relative" ref={endDatePickerRef}>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                                        To Date
+                                    </label>
+                                    <DatePicker
+                                        selected={localEndDate}
+                                        onChange={(date) => setLocalEndDate(date)}
+                                        customInput={
+                                            <div className="relative cursor-pointer">
+                                                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                                    <Calendar className="h-3 w-3 text-indigo-500" />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={localEndDate ? formatDateString(localEndDate) : ''}
+                                                    readOnly
+                                                    className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 cursor-pointer"
+                                                    placeholder="DD/MM/YYYY"
+                                                />
+                                            </div>
+                                        }
+                                        dateFormat="dd/MM/yyyy"
+                                        minDate={localStartDate || (minDate ? new Date(minDate) : null)}
+                                        maxDate={maxDate ? new Date(maxDate) : new Date()}
+                                        popperClassName="!z-[99999]"
+                                        popperPlacement="bottom-start"
+                                        shouldCloseOnSelect={true}
+                                        withPortal={false}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        {showCustomPicker && (
+                            <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
+                                <button
+                                    onClick={() => {
+                                        setIsOpen(false);
+                                        setShowCustomPicker(false);
+                                    }}
+                                    className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleApplyDate}
+                                    disabled={!localStartDate || !localEndDate}
+                                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${
+                                        localStartDate && localEndDate
+                                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                    }`}
+                                >
+                                    Apply
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const TransactionHistory = () => {
     const location = useLocation();
@@ -524,47 +947,43 @@ const TransactionHistory = () => {
                         </motion.div>
                     </div>
 
-                    {/* Date Filter Card */}
+                    {/* Date Filter Card - Compact Version */}
                     <motion.div 
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5 }}
-                        className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 mb-6"
+                        className="bg-white rounded-xl shadow-lg border border-slate-200 p-3 mb-6"
                     >
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                                <FiCalendar className="text-blue-600 w-5 h-5" />
-                                <span className="text-sm font-medium text-slate-700">Date Range:</span>
+                                <FiCalendar className="text-blue-600 w-4 h-4" />
+                                <span className="text-xs font-medium text-slate-700">Date Range:</span>
                             </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <input
-                                    type="date"
-                                    value={fromDate}
-                                    onChange={(e) => setFromDate(e.target.value)}
-                                    className="px-4 py-2 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                />
-                                <span className="text-slate-500">to</span>
-                                <input
-                                    type="date"
-                                    value={toDate}
-                                    onChange={(e) => setToDate(e.target.value)}
-                                    className="px-4 py-2 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                />
+                            <div className="flex flex-wrap items-center gap-2">
+                                {/* DateRangePicker Component */}
+                                <div className="w-48">
+                                    <DateRangePicker
+                                        startDate={fromDate}
+                                        endDate={toDate}
+                                        onStartDateChange={setFromDate}
+                                        onEndDateChange={setToDate}
+                                    />
+                                </div>
                                 <button
                                     onClick={handleSearch}
                                     disabled={fetchingTransactions}
-                                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200 flex items-center gap-2"
+                                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-xs font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200 flex items-center gap-1"
                                 >
                                     {fetchingTransactions ? (
                                         <>
-                                            <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                            <svg className="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            Loading...
+                                            <span>Loading...</span>
                                         </>
                                     ) : (
-                                        'Apply Filter'
+                                        'Apply'
                                     )}
                                 </button>
                                 {(fromDate || toDate) && (
