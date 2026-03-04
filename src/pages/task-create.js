@@ -1023,7 +1023,16 @@ const TaskCreate = () => {
         setSubmitting(true);
 
         const feesNum = parseFloat(String(formData.fees || '0').trim()) || 0;
-        const dueDateStr = formData.due_date ? String(formData.due_date).trim() : '';
+        const dueDateForPayload = (() => {
+            const raw = formData.due_date ? String(formData.due_date).trim() : '';
+            if (!raw) return '';
+            const d = parseDueDate(raw);
+            if (!d) return raw;
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        })();
 
         const payload = {
             firms: formData.firm_ids || [],
@@ -1031,7 +1040,7 @@ const TaskCreate = () => {
             service: {
                 service_id: formData.service_id || '',
                 fees: feesNum,
-                due_date: dueDateStr,
+                due_date: dueDateForPayload,
                 has_financial_year: formData.has_fy === '1',
                 financial_years: formData.has_fy === '1' ? (formData.fy || []) : [],
                 has_assisment_year: formData.has_ay === '1',
@@ -1059,10 +1068,22 @@ const TaskCreate = () => {
         };
 
         try {
-            // TODO: POST payload to task create API when endpoint is ready
-            console.log('Task create payload:', payload);
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            alert('Task created successfully!');
+            const headers = getHeaders();
+            if (!headers) {
+                toast.error('Authentication required');
+                return;
+            }
+
+            console.log(payload);
+            return;
+
+
+            const res = await axios.post(`${API_BASE_URL}/task/create`, payload, { headers });
+            if (!res.data?.success) {
+                toast.error(res.data?.message || 'Failed to create task');
+                return;
+            }
+            toast.success(res.data?.message || 'Task created successfully!');
             setFormData({
                 firm_ids: [],
                 group_ids: [],
@@ -1098,7 +1119,8 @@ const TaskCreate = () => {
             setCurrentStep(1);
         } catch (error) {
             console.error('Error creating task:', error);
-            alert('Error creating task. Please try again.');
+            const msg = error.response?.data?.message || error.message || 'Failed to create task. Please try again.';
+            toast.error(msg);
         } finally {
             setSubmitting(false);
         }
