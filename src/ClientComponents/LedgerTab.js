@@ -53,7 +53,10 @@ const DateRangePicker = ({
     const endDatePickerRef = useRef(null);
 
     // Quick date filters - Updated with your requirements
+      // Quick date filters - Updated with your requirements
     const quickDateFilters = [
+        { label: 'Current Month', type: 'currentMonth' },
+        { label: 'Last 7 Days', type: 'last7Days' },
         { label: 'Last Month', type: 'lastMonth' },
         { label: 'Last 3 Months', type: 'last3Months' },
         { label: 'Last 6 Months', type: 'last6Months' },
@@ -106,12 +109,20 @@ const DateRangePicker = ({
         return `${day}/${month}/${year}`;
     };
 
-    const handleQuickDateFilter = (filter) => {
+       const handleQuickDateFilter = (filter) => {
         const today = new Date();
         let startDate = new Date();
         let endDate = new Date();
 
-        if (filter.type === 'lastMonth') {
+        if (filter.type === 'currentMonth') {
+            // First day of current month to today
+            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            endDate = today;
+        } else if (filter.type === 'last7Days') {
+            // Last 7 days from today
+            startDate.setDate(today.getDate() - 7);
+            endDate = today;
+        } else if (filter.type === 'lastMonth') {
             // First day of last month to last day of last month
             const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
             startDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
