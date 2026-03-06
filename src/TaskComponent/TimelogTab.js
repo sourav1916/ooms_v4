@@ -8,13 +8,12 @@ import {
     FiX
 } from 'react-icons/fi';
 
-const TimelogTab = ({ timelogs: initialTimelogs, variants }) => {
-    const [timelogs, setTimelogs] = useState(initialTimelogs);
+const TimelogTab = ({ timelogs = [] }) => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [hours, setHours] = useState('');
     const [description, setDescription] = useState('');
 
-    const totalHours = timelogs.reduce((acc, log) => {
+    const totalHours = (timelogs || []).reduce((acc, log) => {
         const hours = parseInt(log.spent) || 0;
         return acc + hours;
     }, 0);
@@ -25,15 +24,7 @@ const TimelogTab = ({ timelogs: initialTimelogs, variants }) => {
 
     const handleAddTimelog = () => {
         if (hours && description) {
-            const newLog = {
-                id: timelogs.length + 1,
-                createDate: new Date().toLocaleDateString('en-GB'),
-                name: description,
-                user: "Current User",
-                timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                spent: `${hours} hours`
-            };
-            setTimelogs([newLog, ...timelogs]);
+            // Add your API call here later
             setHours('');
             setDescription('');
             setShowAddModal(false);
@@ -41,13 +32,7 @@ const TimelogTab = ({ timelogs: initialTimelogs, variants }) => {
     };
 
     return (
-        <motion.div
-            variants={variants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="bg-white rounded-lg border border-gray-200 p-6"
-        >
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -85,9 +70,9 @@ const TimelogTab = ({ timelogs: initialTimelogs, variants }) => {
                     </thead>
                     <tbody>
                         <AnimatePresence>
-                            {timelogs.map((log, index) => (
+                            {(timelogs || []).map((log, index) => (
                                 <motion.tr
-                                    key={log.id}
+                                    key={log.id || index}
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
@@ -98,20 +83,20 @@ const TimelogTab = ({ timelogs: initialTimelogs, variants }) => {
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-1">
                                             <FiCalendar className="w-3 h-3 text-gray-400" />
-                                            {log.createDate}
+                                            {log.createDate || 'N/A'}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 font-medium">{log.name}</td>
+                                    <td className="px-4 py-3 font-medium">{log.name || 'N/A'}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-1">
                                             <FiUser className="w-3 h-3 text-gray-400" />
-                                            {log.user}
+                                            {log.user || 'N/A'}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3">{log.timestamp}</td>
+                                    <td className="px-4 py-3">{log.timestamp || 'N/A'}</td>
                                     <td className="px-4 py-3">
                                         <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium">
-                                            {log.spent}
+                                            {log.spent || '0 hours'}
                                         </span>
                                     </td>
                                 </motion.tr>
@@ -120,7 +105,7 @@ const TimelogTab = ({ timelogs: initialTimelogs, variants }) => {
                     </tbody>
                 </table>
 
-                {timelogs.length === 0 && (
+                {(!timelogs || timelogs.length === 0) && (
                     <div className="text-center py-12 text-gray-500">
                         <FiClock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                         <p>No time logs yet. Click the button above to add one.</p>
@@ -128,7 +113,7 @@ const TimelogTab = ({ timelogs: initialTimelogs, variants }) => {
                 )}
             </div>
 
-            {/* Add Timelog Modal */}
+            {/* Add Timelog Modal - Keep as is */}
             <AnimatePresence>
                 {showAddModal && (
                     <motion.div
@@ -211,7 +196,7 @@ const TimelogTab = ({ timelogs: initialTimelogs, variants }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </motion.div>
+        </div>
     );
 };
 

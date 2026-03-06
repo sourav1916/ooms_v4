@@ -43,7 +43,14 @@ import {
     FiSave,
     FiList,
     FiChevronDown,
-    FiChevronUp
+    FiChevronUp,
+    FiMapPin,
+    FiCalendar as FiCalendarIcon,
+    FiDollarSign as FiDollarSignIcon,
+    FiCreditCard,
+    FiHome,
+    FiMap,
+    FiGlobe
 } from 'react-icons/fi';
 
 import { PiExportBold } from "react-icons/pi";
@@ -73,7 +80,229 @@ import {
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// View Mode Toggle Component - Updated for header placement
+// Import API utilities
+import getHeaders from '../utils/get-headers';
+import API_BASE_URL from '../utils/api-controller';
+
+// Client Details Modal Component
+const ClientDetailsModal = ({ isOpen, onClose, clientData, loading }) => {
+    if (!isOpen) return null;
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB');
+    };
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                >
+                    <motion.div
+                        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-auto overflow-hidden"
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
+                                        {clientData?.basic?.image ? (
+                                            <img 
+                                                src={clientData.basic.image} 
+                                                alt={clientData.basic.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <FiUser className="w-6 h-6 text-white" />
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold">Client Details</h3>
+                                        <p className="text-indigo-100 text-sm">{clientData?.basic?.name || 'Client Information'}</p>
+                                    </div>
+                                </div>
+                                <motion.button
+                                    onClick={onClose}
+                                    className="text-white hover:text-indigo-200 transition-colors p-2 rounded-lg hover:bg-white/10"
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </motion.button>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 max-h-[70vh] overflow-y-auto">
+                            {loading ? (
+                                <div className="flex justify-center py-8">
+                                    <FiLoader className="w-8 h-8 text-indigo-600 animate-spin" />
+                                </div>
+                            ) : clientData ? (
+                                <div className="space-y-6">
+                                    {/* Basic Information */}
+                                    <div>
+                                        <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                            <FiUser className="w-4 h-4 text-indigo-600" />
+                                            Basic Information
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                                            <div>
+                                                <p className="text-xs text-gray-500">Full Name</p>
+                                                <p className="font-medium text-gray-800">{clientData.basic?.name || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500">Care Of</p>
+                                                <p className="font-medium text-gray-800">{clientData.basic?.care_of || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500">Guardian Name</p>
+                                                <p className="font-medium text-gray-800">{clientData.basic?.guardian_name || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500">Date of Birth</p>
+                                                <p className="font-medium text-gray-800">{formatDate(clientData.basic?.date_of_birth)}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500">Gender</p>
+                                                <p className="font-medium text-gray-800 capitalize">{clientData.basic?.gender || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500">PAN Number</p>
+                                                <p className="font-medium text-gray-800">{clientData.basic?.pan_number || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500">Status</p>
+                                                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${clientData.basic?.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                    {clientData.basic?.is_active ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Contact Information */}
+                                    <div>
+                                        <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                            <FiMail className="w-4 h-4 text-indigo-600" />
+                                            Contact Information
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                                            <div>
+                                                <p className="text-xs text-gray-500">Mobile</p>
+                                                <p className="font-medium text-gray-800">
+                                                    {clientData.basic?.country_code ? `+${clientData.basic.country_code} ` : ''}{clientData.basic?.mobile || 'N/A'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-gray-500">Email</p>
+                                                <p className="font-medium text-gray-800">{clientData.basic?.email || 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Address Information */}
+                                    {clientData.basic?.address && (
+                                        <div>
+                                            <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                                <FiMapPin className="w-4 h-4 text-indigo-600" />
+                                                Address Information
+                                            </h4>
+                                            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                                                <div className="col-span-2">
+                                                    <p className="text-xs text-gray-500">Address Line 1</p>
+                                                    <p className="font-medium text-gray-800">{clientData.basic.address.address_line_1 || 'N/A'}</p>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <p className="text-xs text-gray-500">Address Line 2</p>
+                                                    <p className="font-medium text-gray-800">{clientData.basic.address.address_line_2 || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Village/Town</p>
+                                                    <p className="font-medium text-gray-800">{clientData.basic.address.village_town || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">City</p>
+                                                    <p className="font-medium text-gray-800">{clientData.basic.address.city || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">District</p>
+                                                    <p className="font-medium text-gray-800">{clientData.basic.address.district || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">State</p>
+                                                    <p className="font-medium text-gray-800">{clientData.basic.address.state || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Pincode</p>
+                                                    <p className="font-medium text-gray-800">{clientData.basic.address.pincode || 'N/A'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Transactional Information */}
+                                    {clientData.transactional && (
+                                        <div>
+                                            <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                                <FiDollarSignIcon className="w-4 h-4 text-indigo-600" />
+                                                Transactional Information
+                                            </h4>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div className="bg-blue-50 p-3 rounded-lg text-center">
+                                                    <p className="text-xs text-blue-600 font-medium">Balance</p>
+                                                    <p className="text-lg font-bold text-blue-700">₹{clientData.transactional?.balance?.toLocaleString() || 0}</p>
+                                                </div>
+                                                <div className="bg-green-50 p-3 rounded-lg text-center">
+                                                    <p className="text-xs text-green-600 font-medium">Credit</p>
+                                                    <p className="text-lg font-bold text-green-700">₹{clientData.transactional?.credit?.toLocaleString() || 0}</p>
+                                                </div>
+                                                <div className="bg-red-50 p-3 rounded-lg text-center">
+                                                    <p className="text-xs text-red-600 font-medium">Debit</p>
+                                                    <p className="text-lg font-bold text-red-700">₹{clientData.transactional?.debit?.toLocaleString() || 0}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <p className="text-gray-500">No client data available</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                            <div className="flex justify-end">
+                                <motion.button
+                                    onClick={onClose}
+                                    className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 font-medium text-sm"
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    Close
+                                </motion.button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
+// View Mode Toggle Component
 const TableViewSwitch = ({ viewMode, setViewMode }) => {
     return (
         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
@@ -130,7 +359,7 @@ const UsersListModal = ({ isOpen, onClose, users, taskName }) => {
                                         <FiUsers className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold">Assigned Users</h3>
+                                        <h3 className="text-lg font-bold">Assigned Staff</h3>
                                         <p className="text-indigo-100 text-sm">Task: {taskName}</p>
                                     </div>
                                 </div>
@@ -150,22 +379,22 @@ const UsersListModal = ({ isOpen, onClose, users, taskName }) => {
                             <div className="space-y-3">
                                 {users.map((user, index) => (
                                     <motion.div
-                                        key={user.employee_username}
+                                        key={user.username}
                                         className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: index * 0.05 }}
                                     >
                                         <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
-                                            {user.name.charAt(0)}
+                                            {user.name?.charAt(0) || 'U'}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h4 className="font-semibold text-gray-800 text-sm truncate">{user.name}</h4>
                                             <p className="text-gray-600 text-xs truncate">{user.email}</p>
-                                            <p className="text-gray-500 text-xs mt-1">{user.role}</p>
+                                            <p className="text-gray-500 text-xs mt-1">{user.mobile}</p>
                                         </div>
                                         <div className="text-xs text-gray-500">
-                                            ID: {user.employee_username}
+                                            ID: {user.username}
                                         </div>
                                     </motion.div>
                                 ))}
@@ -176,7 +405,7 @@ const UsersListModal = ({ isOpen, onClose, users, taskName }) => {
                                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                         <FiUser className="w-8 h-8 text-gray-400" />
                                     </div>
-                                    <p className="text-gray-500 font-medium">No users assigned</p>
+                                    <p className="text-gray-500 font-medium">No staff assigned</p>
                                 </div>
                             )}
                         </div>
@@ -185,7 +414,7 @@ const UsersListModal = ({ isOpen, onClose, users, taskName }) => {
                         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
                             <div className="flex justify-between items-center">
                                 <div className="text-sm text-gray-600">
-                                    <span className="font-semibold">{users.length}</span> user{users.length !== 1 ? 's' : ''} assigned
+                                    <span className="font-semibold">{users.length}</span> staff member{users.length !== 1 ? 's' : ''} assigned
                                 </div>
                                 <motion.button
                                     onClick={onClose}
@@ -204,38 +433,41 @@ const UsersListModal = ({ isOpen, onClose, users, taskName }) => {
     );
 };
 
-// Status Change Modal Component - Fixed size
+// Status Change Modal Component
 const StatusChangeModal = ({ isOpen, onClose, taskId, currentStatus, onStatusChange, statusOptions }) => {
     const [selectedStatus, setSelectedStatus] = useState(currentStatus);
+    const [loading, setLoading] = useState(false);
     
     if (!isOpen) return null;
     
     const getStatusColor = (status) => {
         switch (status) {
-            case 'PENDING': return 'bg-blue-100 text-blue-700 border-blue-300';
-            case 'IN_PROGRESS': return 'bg-orange-100 text-orange-700 border-orange-300';
-            case 'UNDER_REVIEW': return 'bg-purple-100 text-purple-700 border-purple-300';
-            case 'ON_HOLD': return 'bg-yellow-100 text-yellow-700 border-yellow-300';
-            case 'COMPLETE': return 'bg-green-100 text-green-700 border-green-300';
-            case 'CANCELLED': return 'bg-red-100 text-red-700 border-red-300';
+            case 'unassign': return 'bg-blue-100 text-blue-700 border-blue-300';
+            case 'in process': return 'bg-orange-100 text-orange-700 border-orange-300';
+            case 'pending from client': return 'bg-purple-100 text-purple-700 border-purple-300';
+            case 'pending from department': return 'bg-yellow-100 text-yellow-700 border-yellow-300';
+            case 'complete': return 'bg-green-100 text-green-700 border-green-300';
+            case 'cancel': return 'bg-red-100 text-red-700 border-red-300';
             default: return 'bg-gray-100 text-gray-700 border-gray-300';
         }
     };
     
     const getStatusIcon = (status) => {
         switch (status) {
-            case 'PENDING': return <FiClock className="w-4 h-4" />;
-            case 'IN_PROGRESS': return <FiLoader className="w-4 h-4" />;
-            case 'UNDER_REVIEW': return <FiEye className="w-4 h-4" />;
-            case 'ON_HOLD': return <FiXCircle className="w-4 h-4" />;
-            case 'COMPLETE': return <FiCheckCircle className="w-4 h-4" />;
-            case 'CANCELLED': return <FiXCircle className="w-4 h-4" />;
+            case 'unassign': return <FiClock className="w-4 h-4" />;
+            case 'in process': return <FiLoader className="w-4 h-4" />;
+            case 'pending from client': return <FiEye className="w-4 h-4" />;
+            case 'pending from department': return <FiXCircle className="w-4 h-4" />;
+            case 'complete': return <FiCheckCircle className="w-4 h-4" />;
+            case 'cancel': return <FiXCircle className="w-4 h-4" />;
             default: return <FiClock className="w-4 h-4" />;
         }
     };
     
-    const handleConfirm = () => {
-        onStatusChange(taskId, selectedStatus);
+    const handleConfirm = async () => {
+        setLoading(true);
+        await onStatusChange(taskId, selectedStatus);
+        setLoading(false);
         onClose();
     };
     
@@ -324,16 +556,25 @@ const StatusChangeModal = ({ isOpen, onClose, taskId, currentStatus, onStatusCha
                                 className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 font-medium text-sm"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
+                                disabled={loading}
                             >
                                 Cancel
                             </motion.button>
                             <motion.button
                                 onClick={handleConfirm}
-                                className="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 font-medium text-sm"
+                                className="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg hover:from-indigo-700 hover:to-indigo-800 font-medium text-sm flex items-center gap-2"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
+                                disabled={loading}
                             >
-                                Update
+                                {loading ? (
+                                    <>
+                                        <FiLoader className="w-4 h-4 animate-spin" />
+                                        Updating...
+                                    </>
+                                ) : (
+                                    'Update'
+                                )}
                             </motion.button>
                         </div>
                     </motion.div>
@@ -343,7 +584,123 @@ const StatusChangeModal = ({ isOpen, onClose, taskId, currentStatus, onStatusCha
     );
 };
 
-// Task Table Component - Mobile Responsive
+// Filter Row Component - Updated
+const FilterRow = ({ filters, setFilters, serviceOptions, statusOptions, onSearch, onReset, showFilterRow, setShowFilterRow }) => {
+    const [searchType, setSearchType] = useState('all');
+
+    const handleFilterChange = (key, value) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleApplyFilters = () => {
+        onSearch();
+        setShowFilterRow(false);
+    };
+
+    const handleResetFilters = () => {
+        onReset();
+        setShowFilterRow(false);
+    };
+
+    if (!showFilterRow) return null;
+
+    return (
+        <motion.div 
+            className="bg-gray-50 border-b border-gray-200 px-4 py-3"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+        >
+            <div className="flex flex-wrap items-center gap-3">
+                {/* Search Type Dropdown */}
+                <div className="min-w-[120px]">
+                    <select
+                        value={searchType}
+                        onChange={(e) => setSearchType(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                        <option value="all">Search All</option>
+                        <option value="task">Task ID</option>
+                        <option value="client">Client Name</option>
+                        <option value="username">Username</option>
+                        <option value="firm">Firm ID</option>
+                        <option value="file">File No</option>
+                    </select>
+                </div>
+
+                {/* Search Input */}
+                <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            value={filters.search}
+                            onChange={(e) => handleFilterChange('search', e.target.value)}
+                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                    </div>
+                </div>
+
+                {/* Service Filter */}
+                <div className="min-w-[180px]">
+                    <select
+                        value={filters.service_id}
+                        onChange={(e) => handleFilterChange('service_id', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                        <option value="">All Services</option>
+                        {serviceOptions.map(service => (
+                            <option key={service.value} value={service.value}>
+                                {service.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Status Filter */}
+                <div className="min-w-[180px]">
+                    <select
+                        value={filters.status}
+                        onChange={(e) => handleFilterChange('status', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                        <option value="">All Status</option>
+                        {statusOptions.map(status => (
+                            <option key={status.value} value={status.value}>
+                                {status.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2">
+                    <motion.button
+                        onClick={handleApplyFilters}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <FiFilter className="w-4 h-4" />
+                        Apply
+                    </motion.button>
+                    
+                    <motion.button
+                        onClick={handleResetFilters}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        Reset
+                    </motion.button>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+// Task Table Component
 const TaskTable = ({ 
     tasks, 
     selectedTasks, 
@@ -360,7 +717,8 @@ const TaskTable = ({
     handleStatusChange,
     navigate,
     openStatusModal,
-    openUsersModal
+    openUsersModal,
+    openClientDetailsModal
 }) => {
     // Skeleton loader
     const SkeletonRow = () => (
@@ -387,82 +745,78 @@ const TaskTable = ({
 
     // Format date function
     const formatDate = (dateString) => {
+        if (!dateString) return '-';
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB');
     };
 
+    // Calculate days left
+    const getDaysLeft = (dueDate) => {
+        if (!dueDate) return 0;
+        const due = new Date(dueDate);
+        const today = new Date();
+        const diffTime = due - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    };
+
     // Mobile task card for table view
-    const MobileTaskCard = ({ task, index }) => (
-        <motion.div
-            className="bg-white border border-gray-200 rounded-lg p-3 mb-2 md:hidden"
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-        >
-            {/* Mobile Card Header */}
-            <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        checked={selectedTasks.has(task.id)}
-                        onChange={() => handleTaskSelect(task.id)}
-                        className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500"
-                    />
-                    <div className="font-bold text-gray-800 text-sm w-4">{index + 1}</div>
-                    <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                        <FiBriefcase className="w-3.5 h-3.5 text-white" />
-                    </div>
-                    <div>
-                        <div className="font-semibold text-gray-800 text-sm">{task.name}</div>
-                        <div className="text-xs text-gray-500">{task.task_id}</div>
-                    </div>
-                </div>
-                {/* 3-dot menu for mobile */}
-                <div className="relative">
-                    <motion.button
-                        onClick={() => toggleRowDropdown(task.id)}
-                        className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        <div className="flex flex-col items-center justify-center space-y-0.5">
-                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
-                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
-                            <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+    const MobileTaskCard = ({ task, index }) => {
+        const daysLeft = getDaysLeft(task.dates?.due_date);
+        const isOverdue = daysLeft < 0;
+
+        return (
+            <motion.div
+                className="bg-white border border-gray-200 rounded-lg p-3 mb-2 md:hidden"
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+            >
+                {/* Mobile Card Header */}
+                <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={selectedTasks.has(task.task_id)}
+                            onChange={() => handleTaskSelect(task.task_id)}
+                            className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500"
+                        />
+                        <div className="font-bold text-gray-800 text-sm w-4">{index + 1}</div>
+                        <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                            <FiBriefcase className="w-3.5 h-3.5 text-white" />
                         </div>
-                    </motion.button>
-                    
-                    {/* Mobile dropdown */}
-                    <AnimatePresence>
-                        {activeRowDropdown === task.id && (
-                            <motion.div
-                                className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
-                                initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                            >
-                                {/* Get In/Out option */}
-                                {task.in_out ? (
-                                    task.is_in_me ? (
-                                        <button
-                                            onClick={() => {
-                                                handleGetInOut(task.id, 'out');
-                                                setActiveRowDropdown(null);
-                                            }}
-                                            className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                                        >
-                                            <FiArrowRight className="mr-3" />
-                                            Get OUT
-                                        </button>
-                                    ) : (
-                                        <div className="flex items-center w-full px-4 py-3 text-sm text-gray-500 bg-gray-50">
-                                            <FiUserCheck className="mr-3" />
-                                            {task.in_name} [{task.in_type?.toUpperCase() || 'USER'}]
-                                        </div>
-                                    )
-                                ) : (
+                        <div>
+                            <div className="font-semibold text-gray-800 text-sm truncate max-w-[150px]">{task.service?.name}</div>
+                            <div className="text-xs text-gray-500 truncate">{task.task_id}</div>
+                        </div>
+                    </div>
+                    {/* 3-dot menu for mobile */}
+                    <div className="relative">
+                        <motion.button
+                            onClick={() => toggleRowDropdown(task.task_id)}
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <div className="flex flex-col items-center justify-center space-y-0.5">
+                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                            </div>
+                        </motion.button>
+                        
+                        {/* Mobile dropdown */}
+                        <AnimatePresence>
+                            {activeRowDropdown === task.task_id && (
+                                <motion.div
+                                    className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                                >
+                                    {/* Get In/Out option - Placeholder */}
                                     <button
                                         onClick={() => {
-                                            handleGetInOut(task.id, 'in');
+                                            handleGetInOut(task.task_id, 'in');
                                             setActiveRowDropdown(null);
                                         }}
                                         className="flex items-center w-full px-4 py-3 text-sm text-indigo-600 hover:bg-indigo-50"
@@ -470,94 +824,111 @@ const TaskTable = ({
                                         <FiArrowLeft className="mr-3" />
                                         GET IN
                                     </button>
-                                )}
 
-                                <div className="border-t my-1"></div>
-                                
-                                {/* Status Change Button */}
-                                <button
-                                    onClick={() => {
-                                        openStatusModal(task.id, task.status);
-                                        setActiveRowDropdown(null);
-                                    }}
-                                    className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
-                                >
-                                    <FiCheckCircle className="mr-3" />
-                                    Change Status
-                                </button>
+                                    <div className="border-t my-1"></div>
+                                    
+                                    {/* Status Change Button */}
+                                    <button
+                                        onClick={() => {
+                                            openStatusModal(task.task_id, task.status);
+                                            setActiveRowDropdown(null);
+                                        }}
+                                        className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
+                                    >
+                                        <FiCheckCircle className="mr-3" />
+                                        Change Status
+                                    </button>
 
-                                <button
-                                    onClick={() => {
-                                        setActiveRowDropdown(null);
-                                        navigate(`/task/profile/${task.id}`);
-                                    }}
-                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                    <FiEye className="mr-3" />
-                                    View Details
-                                </button>
+                                    <button
+                                        onClick={() => {
+                                            setActiveRowDropdown(null);
+                                            navigate(`/task/profile/${task.task_id}`);
+                                        }}
+                                        className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                        <FiEye className="mr-3" />
+                                        View Details
+                                    </button>
 
-                                <button
-                                    onClick={() => {
-                                        setActiveRowDropdown(null);
-                                        navigate(`/task/edit/${task.id}`);
-                                    }}
-                                    className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                    <FiEdit className="mr-3" />
-                                    Edit Task
-                                </button>
+                                    <button
+                                        onClick={() => {
+                                            setActiveRowDropdown(null);
+                                            navigate(`/task/edit/${task.task_id}`);
+                                        }}
+                                        className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                        <FiEdit className="mr-3" />
+                                        Edit Task
+                                    </button>
 
-                                <div className="border-t my-1"></div>
+                                    <div className="border-t my-1"></div>
 
-                                <button
-                                    onClick={() => {
-                                        setActiveRowDropdown(null);
-                                        // delete modal
-                                    }}
-                                    className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                                >
-                                    <FiTrash2 className="mr-3" />
-                                    Delete Task
-                                </button>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                    <button
+                                        onClick={() => {
+                                            setActiveRowDropdown(null);
+                                            // delete modal
+                                        }}
+                                        className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                    >
+                                        <FiTrash2 className="mr-3" />
+                                        Delete Task
+                                    </button>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
-            </div>
 
-            {/* Mobile Card Content */}
-            <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                {/* Mobile Card Content */}
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-gray-700 text-sm">
+                            <FiCalendar className="w-3 h-3 text-gray-400" />
+                            <span>Target: {task.dates?.target_date ? formatDate(task.dates.target_date) : '-'}</span>
+                        </div>
+                        <div className="text-sm font-semibold text-gray-800">
+                            ₹{task.charges?.fees?.toLocaleString() || 0}
+                        </div>
+                    </div>
+
                     <div className="flex items-center gap-2 text-gray-700 text-sm">
                         <FiCalendar className="w-3 h-3 text-gray-400" />
-                        <span>Due: {formatDate(task.due_date)}</span>
+                        <span>Due: {task.dates?.due_date ? formatDate(task.dates.due_date) : '-'}</span>
+                        {task.dates?.due_date && (
+                            <span className={`text-xs font-bold ${isOverdue ? 'text-red-600' : daysLeft <= 7 ? 'text-orange-600' : 'text-green-600'}`}>
+                                {isOverdue
+                                    ? `Overdue by ${Math.abs(daysLeft)} day${Math.abs(daysLeft) > 1 ? 's' : ''}`
+                                    : `Due in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`
+                                }
+                            </span>
+                        )}
                     </div>
-                    <div className="text-sm font-semibold text-gray-800">
-                        ₹{task.fees.toLocaleString()}
+
+                    <div className="flex items-center gap-2 text-gray-700 text-sm">
+                        <FiPhone className="w-3 h-3 text-gray-400" />
+                        <span>{task.client?.profile?.mobile || '-'}</span>
+                    </div>
+
+                    <div className="text-sm text-gray-600">
+                        <button 
+                            onClick={() => navigate(`/task/${task.task_id}`)}
+                            className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                        >
+                            Service: {task.service?.name}
+                        </button>
+                    </div>
+
+                    <div className="text-xs text-gray-500">
+                        File: {task.file_no || '-'}
+                    </div>
+
+                    <div className="text-xs text-gray-500">
+                        Firm: {task.firm?.firm_name || '-'}
                     </div>
                 </div>
-
-                <div className="flex items-center gap-2 text-gray-700 text-sm">
-                    <FiPhone className="w-3 h-3 text-gray-400" />
-                    <span>{task.mobile}</span>
-                </div>
-
-                <div className="text-sm text-gray-600">
-                    <button 
-                        onClick={() => navigate(`/task/${task.id}`)}
-                        className="text-indigo-600 hover:text-indigo-800 hover:underline"
-                    >
-                        Service: {task.service_name}
-                    </button>
-                </div>
-
-                <div className="text-xs text-gray-500">
-                    File: {task.file_no}
-                </div>
-            </div>
-        </motion.div>
-    );
+            </motion.div>
+        );
+    };
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -583,7 +954,7 @@ const TaskTable = ({
                     {columnConfig.map(column => (
                         <div
                             key={column.id}
-                            className="p-3 font-semibold text-gray-700 text-sm flex-1 min-w-0 text-center"
+                            className="p-3 font-semibold text-gray-700 text-sm flex-1 min-w-0 text-left"
                             style={{ flex: '1 1 0%' }}
                         >
                             <div className="truncate">{column.name === 'Users' ? 'Assigned' : column.name}</div>
@@ -592,7 +963,7 @@ const TaskTable = ({
                 </div>
             </div>
 
-            {/* Mobile header - Using tasks.length instead of filteredTasks */}
+            {/* Mobile header */}
             <div className="md:hidden border-b border-gray-200 bg-white px-3 py-2 sticky top-0 z-10">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -632,7 +1003,7 @@ const TaskTable = ({
                         {/* Mobile view - cards */}
                         <div className="md:hidden px-3 py-1">
                             {tasks.map((task, index) => (
-                                <MobileTaskCard key={task.id} task={task} index={index} />
+                                <MobileTaskCard key={task.task_id} task={task} index={index} />
                             ))}
                         </div>
 
@@ -640,8 +1011,8 @@ const TaskTable = ({
                         <div className="hidden md:block">
                             {tasks.map((task, index) => (
                                 <motion.div
-                                    key={task.id}
-                                    className={`flex items-center border-b border-gray-100 hover:bg-gray-50 transition-colors group ${task.in_out ? 'bg-indigo-50' : ''}`}
+                                    key={task.task_id}
+                                    className={`flex items-center border-b border-gray-100 hover:bg-gray-50 transition-colors group`}
                                     initial={{ opacity: 0, y: 5 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.03 }}
@@ -650,8 +1021,8 @@ const TaskTable = ({
                                     <div className="w-10 p-3 flex-shrink-0">
                                         <input
                                             type="checkbox"
-                                            checked={selectedTasks.has(task.id)}
-                                            onChange={() => handleTaskSelect(task.id)}
+                                            checked={selectedTasks.has(task.task_id)}
+                                            onChange={() => handleTaskSelect(task.task_id)}
                                             className="w-4 h-4 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500"
                                         />
                                     </div>
@@ -667,13 +1038,13 @@ const TaskTable = ({
                                     {columnConfig.map(column => (
                                         <div 
                                             key={column.id} 
-                                            className="p-3 flex-1 min-w-0 text-center"
+                                            className="p-3 flex-1 min-w-0 text-left"
                                             style={{ flex: '1 1 0%' }}
                                         >
                                             <div className="space-y-1">
                                                 {column.items.map(item => (
-                                                    <div key={item.id} className="min-h-[1.25rem] flex items-center justify-center">
-                                                        {renderCellContent(task, item.id, handleGetInOut, navigate, openStatusModal, openUsersModal)}
+                                                    <div key={item.id} className="min-h-[1.25rem] flex items-center">
+                                                        {renderCellContent(task, item.id, handleGetInOut, navigate, openStatusModal, openUsersModal, openClientDetailsModal)}
                                                     </div>
                                                 ))}
                                             </div>
@@ -689,7 +1060,7 @@ const TaskTable = ({
     );
 };
 
-// Task Cards Component - Mobile Responsive with 3-dot menu
+// Task Cards Component
 const TaskCards = ({ 
     tasks, 
     selectedTasks, 
@@ -705,45 +1076,50 @@ const TaskCards = ({
     statusOptions,
     navigate,
     openStatusModal,
-    openUsersModal
+    openUsersModal,
+    openClientDetailsModal
 }) => {
     // Get status color
     const getStatusColor = (status) => {
         switch (status) {
-            case 'PENDING': return 'bg-blue-100 text-blue-700';
-            case 'IN_PROGRESS': return 'bg-orange-100 text-orange-700';
-            case 'UNDER_REVIEW': return 'bg-purple-100 text-purple-700';
-            case 'ON_HOLD': return 'bg-yellow-100 text-yellow-700';
-            case 'COMPLETE': return 'bg-green-100 text-green-700';
-            case 'CANCELLED': return 'bg-red-100 text-red-700';
+            case 'unassign': return 'bg-blue-100 text-blue-700';
+            case 'in process': return 'bg-orange-100 text-orange-700';
+            case 'pending from client': return 'bg-purple-100 text-purple-700';
+            case 'pending from department': return 'bg-yellow-100 text-yellow-700';
+            case 'complete': return 'bg-green-100 text-green-700';
+            case 'cancel': return 'bg-red-100 text-red-700';
             default: return 'bg-gray-100 text-gray-700';
-        }
-    };
-
-    // Get status border color
-    const getStatusBorderColor = (status) => {
-        switch (status) {
-            case 'PENDING': return 'border-blue-300';
-            case 'IN_PROGRESS': return 'border-orange-300';
-            case 'UNDER_REVIEW': return 'border-purple-300';
-            case 'ON_HOLD': return 'border-yellow-300';
-            case 'COMPLETE': return 'border-green-300';
-            case 'CANCELLED': return 'border-red-300';
-            default: return 'border-gray-300';
         }
     };
 
     // Format status
     const formatStatus = (status) => {
         switch (status) {
-            case 'PENDING': return 'Pending';
-            case 'IN_PROGRESS': return 'In Progress';
-            case 'UNDER_REVIEW': return 'Under Review';
-            case 'ON_HOLD': return 'On Hold';
-            case 'COMPLETE': return 'Complete';
-            case 'CANCELLED': return 'Cancelled';
+            case 'unassign': return 'Unassign';
+            case 'in process': return 'In Process';
+            case 'pending from client': return 'Pending from Client';
+            case 'pending from department': return 'Pending from Department';
+            case 'complete': return 'Complete';
+            case 'cancel': return 'Cancel';
             default: return status;
         }
+    };
+
+    // Calculate days left
+    const getDaysLeft = (dueDate) => {
+        if (!dueDate) return 0;
+        const due = new Date(dueDate);
+        const today = new Date();
+        const diffTime = due - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    };
+
+    // Format date function
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB');
     };
 
     // Skeleton loader
@@ -784,88 +1160,77 @@ const TaskCards = ({
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {tasks.map((task, index) => (
-                        <motion.div
-                            key={task.id}
-                            className={`bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200 overflow-hidden ${selectedTasks.has(task.id) ? 'ring-2 ring-indigo-500' : ''}`}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.05 }}
-                        >
-                            {/* Card Header */}
-                            <div className="p-3 border-b border-gray-100">
-                                <div className="flex items-start justify-between mb-2">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedTasks.has(task.id)}
-                                                onChange={() => handleTaskSelect(task.id)}
-                                                className="w-3.5 h-3.5 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500 flex-shrink-0"
-                                            />
-                                            <div className="font-bold text-gray-800 text-xs w-4">{index + 1}</div>
-                                            <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-                                                <FiBriefcase className="w-3.5 h-3.5 text-white" />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <h3 className="font-semibold text-gray-800 text-xs truncate">{task.name}</h3>
-                                                <p className="text-xs text-gray-500 truncate">{task.task_id}</p>
-                                            </div>
-                                        </div>
-                                        <button 
-                                            onClick={() => navigate(`/task/${task.id}`)}
-                                            className="text-left font-bold text-gray-800 text-sm truncate hover:text-indigo-600 hover:underline"
-                                        >
-                                            {task.service_name}
-                                        </button>
-                                        <p className="text-gray-600 text-xs truncate">{task.firm_name}</p>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                        {/* 3-dot menu for cards */}
-                                        <div className="relative">
-                                            <motion.button
-                                                onClick={() => toggleRowDropdown(`card-${task.id}`)}
-                                                className="w-6 h-6 flex flex-col items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors space-y-0.5"
-                                                whileHover={{ scale: 1.1 }}
-                                                whileTap={{ scale: 0.95 }}
-                                            >
-                                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
-                                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
-                                                <div className="w-1 h-1 rounded-full bg-gray-600"></div>
-                                            </motion.button>
+                    {tasks.map((task, index) => {
+                        const daysLeft = getDaysLeft(task.dates?.due_date);
+                        const isOverdue = daysLeft < 0;
 
-                                            {/* Dropdown for cards */}
-                                            <AnimatePresence>
-                                                {activeRowDropdown === `card-${task.id}` && (
-                                                    <motion.div
-                                                        className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
-                                                        initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                        exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                        return (
+                            <motion.div
+                                key={task.task_id}
+                                className={`bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200 overflow-hidden ${selectedTasks.has(task.task_id) ? 'ring-2 ring-indigo-500' : ''}`}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: index * 0.05 }}
+                            >
+                                {/* Card Header */}
+                                <div className="p-3 border-b border-gray-100">
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedTasks.has(task.task_id)}
+                                                    onChange={() => handleTaskSelect(task.task_id)}
+                                                    className="w-3.5 h-3.5 text-indigo-600 rounded border-gray-400 focus:ring-indigo-500 flex-shrink-0"
+                                                />
+                                                <div className="font-bold text-gray-800 text-xs w-4">{index + 1}</div>
+                                                <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                                                    <FiBriefcase className="w-3.5 h-3.5 text-white" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <button
+                                                        onClick={() => openClientDetailsModal(task.client?.username)}
+                                                        className="font-semibold text-gray-800 text-xs truncate hover:text-indigo-600 hover:underline text-left"
                                                     >
-                                                        {/* Get In/Out option */}
-                                                        {task.in_out ? (
-                                                            task.is_in_me ? (
-                                                                <button
-                                                                    onClick={() => {
-                                                                        handleGetInOut(task.id, 'out');
-                                                                        setActiveRowDropdown(null);
-                                                                    }}
-                                                                    className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                                                                >
-                                                                    <FiArrowRight className="mr-3" />
-                                                                    Get OUT
-                                                                </button>
-                                                            ) : (
-                                                                <div className="flex items-center w-full px-4 py-3 text-sm text-gray-500 bg-gray-50">
-                                                                    <FiUserCheck className="mr-3" />
-                                                                    {task.in_name} [{task.in_type?.toUpperCase() || 'USER'}]
-                                                                </div>
-                                                            )
-                                                        ) : (
+                                                        {task.client?.profile?.name || 'N/A'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={() => navigate(`/task/${task.task_id}`)}
+                                                className="text-left font-bold text-gray-800 text-sm truncate hover:text-indigo-600 hover:underline"
+                                            >
+                                                {task.service?.name}
+                                            </button>
+                                            <p className="text-gray-600 text-xs truncate">{task.firm?.firm_name}</p>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-1">
+                                            {/* 3-dot menu for cards */}
+                                            <div className="relative">
+                                                <motion.button
+                                                    onClick={() => toggleRowDropdown(`card-${task.task_id}`)}
+                                                    className="w-6 h-6 flex flex-col items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors space-y-0.5"
+                                                    whileHover={{ scale: 1.1 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                >
+                                                    <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                                                    <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                                                    <div className="w-1 h-1 rounded-full bg-gray-600"></div>
+                                                </motion.button>
+
+                                                {/* Dropdown for cards */}
+                                                <AnimatePresence>
+                                                    {activeRowDropdown === `card-${task.task_id}` && (
+                                                        <motion.div
+                                                            className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                                                        >
+                                                            {/* Get In/Out option - Placeholder */}
                                                             <button
                                                                 onClick={() => {
-                                                                    handleGetInOut(task.id, 'in');
+                                                                    handleGetInOut(task.task_id, 'in');
                                                                     setActiveRowDropdown(null);
                                                                 }}
                                                                 className="flex items-center w-full px-4 py-3 text-sm text-indigo-600 hover:bg-indigo-50"
@@ -873,102 +1238,115 @@ const TaskCards = ({
                                                                 <FiArrowLeft className="mr-3" />
                                                                 GET IN
                                                             </button>
-                                                        )}
 
-                                                        <div className="border-t my-1"></div>
-                                                        
-                                                        {/* Status Change Button */}
-                                                        <button
-                                                            onClick={() => {
-                                                                openStatusModal(task.id, task.status);
-                                                                setActiveRowDropdown(null);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
-                                                        >
-                                                            <FiCheckCircle className="mr-3" />
-                                                            Change Status
-                                                        </button>
+                                                            <div className="border-t my-1"></div>
+                                                            
+                                                            {/* Status Change Button */}
+                                                            <button
+                                                                onClick={() => {
+                                                                    openStatusModal(task.task_id, task.status);
+                                                                    setActiveRowDropdown(null);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-blue-600 hover:bg-blue-50"
+                                                            >
+                                                                <FiCheckCircle className="mr-3" />
+                                                                Change Status
+                                                            </button>
 
-                                                        <button
-                                                            onClick={() => {
-                                                                setActiveRowDropdown(null);
-                                                                navigate(`/task/profile/${task.id}`);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
-                                                        >
-                                                            <FiEye className="mr-3" />
-                                                            View Details
-                                                        </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setActiveRowDropdown(null);
+                                                                    navigate(`/task/profile/${task.task_id}`);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                                                            >
+                                                                <FiEye className="mr-3" />
+                                                                View Details
+                                                            </button>
 
-                                                        <button
-                                                            onClick={() => {
-                                                                setActiveRowDropdown(null);
-                                                                navigate(`/task/edit/${task.id}`);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
-                                                        >
-                                                            <FiEdit className="mr-3" />
-                                                            Edit Task
-                                                        </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setActiveRowDropdown(null);
+                                                                    navigate(`/task/edit/${task.task_id}`);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
+                                                            >
+                                                                <FiEdit className="mr-3" />
+                                                                Edit Task
+                                                            </button>
 
-                                                        <div className="border-t my-1"></div>
+                                                            <div className="border-t my-1"></div>
 
-                                                        <button
-                                                            onClick={() => {
-                                                                setActiveRowDropdown(null);
-                                                                // delete modal
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                                                        >
-                                                            <FiTrash2 className="mr-3" />
-                                                            Delete Task
-                                                        </button>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Card Body - Essential information */}
-                            <div className="p-3">
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1 text-gray-700 text-xs">
-                                            <FiCalendar className="w-3 h-3 text-gray-400" />
-                                            <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
-                                        </div>
-                                        <div className="text-xs font-semibold text-gray-800">
-                                            <span className="inline-flex items-center gap-1">
-                                                <FiDollarSign className="w-2.5 h-2.5" />
-                                                ₹{task.fees.toLocaleString()}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-1 text-gray-700 text-xs">
-                                        <FiPhone className="w-3 h-3 text-gray-400" />
-                                        <span>{task.mobile}</span>
-                                    </div>
-
-                                    <div className="text-xs text-gray-500">
-                                        File: {task.file_no}
-                                    </div>
-
-                                    {/* Status Display */}
-                                    <div className="pt-2 border-t border-gray-100">
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-xs font-medium text-gray-600">Status:</span>
-                                            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${getStatusColor(task.status)}`}>
-                                                {formatStatus(task.status)}
+                                                            <button
+                                                                onClick={() => {
+                                                                    setActiveRowDropdown(null);
+                                                                    // delete modal
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                                            >
+                                                                <FiTrash2 className="mr-3" />
+                                                                Delete Task
+                                                            </button>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </motion.div>
-                    ))}
+
+                                {/* Card Body - Essential information */}
+                                <div className="p-3">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1 text-gray-700 text-xs">
+                                                <FiCalendar className="w-3 h-3 text-gray-400" />
+                                                <span>Target: {task.dates?.target_date ? formatDate(task.dates.target_date) : '-'}</span>
+                                            </div>
+                                            <div className="text-xs font-semibold text-gray-800">
+                                                <span className="inline-flex items-center gap-1">
+                                                    <FiDollarSign className="w-2.5 h-2.5" />
+                                                    ₹{task.charges?.fees?.toLocaleString() || 0}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-1 text-gray-700 text-xs">
+                                            <FiCalendar className="w-3 h-3 text-gray-400" />
+                                            <span>Due: {task.dates?.due_date ? formatDate(task.dates.due_date) : '-'}</span>
+                                            {task.dates?.due_date && (
+                                                <span className={`text-xs font-bold ${isOverdue ? 'text-red-600' : daysLeft <= 7 ? 'text-orange-600' : 'text-green-600'}`}>
+                                                    {isOverdue
+                                                        ? `Overdue by ${Math.abs(daysLeft)} day${Math.abs(daysLeft) > 1 ? 's' : ''}`
+                                                        : `Due in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`
+                                                    }
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-1 text-gray-700 text-xs">
+                                            <FiPhone className="w-3 h-3 text-gray-400" />
+                                            <span>{task.client?.profile?.mobile || '-'}</span>
+                                        </div>
+
+                                        <div className="text-xs text-gray-500">
+                                            File: {task.file_no || '-'}
+                                        </div>
+
+                                        {/* Status Display */}
+                                        <div className="pt-2 border-t border-gray-100">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-xs font-medium text-gray-600">Status:</span>
+                                                <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${getStatusColor(task.status)}`}>
+                                                    {formatStatus(task.status)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
                 </div>
             )}
         </div>
@@ -994,16 +1372,42 @@ const TaskDisplay = () => {
     const [showExportDropdown, setShowExportDropdown] = useState(false);
     const [exportModal, setExportModal] = useState({ open: false, type: '', data: null });
     const navigate = useNavigate();
-    const [deleteModal, SetDeleteModal] = useState(false);
-    const [deleteOtp, SetDeleteOtp] = useState('');
+    const [deleteModal, setDeleteModal] = useState(false);
+    const [deleteOtp, setDeleteOtp] = useState('');
     const [showMoreDropdown, setShowMoreDropdown] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [activeDragId, setActiveDragId] = useState(null);
     const [activeItemDragId, setActiveItemDragId] = useState(null);
-    const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
+    const [viewMode, setViewMode] = useState('table');
     const [isMobile, setIsMobile] = useState(false);
     const [statusModal, setStatusModal] = useState({ open: false, taskId: null, currentStatus: '' });
     const [usersModal, setUsersModal] = useState({ open: false, users: [], taskName: '' });
+    const [showFilterRow, setShowFilterRow] = useState(false);
+    const [clientModal, setClientModal] = useState({ open: false, clientData: null, loading: false });
+    
+    // API States
+    const [tasks, setTasks] = useState([]);
+    const [serviceOptions, setServiceOptions] = useState([]);
+    const [filters, setFilters] = useState({
+        search: '',
+        service_id: '',
+        status: ''
+    });
+    const [pagination, setPagination] = useState({
+        page_no: 1,
+        limit: 20,
+        total: 0
+    });
+
+    // Status Options
+    const statusOptions = [
+        { value: 'unassign', name: 'Unassign' },
+        { value: 'in process', name: 'In Process' },
+        { value: 'pending from client', name: 'Pending from Client' },
+        { value: 'pending from department', name: 'Pending from Department' },
+        { value: 'complete', name: 'Complete' },
+        { value: 'cancel', name: 'Cancel' }
+    ];
 
     // Initialize DnD sensors
     const sensors = useSensors(
@@ -1048,123 +1452,106 @@ const TaskDisplay = () => {
         };
     }, [mobileMenuOpen]);
 
-    const [columnsConfig, setColumnsConfig] = useState([
-        { id: 'taskName', label: 'Task Name', visible: true },
-        { id: 'owner', label: 'Owner', visible: true },
-        { id: 'priority', label: 'Priority', visible: true },
-        { id: 'dueDate', label: 'Due Date', visible: true },
-    ]);
-
     // All available data fields from tasks
     const availableFields = [
-        { id: 'id', label: 'ID', type: 'text' },
         { id: 'task_id', label: 'Task ID', type: 'text' },
-        { id: 'create_date', label: 'Create Date', type: 'date' },
-        { id: 'due_date', label: 'Due Date', type: 'date' },
-        { id: 'days_left', label: 'Days Left', type: 'text' },
+        { id: 'client_name', label: 'Client Name', type: 'text' },
+        { id: 'client_mobile', label: 'Client Mobile', type: 'text' },
+        { id: 'client_email', label: 'Client Email', type: 'text' },
+        { id: 'firm_name', label: 'Firm Name', type: 'text' },
         { id: 'service_name', label: 'Service Name', type: 'text' },
         { id: 'fees', label: 'Fees', type: 'currency' },
-        { id: 'firm_name', label: 'Firm Name', type: 'text' },
-        { id: 'file_no', label: 'File No', type: 'text' },
-        { id: 'name', label: 'Client Name', type: 'text' },
-        { id: 'guardian_name', label: 'Guardian Name', type: 'text' },
-        { id: 'pan', label: 'PAN', type: 'text' },
-        { id: 'mobile', label: 'Mobile', type: 'text' },
+        { id: 'due_date', label: 'Due Date', type: 'date' },
+        { id: 'create_date', label: 'Create Date', type: 'date' },
+        { id: 'target_date', label: 'Target Date', type: 'date' },
+        { id: 'billing_status', label: 'Billing Status', type: 'text' },
         { id: 'status', label: 'Status', type: 'status' },
-        { id: 'in_out', label: 'In/Out', type: 'boolean' },
-        { id: 'is_in_me', label: 'Is In Me', type: 'boolean' },
+        { id: 'staffs', label: 'Staffs', type: 'array' },
         { id: 'is_recurring', label: 'Is Recurring', type: 'boolean' },
-        { id: 'recurring_type', label: 'Recurring Type', type: 'text' },
-        { id: 'employees', label: 'Employees', type: 'array' },
-        { id: 'in_name', label: 'In Name', type: 'text' },
-        { id: 'in_type', label: 'In Type', type: 'text' },
+        { id: 'create_by', label: 'Created By', type: 'text' },
         { id: 'menu', label: 'Actions', type: 'actions' }
     ];
 
-    // Fixed column configuration - Only Status and Actions are fixed
-   const defaultColumnConfig = [
-    {
-        id: '1',
-        name: 'Dates',
-        items: [
-            { id: 'create_date', label: 'Create Date' },
-            { id: 'due_date', label: 'Due Date' },
-            { id: 'days_left', label: 'Days Left' }
-        ],
-        fixed: false // Make sure this is false
-    },
-    {
-        id: '2',
-        name: 'Task',
-        items: [
-            { id: 'service_name', label: 'Service Name' },
-            { id: 'fees', label: 'Fees' },
-            { id: 'firm_name', label: 'Firm Name' },
-            { id: 'file_no', label: 'File No' }
-        ],
-        fixed: false // Make sure this is false
-    },
-    {
-        id: '3',
-        name: 'Client',
-        items: [
-            { id: 'name', label: 'Client Name' },
-            { id: 'guardian_name', label: 'Guardian Name' },
-            { id: 'pan', label: 'PAN' },
-            { id: 'mobile', label: 'Mobile' }
-        ],
-        fixed: false // Make sure this is false
-    },
-    {
-        id: '4',
-        name: 'Assigned',
-        items: [
-            { id: 'employees', label: 'Employees' }
-        ],
-        fixed: false // Make sure this is false
-    },
-    {
-        id: '5',
-        name: 'Status',
-        items: [
-            { id: 'status', label: 'Status' }
-        ],
-        fixed: true // Only Status is fixed
-    },
-    {
-        id: '6',
-        name: 'Actions',
-        items: [
-            { id: 'menu', label: 'Actions' }
-        ],
-        fixed: true // Only Actions is fixed
-    }
-];
+    // Fixed column configuration
+    const defaultColumnConfig = [
+        {
+            id: '1',
+            name: 'Client',
+            items: [
+                { id: 'client_name', label: 'Client Name' },
+                { id: 'client_mobile', label: 'Mobile' },
+                { id: 'client_email', label: 'Email' }
+            ],
+            fixed: false
+        },
+        {
+            id: '2',
+            name: 'Task Details',
+            items: [
+                { id: 'service_name', label: 'Service Name' },
+                { id: 'fees', label: 'Fees' },
+                { id: 'firm_name', label: 'Firm Name' }
+            ],
+            fixed: false
+        },
+        {
+            id: '3',
+            name: 'Dates',
+            items: [
+                { id: 'create_date', label: 'Create Date' },
+                { id: 'due_date', label: 'Due Date' },
+                { id: 'target_date', label: 'Target Date' }
+            ],
+            fixed: false
+        },
+        {
+            id: '4',
+            name: 'Staffs',
+            items: [
+                { id: 'staffs', label: 'Staffs' }
+            ],
+            fixed: false
+        },
+        {
+            id: '5',
+            name: 'Status',
+            items: [
+                { id: 'status', label: 'Status' }
+            ],
+            fixed: true
+        },
+        {
+            id: '6',
+            name: 'Actions',
+            items: [
+                { id: 'menu', label: 'Actions' }
+            ],
+            fixed: true
+        }
+    ];
 
-// Initialize column config
-useEffect(() => {
-    const savedConfig = localStorage.getItem('taskColumnConfig');
-    if (savedConfig) {
-        try {
-            const parsedConfig = JSON.parse(savedConfig);
-            // Make sure saved config has correct fixed properties
-            const updatedConfig = parsedConfig.map(col => {
-                // Only Status and Actions should be fixed
-                const shouldBeFixed = col.name === 'Status' || col.name === 'Actions';
-                return {
-                    ...col,
-                    fixed: shouldBeFixed
-                };
-            });
-            setColumnConfig(updatedConfig);
-        } catch (error) {
-            console.error('Error parsing saved config:', error);
+    // Initialize column config
+    useEffect(() => {
+        const savedConfig = localStorage.getItem('taskColumnConfig');
+        if (savedConfig) {
+            try {
+                const parsedConfig = JSON.parse(savedConfig);
+                const updatedConfig = parsedConfig.map(col => {
+                    const shouldBeFixed = col.name === 'Status' || col.name === 'Actions';
+                    return {
+                        ...col,
+                        fixed: shouldBeFixed
+                    };
+                });
+                setColumnConfig(updatedConfig);
+            } catch (error) {
+                console.error('Error parsing saved config:', error);
+                setColumnConfig(defaultColumnConfig);
+            }
+        } else {
             setColumnConfig(defaultColumnConfig);
         }
-    } else {
-        setColumnConfig(defaultColumnConfig);
-    }
-}, []);
+    }, []);
 
     // Save column config
     const saveColumnConfig = (config) => {
@@ -1172,188 +1559,191 @@ useEffect(() => {
         localStorage.setItem('taskColumnConfig', JSON.stringify(config));
     };
 
-    // Dummy data arrays
-    const [taskStats] = useState({
-        pending: 24,
-        dueIn7Days: 8,
-        completed: 156,
-        cancelled: 12
-    });
-
-    const [statusOptions] = useState([
-        { value: 'PENDING', name: 'Pending' },
-        { value: 'IN_PROGRESS', name: 'In Progress' },
-        { value: 'UNDER_REVIEW', name: 'Under Review' },
-        { value: 'ON_HOLD', name: 'On Hold' },
-        { value: 'COMPLETE', name: 'Complete' },
-        { value: 'CANCELLED', name: 'Cancelled' }
-    ]);
-
-    const [serviceOptions] = useState([
-        { value: '1', name: 'Tax Filing' },
-        { value: '2', name: 'Audit Services' },
-        { value: '3', name: 'GST Return' },
-        { value: '4', name: 'Company Registration' },
-        { value: '5', name: 'Accounting' },
-        { value: '6', name: 'Legal Compliance' }
-    ]);
-
-    const [tasks, setTasks] = useState([
-        {
-            id: '1',
-            task_id: 'TASK001',
-            create_date: '2024-01-15',
-            due_date: '2024-02-20',
-            service_name: 'Tax Filing',
-            fees: 5000,
-            firm_name: 'ABC Corporation',
-            file_no: 'FN001',
-            name: 'John Doe',
-            guardian_name: 'Robert Doe',
-            pan: 'ABCDE1234F',
-            mobile: '9876543210',
-            status: 'PENDING',
-            in_out: false,
-            is_in_me: false,
-            is_recurring: false,
-            employees: [
-                { employee_username: 'emp1', name: 'John Doe', email: 'john@example.com', role: 'Accountant' },
-                { employee_username: 'emp2', name: 'Jane Smith', email: 'jane@example.com', role: 'Manager' },
-                { employee_username: 'emp3', name: 'Mike Johnson', email: 'mike@example.com', role: 'Assistant' }
-            ]
-        },
-        {
-            id: '2',
-            task_id: 'TASK002',
-            create_date: '2024-01-10',
-            due_date: '2024-01-25',
-            service_name: 'GST Return',
-            fees: 3000,
-            firm_name: 'XYZ Solutions',
-            file_no: 'FN002',
-            name: 'Jane Smith',
-            guardian_name: 'William Smith',
-            pan: 'XYZAB9012H',
-            mobile: '9876543211',
-            status: 'IN_PROGRESS',
-            in_out: true,
-            is_in_me: true,
-            is_recurring: true,
-            recurring_type: 'Monthly',
-            employees: [
-                { employee_username: 'emp3', name: 'Mike Johnson', email: 'mike@example.com', role: 'Assistant' }
-            ]
-        },
-        {
-            id: '3',
-            task_id: 'TASK003',
-            create_date: '2024-01-05',
-            due_date: '2024-01-30',
-            service_name: 'Audit Services',
-            fees: 15000,
-            firm_name: 'Global Tech',
-            file_no: 'FN003',
-            name: 'Mike Johnson',
-            guardian_name: 'Thomas Johnson',
-            pan: 'GLOTI3456J',
-            mobile: '9876543212',
-            status: 'UNDER_REVIEW',
-            in_out: false,
-            is_in_me: false,
-            is_recurring: false,
-            employees: [
-                { employee_username: 'emp1', name: 'John Doe', email: 'john@example.com', role: 'Accountant' },
-                { employee_username: 'emp4', name: 'Sarah Wilson', email: 'sarah@example.com', role: 'Auditor' }
-            ]
-        },
-        {
-            id: '4',
-            task_id: 'TASK004',
-            create_date: '2024-01-20',
-            due_date: '2024-03-15',
-            service_name: 'Company Registration',
-            fees: 8000,
-            firm_name: 'Wilson & Co',
-            file_no: 'FN004',
-            name: 'Sarah Wilson',
-            guardian_name: 'James Wilson',
-            pan: 'WILS5678K',
-            mobile: '9876543213',
-            status: 'COMPLETE',
-            in_out: false,
-            is_in_me: false,
-            is_recurring: false,
-            employees: [
-                { employee_username: 'emp2', name: 'Jane Smith', email: 'jane@example.com', role: 'Manager' },
-                { employee_username: 'emp5', name: 'David Brown', email: 'david@example.com', role: 'Legal Advisor' },
-                { employee_username: 'emp6', name: 'Emily Davis', email: 'emily@example.com', role: 'Assistant' },
-                { employee_username: 'emp7', name: 'Robert Wilson', email: 'robert@example.com', role: 'Consultant' }
-            ]
-        },
-        {
-            id: '5',
-            task_id: 'TASK005',
-            create_date: '2024-01-18',
-            due_date: '2024-02-05',
-            service_name: 'Legal Compliance',
-            fees: 6000,
-            firm_name: 'Brown Industries',
-            file_no: 'FN005',
-            name: 'David Brown',
-            guardian_name: 'Richard Brown',
-            pan: 'BRWN3456M',
-            mobile: '9876543214',
-            status: 'ON_HOLD',
-            in_out: false,
-            is_in_me: false,
-            is_recurring: true,
-            recurring_type: 'Quarterly',
-            employees: [
-                { employee_username: 'emp5', name: 'David Brown', email: 'david@example.com', role: 'Legal Advisor' },
-                { employee_username: 'emp3', name: 'Mike Johnson', email: 'mike@example.com', role: 'Assistant' }
-            ]
+    // Fetch services
+    const fetchServices = async () => {
+        try {
+            const headers = await getHeaders();
+            const response = await fetch(`${API_BASE_URL}/service/list?search=`, {
+                method: 'GET',
+                headers: headers
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch services');
+            }
+            
+            const responseData = await response.json();
+            console.log('Services Response:', responseData);
+            
+            if (responseData.success && responseData.data && Array.isArray(responseData.data)) {
+                const options = responseData.data.map(service => ({
+                    value: service.service_id,
+                    name: service.name
+                }));
+                setServiceOptions(options);
+            }
+        } catch (error) {
+            console.error('Error fetching services:', error);
         }
-    ]);
+    };
+
+    // Fetch tasks
+    const fetchTasks = async () => {
+        setLoading(true);
+        try {
+            const headers = await getHeaders();
+            
+            // Build query string
+            const queryParams = new URLSearchParams({
+                page_no: pagination.page_no.toString(),
+                limit: pagination.limit.toString()
+            });
+            
+            if (filters.search) queryParams.append('search', filters.search);
+            if (filters.service_id) queryParams.append('service_id', filters.service_id);
+            if (filters.status) queryParams.append('status', filters.status);
+            
+            const response = await fetch(`${API_BASE_URL}/task/list?${queryParams.toString()}`, {
+                method: 'GET',
+                headers: headers
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch tasks');
+            }
+            
+            const responseData = await response.json();
+            console.log('API Response:', responseData);
+            
+            // Check if response has success and data structure
+            if (responseData.success && responseData.data && Array.isArray(responseData.data)) {
+                setTasks(responseData.data);
+                setPagination(prev => ({
+                    ...prev,
+                    total: responseData.pagination?.total || responseData.data.length
+                }));
+            } else {
+                console.error('Unexpected API response structure:', responseData);
+                setTasks([]);
+            }
+        } catch (error) {
+            console.error('Error fetching tasks:', error);
+            setTasks([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Fetch client details
+    const fetchClientDetails = async (username) => {
+        if (!username) return;
+        
+        setClientModal(prev => ({ ...prev, loading: true, open: true }));
+        try {
+            const headers = await getHeaders();
+            const response = await fetch(`${API_BASE_URL}/client/details/profile?username=${username}`, {
+                method: 'GET',
+                headers: headers
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch client details');
+            }
+            
+            const responseData = await response.json();
+            console.log('Client Details Response:', responseData);
+            
+            if (responseData.success && responseData.data) {
+                setClientModal(prev => ({ ...prev, clientData: responseData.data, loading: false }));
+            } else {
+                setClientModal(prev => ({ ...prev, clientData: null, loading: false }));
+            }
+        } catch (error) {
+            console.error('Error fetching client details:', error);
+            setClientModal(prev => ({ ...prev, clientData: null, loading: false }));
+        }
+    };
+
+    // Open client details modal
+    const openClientDetailsModal = (username) => {
+        fetchClientDetails(username);
+    };
+
+    // Close client details modal
+    const closeClientDetailsModal = () => {
+        setClientModal({ open: false, clientData: null, loading: false });
+    };
+
+    // Initial data fetch
+    useEffect(() => {
+        fetchServices();
+        fetchTasks();
+    }, []);
+
+    // Handle search with filters
+    const handleSearch = () => {
+        setPagination(prev => ({ ...prev, page_no: 1 }));
+        fetchTasks();
+    };
+
+    // Handle reset filters
+    const handleResetFilters = () => {
+        setFilters({
+            search: '',
+            service_id: '',
+            status: ''
+        });
+        setPagination(prev => ({ ...prev, page_no: 1 }));
+        setTimeout(() => fetchTasks(), 100);
+    };
+
+    // Handle status change
+    const handleStatusChange = async (taskId, newStatus) => {
+        try {
+            const headers = await getHeaders();
+            const response = await fetch(`${API_BASE_URL}/task/update-status/${taskId}`, {
+                method: 'PUT',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to update status');
+            }
+            
+            // Update local state
+            setTasks(prev => prev.map(task =>
+                task.task_id === taskId ? { ...task, status: newStatus } : task
+            ));
+        } catch (error) {
+            console.error('Error updating status:', error);
+        }
+    };
+
+    // Handle get in/out - Placeholder for now
+    const handleGetInOut = (taskId, action) => {
+        console.log(`Task ${taskId} - ${action}`);
+        // Implement API call when endpoint is available
+    };
 
     // Format date function
     const formatDate = (dateString) => {
+        if (!dateString) return '-';
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB');
     };
 
     // Calculate days left
     const getDaysLeft = (dueDate) => {
+        if (!dueDate) return 0;
         const due = new Date(dueDate);
         const today = new Date();
         const diffTime = due - today;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays;
-    };
-
-    // Get status color
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'PENDING': return 'text-blue-600';
-            case 'IN_PROGRESS': return 'text-orange-600';
-            case 'UNDER_REVIEW': return 'text-purple-600';
-            case 'ON_HOLD': return 'text-yellow-600';
-            case 'COMPLETE': return 'text-green-600';
-            case 'CANCELLED': return 'text-red-600';
-            default: return 'text-gray-600';
-        }
-    };
-
-    // Get status icon
-    const getStatusIcon = (status) => {
-        switch (status) {
-            case 'PENDING': return <FiLoader className="text-blue-600" />;
-            case 'IN_PROGRESS': return <FiClock className="text-orange-600" />;
-            case 'UNDER_REVIEW': return <FiEye className="text-purple-600" />;
-            case 'ON_HOLD': return <FiXCircle className="text-yellow-600" />;
-            case 'COMPLETE': return <FiCheckCircle className="text-green-600" />;
-            case 'CANCELLED': return <FiXCircle className="text-red-600" />;
-            default: return <FiLoader className="text-gray-600" />;
-        }
     };
 
     // Handle export
@@ -1383,54 +1773,11 @@ useEffect(() => {
         if (selectAll) {
             setSelectedTasks(new Set());
         } else {
-            const allTaskIds = new Set(filteredTasks.map(task => task.id));
+            const allTaskIds = new Set(tasks.map(task => task.task_id));
             setSelectedTasks(allTaskIds);
         }
         setSelectAll(!selectAll);
     };
-
-    // Handle status change
-    const handleStatusChange = (taskId, newStatus) => {
-        setTasks(prev => prev.map(task =>
-            task.id === taskId ? { ...task, status: newStatus } : task
-        ));
-    };
-
-    // Handle get in/out
-    const handleGetInOut = (taskId, action) => {
-        setTasks(prev => prev.map(task => {
-            if (task.id === taskId) {
-                if (action === 'in') {
-                    return {
-                        ...task,
-                        in_out: true,
-                        is_in_me: true
-                    };
-                } else {
-                    return {
-                        ...task,
-                        in_out: false,
-                        is_in_me: false
-                    };
-                }
-            }
-            return task;
-        }));
-    };
-
-    // Filter tasks based on search and filters
-    const filteredTasks = tasks.filter(task => {
-        const matchesSearch = searchQuery === '' ||
-            task.service_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            task.firm_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            task.file_no.toLowerCase().includes(searchQuery.toLowerCase());
-
-        const matchesStatus = selectedStatus === '' || task.status === selectedStatus;
-        const matchesService = selectedService === '' || task.service_name === serviceOptions.find(s => s.value === selectedService)?.name;
-
-        return matchesSearch && matchesStatus && matchesService;
-    });
 
     // Toggle row dropdown
     const toggleRowDropdown = (taskId) => {
@@ -1454,135 +1801,6 @@ useEffect(() => {
         };
     }, []);
 
-    // Helper functions for column management
-    const addItemToColumn = (columnIndex, fieldId) => {
-        const field = availableFields.find(f => f.id === fieldId);
-        if (!field) return;
-
-        const newConfig = [...columnConfig];
-        if (newConfig[columnIndex].items.length < 5) {
-            newConfig[columnIndex].items.push({
-                id: field.id,
-                label: field.label
-            });
-            saveColumnConfig(newConfig);
-        }
-    };
-
-    const removeItemFromColumn = (columnIndex, itemIndex) => {
-        const newConfig = [...columnConfig];
-        newConfig[columnIndex].items.splice(itemIndex, 1);
-        saveColumnConfig(newConfig);
-    };
-
-    const removeColumn = (columnIndex) => {
-        const newConfig = [...columnConfig];
-        // Don't remove fixed columns (Status and Actions)
-        if (!newConfig[columnIndex].fixed) {
-            newConfig.splice(columnIndex, 1);
-            saveColumnConfig(newConfig);
-        }
-    };
-
-    // Handle drag end for columns
-    const handleDragEnd = (event) => {
-        const { active, over } = event;
-        
-        if (!over || active.id === over.id) {
-            setActiveDragId(null);
-            return;
-        }
-        
-        const oldIndex = columnConfig.findIndex((col) => col.id === active.id);
-        const newIndex = columnConfig.findIndex((col) => col.id === over.id);
-        
-        if (oldIndex === -1 || newIndex === -1) {
-            setActiveDragId(null);
-            return;
-        }
-        
-        const sourceColumn = columnConfig[oldIndex];
-        const targetColumn = columnConfig[newIndex];
-        
-        // Find fixed columns (Status and Actions)
-        const fixedColumns = columnConfig.filter(col => col.fixed);
-        const fixedColumnIds = fixedColumns.map(col => col.id);
-        
-        // Rules for dragging:
-        // 1. Fixed columns cannot be dragged
-        // 2. Non-fixed columns can be dragged anywhere except between fixed columns
-        if (sourceColumn.fixed) {
-            setActiveDragId(null);
-            return;
-        }
-        
-        // If target is a fixed column, we need to find the nearest non-fixed position
-        if (targetColumn.fixed) {
-            // Try to place before or after the fixed columns based on direction
-            if (newIndex > oldIndex) {
-                // Dragging toward the end - place before the first fixed column
-                const firstFixedIndex = columnConfig.findIndex(col => col.fixed);
-                if (firstFixedIndex > 0) {
-                    const newConfig = arrayMove(columnConfig, oldIndex, firstFixedIndex - 1);
-                    saveColumnConfig(newConfig);
-                }
-            } else {
-                // Dragging toward the beginning - place at the end of non-fixed columns
-                const lastNonFixedIndex = columnConfig.reduce((lastIndex, col, index) => 
-                    !col.fixed ? index : lastIndex, -1
-                );
-                if (lastNonFixedIndex !== -1) {
-                    const newConfig = arrayMove(columnConfig, oldIndex, lastNonFixedIndex);
-                    saveColumnConfig(newConfig);
-                }
-            }
-        } else {
-            // Normal drag between non-fixed columns
-            const newConfig = arrayMove(columnConfig, oldIndex, newIndex);
-            saveColumnConfig(newConfig);
-        }
-        
-        setActiveDragId(null);
-    };
-
-    // Handle drag end for items within a column
-    const handleItemDragEnd = (event, columnIndex) => {
-        const { active, over } = event;
-        
-        if (active.id !== over.id) {
-            setColumnConfig((items) => {
-                const newConfig = [...items];
-                const columnItems = newConfig[columnIndex].items;
-                const oldIndex = columnItems.findIndex((item) => item.id === active.id);
-                const newIndex = columnItems.findIndex((item) => item.id === over.id);
-                
-                newConfig[columnIndex].items = arrayMove(columnItems, oldIndex, newIndex);
-                saveColumnConfig(newConfig);
-                return newConfig;
-            });
-        }
-        
-        setActiveItemDragId(null);
-    };
-
-    // Add a new column
-    const addNewColumn = () => {
-        const newConfig = [...columnConfig];
-        const newColumnId = `col-${Date.now()}`;
-        
-        // Find the index where to insert (before the first fixed column)
-        const firstFixedIndex = newConfig.findIndex(col => col.fixed);
-        const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length;
-        
-        newConfig.splice(insertIndex, 0, {
-            id: newColumnId,
-            name: `Column ${newConfig.length + 1}`,
-            items: [],
-            fixed: false
-        });
-        saveColumnConfig(newConfig);
-    };
-
     // Open status modal
     const openStatusModal = (taskId, currentStatus) => {
         setStatusModal({
@@ -1601,11 +1819,17 @@ useEffect(() => {
         });
     };
 
-    // Open users modal - Updated to handle single employee click
-    const openUsersModal = (users, taskName) => {
+    // Open users modal
+    const openUsersModal = (staffs, taskName) => {
         setUsersModal({
             open: true,
-            users,
+            users: staffs.map(staff => ({
+                username: staff.username,
+                name: staff.name,
+                email: staff.email,
+                mobile: staff.mobile,
+                role: 'Staff'
+            })),
             taskName
         });
     };
@@ -1619,177 +1843,202 @@ useEffect(() => {
         });
     };
 
-    // Render cell content based on field type - UPDATED FOR EMPLOYEE CLICKS
-    const renderCellContent = (task, fieldId, handleGetInOut, navigate, openStatusModal, openUsersModal) => {
+    // Render cell content based on field type
+    const renderCellContent = (task, fieldId, handleGetInOut, navigate, openStatusModal, openUsersModal, openClientDetailsModal) => {
+        const daysLeft = getDaysLeft(task.dates?.due_date);
+        const isOverdue = daysLeft < 0;
+
         switch (fieldId) {
-            case 'create_date':
+            case 'task_id':
                 return (
                     <div className="text-gray-700 font-medium text-sm">
-                        {formatDate(task.create_date)}
+                        {task.task_id || '-'}
                     </div>
                 );
-            case 'due_date':
+            case 'client_name':
+                return (
+                    <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                            <FiUser className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <div>
+                            <button
+                                onClick={() => openClientDetailsModal(task.client?.username)}
+                                className="font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors text-sm hover:text-indigo-600 hover:underline text-left"
+                            >
+                                {task.client?.profile?.name || task.client?.name || '-'}
+                            </button>
+                        </div>
+                    </div>
+                );
+            case 'client_mobile':
+                return (
+                    <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
+                        <FiPhone className="w-3 h-3 text-gray-400" />
+                        {task.client?.profile?.mobile || task.client?.mobile || '-'}
+                    </div>
+                );
+            case 'client_email':
+                return (
+                    <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
+                        <FiMail className="w-3 h-3 text-gray-400" />
+                        {task.client?.profile?.email || task.client?.email || '-'}
+                    </div>
+                );
+            case 'firm_name':
                 return (
                     <div className="text-gray-700 font-medium text-sm">
-                        {formatDate(task.due_date)}
+                        {task.firm?.firm_name || task.firm_name || '-'}
                     </div>
-                );
-            case 'days_left':
-                const daysLeft = getDaysLeft(task.due_date);
-                const isOverdue = daysLeft < 0;
-                return (
-                    <span className={`text-xs font-bold ${isOverdue ? 'text-red-600' : daysLeft <= 7 ? 'text-orange-600' : 'text-green-600'}`}>
-                        {isOverdue
-                            ? `Overdue by ${Math.abs(daysLeft)} day${Math.abs(daysLeft) > 1 ? 's' : ''}`
-                            : `Due in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`
-                        }
-                    </span>
                 );
             case 'service_name':
                 return (
                     <button 
-                        onClick={() => navigate(`/task/${task.id}`)}
-                        className="font-semibold text-gray-800 text-sm hover:text-indigo-600 hover:underline transition-colors"
+                        onClick={() => navigate(`/task/${task.task_id}`)}
+                        className="font-semibold text-gray-800 text-sm hover:text-indigo-600 hover:underline transition-colors text-left"
                     >
-                        {task.service_name}
+                        {task.service?.name || task.service_name || '-'}
                     </button>
                 );
             case 'fees':
                 return (
                     <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
                         <FiDollarSign className="w-3 h-3" />
-                        ₹{task.fees.toLocaleString()}
+                        ₹{(task.charges?.fees || task.fees || 0).toLocaleString()}
                     </div>
                 );
-            case 'firm_name':
+            case 'due_date':
+                return (
+                    <div className="flex items-center gap-2">
+                        <div className="text-gray-700 font-medium text-sm">
+                            {task.dates?.due_date ? formatDate(task.dates.due_date) : '-'}
+                        </div>
+                        {task.dates?.due_date && (
+                            <span className={`text-xs font-bold ${isOverdue ? 'text-red-600' : daysLeft <= 7 ? 'text-orange-600' : 'text-green-600'}`}>
+                                {isOverdue
+                                    ? `Overdue by ${Math.abs(daysLeft)} day${Math.abs(daysLeft) > 1 ? 's' : ''}`
+                                    : `Due in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`
+                                }
+                            </span>
+                        )}
+                    </div>
+                );
+            case 'create_date':
                 return (
                     <div className="text-gray-700 font-medium text-sm">
-                        {task.firm_name}
+                        {task.dates?.create_date ? formatDate(task.dates.create_date) : '-'}
                     </div>
                 );
-            case 'file_no':
+            case 'target_date':
                 return (
-                    <span className="text-gray-600 font-medium bg-gray-100 px-2 py-0.5 rounded text-xs">
-                        {task.file_no}
-                    </span>
-                );
-            case 'name':
-                return (
-                    <div className="flex items-center gap-2 justify-center">
-                        <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
-                            <FiUser className="w-3.5 h-3.5 text-white" />
-                        </div>
-                        <div>
-                            <div className="font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors text-sm">
-                                {task.name}
-                            </div>
-                            <div className="text-xs text-gray-500 font-medium">
-                                {task.task_id}
-                            </div>
-                        </div>
+                    <div className="text-gray-700 font-medium text-sm">
+                        {task.dates?.target_date ? formatDate(task.dates.target_date) : '-'}
                     </div>
                 );
-            case 'guardian_name':
+            case 'billing_status':
                 return (
-                    <span className="text-gray-700 font-medium text-sm">
-                        {task.guardian_name || '-'}
+                    <span className="text-gray-700 font-medium text-sm capitalize">
+                        {task.billing_status || '-'}
                     </span>
                 );
-            case 'pan':
-                return (
-                    <span className="text-gray-700 font-medium text-sm">
-                        {task.pan}
-                    </span>
-                );
-            case 'mobile':
-                return (
-                    <div className="flex items-center gap-2 text-gray-700 font-medium text-sm justify-center">
-                        <FiPhone className="w-3 h-3 text-gray-400" />
-                        {task.mobile}
-                    </div>
-                );
-            case 'employees':
-                // If only one employee, make the icon clickable
-                if (task.employees.length === 1) {
+            case 'staffs':
+                const staffs = task.staffs || [];
+                if (staffs.length === 1) {
                     return (
                         <button
-                            onClick={() => openUsersModal(task.employees, task.service_name)}
-                            className="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                            title={`Click to view ${task.employees[0].name}'s details`}
+                            onClick={() => openUsersModal(staffs, task.service?.name)}
+                            className="flex items-center justify-start cursor-pointer hover:opacity-80 transition-opacity"
+                            title={`Click to view ${staffs[0].name}'s details`}
                         >
                             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white">
-                                {task.employees[0].name.charAt(0)}
+                                {staffs[0].name?.charAt(0) || 'S'}
                             </div>
                         </button>
                     );
-                } else if (task.employees.length === 2) {
-                    // If exactly 2 employees, make both icons clickable
+                } else if (staffs.length === 2) {
                     return (
-                        <div className="flex -space-x-2 justify-center">
-                            {task.employees.map((emp, empIndex) => (
+                        <div className="flex -space-x-2">
+                            {staffs.map((staff, staffIndex) => (
                                 <button
-                                    key={emp.employee_username}
-                                    onClick={() => openUsersModal(task.employees, task.service_name)}
+                                    key={staff.assign_id || staffIndex}
+                                    onClick={() => openUsersModal(staffs, task.service?.name)}
                                     className="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                                    title={`Click to view ${emp.name}'s details`}
+                                    title={`Click to view ${staff.name}'s details`}
                                 >
                                     <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white">
-                                        {emp.name.charAt(0)}
+                                        {staff.name?.charAt(0) || 'S'}
                                     </div>
                                 </button>
                             ))}
                         </div>
                     );
-                } else {
-                    const showMoreCount = task.employees.length - 2;
+                } else if (staffs.length > 2) {
+                    const showMoreCount = staffs.length - 2;
                     return (
-                        <div className="flex -space-x-2 justify-center">
-                            {task.employees.slice(0, 2).map((emp, empIndex) => (
+                        <div className="flex -space-x-2">
+                            {staffs.slice(0, 2).map((staff, staffIndex) => (
                                 <div
-                                    key={emp.employee_username}
+                                    key={staff.assign_id || staffIndex}
                                     className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white"
                                 >
-                                    {emp.name.charAt(0)}
+                                    {staff.name?.charAt(0) || 'S'}
                                 </div>
                             ))}
-                            {task.employees.length > 2 && (
+                            {staffs.length > 2 && (
                                 <button
-                                    onClick={() => openUsersModal(task.employees, task.service_name)}
+                                    onClick={() => openUsersModal(staffs, task.service?.name)}
                                     className="w-8 h-8 bg-gray-300 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-gray-700 hover:bg-gray-400 hover:text-gray-800 transition-colors"
-                                    title={`Click to view all ${task.employees.length} users`}
+                                    title={`Click to view all ${staffs.length} staff members`}
                                 >
                                     +{showMoreCount}
                                 </button>
                             )}
                         </div>
                     );
+                } else {
+                    return <span className="text-gray-400 text-sm">-</span>;
                 }
+            case 'is_recurring':
+                return (
+                    <span className={`text-xs font-medium ${task.is_recurring ? 'text-green-600' : 'text-gray-400'}`}>
+                        {task.is_recurring ? 'Yes' : 'No'}
+                    </span>
+                );
+            case 'create_by':
+                return (
+                    <div className="text-gray-700 font-medium text-sm">
+                        {task.create_by?.name || '-'}
+                    </div>
+                );
             case 'status':
-                const statusColor = task.status === 'PENDING' ? 'bg-blue-100 text-blue-700' :
-                                  task.status === 'IN_PROGRESS' ? 'bg-orange-100 text-orange-700' :
-                                  task.status === 'UNDER_REVIEW' ? 'bg-purple-100 text-purple-700' :
-                                  task.status === 'ON_HOLD' ? 'bg-yellow-100 text-yellow-700' :
-                                  task.status === 'COMPLETE' ? 'bg-green-100 text-green-700' :
-                                  'bg-red-100 text-red-700';
+                const statusColor = task.status === 'unassign' ? 'bg-blue-100 text-blue-700' :
+                                  task.status === 'in process' ? 'bg-orange-100 text-orange-700' :
+                                  task.status === 'pending from client' ? 'bg-purple-100 text-purple-700' :
+                                  task.status === 'pending from department' ? 'bg-yellow-100 text-yellow-700' :
+                                  task.status === 'complete' ? 'bg-green-100 text-green-700' :
+                                  task.status === 'cancel' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-700';
+                
+                const statusText = task.status === 'unassign' ? 'Unassign' :
+                                 task.status === 'in process' ? 'In Process' :
+                                 task.status === 'pending from client' ? 'Pending from Client' :
+                                 task.status === 'pending from department' ? 'Pending from Department' :
+                                 task.status === 'complete' ? 'Complete' :
+                                 task.status === 'cancel' ? 'Cancel' :
+                                 task.status || '-';
                 
                 return (
                     <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-                        {task.status === 'PENDING' ? 'Pending' :
-                         task.status === 'IN_PROGRESS' ? 'In Progress' :
-                         task.status === 'UNDER_REVIEW' ? 'Under Review' :
-                         task.status === 'ON_HOLD' ? 'On Hold' :
-                         task.status === 'COMPLETE' ? 'Complete' :
-                         'Cancelled'}
+                        {statusText}
                     </div>
                 );
             case 'menu':
                 return (
-                    <div className="relative dropdown-container flex justify-center">
-                        {/* Vertical 3-dot button - More compact */}
+                    <div className="relative dropdown-container flex justify-start">
                         <motion.button
-                            onClick={() => toggleRowDropdown(task.id)}
+                            onClick={() => toggleRowDropdown(task.task_id)}
                             className="w-8 h-8 flex flex-col items-center justify-center rounded-full
-                           bg-gray-100 hover:bg-gray-200 transition-colors space-y-0.5"
+                                   bg-gray-100 hover:bg-gray-200 transition-colors space-y-0.5"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.95 }}
                         >
@@ -1798,66 +2047,38 @@ useEffect(() => {
                             <div className="w-1 h-1 rounded-full bg-gray-600"></div>
                         </motion.button>
 
-                        {/* Professional Dropdown with Get In/Out option - Compact */}
                         <AnimatePresence>
-                            {activeRowDropdown === task.id && (
+                            {activeRowDropdown === task.task_id && (
                                 <motion.div
-                                    className="absolute right-0 mt-1 w-56 bg-white rounded-lg
-                                   shadow-xl border border-gray-200 z-50 overflow-hidden"
+                                    className="absolute left-0 mt-1 w-56 bg-white rounded-lg
+                                           shadow-xl border border-gray-200 z-50 overflow-hidden"
                                     initial={{ opacity: 0, y: -8, scale: 0.96 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -8, scale: 0.96 }}
                                     transition={{ duration: 0.15 }}
                                 >
                                     <div className="py-1">
-                                        {/* Get In/Out Button in dropdown */}
-                                        {task.in_out ? (
-                                            task.is_in_me ? (
-                                                <button
-                                                    onClick={() => {
-                                                        handleGetInOut(task.id, 'out');
-                                                        setActiveRowDropdown(null);
-                                                    }}
-                                                    className="flex items-center w-full px-3 py-2.5 text-sm
-                                                   text-red-600 hover:bg-red-50 transition-colors"
-                                                >
-                                                    <FiArrowRight className="mr-2 text-red-600 w-4 h-4" />
-                                                    Get OUT
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    disabled
-                                                    className="flex items-center w-full px-3 py-2.5 text-sm
-                                                   text-gray-500 hover:bg-gray-50 transition-colors cursor-not-allowed"
-                                                >
-                                                    <FiUserCheck className="mr-2 text-gray-500 w-4 h-4" />
-                                                    {task.in_name} [{task.in_type?.toUpperCase() || 'USER'}]
-                                                </button>
-                                            )
-                                        ) : (
-                                            <button
-                                                onClick={() => {
-                                                    handleGetInOut(task.id, 'in');
-                                                    setActiveRowDropdown(null);
-                                                }}
-                                                className="flex items-center w-full px-3 py-2.5 text-sm
-                                               text-indigo-600 hover:bg-indigo-50 transition-colors"
-                                            >
-                                                <FiArrowLeft className="mr-2 text-indigo-600 w-4 h-4" />
-                                                GET IN
-                                            </button>
-                                        )}
-
-                                        <div className="border-t my-1"></div>
-                                        
-                                        {/* Status Change Button */}
                                         <button
                                             onClick={() => {
-                                                openStatusModal(task.id, task.status);
+                                                handleGetInOut(task.task_id, 'in');
                                                 setActiveRowDropdown(null);
                                             }}
                                             className="flex items-center w-full px-3 py-2.5 text-sm
-                                           text-blue-600 hover:bg-blue-50 transition-colors"
+                                                   text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                        >
+                                            <FiArrowLeft className="mr-2 text-indigo-600 w-4 h-4" />
+                                            GET IN
+                                        </button>
+
+                                        <div className="border-t my-1"></div>
+                                        
+                                        <button
+                                            onClick={() => {
+                                                openStatusModal(task.task_id, task.status);
+                                                setActiveRowDropdown(null);
+                                            }}
+                                            className="flex items-center w-full px-3 py-2.5 text-sm
+                                                   text-blue-600 hover:bg-blue-50 transition-colors"
                                         >
                                             <FiCheckCircle className="mr-2 text-blue-600 w-4 h-4" />
                                             Change Status
@@ -1866,10 +2087,10 @@ useEffect(() => {
                                         <button
                                             onClick={() => {
                                                 setActiveRowDropdown(null);
-                                                navigate(`/task/profile/${task.id}`);
+                                                navigate(`/task/profile/${task.task_id}`);
                                             }}
                                             className="flex items-center w-full px-3 py-2.5 text-sm
-                                           text-gray-700 hover:bg-indigo-50 transition-colors"
+                                                   text-gray-700 hover:bg-indigo-50 transition-colors"
                                         >
                                             <FiEye className="mr-2 text-indigo-600 w-4 h-4" />
                                             View Details
@@ -1878,10 +2099,10 @@ useEffect(() => {
                                         <button
                                             onClick={() => {
                                                 setActiveRowDropdown(null);
-                                                navigate(`/task/edit/${task.id}`);
+                                                navigate(`/task/edit/${task.task_id}`);
                                             }}
                                             className="flex items-center w-full px-3 py-2.5 text-sm
-                                           text-gray-700 hover:bg-green-50 transition-colors"
+                                                   text-gray-700 hover:bg-green-50 transition-colors"
                                         >
                                             <FiEdit className="mr-2 text-green-600 w-4 h-4" />
                                             Edit Task
@@ -1892,10 +2113,10 @@ useEffect(() => {
                                         <button
                                             onClick={() => {
                                                 setActiveRowDropdown(null);
-                                                SetDeleteModal(true);
+                                                setDeleteModal(true);
                                             }}
                                             className="flex items-center w-full px-3 py-2.5 text-sm
-                                           text-red-600 hover:bg-red-50 transition-colors"
+                                                   text-red-600 hover:bg-red-50 transition-colors"
                                         >
                                             <FiTrash2 className="mr-2 w-4 h-4" />
                                             Delete Task
@@ -1907,7 +2128,6 @@ useEffect(() => {
                     </div>
                 );
 
-
             default:
                 return (
                     <span className="text-gray-700 font-medium text-sm">
@@ -1917,7 +2137,7 @@ useEffect(() => {
         }
     };
 
-    // Settings Modal Component with Drag & Drop - UPDATED COLUMN NAME EDITING
+    // Settings Modal Component with Drag & Drop
     const SettingsModal = React.memo(() => {
         const [localColumnConfig, setLocalColumnConfig] = useState(columnConfig);
         const [localActiveDragId, setLocalActiveDragId] = useState(null);
@@ -1950,30 +2170,19 @@ useEffect(() => {
             const sourceColumn = localColumnConfig[oldIndex];
             const targetColumn = localColumnConfig[newIndex];
             
-            // Find fixed columns (Status and Actions)
-            const fixedColumns = localColumnConfig.filter(col => col.fixed);
-            const fixedColumnIds = fixedColumns.map(col => col.id);
-            
-            // Rules for dragging:
-            // 1. Fixed columns cannot be dragged
-            // 2. Non-fixed columns can be dragged anywhere except between fixed columns
             if (sourceColumn.fixed) {
                 setLocalActiveDragId(null);
                 return;
             }
             
-            // If target is a fixed column, we need to find the nearest non-fixed position
             if (targetColumn.fixed) {
-                // Try to place before or after the fixed columns based on direction
                 if (newIndex > oldIndex) {
-                    // Dragging toward the end - place before the first fixed column
                     const firstFixedIndex = localColumnConfig.findIndex(col => col.fixed);
                     if (firstFixedIndex > 0) {
                         const newConfig = arrayMove(localColumnConfig, oldIndex, firstFixedIndex - 1);
                         setLocalColumnConfig(newConfig);
                     }
                 } else {
-                    // Dragging toward the beginning - place at the end of non-fixed columns
                     const lastNonFixedIndex = localColumnConfig.reduce((lastIndex, col, index) => 
                         !col.fixed ? index : lastIndex, -1
                     );
@@ -1983,7 +2192,6 @@ useEffect(() => {
                     }
                 }
             } else {
-                // Normal drag between non-fixed columns
                 const newConfig = arrayMove(localColumnConfig, oldIndex, newIndex);
                 setLocalColumnConfig(newConfig);
             }
@@ -2037,7 +2245,6 @@ useEffect(() => {
             const newConfig = [...localColumnConfig];
             const newColumnId = `col-${Date.now()}`;
             
-            // Find the index where to insert (before the first fixed column)
             const firstFixedIndex = newConfig.findIndex(col => col.fixed);
             const insertIndex = firstFixedIndex >= 0 ? firstFixedIndex : newConfig.length;
             
@@ -2049,7 +2256,6 @@ useEffect(() => {
             });
             setLocalColumnConfig(newConfig);
             
-            // Start editing the new column
             setEditingColumnId(newColumnId);
             setTempColumnName('New Column');
         };
@@ -2084,7 +2290,7 @@ useEffect(() => {
             setEditingColumnId(null);
         };
 
-        // Sortable Column Component for Modal - UPDATED FOR BETTER COLUMN NAME EDITING
+        // Sortable Column Component for Modal
         const ModalSortableColumn = React.memo(({ column, index }) => {
             const {
                 attributes,
@@ -2118,7 +2324,7 @@ useEffect(() => {
                         }`}
                     whileHover={{ scale: column.fixed ? 1 : 1.02 }}
                 >
-                    {/* Column Header - UPDATED FOR BETTER EDITING LAYOUT */}
+                    {/* Column Header */}
                     <div className="mb-3">
                         <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -2148,14 +2354,12 @@ useEffect(() => {
                                                     className="flex-1 px-3 py-1.5 bg-green-500 text-white rounded text-xs font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-1"
                                                 >
                                                     <FiCheckCircle className="w-3 h-3" />
-                                                    
                                                 </button>
                                                 <button
                                                     onClick={() => setEditingColumnId(null)}
                                                     className="flex-1 px-3 py-1.5 bg-red-500 text-white rounded text-xs font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-1"
                                                 >
                                                     <FiX className="w-3 h-3" />
-                                                    
                                                 </button>
                                             </div>
                                         </div>
@@ -2231,7 +2435,7 @@ useEffect(() => {
                         </SortableContext>
                     </DndContext>
 
-                    {/* Add Field Dropdown (only for columns with space) - Hide when editing */}
+                    {/* Add Field Dropdown */}
                     {column.items.length < 5 && !editingColumnId && (
                         <select
                             value=""
@@ -2245,7 +2449,7 @@ useEffect(() => {
                         >
                             <option value="">Add field...</option>
                             {availableFields
-                                .filter(field => field.id !== 'menu') // Don't show menu in dropdown
+                                .filter(field => field.id !== 'menu')
                                 .filter(field =>
                                     !localColumnConfig.some(col =>
                                         col.items.some(item => item.id === field.id)
@@ -2260,7 +2464,7 @@ useEffect(() => {
                         </select>
                     )}
 
-                    {/* Empty State - Hide when editing */}
+                    {/* Empty State */}
                     {column.items.length === 0 && !editingColumnId && (
                         <div className="text-center py-4 text-gray-400 text-sm">
                             <p>Drag fields here or select from dropdown</p>
@@ -2335,13 +2539,12 @@ useEffect(() => {
                             transition={{ duration: 0.2 }}
                             onClick={(e) => e.stopPropagation()}
                         >
-
-                            {/* ================= HEADER ================= */}
+                            {/* Header */}
                             <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-center">
                                 <div className="flex items-center gap-3 flex-wrap">
                                     <h2 className="text-xl font-bold">Table Column Settings</h2>
                                     <span className="text-indigo-100 text-sm">
-                                        — Drag and drop to rearrange columns and items (Only Status and Actions are fixed)
+                                        — Drag and drop to rearrange columns and items
                                     </span>
                                 </div>
                                 <motion.button
@@ -2354,9 +2557,8 @@ useEffect(() => {
                                 </motion.button>
                             </div>
 
-                            {/* ================= CONTENT ================= */}
+                            {/* Content */}
                             <div className="p-6 overflow-y-auto flex-1">
-
                                 <DndContext
                                     sensors={sensors}
                                     collisionDetection={closestCenter}
@@ -2379,7 +2581,6 @@ useEffect(() => {
                                         </div>
                                     </SortableContext>
 
-                                    {/* Drag overlay */}
                                     <DragOverlay>
                                         {localActiveDragId ? (
                                             <div className="bg-white border-2 border-indigo-300 shadow-xl rounded-xl p-4 w-48">
@@ -2413,7 +2614,7 @@ useEffect(() => {
                                     </motion.button>
                                 </div>
 
-                                {/* ================= AVAILABLE FIELDS ================= */}
+                                {/* Available Fields */}
                                 <div className="border-t pt-6">
                                     <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
                                         <FiGrid className="w-4 h-4 text-indigo-600" />
@@ -2422,7 +2623,7 @@ useEffect(() => {
 
                                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                                         {availableFields
-                                            .filter(field => field.id !== 'menu') // Don't show menu in available fields
+                                            .filter(field => field.id !== 'menu')
                                             .map(field => (
                                                 <DraggableField
                                                     key={field.id}
@@ -2432,13 +2633,11 @@ useEffect(() => {
                                             ))}
                                     </div>
                                 </div>
-
                             </div>
 
-                            {/* ================= FOOTER ================= */}
+                            {/* Footer */}
                             <div className="border-t px-6 py-4 bg-gray-50">
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-
                                     <motion.button
                                         onClick={resetToDefaultInModal}
                                         className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium
@@ -2476,10 +2675,8 @@ useEffect(() => {
                                             Save Changes
                                         </motion.button>
                                     </div>
-
                                 </div>
                             </div>
-
                         </motion.div>
                     </motion.div>
                 )}
@@ -2541,14 +2738,14 @@ useEffect(() => {
             {/* Main content */}
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="h-full flex flex-col">
-                    {/* Main Card - Mobile responsive */}
+                    {/* Main Card */}
                     <motion.div
                         className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-full mx-2 sm:mx-4 md:mx-8 my-3 md:my-4"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
                     >
-                        {/* Card Header - Responsive */}
+                        {/* Card Header */}
                         <div className="border-b border-gray-200 px-3 md:px-4 py-3 bg-gradient-to-r from-gray-50 to-white">
                             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2 md:gap-3">
                                 <div className="w-full md:w-auto">
@@ -2563,7 +2760,6 @@ useEffect(() => {
                                 <div className="flex flex-col lg:flex-row gap-2 w-full lg:w-auto">
                                     {/* Table/Cards Toggle and Search */}
                                     <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full">
-                                        {/* Table/Cards Toggle - Same size as Filter button */}
                                         <div className="flex items-center gap-2">
                                             <div className="md:hidden w-full">
                                                 <TableViewSwitch viewMode={viewMode} setViewMode={setViewMode} />
@@ -2571,28 +2767,14 @@ useEffect(() => {
                                             <div className="hidden md:block">
                                                 <TableViewSwitch viewMode={viewMode} setViewMode={setViewMode} />
                                             </div>
-                                            
-                                            {/* Search Input - Mobile optimized */}
-                                            <div className="flex-1 md:flex-none md:min-w-[200px] lg:min-w-[250px]">
-                                                <div className="relative">
-                                                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Search tasks..."
-                                                        value={searchQuery}
-                                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-sm bg-white"
-                                                    />
-                                                </div>
-                                            </div>
                                         </div>
 
-                                        {/* Action Buttons - Mobile optimized */}
+                                        {/* Action Buttons */}
                                         <div className="flex items-center gap-2">
-                                            {/* Filter Dropdown */}
+                                            {/* Filter Button */}
                                             <div className="dropdown-container relative">
                                                 <motion.button
-                                                    onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                                                    onClick={() => setShowFilterRow(!showFilterRow)}
                                                     className="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 text-gray-700 font-medium flex items-center gap-2 shadow-sm text-sm"
                                                     whileHover={{ scale: 1.05 }}
                                                     whileTap={{ scale: 0.95 }}
@@ -2600,75 +2782,6 @@ useEffect(() => {
                                                     <FiFilter className="w-4 h-4" />
                                                     <span className="hidden sm:inline">Filter</span>
                                                 </motion.button>
-
-                                                <AnimatePresence>
-                                                    {showFilterDropdown && (
-                                                        <motion.div
-                                                            className="absolute right-0 md:left-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50 p-3"
-                                                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                                                            transition={{ duration: 0.15 }}
-                                                        >
-                                                            {/* Status Filter */}
-                                                            <div className="mb-3">
-                                                                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                                                    Status
-                                                                </label>
-                                                                <select
-                                                                    value={selectedStatus}
-                                                                    onChange={(e) => setSelectedStatus(e.target.value)}
-                                                                    className="w-full px-2 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                                                >
-                                                                    <option value="">All Status</option>
-                                                                    {statusOptions.map(status => (
-                                                                        <option key={status.value} value={status.value}>
-                                                                            {status.name}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-
-                                                            {/* Service Filter */}
-                                                            <div className="mb-3">
-                                                                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                                                                    Service
-                                                                </label>
-                                                                <select
-                                                                    value={selectedService}
-                                                                    onChange={(e) => setSelectedService(e.target.value)}
-                                                                    className="w-full px-2 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                                                >
-                                                                    <option value="">All Services</option>
-                                                                    {serviceOptions.map(service => (
-                                                                        <option key={service.value} value={service.value}>
-                                                                            {service.name}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-
-                                                            {/* Actions */}
-                                                            <div className="flex justify-between gap-2">
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setSelectedStatus('');
-                                                                        setSelectedService('');
-                                                                    }}
-                                                                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-100"
-                                                                >
-                                                                    Reset
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => setShowFilterDropdown(false)}
-                                                                    className="w-full px-2 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                                                                >
-                                                                    Apply
-                                                                </button>
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
                                             </div>
 
                                             {/* Create Task Button */}
@@ -2679,10 +2792,9 @@ useEffect(() => {
                                                 whileTap={{ scale: 0.95 }}
                                             >
                                                 <FiPlus className="w-4 h-4" />
-                                                {/* <span className="hidden sm:inline">Create Task</span> */}
                                             </motion.button>
                                             
-                                            {/* 3 Dot Menu (Export + Settings) */}
+                                            {/* 3 Dot Menu */}
                                             <div className="relative dropdown-container">
                                                 <motion.button
                                                     onClick={() => setShowMoreMenu(!showMoreMenu)}
@@ -2741,7 +2853,7 @@ useEffect(() => {
                                                             {/* Divider */}
                                                             <div className="h-px bg-gray-200 my-1" />
 
-                                                            {/* Settings - Only enabled in table view */}
+                                                            {/* Settings */}
                                                             <button
                                                                 onClick={() => {
                                                                     if (viewMode === 'table') {
@@ -2765,11 +2877,23 @@ useEffect(() => {
                             </div>
                         </div>
 
+                        {/* Filter Row */}
+                        <FilterRow
+                            filters={filters}
+                            setFilters={setFilters}
+                            serviceOptions={serviceOptions}
+                            statusOptions={statusOptions}
+                            onSearch={handleSearch}
+                            onReset={handleResetFilters}
+                            showFilterRow={showFilterRow}
+                            setShowFilterRow={setShowFilterRow}
+                        />
+
                         {/* Task Display Area */}
                         <div className="flex-1 flex flex-col overflow-hidden">
                             {viewMode === 'table' ? (
                                 <TaskTable
-                                    tasks={filteredTasks}
+                                    tasks={tasks}
                                     selectedTasks={selectedTasks}
                                     handleTaskSelect={handleTaskSelect}
                                     selectAll={selectAll}
@@ -2785,10 +2909,11 @@ useEffect(() => {
                                     navigate={navigate}
                                     openStatusModal={openStatusModal}
                                     openUsersModal={openUsersModal}
+                                    openClientDetailsModal={openClientDetailsModal}
                                 />
                             ) : (
                                 <TaskCards
-                                    tasks={filteredTasks}
+                                    tasks={tasks}
                                     selectedTasks={selectedTasks}
                                     handleTaskSelect={handleTaskSelect}
                                     columnConfig={columnConfig}
@@ -2803,16 +2928,17 @@ useEffect(() => {
                                     navigate={navigate}
                                     openStatusModal={openStatusModal}
                                     openUsersModal={openUsersModal}
+                                    openClientDetailsModal={openClientDetailsModal}
                                 />
                             )}
                         </div>
 
-                        {/* Footer - Mobile responsive */}
+                        {/* Footer */}
                         <div className="border-t border-gray-200 px-3 md:px-4 py-2 bg-gradient-to-r from-gray-50 to-gray-100">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                                     <span className="font-semibold text-gray-800 text-sm">
-                                        Showing {filteredTasks.length} of {tasks.length} tasks
+                                        Showing {tasks.length} of {pagination.total} tasks
                                     </span>
                                     <div className="text-sm text-gray-600">
                                         {selectedTasks.size} task(s) selected
@@ -2820,7 +2946,6 @@ useEffect(() => {
                                 </div>
                                 
                                 <div className="flex flex-wrap gap-2">
-                                    {/* Action Buttons in Footer - Mobile responsive */}
                                     <motion.button
                                         className="px-2 py-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg text-xs font-medium transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={selectedTasks.size === 0}
@@ -2856,7 +2981,7 @@ useEffect(() => {
                 </div>
             </div>
 
-            {/* Floating Action Button for Selected Tasks - Mobile Optimized */}
+            {/* Floating Action Button for Selected Tasks */}
             <AnimatePresence>
                 {selectedTasks.size > 0 && (
                     <motion.div
@@ -2916,6 +3041,14 @@ useEffect(() => {
                 taskName={usersModal.taskName}
             />
 
+            {/* Client Details Modal */}
+            <ClientDetailsModal
+                isOpen={clientModal.open}
+                onClose={closeClientDetailsModal}
+                clientData={clientModal.clientData}
+                loading={clientModal.loading}
+            />
+
             {/* Export Confirmation Modal */}
             <AnimatePresence>
                 {exportModal.open && (
@@ -2952,15 +3085,15 @@ useEffect(() => {
                 )}
             </AnimatePresence>
 
-            {deleteModal && <DeleteConfirmationModal
-                title="Task Delete"
-                onConfirm={(res) => {
-                    SetDeleteModal(false)
-                    console.log("Confirmed:", res);
-                    // res = { confirmed: true, otp: "123456" }
-                }}
-            />
-            }
+            {deleteModal && (
+                <DeleteConfirmationModal
+                    title="Task Delete"
+                    onConfirm={(res) => {
+                        setDeleteModal(false);
+                        console.log("Confirmed:", res);
+                    }}
+                />
+            )}
         </div>
     );
 };
