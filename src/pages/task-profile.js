@@ -181,18 +181,19 @@ const TaskProfile = () => {
                         <NotesTab task_id={task_id} />
                     </motion.div>
                 );
-            case 'staff':
-                return (
-                    <motion.div
-                        key="staff"
-                        variants={tabContentVariants}
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                    >
-                        <StaffTab task_id={task_id} />
-                    </motion.div>
-                );
+           case 'staff':
+    return (
+        <motion.div
+            key="staff"
+            variants={tabContentVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
+            <StaffTab taskId={task_id} />
+        </motion.div>
+    );
+                
             case 'timelog':
                 return (
                     <motion.div
