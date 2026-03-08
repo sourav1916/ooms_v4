@@ -13,7 +13,8 @@ import {
     FiUser,
     FiBriefcase,
     FiCheckCircle,
-    FiClock
+    FiClock,
+    FiAward
 } from 'react-icons/fi';
 import getHeaders from "../utils/get-headers";
 import API_BASE_URL from "../utils/api-controller";
@@ -80,10 +81,12 @@ const StaffTab = ({ taskId, staff = [], onAddStaff, onRemoveStaff }) => {
                     email: item.staff.profile?.email || 'No email',
                     mobile: item.staff.profile?.mobile || 'No mobile',
                     country_code: item.staff.profile?.country_code || '',
-                    role: 'Staff',
+                    designation: item.staff.designation || 'Staff',
                     task_id: item.task_id,
                     create_date: item.create_date,
-                    create_by: item.create_by
+                    create_by: item.create_by,
+                    modify_date: item.modify_date,
+                    modify_by: item.modify_by
                 }));
                 setStaffList(transformedStaff);
             }
@@ -110,13 +113,19 @@ const StaffTab = ({ taskId, staff = [], onAddStaff, onRemoveStaff }) => {
             const data = await response.json();
             
             if (data.success) {
-                // Transform search results to use profile data
+                // Transform search results based on the actual API response
                 const transformedResults = (data.data || []).map(item => ({
+                    map_id: item.map_id,
                     username: item.username,
                     name: item.profile?.name || item.username,
                     email: item.profile?.email || 'No email',
                     mobile: item.profile?.mobile || 'No mobile',
                     country_code: item.profile?.country_code || '',
+                    designation: item.designation || 'Staff',
+                    is_accepted: item.is_accepted,
+                    status: item.status,
+                    branch: item.branch,
+                    metadata: item.metadata,
                     profile: item.profile
                 }));
                 setSearchResults(transformedResults);
@@ -269,6 +278,9 @@ const StaffTab = ({ taskId, staff = [], onAddStaff, onRemoveStaff }) => {
                                             Staff Member
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Designation
+                                        </th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Contact
                                         </th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -298,6 +310,12 @@ const StaffTab = ({ taskId, staff = [], onAddStaff, onRemoveStaff }) => {
                                                             {member.name}
                                                         </div>
                                                     </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    <FiAward className="w-4 h-4 text-indigo-400" />
+                                                    <span className="text-sm text-gray-600">{member.designation}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
@@ -436,6 +454,10 @@ const StaffTab = ({ taskId, staff = [], onAddStaff, onRemoveStaff }) => {
                                                         </div>
                                                         <div>
                                                             <div className="font-medium text-gray-900">{staff.name}</div>
+                                                            <div className="flex items-center gap-1 text-xs text-indigo-600 mb-1">
+                                                                <FiAward className="w-3 h-3" />
+                                                                <span>{staff.designation}</span>
+                                                            </div>
                                                             <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                                                                 <span className="flex items-center gap-1">
                                                                     <FiMail className="w-3 h-3" /> {staff.email}
@@ -472,6 +494,7 @@ const StaffTab = ({ taskId, staff = [], onAddStaff, onRemoveStaff }) => {
                                                         className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-sm"
                                                     >
                                                         {staffInfo?.name || username}
+                                                        {staffInfo?.designation && ` (${staffInfo.designation})`}
                                                         <button
                                                             onClick={() => toggleStaffSelection(username)}
                                                             className="hover:text-indigo-900"
@@ -524,7 +547,7 @@ const StaffTab = ({ taskId, staff = [], onAddStaff, onRemoveStaff }) => {
                 </div>
             )}
 
-            {/* View Staff Modal - Compact Version */}
+            {/* View Staff Modal - Compact Version with Designation */}
             {showViewModal && selectedStaffMember && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <motion.div
@@ -543,7 +566,7 @@ const StaffTab = ({ taskId, staff = [], onAddStaff, onRemoveStaff }) => {
                             </button>
                         </div>
 
-                        {/* Modal Body - Compact */}
+                        {/* Modal Body - Compact with Designation */}
                         <div className="p-5">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -551,6 +574,10 @@ const StaffTab = ({ taskId, staff = [], onAddStaff, onRemoveStaff }) => {
                                 </div>
                                 <div className="min-w-0">
                                     <h4 className="text-base font-semibold text-gray-900 truncate">{selectedStaffMember.name}</h4>
+                                    <div className="flex items-center gap-1 text-xs text-indigo-600 mt-1">
+                                        <FiAward className="w-3 h-3" />
+                                        <span>{selectedStaffMember.designation}</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -569,7 +596,7 @@ const StaffTab = ({ taskId, staff = [], onAddStaff, onRemoveStaff }) => {
 
                                 <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                                     <FiBriefcase className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                    <span className="text-sm text-gray-600">{selectedStaffMember.role}</span>
+                                    <span className="text-sm text-gray-600">{selectedStaffMember.designation}</span>
                                 </div>
 
                                 <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
