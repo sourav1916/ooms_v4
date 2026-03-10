@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FiPlus, FiEdit, FiTrash2, FiX, FiMessageSquare, FiUser, FiCalendar, 
+  FiPlus, FiEdit2, FiTrash2, FiX, FiMessageSquare, FiUser, FiCalendar, 
   FiTag, FiSearch, FiEye, FiChevronLeft, FiChevronRight, FiPaperclip, 
   FiAlertCircle, FiFile, FiCheck, FiMic, FiVolume2, FiDownload,
-  FiExternalLink, FiImage, FiMusic, FiUpload, FiClock, FiBell
+  FiExternalLink, FiImage, FiMusic, FiUpload, FiClock, FiBell,
+  FiMoreVertical, FiArchive, FiStar, FiFolder, FiFilter
 } from 'react-icons/fi';
 import axios from 'axios';
 import getHeaders from "../utils/get-headers";
@@ -30,8 +31,9 @@ const NotesTab = ({ task_id }) => {
     const [showViewModal, setShowViewModal] = useState(false);
     const [selectedNote, setSelectedNote] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeFilter, setActiveFilter] = useState('all');
+    const [showFilters, setShowFilters] = useState(false);
     
-    // Updated newNote state to match payload structure
     const [newNote, setNewNote] = useState({
         type: 'text',
         textNotes: [''],
@@ -44,7 +46,7 @@ const NotesTab = ({ task_id }) => {
     const [uploadProgress, setUploadProgress] = useState({});
     const fileInputRef = useRef(null);
     
-    // Voice recording states - from client notes
+    // Voice recording states
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [audioBlob, setAudioBlob] = useState(null);
@@ -56,6 +58,40 @@ const NotesTab = ({ task_id }) => {
     // Audio playback tracking
     const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
     const audioRefs = useRef({});
+
+    // Get note title based on type
+    const getNoteTitle = (note) => {
+        if (note.subject && note.subject !== 'Untitled Note') {
+            return note.subject;
+        }
+        
+        switch(note.type) {
+            case 'file':
+                return 'File Attachment';
+            case 'voice':
+                return 'Voice Recording';
+            case 'text':
+            default:
+                return 'Text Note';
+        }
+    };
+
+    // Get note description based on type
+    const getNoteDescription = (note) => {
+        if (note.note && note.note.trim()) {
+            return note.note;
+        }
+        
+        switch(note.type) {
+            case 'file':
+                return note.file_name || 'Attached file';
+            case 'voice':
+                return 'Voice recording';
+            case 'text':
+            default:
+                return 'No content';
+        }
+    };
     
     // Fetch notes
     const fetchNotes = async (page = 1, search = '') => {
@@ -88,7 +124,13 @@ const NotesTab = ({ task_id }) => {
                     type: note.type || 'text',
                     file: note.file || null,
                     attachments: note.attachments || [],
-                    formatted_date: new Date(note.create_date).toLocaleDateString(),
+                    formatted_date: new Date(note.create_date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }),
                     file_name: note.file ? note.file.split('/').pop() : null
                 }));
                 
@@ -114,7 +156,12 @@ const NotesTab = ({ task_id }) => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Upload file - FIXED to handle WAV files properly
+    // Filter notes by type
+    const filteredNotes = activeFilter === 'all' 
+        ? notes 
+        : notes.filter(note => note.type === activeFilter);
+
+    // Upload file
     const uploadFileToServer = async (file) => {
         if (!file) return null;
         
@@ -128,18 +175,11 @@ const NotesTab = ({ task_id }) => {
             const formData = new FormData();
             formData.append('file', file);
             
-            // Add metadata for voice notes
             if (file.type.includes('audio') || file.name.endsWith('.wav')) {
                 formData.append('file_type', 'voice_note');
                 formData.append('note_type', 'voice');
                 formData.append('mime_type', 'audio/wav');
             }
-            
-            console.log('Uploading file to server:', {
-                name: file.name,
-                type: file.type,
-                size: file.size
-            });
             
             const response = await axios.post(
                 'https://api.ooms.in/api/v1/upload',
@@ -156,8 +196,6 @@ const NotesTab = ({ task_id }) => {
                     timeout: 60000
                 }
             );
-            
-            console.log('Upload response:', response.data);
             
             if (response.data && response.data.success) {
                 return response.data.url || response.data.data?.url;
@@ -220,7 +258,7 @@ const NotesTab = ({ task_id }) => {
         attachments: newNote.attachments.filter((_, i) => i !== index)
     });
 
-    // Convert WebM to WAV - FIXED to handle audio properly
+    // Convert WebM to WAV
     const convertWebMToWav = async (webmBlob) => {
         try {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -231,7 +269,6 @@ const NotesTab = ({ task_id }) => {
             const sampleRate = audioBuffer.sampleRate;
             const length = audioBuffer.length;
             
-            // Create WAV header and PCM data
             const wavSize = 44 + length * numberOfChannels * 2;
             const wavBuffer = new ArrayBuffer(wavSize);
             const view = new DataView(wavBuffer);
@@ -242,21 +279,19 @@ const NotesTab = ({ task_id }) => {
             writeString(view, 8, 'WAVE');
             writeString(view, 12, 'fmt ');
             view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true); // PCM format
+            view.setUint16(20, 1, true);
             view.setUint16(22, numberOfChannels, true);
             view.setUint32(24, sampleRate, true);
             view.setUint32(28, sampleRate * numberOfChannels * 2, true);
             view.setUint16(32, numberOfChannels * 2, true);
-            view.setUint16(34, 16, true); // 16-bit
+            view.setUint16(34, 16, true);
             writeString(view, 36, 'data');
             view.setUint32(40, length * numberOfChannels * 2, true);
             
-            // Write PCM audio data
             let offset = 44;
             for (let i = 0; i < length; i++) {
                 for (let channel = 0; channel < numberOfChannels; channel++) {
                     const sample = audioBuffer.getChannelData(channel)[i];
-                    // Convert float to 16-bit PCM
                     const int16 = Math.max(-1, Math.min(1, sample)) * 0x7FFF;
                     view.setInt16(offset, int16, true);
                     offset += 2;
@@ -277,7 +312,7 @@ const NotesTab = ({ task_id }) => {
         }
     };
 
-    // Voice recording functions - FIXED to convert to WAV before upload
+    // Voice recording functions
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -288,7 +323,6 @@ const NotesTab = ({ task_id }) => {
                 }
             });
             
-            // Use audio/webm for recording (best browser support)
             const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
             
             mediaRecorderRef.current = mediaRecorder;
@@ -303,16 +337,13 @@ const NotesTab = ({ task_id }) => {
             mediaRecorder.onstop = async () => {
                 const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
                 
-                // Set preview URL (use WebM for browser playback)
                 const previewUrl = URL.createObjectURL(webmBlob);
                 setAudioURL(previewUrl);
                 setAudioBlob(webmBlob);
                 
                 try {
-                    // Convert to WAV for upload
                     setUploadingAttachment(true);
                     
-                    // Show conversion message
                     const conversionMsg = document.createElement('div');
                     conversionMsg.className = 'text-sm text-purple-600 text-center mb-2';
                     conversionMsg.innerText = 'Converting audio format...';
@@ -320,7 +351,6 @@ const NotesTab = ({ task_id }) => {
                     
                     const wavBlob = await convertWebMToWav(webmBlob);
                     
-                    // Remove conversion message
                     conversionMsg.remove();
                     
                     const timestamp = new Date().getTime();
@@ -328,13 +358,6 @@ const NotesTab = ({ task_id }) => {
                         type: 'audio/wav' 
                     });
                     
-                    console.log('Converted to WAV:', {
-                        name: audioFile.name,
-                        type: audioFile.type,
-                        size: audioFile.size
-                    });
-                    
-                    // Upload the WAV file
                     const fileUrl = await uploadFileToServer(audioFile);
                     
                     if (fileUrl) {
@@ -342,7 +365,6 @@ const NotesTab = ({ task_id }) => {
                             ...prev,
                             voiceNotes: [...prev.voiceNotes, { url: fileUrl }]
                         }));
-                        alert('Voice note uploaded successfully!');
                     }
                     
                 } catch (error) {
@@ -352,7 +374,6 @@ const NotesTab = ({ task_id }) => {
                     setUploadingAttachment(false);
                 }
                 
-                // Stop all tracks
                 stream.getTracks().forEach(track => track.stop());
             };
             
@@ -394,14 +415,12 @@ const NotesTab = ({ task_id }) => {
         }
     };
 
-    // Format recording time - from client notes
     const formatRecordingTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // Remove voice note
     const removeVoiceNote = (index) => {
         const updated = newNote.voiceNotes.filter((_, i) => i !== index);
         setNewNote({...newNote, voiceNotes: updated});
@@ -411,7 +430,6 @@ const NotesTab = ({ task_id }) => {
         }
     };
 
-    // Reset form
     const resetForm = () => {
         setNewNote({
             type: 'text',
@@ -428,7 +446,6 @@ const NotesTab = ({ task_id }) => {
         }
     };
 
-    // Submit note
     const handleAddNote = async () => {
         if (!task_id) return alert('Task ID required');
 
@@ -450,8 +467,6 @@ const NotesTab = ({ task_id }) => {
             if (!payload.notes.voice.length) return alert('Record at least one voice note');
         }
 
-        console.log('Creating note with payload:', JSON.stringify(payload, null, 2));
-
         try {
             setSubmitting(true);
             const headers = getHeaders();
@@ -465,20 +480,17 @@ const NotesTab = ({ task_id }) => {
                 fetchNotes(1, searchTerm);
                 setShowAddModal(false);
                 resetForm();
-                alert('Note created successfully!');
             } else {
                 alert(`Failed to create note: ${response.data?.message || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('Error creating note:', error);
-            console.error('Error response:', error.response?.data);
             alert(`Error: ${error.response?.data?.message || error.message}`);
         } finally {
             setSubmitting(false);
         }
     };
 
-    // Delete note
     const deleteNote = async () => {
         if (!selectedNote) return;
         
@@ -497,18 +509,26 @@ const NotesTab = ({ task_id }) => {
 
     const getTypeIcon = (type) => {
         switch(type) {
-            case 'voice': return <FiVolume2 className="w-5 h-5" />;
-            case 'file': return <FiFile className="w-5 h-5" />;
-            default: return <FiMessageSquare className="w-5 h-5" />;
+            case 'voice': return <FiVolume2 className="w-4 h-4" />;
+            case 'file': return <FiFile className="w-4 h-4" />;
+            default: return <FiMessageSquare className="w-4 h-4" />;
+        }
+    };
+
+    const getTypeColor = (type) => {
+        switch(type) {
+            case 'voice': return 'purple';
+            case 'file': return 'green';
+            default: return 'blue';
         }
     };
 
     const getFileIcon = (fileName) => {
         const ext = fileName?.split('.').pop().toLowerCase();
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return <FiImage className="w-5 h-5 text-blue-600" />;
-        if (['mp3', 'wav', 'ogg', 'm4a', 'webm'].includes(ext)) return <FiMusic className="w-5 h-5 text-purple-600" />;
-        if (['pdf', 'doc', 'docx', 'txt'].includes(ext)) return <FiFile className="w-5 h-5 text-green-600" />;
-        return <FiPaperclip className="w-5 h-5 text-gray-600" />;
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return <FiImage className="w-4 h-4 text-blue-600" />;
+        if (['mp3', 'wav', 'ogg', 'm4a', 'webm'].includes(ext)) return <FiMusic className="w-4 h-4 text-purple-600" />;
+        if (['pdf', 'doc', 'docx', 'txt'].includes(ext)) return <FiFile className="w-4 h-4 text-green-600" />;
+        return <FiPaperclip className="w-4 h-4 text-gray-600" />;
     };
 
     const isImageFile = (url) => {
@@ -526,7 +546,6 @@ const NotesTab = ({ task_id }) => {
         return ext === 'pdf';
     };
 
-    // Handle audio playback in view modal
     const handlePlayAudio = (noteId) => {
         if (currentlyPlaying === noteId) {
             if (audioRefs.current[noteId]) {
@@ -545,7 +564,6 @@ const NotesTab = ({ task_id }) => {
         }
     };
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (timerRef.current) {
@@ -564,53 +582,121 @@ const NotesTab = ({ task_id }) => {
     }, [audioURL]);
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h2 className="text-xl font-semibold text-gray-900">Notes</h2>
-                    <p className="text-sm text-gray-500 mt-1">Manage and track all notes for this task</p>
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                        <FiMessageSquare className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-base font-semibold text-gray-900">Notes & Attachments</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            {notes.length} {notes.length === 1 ? 'note' : 'notes'} • Last updated {new Date().toLocaleDateString()}
+                        </p>
+                    </div>
                 </div>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors duration-200 font-medium shadow-sm hover:shadow"
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm hover:shadow"
                 >
                     <FiPlus className="w-4 h-4" />
-                    Add Note
+                    New Note
                 </button>
             </div>
 
-            {/* Search */}
-            <div className="relative mb-6">
-                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                    type="text"
-                    placeholder="Search notes..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
-                />
+            {/* Search and Filters */}
+            <div className="p-4 border-b border-gray-200">
+                <div className="relative mb-3">
+                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                        type="text"
+                        placeholder="Search notes by content, author, or date..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none placeholder:text-gray-400"
+                    />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
+                        {[
+                            { value: 'all', label: 'All', icon: FiFolder },
+                            { value: 'text', label: 'Text', icon: FiMessageSquare },
+                            { value: 'file', label: 'Files', icon: FiFile },
+                            { value: 'voice', label: 'Voice', icon: FiVolume2 }
+                        ].map((filter) => (
+                            <button
+                                key={filter.value}
+                                onClick={() => setActiveFilter(filter.value)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                    activeFilter === filter.value
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                <filter.icon className="w-3.5 h-3.5" />
+                                {filter.label}
+                            </button>
+                        ))}
+                    </div>
+                    
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                        <FiFilter className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Advanced Filters */}
+                <AnimatePresence>
+                    {showFilters && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="pt-3 mt-3 border-t border-gray-200">
+                                <div className="flex gap-3">
+                                    <select className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                        <option>All priorities</option>
+                                        <option>High</option>
+                                        <option>Medium</option>
+                                        <option>Low</option>
+                                    </select>
+                                    <select className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                        <option>All status</option>
+                                        <option>Active</option>
+                                        <option>Archived</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Loading/Error */}
             {loading && (
-                <div className="text-center py-12">
+                <div className="p-12 text-center">
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-4">
                         <FiMessageSquare className="w-5 h-5 text-gray-400 animate-pulse" />
                     </div>
-                    <p className="text-gray-600">Loading notes...</p>
+                    <p className="text-sm text-gray-500">Loading notes...</p>
                 </div>
             )}
             
             {error && !loading && (
-                <div className="text-center py-12">
+                <div className="p-12 text-center">
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
                         <FiAlertCircle className="w-5 h-5 text-red-600" />
                     </div>
-                    <p className="text-red-600 mb-2">{error}</p>
+                    <p className="text-sm text-red-600 mb-2">{error}</p>
                     <button 
                         onClick={() => fetchNotes(1, '')}
-                        className="text-blue-600 hover:text-blue-700 font-medium"
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                     >
                         Try again
                     </button>
@@ -619,123 +705,129 @@ const NotesTab = ({ task_id }) => {
 
             {/* Notes List */}
             {!loading && !error && (
-                <div className="space-y-3">
-                    {notes.length === 0 ? (
-                        <div className="text-center py-12">
+                <div className="divide-y divide-gray-100">
+                    {filteredNotes.length === 0 ? (
+                        <div className="p-12 text-center">
                             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-4">
                                 <FiMessageSquare className="w-5 h-5 text-gray-400" />
                             </div>
-                            <p className="text-gray-600 mb-2">No notes found</p>
+                            <p className="text-sm text-gray-500 mb-2">No notes found</p>
+                            <p className="text-xs text-gray-400 mb-4">Get started by creating your first note</p>
                             <button
                                 onClick={() => setShowAddModal(true)}
-                                className="text-blue-600 hover:text-blue-700 font-medium"
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                             >
+                                <FiPlus className="w-4 h-4" />
                                 Add your first note
                             </button>
                         </div>
                     ) : (
-                        notes.map((note) => (
-                            <div 
-                                key={note.id} 
-                                className="group bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all duration-200 cursor-pointer"
-                                onClick={() => { setSelectedNote(note); setShowViewModal(true); }}
-                            >
-                                <div className="flex items-start gap-3">
-                                    <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
-                                        note.type === 'text' ? 'bg-blue-100' :
-                                        note.type === 'file' ? 'bg-green-100' :
-                                        'bg-purple-100'
-                                    }`}>
-                                        <span className={
-                                            note.type === 'text' ? 'text-blue-600' :
-                                            note.type === 'file' ? 'text-green-600' :
-                                            'text-purple-600'
-                                        }>
-                                            {getTypeIcon(note.type)}
-                                        </span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div>
-                                                <h3 className="font-medium text-gray-900 mb-1">
-                                                    {note.subject || 'Untitled Note'}
-                                                </h3>
-                                                {note.type === 'file' && note.file_name && (
-                                                    <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-2">
-                                                        {getFileIcon(note.file_name)}
-                                                        <span className="truncate">{note.file_name}</span>
+                        filteredNotes.map((note, index) => {
+                            const typeColor = getTypeColor(note.type);
+                            return (
+                                <motion.div
+                                    key={note.id}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.05 }}
+                                    className="group relative p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                                    onClick={() => { setSelectedNote(note); setShowViewModal(true); }}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
+                                            note.type === 'text' ? 'bg-blue-50' :
+                                            note.type === 'file' ? 'bg-green-50' :
+                                            'bg-purple-50'
+                                        }`}>
+                                            <span className={
+                                                note.type === 'text' ? 'text-blue-600' :
+                                                note.type === 'file' ? 'text-green-600' :
+                                                'text-purple-600'
+                                            }>
+                                                {getTypeIcon(note.type)}
+                                            </span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h4 className="text-sm font-medium text-gray-900">
+                                                            {getNoteTitle(note)}
+                                                        </h4>
+                                                        {note.priority && (
+                                                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                                                                note.priority === 'high' ? 'bg-red-50 text-red-600' :
+                                                                note.priority === 'medium' ? 'bg-yellow-50 text-yellow-600' :
+                                                                'bg-green-50 text-green-600'
+                                                            }`}>
+                                                                {note.priority}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                )}
-                                                {note.type === 'voice' && (
-                                                    <div className="flex items-center gap-1.5 text-sm text-purple-600 mb-2">
-                                                        <FiVolume2 className="w-4 h-4" />
-                                                        <span>Voice recording</span>
+                                                    <p className="text-xs text-gray-500 line-clamp-1 mb-2">
+                                                        {getNoteDescription(note)}
+                                                    </p>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                            <FiUser className="w-3 h-3" />
+                                                            {note.author}
+                                                        </span>
+                                                        <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                            <FiCalendar className="w-3 h-3" />
+                                                            {note.formatted_date}
+                                                        </span>
+                                                        {note.type === 'file' && note.file_name && (
+                                                            <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                                {getFileIcon(note.file_name)}
+                                                                {note.file_name}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                )}
-                                                <p className="text-sm text-gray-600 line-clamp-2">
-                                                    {note.note}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); setSelectedNote(note); setShowViewModal(true); }} 
-                                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                >
-                                                    <FiEye className="w-4 h-4" />
-                                                </button>
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); setSelectedNote(note); setShowDeleteModal(true); }} 
-                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                >
-                                                    <FiTrash2 className="w-4 h-4" />
-                                                </button>
+                                                </div>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedNote(note); setShowViewModal(true); }} 
+                                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="View note"
+                                                    >
+                                                        <FiEye className="w-4 h-4" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedNote(note); setShowDeleteModal(true); }} 
+                                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete note"
+                                                    >
+                                                        <FiTrash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-4 mt-3 text-xs">
-                                            <span className="flex items-center gap-1 text-gray-500">
-                                                <FiUser className="w-3.5 h-3.5" />
-                                                {note.author}
-                                            </span>
-                                            <span className="flex items-center gap-1 text-gray-500">
-                                                <FiCalendar className="w-3.5 h-3.5" />
-                                                {note.formatted_date}
-                                            </span>
-                                            {note.priority && (
-                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                    note.priority === 'high' ? 'bg-red-100 text-red-700' :
-                                                    note.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                    'bg-green-100 text-green-700'
-                                                }`}>
-                                                    {note.priority}
-                                                </span>
-                                            )}
-                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        ))
+                                </motion.div>
+                            );
+                        })
                     )}
                 </div>
             )}
 
             {/* Pagination */}
             {pagination.total_pages > 1 && (
-                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-                    <p className="text-sm text-gray-600">
-                        Page {pagination.page} of {pagination.total_pages}
+                <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                    <p className="text-xs text-gray-500">
+                        Showing page {pagination.page} of {pagination.total_pages}
                     </p>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => fetchNotes(pagination.page - 1, searchTerm)}
                             disabled={pagination.page === 1}
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <FiChevronLeft className="w-4 h-4" />
                         </button>
                         <button
                             onClick={() => fetchNotes(pagination.page + 1, searchTerm)}
                             disabled={pagination.is_last_page}
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <FiChevronRight className="w-4 h-4" />
                         </button>
@@ -743,7 +835,7 @@ const NotesTab = ({ task_id }) => {
                 </div>
             )}
 
-            {/* View Note Modal - Updated UI */}
+            {/* View Note Modal */}
             <AnimatePresence>
                 {showViewModal && selectedNote && (
                     <motion.div
@@ -758,77 +850,79 @@ const NotesTab = ({ task_id }) => {
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
                             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden"
+                            className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
                         >
                             {/* Header */}
-                            <div className={`px-6 py-4 border-b ${
-                                selectedNote.type === 'text' ? 'bg-blue-50' :
-                                selectedNote.type === 'file' ? 'bg-green-50' :
-                                'bg-purple-50'
-                            }`}>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                                            selectedNote.type === 'text' ? 'bg-blue-100 text-blue-600' :
-                                            selectedNote.type === 'file' ? 'bg-green-100 text-green-600' :
-                                            'bg-purple-100 text-purple-600'
-                                        }`}>
+                            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                        selectedNote.type === 'text' ? 'bg-blue-50' :
+                                        selectedNote.type === 'file' ? 'bg-green-50' :
+                                        'bg-purple-50'
+                                    }`}>
+                                        <span className={
+                                            selectedNote.type === 'text' ? 'text-blue-600' :
+                                            selectedNote.type === 'file' ? 'text-green-600' :
+                                            'text-purple-600'
+                                        }>
                                             {getTypeIcon(selectedNote.type)}
-                                        </div>
-                                        <div>
-                                            <h2 className="text-lg font-semibold text-gray-900">
-                                                {selectedNote.subject || 'Note Details'}
-                                            </h2>
-                                            <p className="text-sm text-gray-600">
-                                                {selectedNote.type === 'text' ? 'Text Note' :
-                                                 selectedNote.type === 'file' ? 'File Attachment' :
-                                                 'Voice Note'} • Added on {selectedNote.formatted_date}
-                                            </p>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-semibold text-gray-900">
+                                            {getNoteTitle(selectedNote)}
+                                        </h3>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-xs text-gray-500">
+                                                Added by {selectedNote.author}
+                                            </span>
+                                            <span className="text-xs text-gray-400">•</span>
+                                            <span className="text-xs text-gray-500">
+                                                {selectedNote.formatted_date}
+                                            </span>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => setShowViewModal(false)}
-                                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                    >
-                                        <FiX className="w-5 h-5" />
-                                    </button>
                                 </div>
+                                <button
+                                    onClick={() => setShowViewModal(false)}
+                                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </button>
                             </div>
 
                             {/* Content */}
-                            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
                                 {/* Metadata */}
-                                <div className="flex flex-wrap gap-3 mb-6">
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm">
-                                        <FiUser className="w-4 h-4" />
-                                        {selectedNote.author}
-                                    </span>
-                                    {selectedNote.priority && (
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${
-                                            selectedNote.priority === 'high' ? 'bg-red-100 text-red-700' :
-                                            selectedNote.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                            'bg-green-100 text-green-700'
-                                        }`}>
-                                            <FiTag className="w-4 h-4" />
-                                            {selectedNote.priority} priority
-                                        </span>
-                                    )}
-                                    {selectedNote.status && (
-                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${
-                                            selectedNote.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                            selectedNote.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                            'bg-gray-100 text-gray-700'
-                                        }`}>
-                                            <FiClock className="w-4 h-4" />
-                                            {selectedNote.status}
-                                        </span>
-                                    )}
-                                </div>
+                                {(selectedNote.priority || selectedNote.status) && (
+                                    <div className="flex flex-wrap gap-2 mb-6">
+                                        {selectedNote.priority && (
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
+                                                selectedNote.priority === 'high' ? 'bg-red-50 text-red-600' :
+                                                selectedNote.priority === 'medium' ? 'bg-yellow-50 text-yellow-600' :
+                                                'bg-green-50 text-green-600'
+                                            }`}>
+                                                <FiTag className="w-3.5 h-3.5" />
+                                                {selectedNote.priority} priority
+                                            </span>
+                                        )}
+                                        {selectedNote.status && (
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
+                                                selectedNote.status === 'completed' ? 'bg-green-50 text-green-600' :
+                                                selectedNote.status === 'pending' ? 'bg-yellow-50 text-yellow-600' :
+                                                'bg-gray-50 text-gray-600'
+                                            }`}>
+                                                <FiClock className="w-3.5 h-3.5" />
+                                                {selectedNote.status}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Text Content */}
-                                {selectedNote.type === 'text' && (
-                                    <div className="bg-gray-50 rounded-xl p-4">
-                                        <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
+                                {selectedNote.type === 'text' && selectedNote.note && (
+                                    <div className="bg-gray-50 rounded-lg p-4">
+                                        <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
                                             {selectedNote.note}
                                         </p>
                                     </div>
@@ -837,104 +931,97 @@ const NotesTab = ({ task_id }) => {
                                 {/* File Content */}
                                 {selectedNote.type === 'file' && selectedNote.file && (
                                     <div className="space-y-4">
-                                        {/* Preview */}
-                                        <div className="bg-gray-50 rounded-xl p-4">
-                                            {isImageFile(selectedNote.file) && (
-                                                <div className="space-y-4">
-                                                    <img 
-                                                        src={selectedNote.file} 
-                                                        alt={selectedNote.file_name}
-                                                        className="max-w-full max-h-96 mx-auto object-contain rounded-lg"
-                                                    />
+                                        {selectedNote.file_name && (
+                                            <div className="bg-gray-50 rounded-lg p-4">
+                                                <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">File Name</h4>
+                                                <div className="flex items-center gap-2">
+                                                    {getFileIcon(selectedNote.file_name)}
+                                                    <span className="text-sm text-gray-900 font-medium">{selectedNote.file_name}</span>
                                                 </div>
+                                            </div>
+                                        )}
+
+                                        {selectedNote.note && (
+                                            <div className="bg-gray-50 rounded-lg p-4">
+                                                <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Description</h4>
+                                                <p className="text-sm text-gray-800">{selectedNote.note}</p>
+                                            </div>
+                                        )}
+
+                                        <div className="bg-gray-50 rounded-lg p-4">
+                                            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">Preview</h4>
+                                            {isImageFile(selectedNote.file) && (
+                                                <img 
+                                                    src={selectedNote.file} 
+                                                    alt={selectedNote.file_name}
+                                                    className="max-w-full max-h-96 mx-auto object-contain rounded-lg border border-gray-200"
+                                                />
                                             )}
                                             
                                             {isPdfFile(selectedNote.file) && (
                                                 <iframe 
                                                     src={`${selectedNote.file}#toolbar=0`}
-                                                    className="w-full h-96 border-0 rounded-lg"
+                                                    className="w-full h-96 border border-gray-200 rounded-lg"
                                                     title="PDF Preview"
                                                 />
                                             )}
 
                                             {isAudioFile(selectedNote.file) && (
-                                                <div className="space-y-4">
-                                                    <audio 
-                                                        ref={el => audioRefs.current[selectedNote.id] = el}
-                                                        controls 
-                                                        className="w-full"
-                                                        onPlay={() => setCurrentlyPlaying(selectedNote.id)}
-                                                        onPause={() => setCurrentlyPlaying(null)}
-                                                        onEnded={() => setCurrentlyPlaying(null)}
-                                                    >
-                                                        <source src={selectedNote.file} />
-                                                    </audio>
-                                                </div>
+                                                <audio 
+                                                    ref={el => audioRefs.current[selectedNote.id] = el}
+                                                    controls 
+                                                    className="w-full"
+                                                    onPlay={() => setCurrentlyPlaying(selectedNote.id)}
+                                                    onPause={() => setCurrentlyPlaying(null)}
+                                                    onEnded={() => setCurrentlyPlaying(null)}
+                                                >
+                                                    <source src={selectedNote.file} />
+                                                </audio>
                                             )}
 
                                             {!isImageFile(selectedNote.file) && 
                                              !isPdfFile(selectedNote.file) && 
                                              !isAudioFile(selectedNote.file) && (
                                                 <div className="text-center py-8">
-                                                    <FiFile className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                                                    <p className="text-gray-600">Preview not available</p>
+                                                    <FiFile className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                                    <p className="text-sm text-gray-500">Preview not available for this file type</p>
                                                 </div>
                                             )}
                                         </div>
 
-                                        {/* File Info & Actions */}
-                                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                            <div className="flex items-center gap-3">
-                                                {getFileIcon(selectedNote.file_name)}
-                                                <div>
-                                                    <p className="font-medium text-gray-900">{selectedNote.file_name}</p>
-                                                    <p className="text-sm text-gray-500">
-                                                        {selectedNote.file_name?.split('.').pop()?.toUpperCase()} file
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <a 
-                                                    href={selectedNote.file} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    title="Open in new tab"
-                                                >
-                                                    <FiExternalLink className="w-4 h-4" />
-                                                </a>
-                                                <a 
-                                                    href={selectedNote.file} 
-                                                    download={selectedNote.file_name}
-                                                    className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                                    title="Download"
-                                                >
-                                                    <FiDownload className="w-4 h-4" />
-                                                </a>
-                                            </div>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <a 
+                                                href={selectedNote.file} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            >
+                                                <FiExternalLink className="w-4 h-4" />
+                                                Open
+                                            </a>
+                                            <a 
+                                                href={selectedNote.file} 
+                                                download={selectedNote.file_name}
+                                                className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            >
+                                                <FiDownload className="w-4 h-4" />
+                                                Download
+                                            </a>
                                         </div>
-
-                                        {/* Description */}
-                                        {selectedNote.note && (
-                                            <div className="bg-gray-50 rounded-xl p-4">
-                                                <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
-                                                <p className="text-gray-600">{selectedNote.note}</p>
-                                            </div>
-                                        )}
                                     </div>
                                 )}
 
                                 {/* Voice Content */}
                                 {selectedNote.type === 'voice' && selectedNote.file && (
                                     <div className="space-y-4">
-                                        <div className="bg-purple-50 rounded-xl p-6">
-                                            <div className="flex items-center gap-4 mb-4">
-                                                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                                        <div className="bg-purple-50 rounded-lg p-6">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                                                     <FiVolume2 className="w-6 h-6 text-purple-600" />
                                                 </div>
                                                 <div>
-                                                    <h3 className="font-medium text-gray-900">Voice Recording</h3>
-                                                    <p className="text-sm text-gray-600">{selectedNote.file_name || 'Voice note'}</p>
+                                                    <h4 className="text-sm font-medium text-gray-900">Voice Recording</h4>
+                                                    <p className="text-xs text-gray-500">{selectedNote.file_name || 'Voice note'}</p>
                                                 </div>
                                             </div>
                                             
@@ -968,11 +1055,10 @@ const NotesTab = ({ task_id }) => {
                                             </div>
                                         </div>
 
-                                        {/* Description */}
                                         {selectedNote.note && (
-                                            <div className="bg-gray-50 rounded-xl p-4">
-                                                <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
-                                                <p className="text-gray-600">{selectedNote.note}</p>
+                                            <div className="bg-gray-50 rounded-lg p-4">
+                                                <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Description</h4>
+                                                <p className="text-sm text-gray-800">{selectedNote.note}</p>
                                             </div>
                                         )}
                                     </div>
@@ -980,10 +1066,10 @@ const NotesTab = ({ task_id }) => {
                             </div>
 
                             {/* Footer */}
-                            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end">
+                            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
                                 <button
                                     onClick={() => setShowViewModal(false)}
-                                    className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 font-medium"
                                 >
                                     Close
                                 </button>
@@ -993,7 +1079,7 @@ const NotesTab = ({ task_id }) => {
                 )}
             </AnimatePresence>
 
-            {/* Add Note Modal - Updated UI */}
+            {/* Add Note Modal */}
             <AnimatePresence>
                 {showAddModal && (
                     <motion.div
@@ -1008,55 +1094,74 @@ const NotesTab = ({ task_id }) => {
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
                             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
+                            className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
                         >
                             {/* Header */}
-                            <div className="px-6 py-4 border-b bg-gray-50">
-                                <div className="flex items-center justify-between">
-                                    <h2 className="text-lg font-semibold text-gray-900">Add New Note</h2>
-                                    <button
-                                        onClick={() => {
-                                            setShowAddModal(false);
-                                            resetForm();
-                                        }}
-                                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
-                                    >
-                                        <FiX className="w-5 h-5" />
-                                    </button>
+                            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                                        <FiPlus className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-semibold text-gray-900">Add New Note</h3>
+                                        <p className="text-xs text-gray-500">Create a new note for this task</p>
+                                    </div>
                                 </div>
+                                <button
+                                    onClick={() => {
+                                        setShowAddModal(false);
+                                        resetForm();
+                                    }}
+                                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <FiX className="w-5 h-5" />
+                                </button>
                             </div>
 
                             {/* Content */}
-                            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
                                 {/* Note Type Selection */}
-                                <div className="flex gap-2 mb-6">
-                                    {['text', 'file', 'voice'].map(type => (
+                                <div className="grid grid-cols-3 gap-3 mb-6">
+                                    {[
+                                        { type: 'text', label: 'Text Note', icon: FiMessageSquare, color: 'blue' },
+                                        { type: 'file', label: 'File Attachment', icon: FiFile, color: 'green' },
+                                        { type: 'voice', label: 'Voice Note', icon: FiVolume2, color: 'purple' }
+                                    ].map(item => (
                                         <button
-                                            key={type}
-                                            onClick={() => setNewNote({...newNote, type})}
-                                            className={`flex-1 px-4 py-2.5 rounded-xl border capitalize transition-all duration-200 ${
-                                                newNote.type === type 
-                                                    ? type === 'text' ? 'bg-blue-600 text-white border-blue-600' :
-                                                      type === 'file' ? 'bg-green-600 text-white border-green-600' :
-                                                      'bg-purple-600 text-white border-purple-600'
-                                                    : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                                            key={item.type}
+                                            onClick={() => setNewNote({...newNote, type: item.type})}
+                                            className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                                                newNote.type === item.type 
+                                                    ? `border-${item.color}-500 bg-${item.color}-50`
+                                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                             }`}
                                         >
-                                            {type}
+                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                                newNote.type === item.type ? `bg-${item.color}-100` : 'bg-gray-100'
+                                            }`}>
+                                                <item.icon className={`w-5 h-5 ${
+                                                    newNote.type === item.type ? `text-${item.color}-600` : 'text-gray-600'
+                                                }`} />
+                                            </div>
+                                            <span className={`text-xs font-medium ${
+                                                newNote.type === item.type ? `text-${item.color}-600` : 'text-gray-600'
+                                            }`}>
+                                                {item.label}
+                                            </span>
                                         </button>
                                     ))}
                                 </div>
 
                                 {/* Text Notes */}
                                 {newNote.type === 'text' && (
-                                    <div className="space-y-4">
+                                    <div className="space-y-3">
                                         {newNote.textNotes.map((text, i) => (
                                             <div key={i} className="flex gap-2">
                                                 <textarea
                                                     value={text}
                                                     onChange={(e) => handleTextNoteChange(i, e.target.value)}
-                                                    className="flex-1 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 min-h-[120px] resize-none"
-                                                    placeholder="Enter your note..."
+                                                    className="flex-1 p-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none min-h-[120px] resize-none"
+                                                    placeholder="Write your note here..."
                                                 />
                                                 {newNote.textNotes.length > 1 && (
                                                     <button 
@@ -1070,7 +1175,7 @@ const NotesTab = ({ task_id }) => {
                                         ))}
                                         <button 
                                             onClick={addTextNote} 
-                                            className="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1"
+                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium inline-flex items-center gap-1"
                                         >
                                             <FiPlus className="w-4 h-4" />
                                             Add another note
@@ -1082,9 +1187,9 @@ const NotesTab = ({ task_id }) => {
                                 {newNote.type === 'file' && (
                                     <div className="space-y-4">
                                         {newNote.attachments.map((att, i) => (
-                                            <div key={i} className="border border-gray-200 rounded-xl p-4 space-y-3">
+                                            <div key={i} className="border border-gray-200 rounded-lg p-4 space-y-3">
                                                 <div className="flex justify-between items-center">
-                                                    <span className="font-medium text-gray-700">Attachment {i+1}</span>
+                                                    <span className="text-sm font-medium text-gray-700">Attachment {i+1}</span>
                                                     <button 
                                                         onClick={() => removeAttachment(i)} 
                                                         className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
@@ -1093,22 +1198,23 @@ const NotesTab = ({ task_id }) => {
                                                     </button>
                                                 </div>
                                                 
-                                                {/* File Upload */}
                                                 <div className="relative">
                                                     <input
                                                         type="file"
                                                         onChange={(e) => handleAttachmentFileSelect(i, e.target.files[0])}
                                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                                     />
-                                                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-blue-500 transition-colors">
+                                                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-blue-500 transition-colors">
                                                         <FiUpload className="w-6 h-6 mx-auto mb-2 text-gray-400" />
                                                         <p className="text-sm text-gray-600">
-                                                            {att.file ? att.file.name : 'Click to upload file'}
+                                                            {att.file ? att.file.name : 'Click to upload or drag and drop'}
+                                                        </p>
+                                                        <p className="text-xs text-gray-400 mt-1">
+                                                            Maximum file size: 10MB
                                                         </p>
                                                     </div>
                                                 </div>
 
-                                                {/* File Name */}
                                                 <input
                                                     type="text"
                                                     value={att.name}
@@ -1117,11 +1223,10 @@ const NotesTab = ({ task_id }) => {
                                                         updated[i].name = e.target.value;
                                                         setNewNote({...newNote, attachments: updated});
                                                     }}
-                                                    placeholder="File name"
-                                                    className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                                                    placeholder="File name (optional)"
+                                                    className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                                                 />
 
-                                                {/* Remark */}
                                                 <input
                                                     type="text"
                                                     value={att.remark}
@@ -1130,11 +1235,10 @@ const NotesTab = ({ task_id }) => {
                                                         updated[i].remark = e.target.value;
                                                         setNewNote({...newNote, attachments: updated});
                                                     }}
-                                                    placeholder="Remark (optional)"
-                                                    className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                                                    placeholder="Add a remark or description..."
+                                                    className="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                                                 />
 
-                                                {/* Upload Progress */}
                                                 {uploadProgress[att.file?.name] && (
                                                     <div className="space-y-1">
                                                         <div className="flex justify-between text-xs">
@@ -1153,7 +1257,7 @@ const NotesTab = ({ task_id }) => {
                                         ))}
                                         <button 
                                             onClick={addAttachment} 
-                                            className="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1"
+                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium inline-flex items-center gap-1"
                                         >
                                             <FiPlus className="w-4 h-4" />
                                             Add another attachment
@@ -1164,17 +1268,16 @@ const NotesTab = ({ task_id }) => {
                                 {/* Voice Notes */}
                                 {newNote.type === 'voice' && (
                                     <div id="voice-recording-area" className="space-y-4">
-                                        {/* Recording Controls */}
                                         {!isRecording && newNote.voiceNotes.length === 0 && (
-                                            <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-purple-500 transition-colors">
-                                                <div className="w-16 h-16 mx-auto mb-4 bg-purple-100 rounded-xl flex items-center justify-center">
+                                            <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center hover:border-purple-500 transition-colors">
+                                                <div className="w-16 h-16 mx-auto mb-4 bg-purple-50 rounded-full flex items-center justify-center">
                                                     <FiMic className="w-6 h-6 text-purple-600" />
                                                 </div>
-                                                <h4 className="font-medium text-gray-900 mb-2">Record a voice note</h4>
-                                                <p className="text-sm text-gray-600 mb-4">Click the button to start recording</p>
+                                                <h4 className="text-sm font-medium text-gray-900 mb-2">Record a voice note</h4>
+                                                <p className="text-xs text-gray-500 mb-4">Click the button below to start recording</p>
                                                 <button
                                                     onClick={startRecording}
-                                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors duration-200 font-medium"
+                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
                                                 >
                                                     <FiMic className="w-4 h-4" />
                                                     Start Recording
@@ -1182,23 +1285,22 @@ const NotesTab = ({ task_id }) => {
                                             </div>
                                         )}
 
-                                        {/* Recording in Progress */}
                                         {isRecording && (
-                                            <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-                                                <div className="w-16 h-16 mx-auto mb-4 bg-red-600 rounded-xl flex items-center justify-center animate-pulse">
+                                            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                                                <div className="w-16 h-16 mx-auto mb-4 bg-red-600 rounded-full flex items-center justify-center animate-pulse">
                                                     <FiMic className="w-6 h-6 text-white" />
                                                 </div>
-                                                <p className="text-red-600 font-medium mb-2">Recording... {formatRecordingTime(recordingTime)}</p>
+                                                <p className="text-sm text-red-600 font-medium mb-2">Recording... {formatRecordingTime(recordingTime)}</p>
                                                 <div className="flex justify-center gap-3">
                                                     <button
                                                         onClick={stopRecording}
-                                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                                        className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
                                                     >
-                                                        Stop
+                                                        Stop Recording
                                                     </button>
                                                     <button
                                                         onClick={cancelRecording}
-                                                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                                        className="px-4 py-2 border border-gray-200 text-sm rounded-lg hover:bg-gray-50 transition-colors"
                                                     >
                                                         Cancel
                                                     </button>
@@ -1206,9 +1308,8 @@ const NotesTab = ({ task_id }) => {
                                             </div>
                                         )}
 
-                                        {/* Recorded Voice Notes */}
                                         {newNote.voiceNotes.map((voice, i) => (
-                                            <div key={i} className="border border-gray-200 rounded-xl p-4">
+                                            <div key={i} className="border border-gray-200 rounded-lg p-4">
                                                 <div className="flex items-center gap-3">
                                                     <audio controls src={voice.url} className="flex-1" />
                                                     <button
@@ -1221,21 +1322,22 @@ const NotesTab = ({ task_id }) => {
                                             </div>
                                         ))}
 
-                                        {/* Add Another Button */}
                                         {!isRecording && newNote.voiceNotes.length > 0 && (
                                             <button
                                                 onClick={startRecording}
-                                                className="text-purple-600 hover:text-purple-700 text-sm font-medium inline-flex items-center gap-1"
+                                                className="text-sm text-purple-600 hover:text-purple-700 font-medium inline-flex items-center gap-1"
                                             >
                                                 <FiPlus className="w-4 h-4" />
-                                                Record Another Voice Note
+                                                Add another recording
                                             </button>
                                         )}
 
-                                        {/* Upload Progress */}
                                         {uploadingAttachment && (
                                             <div className="text-sm text-purple-600 text-center">
-                                                Processing and uploading audio...
+                                                <div className="inline-flex items-center gap-2">
+                                                    <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                                                    Processing audio...
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -1243,22 +1345,33 @@ const NotesTab = ({ task_id }) => {
                             </div>
 
                             {/* Footer */}
-                            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
+                            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
                                 <button
                                     onClick={() => {
                                         setShowAddModal(false);
                                         resetForm();
                                     }}
-                                    className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 font-medium"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleAddNote}
                                     disabled={submitting || uploadingAttachment || isRecording}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
                                 >
-                                    {submitting ? 'Creating...' : uploadingAttachment ? 'Processing...' : isRecording ? 'Recording...' : 'Create Note'}
+                                    {submitting ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            Creating...
+                                        </>
+                                    ) : uploadingAttachment ? (
+                                        'Processing...'
+                                    ) : isRecording ? (
+                                        'Recording...'
+                                    ) : (
+                                        'Create Note'
+                                    )}
                                 </button>
                             </div>
                         </motion.div>
@@ -1266,7 +1379,7 @@ const NotesTab = ({ task_id }) => {
                 )}
             </AnimatePresence>
 
-            {/* Delete Modal - Updated UI */}
+            {/* Delete Modal */}
             <AnimatePresence>
                 {showDeleteModal && selectedNote && (
                     <motion.div
@@ -1281,27 +1394,35 @@ const NotesTab = ({ task_id }) => {
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
                             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+                            className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden"
                         >
-                            <div className="px-6 py-4 border-b bg-red-50">
-                                <h3 className="text-lg font-semibold text-red-600">Delete Note</h3>
+                            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-red-50 to-white">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                        <FiAlertCircle className="w-5 h-5 text-red-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-semibold text-gray-900">Delete Note</h3>
+                                        <p className="text-xs text-gray-500">This action cannot be undone</p>
+                                    </div>
+                                </div>
                             </div>
                             <div className="p-6">
-                                <p className="text-gray-700 mb-6">
-                                    Are you sure you want to delete this note? This action cannot be undone.
+                                <p className="text-sm text-gray-600 mb-6">
+                                    Are you sure you want to delete "{getNoteTitle(selectedNote)}"? This will permanently remove this note and all its contents.
                                 </p>
                                 <div className="flex justify-end gap-3">
                                     <button
                                         onClick={() => setShowDeleteModal(false)}
-                                        className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 font-medium"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         onClick={deleteNote}
-                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                                        className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
                                     >
-                                        Delete
+                                        Delete Note
                                     </button>
                                 </div>
                             </div>
