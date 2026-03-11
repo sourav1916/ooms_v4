@@ -857,7 +857,7 @@ const TaskTable = ({
                                     <button
                                         onClick={() => {
                                             setActiveRowDropdown(null);
-                                            handleEditTask(task.task_id);
+                                            handleEditTask(task); // Pass the full task object
                                         }}
                                         className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                     >
@@ -1272,7 +1272,7 @@ const TaskCards = ({
                                                             <button
                                                                 onClick={() => {
                                                                     setActiveRowDropdown(null);
-                                                                    handleEditTask(task.task_id);
+                                                                    handleEditTask(task); // Pass the full task object
                                                                 }}
                                                                 className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                                             >
@@ -1390,8 +1390,8 @@ const TaskDisplay = () => {
     const [showFilterRow, setShowFilterRow] = useState(false);
     const [clientModal, setClientModal] = useState({ open: false, clientData: null, loading: false });
     
-    // Edit Modal State
-    const [editModal, setEditModal] = useState({ open: false, taskId: null });
+    // Edit Modal State - Updated to store taskData instead of just taskId
+    const [editModal, setEditModal] = useState({ open: false, taskData: null });
     
     // API States
     const [tasks, setTasks] = useState([]);
@@ -1731,9 +1731,9 @@ const TaskDisplay = () => {
         }
     };
 
-    // Handle edit task
-    const handleEditTask = (taskId) => {
-        setEditModal({ open: true, taskId });
+    // Handle edit task - Updated to accept task object
+    const handleEditTask = (task) => {
+        setEditModal({ open: true, taskData: task });
     };
 
     // Handle task updated
@@ -1896,13 +1896,16 @@ const TaskDisplay = () => {
                         {task.client?.profile?.mobile || task.client?.mobile || '-'}
                     </div>
                 );
-            case 'client_email':
-                return (
-                    <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
-                        <FiMail className="w-3 h-3 text-gray-400" />
-                        {task.client?.profile?.email || task.client?.email || '-'}
-                    </div>
-                );
+           case 'client_email':
+    const clientEmail = task.client?.profile?.email || task.client?.email || '-';
+    const truncatedEmail = clientEmail.length > 15 ? clientEmail.substring(0, 15) + '...' : clientEmail;
+    
+    return (
+        <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
+            <FiMail className="w-3 h-3 text-gray-400" />
+            <span title={clientEmail}>{truncatedEmail}</span>
+        </div>
+    );
             case 'firm_name':
                 return (
                     <div className="text-gray-700 font-medium text-sm">
@@ -2117,7 +2120,7 @@ const TaskDisplay = () => {
                                         <button
                                             onClick={() => {
                                                 setActiveRowDropdown(null);
-                                                handleEditTask(task.task_id);
+                                                handleEditTask(task); // Pass the full task object
                                             }}
                                             className="flex items-center w-full px-3 py-2.5 text-sm
                                                    text-gray-700 hover:bg-green-50 transition-colors"
@@ -3115,11 +3118,11 @@ const TaskDisplay = () => {
                 />
             )}
 
-            {/* Edit Task Modal */}
+            {/* Edit Task Modal - Updated to pass taskData */}
             <EditTaskModal
                 isOpen={editModal.open}
-                onClose={() => setEditModal({ open: false, taskId: null })}
-                taskId={editModal.taskId}
+                onClose={() => setEditModal({ open: false, taskData: null })}
+                taskData={editModal.taskData}
                 onTaskUpdated={handleTaskUpdated}
             />
         </div>
