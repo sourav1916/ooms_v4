@@ -1,4 +1,4 @@
-// previous code
+// TaskDisplay.jsx
 import React, { useState, useEffect } from 'react';
 import { Sidebar, Header } from '../components/header';
 import { useNavigate } from 'react-router-dom';
@@ -83,6 +83,9 @@ import { CSS } from '@dnd-kit/utilities';
 // Import API utilities
 import getHeaders from '../utils/get-headers';
 import API_BASE_URL from '../utils/api-controller';
+
+// Import Edit Task Modal
+import EditTaskModal from '../TaskComponent/EdittaskModal';
 
 // Client Details Modal Component
 const ClientDetailsModal = ({ isOpen, onClose, clientData, loading }) => {
@@ -718,7 +721,8 @@ const TaskTable = ({
     navigate,
     openStatusModal,
     openUsersModal,
-    openClientDetailsModal
+    openClientDetailsModal,
+    handleEditTask
 }) => {
     // Skeleton loader
     const SkeletonRow = () => (
@@ -842,7 +846,7 @@ const TaskTable = ({
                                     <button
                                         onClick={() => {
                                             setActiveRowDropdown(null);
-                                            navigate(`/task/profile/${task.task_id}`);
+                                            navigate(`/task/${task.task_id}`);
                                         }}
                                         className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                     >
@@ -853,7 +857,7 @@ const TaskTable = ({
                                     <button
                                         onClick={() => {
                                             setActiveRowDropdown(null);
-                                            navigate(`/task/edit/${task.task_id}`);
+                                            handleEditTask(task.task_id);
                                         }}
                                         className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                     >
@@ -1044,7 +1048,7 @@ const TaskTable = ({
                                             <div className="space-y-1">
                                                 {column.items.map(item => (
                                                     <div key={item.id} className="min-h-[1.25rem] flex items-center">
-                                                        {renderCellContent(task, item.id, handleGetInOut, navigate, openStatusModal, openUsersModal, openClientDetailsModal)}
+                                                        {renderCellContent(task, item.id, handleGetInOut, navigate, openStatusModal, openUsersModal, openClientDetailsModal, handleEditTask)}
                                                     </div>
                                                 ))}
                                             </div>
@@ -1077,7 +1081,8 @@ const TaskCards = ({
     navigate,
     openStatusModal,
     openUsersModal,
-    openClientDetailsModal
+    openClientDetailsModal,
+    handleEditTask
 }) => {
     // Get status color
     const getStatusColor = (status) => {
@@ -1256,7 +1261,7 @@ const TaskCards = ({
                                                             <button
                                                                 onClick={() => {
                                                                     setActiveRowDropdown(null);
-                                                                    navigate(`/task/profile/${task.task_id}`);
+                                                                    navigate(`/task/${task.task_id}`);
                                                                 }}
                                                                 className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                                             >
@@ -1267,7 +1272,7 @@ const TaskCards = ({
                                                             <button
                                                                 onClick={() => {
                                                                     setActiveRowDropdown(null);
-                                                                    navigate(`/task/edit/${task.task_id}`);
+                                                                    handleEditTask(task.task_id);
                                                                 }}
                                                                 className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100"
                                                             >
@@ -1384,6 +1389,9 @@ const TaskDisplay = () => {
     const [usersModal, setUsersModal] = useState({ open: false, users: [], taskName: '' });
     const [showFilterRow, setShowFilterRow] = useState(false);
     const [clientModal, setClientModal] = useState({ open: false, clientData: null, loading: false });
+    
+    // Edit Modal State
+    const [editModal, setEditModal] = useState({ open: false, taskId: null });
     
     // API States
     const [tasks, setTasks] = useState([]);
@@ -1723,6 +1731,16 @@ const TaskDisplay = () => {
         }
     };
 
+    // Handle edit task
+    const handleEditTask = (taskId) => {
+        setEditModal({ open: true, taskId });
+    };
+
+    // Handle task updated
+    const handleTaskUpdated = () => {
+        fetchTasks(); // Refresh the task list
+    };
+
     // Handle get in/out - Placeholder for now
     const handleGetInOut = (taskId, action) => {
         console.log(`Task ${taskId} - ${action}`);
@@ -1844,7 +1862,7 @@ const TaskDisplay = () => {
     };
 
     // Render cell content based on field type
-    const renderCellContent = (task, fieldId, handleGetInOut, navigate, openStatusModal, openUsersModal, openClientDetailsModal) => {
+    const renderCellContent = (task, fieldId, handleGetInOut, navigate, openStatusModal, openUsersModal, openClientDetailsModal, handleEditTask) => {
         const daysLeft = getDaysLeft(task.dates?.due_date);
         const isOverdue = daysLeft < 0;
 
@@ -2087,7 +2105,7 @@ const TaskDisplay = () => {
                                         <button
                                             onClick={() => {
                                                 setActiveRowDropdown(null);
-                                                navigate(`/task/profile/${task.task_id}`);
+                                                navigate(`/task/${task.task_id}`);
                                             }}
                                             className="flex items-center w-full px-3 py-2.5 text-sm
                                                    text-gray-700 hover:bg-indigo-50 transition-colors"
@@ -2099,7 +2117,7 @@ const TaskDisplay = () => {
                                         <button
                                             onClick={() => {
                                                 setActiveRowDropdown(null);
-                                                navigate(`/task/edit/${task.task_id}`);
+                                                handleEditTask(task.task_id);
                                             }}
                                             className="flex items-center w-full px-3 py-2.5 text-sm
                                                    text-gray-700 hover:bg-green-50 transition-colors"
@@ -2910,6 +2928,7 @@ const TaskDisplay = () => {
                                     openStatusModal={openStatusModal}
                                     openUsersModal={openUsersModal}
                                     openClientDetailsModal={openClientDetailsModal}
+                                    handleEditTask={handleEditTask}
                                 />
                             ) : (
                                 <TaskCards
@@ -2929,6 +2948,7 @@ const TaskDisplay = () => {
                                     openStatusModal={openStatusModal}
                                     openUsersModal={openUsersModal}
                                     openClientDetailsModal={openClientDetailsModal}
+                                    handleEditTask={handleEditTask}
                                 />
                             )}
                         </div>
@@ -3094,6 +3114,14 @@ const TaskDisplay = () => {
                     }}
                 />
             )}
+
+            {/* Edit Task Modal */}
+            <EditTaskModal
+                isOpen={editModal.open}
+                onClose={() => setEditModal({ open: false, taskId: null })}
+                taskId={editModal.taskId}
+                onTaskUpdated={handleTaskUpdated}
+            />
         </div>
     );
 };

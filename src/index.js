@@ -9,7 +9,7 @@ import Login from './pages/login';
 import PageNotFound from './pages/error/page-not-found';
 import Dashboard from './pages/dashboard';
 import TaskCreate from './pages/task-create';
-// import TaskProfileClient from './TaskComponent/taskprofile';
+// import TaskEdit from './pages/task-edit';
 import Register from './pages/register';
 import TaskDisplay from './pages/task-display';
 import CreateClient from './pages/client-create';
@@ -140,6 +140,11 @@ root.render(
         </ProtectedRoute>
       } />
 
+ {/* <Route path="/task/edit/:task_id" element={
+        <ProtectedRoute>
+          <TaskEdit />
+        </ProtectedRoute>
+      } /> */}
       <Route path="/task/profile/:task_id/:tab" element={
   <ProtectedRoute>
     <TaskProfile />
