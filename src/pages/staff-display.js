@@ -1269,7 +1269,7 @@ const ViewStaff = () => {
                                                         <div className="flex flex-col items-center">
                                                             {isAccepted ? (
                                                                 <a
-                                                                    href={`/view-stuff-profile?username=${staffMember.username}`}
+                                                                    href={`/staff/view/profile`}
                                                                     className="text-blue-600 hover:text-blue-800 font-medium block hover:underline transition-colors text-sm"
                                                                 >
                                                                     {staffMember.name}

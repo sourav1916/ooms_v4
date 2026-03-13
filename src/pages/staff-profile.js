@@ -17,7 +17,14 @@ import {
     FiMapPin,
     FiEdit2,
     FiLock,
-    FiLogOut
+    FiLogOut,
+    FiHome,
+    FiChevronRight,
+    FiRefreshCw,
+    FiX,
+    FiStar,
+    FiMaximize2,
+    FiMinimize2
 } from 'react-icons/fi';
 
 // Import tab components
@@ -31,6 +38,53 @@ import LoanTab from '../staff/LoanTab';
 import PerformanceTab from '../staff/PerformanceTab';
 import EntryReportTab from '../staff/EntryReportTab';
 
+// TabLink Component
+const TabLink = ({ to, icon: Icon, label, isActive, onClick }) => {
+    return (
+        <motion.button
+            onClick={() => onClick(to)}
+            className={`flex flex-col items-center justify-center p-3 rounded-lg transition-all duration-200 ${
+                isActive
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200'
+            }`}
+            whileHover={{ scale: 1.03, y: -1 }}
+            whileTap={{ scale: 0.98 }}
+        >
+            <motion.div
+                animate={{ 
+                    rotate: isActive ? [0, 5, 0] : 0,
+                    scale: isActive ? 1.1 : 1
+                }}
+                transition={{ duration: 0.2 }}
+                className="mb-1"
+            >
+                <Icon className="w-4 h-4" />
+            </motion.div>
+            <span className="text-xs font-medium text-center leading-tight">{label}</span>
+        </motion.button>
+    );
+};
+
+// CompactTabIcon Component for minimized view
+const CompactTabIcon = ({ to, icon: Icon, label, isActive, onClick }) => {
+    return (
+        <motion.button
+            onClick={() => onClick(to)}
+            className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-[70px] ${
+                isActive
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200'
+            }`}
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+        >
+            <Icon className="w-4 h-4 mb-1 mx-auto" />
+            <span className="text-[10px] font-medium text-center leading-tight w-full">{label}</span>
+        </motion.button>
+    );
+};
+
 const StaffProfile = () => {
     const navigate = useNavigate();
     const { tab } = useParams();
@@ -40,23 +94,43 @@ const StaffProfile = () => {
         const saved = localStorage.getItem('sidebarMinimized');
         return saved ? JSON.parse(saved) : false;
     });
+    const [tabsMinimized, setTabsMinimized] = useState(() => {
+        const saved = localStorage.getItem('staffTabsMinimized');
+        return saved ? JSON.parse(saved) : true; // Default to minimized
+    });
     const [activeTab, setActiveTab] = useState(tab || 'profile');
     const [showSettings, setShowSettings] = useState(false);
+    const [isMobileView, setIsMobileView] = useState(false);
     
     // Update active tab when URL changes
- // Update active tab when URL changes
-useEffect(() => {
-    if (tab) {
-        setActiveTab(tab);
-    }
-}, [tab]);
+    useEffect(() => {
+        if (tab) {
+            setActiveTab(tab);
+        }
+    }, [tab]);
 
-// ADD THIS NEW useEffect - to handle default tab
-useEffect(() => {
-    if (!tab) {
-        navigate('/staff/view/profile/profile', { replace: true });
-    }
-}, [tab, navigate]); // Add this after the first useEffect
+    // Handle default tab
+    useEffect(() => {
+        if (!tab) {
+            navigate('/staff/view/profile/profile', { replace: true });
+        }
+    }, [tab, navigate]);
+
+    // Persist tabs minimized state
+    useEffect(() => {
+        localStorage.setItem('staffTabsMinimized', JSON.stringify(tabsMinimized));
+    }, [tabsMinimized]);
+
+    // Check mobile view on resize
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobileView(window.innerWidth < 768);
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // Staff data
     const [staffData, setStaffData] = useState({
@@ -196,49 +270,50 @@ useEffect(() => {
                 mobile: "8638501062",
                 status: "ASSIGNED"
             }
-            // Add more tasks as needed
         ];
     }
 
     // Profile tabs with paths
-    // Profile tabs with paths - CHANGE THESE LINES
-const profileTabs = [
-    { id: 'profile', name: 'Profile', icon: FiUser, path: '/staff/view/profile/profile' },
-    { id: 'attendance', name: 'Attendance', icon: FiClock, path: '/staff/view/profile/attendance' },
-    { id: 'expense', name: 'Expense', icon: FiDollarSign, path: '/staff/view/profile/expense' },
-    { id: 'bonus-fine', name: 'Bonus/Fine', icon: FiAward, path: '/staff/view/profile/bonus-fine' },
-    { id: 'salary', name: 'Salary', icon: FiBriefcase, path: '/staff/view/profile/salary' },
-    { id: 'ledger', name: 'Ledger', icon: FiBookOpen, path: '/staff/view/profile/ledger' },
-    { id: 'loan', name: 'Loan', icon: FiDollarSign, path: '/staff/view/profile/loan' },
-    { id: 'performance', name: 'Performance', icon: FiTrendingUp, path: '/staff/view/profile/performance' },
-    { id: 'entry-report', name: 'Entry Report', icon: FiFileText, path: '/staff/view/profile/entry-report' }
-];
+    const profileTabs = [
+        { id: 'profile', name: 'Profile', icon: FiUser },
+        { id: 'attendance', name: 'Attendance', icon: FiClock },
+        { id: 'expense', name: 'Expense', icon: FiDollarSign },
+        { id: 'bonus-fine', name: 'Bonus/Fine', icon: FiAward },
+        { id: 'salary', name: 'Salary', icon: FiBriefcase },
+        { id: 'ledger', name: 'Ledger', icon: FiBookOpen },
+        { id: 'loan', name: 'Loan', icon: FiDollarSign },
+        { id: 'performance', name: 'Performance', icon: FiTrendingUp },
+        { id: 'entry-report', name: 'Entry Report', icon: FiFileText }
+    ];
 
     // Handle tab change with navigation
-    // Handle tab change with navigation - CHANGE THIS LINE
-const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
-    navigate(`/staff/view/profile/${tabId}`); // Changed from '/staff/profile/${tabId}'
-    setShowSettings(false);
-};
+    const handleTabChange = (tabId) => {
+        setActiveTab(tabId);
+        navigate(`/staff/view/profile/${tabId}`);
+        setShowSettings(false);
+    };
+
+    // Toggle tabs minimized state
+    const toggleTabsMinimized = () => {
+        setTabsMinimized(!tabsMinimized);
+    };
 
     // Handle edit profile
     const handleEditProfile = () => {
-        // Implement edit profile functionality
         console.log("Edit profile clicked");
+        setShowSettings(false);
     };
 
     // Handle change password
     const handleChangePassword = () => {
-        // Implement change password functionality
         console.log("Change password clicked");
+        setShowSettings(false);
     };
 
     // Handle force logout
     const handleForceLogout = () => {
-        // Implement force logout functionality
         console.log("Force logout clicked");
-        // Navigate to login or clear session
+        setShowSettings(false);
     };
 
     // Animation variants
@@ -279,6 +354,13 @@ const handleTabChange = (tabId) => {
         }
     };
 
+    // Format date for display
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB');
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             <Header
@@ -297,129 +379,234 @@ const handleTabChange = (tabId) => {
             {/* Main content */}
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-                    {/* Staff Header Card */}
-                    <motion.div 
-                        className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 relative"
-                        initial={{ opacity: 0, y: -20 }}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4 }}
+                        transition={{ duration: 0.3 }}
                     >
-                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                            <div className="flex items-center gap-4">
-                                <motion.div 
-                                    className="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl"
-                                    whileHover={{ scale: 1.05, rotate: 5 }}
-                                >
-                                    {staffData.firstName.charAt(0)}{staffData.lastName.charAt(0)}
-                                </motion.div>
-                                <div>
-                                    <h1 className="text-2xl font-bold text-gray-900">{staffData.fullName}</h1>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-2 text-sm text-gray-600">
-                                        <div className="flex items-center gap-2">
-                                            <FiMail className="w-4 h-4 text-gray-400" />
-                                            {staffData.email}
+                        {/* Breadcrumb Navigation */}
+                        <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
+                            <button 
+                                onClick={() => navigate('/staff/view')}
+                                className="hover:text-blue-600 flex items-center gap-1"
+                            >
+                                <FiHome className="w-4 h-4" />
+                                Staff
+                            </button>
+                            <FiChevronRight className="w-4 h-4" />
+                            <span className="font-medium text-gray-900">{staffData.fullName}</span>
+                            <FiChevronRight className="w-4 h-4" />
+                            <span className="capitalize">{activeTab.replace('-', ' ')}</span>
+                        </div>
+
+                        {/* Staff Header Card */}
+                        <motion.div 
+                            className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6 relative"
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4 }}
+                        >
+                            <div className="relative">
+                                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
+                                        <motion.div 
+                                            className="relative flex-shrink-0"
+                                            whileHover={{ scale: 1.03 }}
+                                        >
+                                            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-sm">
+                                                {staffData.firstName.charAt(0)}{staffData.lastName.charAt(0)}
+                                            </div>
+                                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-2 border-white"></div>
+                                        </motion.div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
+                                                <h1 className="text-xl font-bold text-gray-900 truncate">{staffData.fullName}</h1>
+                                                <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold flex items-center gap-1 w-fit">
+                                                    <FiStar className="w-3 h-3" />
+                                                    {staffData.designation}
+                                                </span>
+                                            </div>
+                                            
+                                            {/* Contact Info Grid */}
+                                            <div className={`grid ${isMobileView ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-4'} gap-3`}>
+                                                <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
+                                                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                        <FiMail className="w-4 h-4 text-blue-600" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-medium text-gray-500">Email</p>
+                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.email}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
+                                                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                        <FiPhone className="w-4 h-4 text-purple-600" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-medium text-gray-500">Phone</p>
+                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.phone}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
+                                                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                        <FiCalendar className="w-4 h-4 text-amber-600" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-medium text-gray-500">Joined</p>
+                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.joinDate}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
+                                                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                        <FiMapPin className="w-4 h-4 text-emerald-600" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-medium text-gray-500">Location</p>
+                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.address.city}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <FiPhone className="w-4 h-4 text-gray-400" />
-                                            {staffData.phone}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <FiCalendar className="w-4 h-4 text-gray-400" />
-                                            Joined: {staffData.joinDate}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <FiBriefcase className="w-4 h-4 text-gray-400" />
-                                            {staffData.designation}
-                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-3 lg:mt-0 flex-shrink-0">
+                                        <motion.button
+                                            onClick={() => setShowSettings(!showSettings)}
+                                            className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            <FiUser className="w-5 h-5" />
+                                        </motion.button>
+                                        <motion.div 
+                                            className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg font-semibold shadow-sm"
+                                            whileHover={{ scale: 1.02 }}
+                                        >
+                                            Balance: ₹{staffData.balance}
+                                        </motion.div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <motion.button
-                                    onClick={() => setShowSettings(!showSettings)}
-                                    className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                >
-                                    <FiUser className="w-5 h-5" />
-                                </motion.button>
-                                <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg font-semibold">
-                                    Balance: ₹{staffData.balance}
-                                </div>
-                            </div>
-                        </div>
 
-                        {/* Settings Dropdown */}
-                        <AnimatePresence>
-                            {showSettings && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    className="absolute right-6 top-20 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10"
-                                >
-                                    <button
-                                        onClick={handleEditProfile}
-                                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                            {/* Settings Dropdown */}
+                            <AnimatePresence>
+                                {showSettings && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="absolute right-6 top-20 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10"
                                     >
-                                        <FiEdit2 className="w-4 h-4" />
-                                        Edit Profile
-                                    </button>
-                                    <button
-                                        onClick={handleChangePassword}
-                                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                    >
-                                        <FiLock className="w-4 h-4" />
-                                        Change Password
-                                    </button>
-                                    <button
-                                        onClick={handleForceLogout}
-                                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                    >
-                                        <FiLogOut className="w-4 h-4" />
-                                        Force Logout
-                                    </button>
-                                </motion.div>
-                            )}
+                                        <button
+                                            onClick={handleEditProfile}
+                                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                        >
+                                            <FiEdit2 className="w-4 h-4" />
+                                            Edit Profile
+                                        </button>
+                                        <button
+                                            onClick={handleChangePassword}
+                                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                        >
+                                            <FiLock className="w-4 h-4" />
+                                            Change Password
+                                        </button>
+                                        <button
+                                            onClick={handleForceLogout}
+                                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                        >
+                                            <FiLogOut className="w-4 h-4" />
+                                            Force Logout
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
+
+                        {/* Enhanced Profile Tabs with Minimize Option */}
+                        <motion.div 
+                            className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6 overflow-hidden"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                        >
+                            <div className="p-3 flex items-center justify-between">
+                                {tabsMinimized ? (
+                                    // Minimized view - icons with labels in one line
+                                    <>
+                                        <div className="flex items-center justify-center gap-1 flex-1 flex-wrap">
+                                            {profileTabs.map((tabItem) => {
+                                                const Icon = tabItem.icon;
+                                                const isActive = activeTab === tabItem.id;
+                                                return (
+                                                    <CompactTabIcon
+                                                        key={tabItem.id}
+                                                        to={tabItem.id}
+                                                        icon={Icon}
+                                                        label={tabItem.name}
+                                                        isActive={isActive}
+                                                        onClick={handleTabChange}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                        <motion.button
+                                            onClick={toggleTabsMinimized}
+                                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 ml-1 flex-shrink-0"
+                                            whileHover={{ scale: 1.1 }}
+                                            whileTap={{ scale: 0.9 }}
+                                            title="Show full tabs"
+                                        >
+                                            <FiMaximize2 className="w-4 h-4" />
+                                        </motion.button>
+                                    </>
+                                ) : (
+                                    // Expanded view - grid layout with minimize button
+                                    <>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 flex-1">
+                                            {profileTabs.map((tabItem) => {
+                                                const Icon = tabItem.icon;
+                                                const isActive = activeTab === tabItem.id;
+                                                return (
+                                                    <TabLink
+                                                        key={tabItem.id}
+                                                        to={tabItem.id}
+                                                        icon={Icon}
+                                                        label={tabItem.name}
+                                                        isActive={isActive}
+                                                        onClick={handleTabChange}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                        <motion.button
+                                            onClick={toggleTabsMinimized}
+                                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 ml-1 flex-shrink-0"
+                                            whileHover={{ scale: 1.1 }}
+                                            whileTap={{ scale: 0.9 }}
+                                            title="Minimize tabs"
+                                        >
+                                            <FiMinimize2 className="w-4 h-4" />
+                                        </motion.button>
+                                    </>
+                                )}
+                            </div>
+                        </motion.div>
+
+                        {/* Tab Content with AnimatePresence */}
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={activeTab}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2 }}
+                                className="bg-white rounded-lg border border-gray-200 shadow-sm p-5"
+                            >
+                                {renderTabContent()}
+                            </motion.div>
                         </AnimatePresence>
                     </motion.div>
-
-                    {/* Profile Tabs */}
-                    <motion.div 
-                        className="bg-white rounded-lg border border-gray-200 p-1 mb-6 overflow-x-auto"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        <div className="flex min-w-max">
-                            {profileTabs.map((tab) => {
-                                const Icon = tab.icon;
-                                const isActive = activeTab === tab.id;
-                                
-                                return (
-                                    <motion.button
-                                        key={tab.id}
-                                        onClick={() => handleTabChange(tab.id)}
-                                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${
-                                            isActive 
-                                                ? 'bg-blue-100 text-blue-700' 
-                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                                        }`}
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                    >
-                                        <Icon className="w-4 h-4" />
-                                        {tab.name}
-                                    </motion.button>
-                                );
-                            })}
-                        </div>
-                    </motion.div>
-
-                    {/* Tab Content */}
-                    <AnimatePresence mode="wait">
-                        {renderTabContent()}
-                    </AnimatePresence>
                 </div>
             </div>
         </div>

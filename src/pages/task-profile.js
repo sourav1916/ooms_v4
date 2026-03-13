@@ -239,17 +239,21 @@ const TaskProfile = () => {
                     </motion.div>
                 );
             case 'ledger':
-                return (
-                    <motion.div
-                        key="ledger"
-                        variants={tabContentVariants}
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                    >
-                        <LedgerTab task_id={task_id} />
-                    </motion.div>
-                );
+    return (
+        <motion.div
+            key="ledger"
+            variants={tabContentVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
+            <LedgerTab 
+                task_id={task_id}
+                clientId={taskData?.client?.username} // Pass client username from task data
+                clientName={taskData?.client?.profile?.name} // Pass client name for display
+            />
+        </motion.div>
+    );
             default:
                 return null;
         }
