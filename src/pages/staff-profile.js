@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Sidebar, Header } from '../components/header';
 import {
     FiUser,
@@ -24,8 +24,13 @@ import {
     FiX,
     FiStar,
     FiMaximize2,
-    FiMinimize2
+    FiMinimize2,
+    FiAlertCircle
 } from 'react-icons/fi';
+
+// Import API utilities
+import API_BASE_URL from "../utils/api-controller";
+import getHeaders from "../utils/get-headers";
 
 // Import tab components
 import ProfileTab from '../staff/ProfileTab';
@@ -88,6 +93,10 @@ const CompactTabIcon = ({ to, icon: Icon, label, isActive, onClick }) => {
 const StaffProfile = () => {
     const navigate = useNavigate();
     const { tab } = useParams();
+    const location = useLocation();
+    
+    // Get username from URL query parameters
+    const [username, setUsername] = useState(null);
     
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(() => {
@@ -102,6 +111,98 @@ const StaffProfile = () => {
     const [showSettings, setShowSettings] = useState(false);
     const [isMobileView, setIsMobileView] = useState(false);
     
+    // Loading and error states
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [isAccepted, setIsAccepted] = useState(false);
+
+    // Staff data state
+    const [staffData, setStaffData] = useState({
+        firstName: "",
+        lastName: "",
+        fullName: "",
+        email: "",
+        phone: "",
+        joinDate: "",
+        balance: "0.00",
+        designation: "",
+        dateOfBirth: "",
+        gender: "",
+        username: "",
+        address: {
+            state: "",
+            district: "",
+            city: "",
+            line1: "",
+            line2: ""
+        }
+    });
+
+    // Sample data for tabs (will be populated from API later)
+    const [attendance, setAttendance] = useState({
+        month: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        summary: {
+            totalDays: 0,
+            notMarked: 0,
+            present: 0,
+            absent: 0,
+            halfDay: 0,
+            overTime: "00 H : 00 M",
+            fineHours: "00 H : 00 M",
+            paidLeave: 0
+        },
+        calendar: []
+    });
+
+    const [expenses, setExpenses] = useState([]);
+    const [bonusFine, setBonusFine] = useState([]);
+    const [salary, setSalary] = useState({ list: [] });
+    const [ledger, setLedger] = useState({
+        period: "",
+        entries: [],
+        openingBalance: "0.00",
+        totalDebit: "0.00",
+        totalCredit: "0.00",
+        closingBalance: "0.00"
+    });
+    const [loan, setLoan] = useState({
+        period: "",
+        entries: [],
+        openingBalance: "0.00",
+        totalDebit: "0.00",
+        totalCredit: "0.00",
+        closingBalance: "0.00"
+    });
+    const [performance, setPerformance] = useState({
+        period: "",
+        services: [],
+        tasks: []
+    });
+    const [entryReport, setEntryReport] = useState({
+        month: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        entries: []
+    });
+
+    // Extract username from URL query params on component mount
+    useEffect(() => {
+        const searchParams = new URLSearchParams(location.search);
+        const usernameParam = searchParams.get('username');
+        
+        if (usernameParam) {
+            setUsername(usernameParam);
+            console.log('Username from URL:', usernameParam);
+        } else {
+            // If no username in URL, try to get from localStorage or use default
+            const savedUsername = localStorage.getItem('selectedStaffUsername');
+            if (savedUsername) {
+                setUsername(savedUsername);
+            } else {
+                setError('No username provided');
+                setLoading(false);
+            }
+        }
+    }, [location]);
+
     // Update active tab when URL changes
     useEffect(() => {
         if (tab) {
@@ -111,10 +212,10 @@ const StaffProfile = () => {
 
     // Handle default tab
     useEffect(() => {
-        if (!tab) {
-            navigate('/staff/view/profile/profile', { replace: true });
+        if (!tab && username) {
+            navigate(`/staff/view/profile/profile?username=${username}`, { replace: true });
         }
-    }, [tab, navigate]);
+    }, [tab, navigate, username]);
 
     // Persist tabs minimized state
     useEffect(() => {
@@ -132,146 +233,276 @@ const StaffProfile = () => {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Staff data
-    const [staffData, setStaffData] = useState({
-        firstName: "Amarnath",
-        lastName: "Kalam",
-        fullName: "Amarnath Kalam",
-        email: "kpt@gmail.com",
-        phone: "+91 9876543210",
-        joinDate: "18/06/2025",
-        balance: "0.00",
-        designation: "MANAGER",
-        dateOfBirth: "18/06/2025",
-        gender: "Male",
-        address: {
-            state: "Andhra Pradesh",
-            district: "Anantapur",
-            city: "ead",
-            line1: "123 Main Street",
-            line2: "Near City Center"
+    // Fetch staff profile data when username is available
+    useEffect(() => {
+        if (username) {
+            fetchStaffProfile();
+            // Save username to localStorage for persistence
+            localStorage.setItem('selectedStaffUsername', username);
         }
-    });
+    }, [username]);
 
-    // Sample data for tabs
-    const [attendance, setAttendance] = useState({
-        month: "Mar-2026",
-        summary: {
-            totalDays: 1,
-            notMarked: 1,
-            present: 0,
-            absent: 0,
-            halfDay: 0,
-            overTime: "00 H : 00 M",
-            fineHours: "00 H : 00 M",
-            paidLeave: 0
-        },
-        calendar: generateCalendarData()
-    });
+   // Function to fetch staff profile from API
+// Function to fetch staff profile from API
+const fetchStaffProfile = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+        const headers = await getHeaders();
+        if (!headers) {
+            throw new Error('Authentication failed. Please login again.');
+        }
 
-    const [expenses, setExpenses] = useState([
-        { id: 1, date: "2026-03-01", description: "Travel expenses", amount: "500.00", status: "Approved" },
-        { id: 2, date: "2026-02-28", description: "Stationery", amount: "250.00", status: "Pending" }
-    ]);
-
-    const [bonusFine, setBonusFine] = useState([
-        { id: 1, createDate: "2026-03-01", amount: "1000.00", type: "Bonus", description: "Performance bonus", status: "Paid" },
-        { id: 2, createDate: "2026-02-15", amount: "500.00", type: "Fine", description: "Late arrival", status: "Deducted" }
-    ]);
-
-    const [salary, setSalary] = useState({
-        list: [
-            { 
-                id: 1,
-                amount: "0.00",
-                applyOT: "No",
-                applyFine: "No",
-                officeTime: "10:00 AM",
-                workingHour: "8 Hours : 0 Minutes",
-                graceTime: "0 Minutes",
-                effectiveFrom: "Jun-2025",
-                paidLeave: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        console.log(`Fetching staff profile for username: ${username}`);
+        
+        // Use the correct endpoint with username in URL path
+        const response = await fetch(
+            `${API_BASE_URL}/settings/staff/profile/${username}`,
+            {
+                method: 'GET',
+                headers: headers
             }
-        ]
-    });
+        );
 
-    const [ledger, setLedger] = useState({
-        period: "01/03/2026 - 31/03/2026",
-        entries: [],
-        openingBalance: "0.00",
-        totalDebit: "0.00",
-        totalCredit: "0.00",
-        closingBalance: "0.00"
-    });
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error('Staff member not found');
+            } else if (response.status === 401) {
+                throw new Error('Unauthorized. Please login again.');
+            } else if (response.status === 403) {
+                throw new Error('You do not have permission to view this profile');
+            } else {
+                throw new Error(`Failed to fetch profile: ${response.status}`);
+            }
+        }
 
-    const [loan, setLoan] = useState({
-        period: "19/06/2025 - 31/12/2050",
-        entries: [],
-        openingBalance: "0.00",
-        totalDebit: "0.00",
-        totalCredit: "0.00",
-        closingBalance: "0.00"
-    });
+        const responseData = await response.json();
+        console.log('Staff profile response:', responseData);
+        
+        // Check if the response has data array and it's not empty
+        if (responseData.success && responseData.data && responseData.data.length > 0) {
+            const staffMember = responseData.data[0]; // Get the first item from data array
+            
+            // Check if staff is accepted (from the response)
+            const isAcceptedStaff = staffMember.is_accepted === true;
+            setIsAccepted(isAcceptedStaff);
+            
+            // Get branch info from response
+            const branchInfo = staffMember.branch || {};
+            
+            // Format phone number with country code
+            const formattedPhone = staffMember.mobile 
+                ? `${staffMember.country_code ? '+' + staffMember.country_code : ''} ${staffMember.mobile}`.trim()
+                : '';
+            
+            // Transform API response to match component's data structure
+            const transformedData = {
+                firstName: staffMember.name?.split(' ')[0] || '',
+                lastName: staffMember.name?.split(' ').slice(1).join(' ') || '',
+                fullName: staffMember.name || 'Unknown',
+                email: staffMember.email || '',
+                phone: formattedPhone,
+                joinDate: staffMember.create_date ? formatDate(staffMember.create_date) : '',
+                balance: "0.00", // You might need to fetch this from another endpoint
+                designation: staffMember.designation || 'Not Assigned', // From branch_mapping
+                dateOfBirth: staffMember.date_of_birth ? formatDate(staffMember.date_of_birth) : '',
+                gender: staffMember.gender || '',
+                username: staffMember.username || username,
+                status: staffMember.status === true, // Profile status
+                userStatus: staffMember.user_status === true, // User account status
+                is_accepted: staffMember.is_accepted === true,
+                
+                // Address from profile
+                address: {
+                    state: staffMember.state || '',
+                    district: staffMember.district || '',
+                    city: staffMember.city || '',
+                    line1: staffMember.address_line_1 || '',
+                    line2: staffMember.address_line_2 || '',
+                    pincode: staffMember.pincode || '',
+                    country: staffMember.country || ''
+                },
+                
+                // Branch information
+                branch: {
+                    id: branchInfo.id,
+                    db_id: branchInfo.db_id,
+                    name: branchInfo.name,
+                    logo: branchInfo.logo,
+                    address: branchInfo.address || {
+                        line1: null,
+                        line2: null,
+                        city: null,
+                        state: null,
+                        country: null,
+                        pincode: null
+                    },
+                    tax_info: branchInfo.tax_info || {
+                        pan: "",
+                        gst: ""
+                    }
+                },
+                
+                // Additional fields that might be useful
+                profile_id: staffMember.profile_id,
+                care_of: staffMember.care_of,
+                guardian_name: staffMember.guardian_name,
+                country_code: staffMember.country_code,
+                pan_number: staffMember.pan_number,
+                village_town: staffMember.village_town,
+                image: staffMember.image
+            };
 
-    const [performance, setPerformance] = useState({
-        period: "19/06/2025 - 31/12/2050",
-        services: [],
-        tasks: generateTaskData()
-    });
+            setStaffData(transformedData);
+            console.log('Transformed staff data:', transformedData);
+            
+            // After profile is loaded, fetch other tab data
+            fetchAttendanceData();
+            fetchExpensesData();
+            fetchBonusFineData();
+            fetchSalaryData();
+            fetchLedgerData();
+            fetchLoanData();
+            fetchPerformanceData();
+            fetchEntryReportData();
+            
+        } else {
+            throw new Error('No staff data found');
+        }
+        
+    } catch (err) {
+        console.error('Error fetching staff profile:', err);
+        setError(err.message || 'Failed to load staff profile');
+    } finally {
+        setLoading(false);
+    }
+};
 
-    const [entryReport, setEntryReport] = useState({
-        month: "Mar-2026",
-        entries: [
-            { id: 1, officeTime: "10:00 AM", entryTime: "09:55 AM", date: "01/03/2026", status: "On Time" },
-            { id: 2, officeTime: "10:00 AM", entryTime: "10:15 AM", date: "02/03/2026", status: "Late" }
-        ]
-    });
-
-    // Helper function to generate calendar data
-    function generateCalendarData() {
+   // Helper function to format date
+const formatDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        return date.toLocaleDateString('en-GB');
+    } catch (e) {
+        return '';
+    }
+};
+    // Function to generate calendar data for attendance
+    const generateCalendarData = () => {
         const days = [];
-        const daysInMonth = 31;
+        const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
         for (let i = 1; i <= daysInMonth; i++) {
             days.push({
                 date: i,
-                day: new Date(2026, 2, i).toLocaleDateString('en-US', { weekday: 'short' }),
-                status: i === 1 ? "Not Marked" : null
+                day: new Date(new Date().getFullYear(), new Date().getMonth(), i).toLocaleDateString('en-US', { weekday: 'short' }),
+                status: null
             });
         }
         return days;
-    }
+    };
 
-    // Helper function to generate task data
-    function generateTaskData() {
+    // API calls for other tabs (to be implemented)
+    const fetchAttendanceData = async () => {
+        try {
+            // This would be implemented with actual API calls
+            setAttendance(prev => ({
+                ...prev,
+                calendar: generateCalendarData()
+            }));
+        } catch (error) {
+            console.error('Error fetching attendance:', error);
+        }
+    };
+
+    const fetchExpensesData = async () => {
+        // Implement API call for expenses
+        setExpenses([]);
+    };
+
+    const fetchBonusFineData = async () => {
+        // Implement API call for bonus/fine
+        setBonusFine([]);
+    };
+
+    const fetchSalaryData = async () => {
+        // Implement API call for salary
+        setSalary({ list: [] });
+    };
+
+    const fetchLedgerData = async () => {
+        // Implement API call for ledger
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        
+        setLedger({
+            period: `${formatDate(firstDay)} - ${formatDate(lastDay)}`,
+            entries: [],
+            openingBalance: "0.00",
+            totalDebit: "0.00",
+            totalCredit: "0.00",
+            closingBalance: "0.00"
+        });
+    };
+
+    const fetchLoanData = async () => {
+        // Implement API call for loan
+        const today = new Date();
+        const startDate = formatDate(today);
+        const endDate = new Date(today.getFullYear() + 10, today.getMonth(), today.getDate());
+        
+        setLoan({
+            period: `${startDate} - ${formatDate(endDate)}`,
+            entries: [],
+            openingBalance: "0.00",
+            totalDebit: "0.00",
+            totalCredit: "0.00",
+            closingBalance: "0.00"
+        });
+    };
+
+    const fetchPerformanceData = async () => {
+        // Implement API call for performance
+        const today = new Date();
+        const startDate = formatDate(today);
+        const endDate = new Date(today.getFullYear() + 10, today.getMonth(), today.getDate());
+        
+        setPerformance({
+            period: `${startDate} - ${formatDate(endDate)}`,
+            services: [],
+            tasks: generateTaskData()
+        });
+    };
+
+    const fetchEntryReportData = async () => {
+        // Implement API call for entry report
+        setEntryReport({
+            month: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            entries: []
+        });
+    };
+
+    // Helper function to generate sample task data
+    const generateTaskData = () => {
         return [
             {
                 id: 1,
-                createDate: "10-02-2026",
-                dueDate: "20-02-2026",
-                targetDate: "20-02-2026",
+                createDate: formatDate(new Date()),
+                dueDate: formatDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+                targetDate: formatDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
                 task: "Income Tax Return",
                 fees: "2000.00",
-                client: "RONIT ROY",
-                assignor: "CHANDAN ROY",
-                pan: "xxxxx3169A",
-                mobile: "8900700707",
-                status: "ASSIGNED"
-            },
-            {
-                id: 2,
-                createDate: "10-02-2026",
-                dueDate: "20-02-2026",
-                targetDate: "20-02-2026",
-                task: "Income Tax Return",
-                fees: "2000.00",
-                client: "ABBAS ALI",
-                assignor: "ABDUL AZIZ",
-                pan: "ALUPA7087Q",
-                mobile: "8638501062",
+                client: "Sample Client",
+                assignor: "Admin",
+                pan: "XXXXX1234A",
+                mobile: "9876543210",
                 status: "ASSIGNED"
             }
         ];
-    }
+    };
 
     // Profile tabs with paths
     const profileTabs = [
@@ -289,7 +520,7 @@ const StaffProfile = () => {
     // Handle tab change with navigation
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
-        navigate(`/staff/view/profile/${tabId}`);
+        navigate(`/staff/view/profile/${tabId}?username=${username}`);
         setShowSettings(false);
     };
 
@@ -316,6 +547,18 @@ const StaffProfile = () => {
         setShowSettings(false);
     };
 
+    // Handle refresh data
+    const handleRefresh = () => {
+        if (username) {
+            fetchStaffProfile();
+        }
+    };
+
+    // Go back to staff list
+    const handleGoBack = () => {
+        navigate('/staff/view');
+    };
+
     // Animation variants
     const tabContentVariants = {
         initial: { opacity: 0, y: 20 },
@@ -327,39 +570,160 @@ const StaffProfile = () => {
     const renderTabContent = () => {
         const props = {
             variants: tabContentVariants,
-            staffData
+            staffData,
+            username,
+            isAccepted
         };
 
         switch (activeTab) {
             case 'profile':
-                return <ProfileTab key="profile" staffData={staffData} setStaffData={setStaffData} {...props} />;
+                return <ProfileTab key="profile" staffData={staffData} setStaffData={setStaffData} username={username} {...props} />;
             case 'attendance':
-                return <AttendanceTab key="attendance" attendance={attendance} setAttendance={setAttendance} {...props} />;
+                return <AttendanceTab key="attendance" attendance={attendance} setAttendance={setAttendance} username={username} {...props} />;
             case 'expense':
-                return <ExpenseTab key="expense" expenses={expenses} setExpenses={setExpenses} {...props} />;
+                return <ExpenseTab key="expense" expenses={expenses} setExpenses={setExpenses} username={username} {...props} />;
             case 'bonus-fine':
-                return <BonusFineTab key="bonus-fine" bonusFine={bonusFine} setBonusFine={setBonusFine} {...props} />;
+                return <BonusFineTab key="bonus-fine" bonusFine={bonusFine} setBonusFine={setBonusFine} username={username} {...props} />;
             case 'salary':
-                return <SalaryTab key="salary" salary={salary} setSalary={setSalary} {...props} />;
+                return <SalaryTab key="salary" salary={salary} setSalary={setSalary} username={username} {...props} />;
             case 'ledger':
-                return <LedgerTab key="ledger" ledger={ledger} setLedger={setLedger} {...props} />;
+                return <LedgerTab key="ledger" ledger={ledger} setLedger={setLedger} username={username} {...props} />;
             case 'loan':
-                return <LoanTab key="loan" loan={loan} setLoan={setLoan} {...props} />;
+                return <LoanTab key="loan" loan={loan} setLoan={setLoan} username={username} {...props} />;
             case 'performance':
-                return <PerformanceTab key="performance" performance={performance} setPerformance={setPerformance} {...props} />;
+                return <PerformanceTab key="performance" performance={performance} setPerformance={setPerformance} username={username} {...props} />;
             case 'entry-report':
-                return <EntryReportTab key="entry-report" entryReport={entryReport} setEntryReport={setEntryReport} {...props} />;
+                return <EntryReportTab key="entry-report" entryReport={entryReport} setEntryReport={setEntryReport} username={username} {...props} />;
             default:
                 return null;
         }
     };
 
-    // Format date for display
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-GB');
-    };
+    // Loading skeleton
+    const LoadingSkeleton = () => (
+        <div className="min-h-screen bg-gray-50">
+            <Header
+                mobileMenuOpen={mobileMenuOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+                isMinimized={isMinimized}
+                setIsMinimized={setIsMinimized}
+            />
+            <Sidebar
+                mobileMenuOpen={mobileMenuOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+                isMinimized={isMinimized}
+                setIsMinimized={setIsMinimized}
+            />
+
+            <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
+                    <div className="animate-pulse">
+                        {/* Breadcrumb skeleton */}
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="h-4 bg-gray-200 rounded w-16"></div>
+                            <div className="h-4 bg-gray-200 rounded w-4"></div>
+                            <div className="h-4 bg-gray-200 rounded w-32"></div>
+                        </div>
+
+                        {/* Header card skeleton */}
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 bg-gray-200 rounded-lg"></div>
+                                    <div>
+                                        <div className="h-6 bg-gray-200 rounded w-48 mb-2"></div>
+                                        <div className="h-4 bg-gray-200 rounded w-32"></div>
+                                    </div>
+                                </div>
+                                <div className="h-10 bg-gray-200 rounded w-32"></div>
+                            </div>
+                        </div>
+
+                        {/* Tabs skeleton */}
+                        <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6 p-3">
+                            <div className="grid grid-cols-5 gap-2">
+                                {[...Array(5)].map((_, i) => (
+                                    <div key={i} className="h-16 bg-gray-200 rounded-lg"></div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Content skeleton */}
+                        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
+                            <div className="space-y-4">
+                                <div className="h-8 bg-gray-200 rounded w-48"></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="h-24 bg-gray-200 rounded"></div>
+                                    <div className="h-24 bg-gray-200 rounded"></div>
+                                    <div className="h-24 bg-gray-200 rounded"></div>
+                                    <div className="h-24 bg-gray-200 rounded"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    // Error component
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50">
+                <Header
+                    mobileMenuOpen={mobileMenuOpen}
+                    setMobileMenuOpen={setMobileMenuOpen}
+                    isMinimized={isMinimized}
+                    setIsMinimized={setIsMinimized}
+                />
+                <Sidebar
+                    mobileMenuOpen={mobileMenuOpen}
+                    setMobileMenuOpen={setMobileMenuOpen}
+                    isMinimized={isMinimized}
+                    setIsMinimized={setIsMinimized}
+                />
+
+                <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center"
+                        >
+                            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <FiAlertCircle className="w-10 h-10 text-red-600" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Profile</h2>
+                            <p className="text-gray-600 mb-6">{error}</p>
+                            <div className="flex justify-center gap-4">
+                                <motion.button
+                                    onClick={handleRefresh}
+                                    className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium flex items-center gap-2 hover:bg-blue-700 transition-colors"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    <FiRefreshCw className="w-4 h-4" />
+                                    Try Again
+                                </motion.button>
+                                <motion.button
+                                    onClick={handleGoBack}
+                                    className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    Back to Staff List
+                                </motion.button>
+                            </div>
+                        </motion.div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (loading || !username) {
+        return <LoadingSkeleton />;
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -387,7 +751,7 @@ const StaffProfile = () => {
                         {/* Breadcrumb Navigation */}
                         <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
                             <button 
-                                onClick={() => navigate('/staff/view')}
+                                onClick={handleGoBack}
                                 className="hover:text-blue-600 flex items-center gap-1"
                             >
                                 <FiHome className="w-4 h-4" />
@@ -397,6 +761,17 @@ const StaffProfile = () => {
                             <span className="font-medium text-gray-900">{staffData.fullName}</span>
                             <FiChevronRight className="w-4 h-4" />
                             <span className="capitalize">{activeTab.replace('-', ' ')}</span>
+                            
+                            {/* Refresh button */}
+                            <motion.button
+                                onClick={handleRefresh}
+                                className="ml-auto p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                whileHover={{ rotate: 180 }}
+                                transition={{ duration: 0.3 }}
+                                title="Refresh data"
+                            >
+                                <FiRefreshCw className="w-4 h-4" />
+                            </motion.button>
                         </div>
 
                         {/* Staff Header Card */}
@@ -414,16 +789,23 @@ const StaffProfile = () => {
                                             whileHover={{ scale: 1.03 }}
                                         >
                                             <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-sm">
-                                                {staffData.firstName.charAt(0)}{staffData.lastName.charAt(0)}
+                                                {staffData.fullName ? staffData.fullName.charAt(0).toUpperCase() : '?'}
+                                                {staffData.fullName && staffData.fullName.split(' ').length > 1 ? staffData.fullName.split(' ')[1].charAt(0).toUpperCase() : ''}
                                             </div>
-                                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-2 border-white"></div>
+                                            {isAccepted && (
+                                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-2 border-white"></div>
+                                            )}
                                         </motion.div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3">
-                                                <h1 className="text-xl font-bold text-gray-900 truncate">{staffData.fullName}</h1>
-                                                <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold flex items-center gap-1 w-fit">
+                                                <h1 className="text-xl font-bold text-gray-900 truncate">{staffData.fullName || 'Unknown'}</h1>
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 w-fit ${
+                                                    isAccepted 
+                                                        ? 'bg-blue-100 text-blue-700' 
+                                                        : 'bg-amber-100 text-amber-700'
+                                                }`}>
                                                     <FiStar className="w-3 h-3" />
-                                                    {staffData.designation}
+                                                    {staffData.designation || 'Pending'}
                                                 </span>
                                             </div>
                                             
@@ -435,7 +817,7 @@ const StaffProfile = () => {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-xs font-medium text-gray-500">Email</p>
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.email}</p>
+                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.email || 'N/A'}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
@@ -444,7 +826,7 @@ const StaffProfile = () => {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-xs font-medium text-gray-500">Phone</p>
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.phone}</p>
+                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.phone || 'N/A'}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
@@ -453,7 +835,7 @@ const StaffProfile = () => {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-xs font-medium text-gray-500">Joined</p>
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.joinDate}</p>
+                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.joinDate || 'N/A'}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">
@@ -462,7 +844,7 @@ const StaffProfile = () => {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-xs font-medium text-gray-500">Location</p>
-                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.address.city}</p>
+                                                        <p className="text-sm font-semibold text-gray-900 truncate">{staffData.address.city || 'N/A'}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -479,7 +861,11 @@ const StaffProfile = () => {
                                             <FiUser className="w-5 h-5" />
                                         </motion.button>
                                         <motion.div 
-                                            className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg font-semibold shadow-sm"
+                                            className={`px-4 py-2 rounded-lg font-semibold shadow-sm ${
+                                                isAccepted 
+                                                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' 
+                                                    : 'bg-gray-100 text-gray-500'
+                                            }`}
                                             whileHover={{ scale: 1.02 }}
                                         >
                                             Balance: ₹{staffData.balance}

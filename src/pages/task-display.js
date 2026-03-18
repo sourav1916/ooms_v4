@@ -28,7 +28,7 @@ import {
     FiCheckCircle,
     FiXCircle,
     FiClock,
-    FiMoreVertical,
+    FiMenu,
     FiInfo,
     FiEdit,
     FiEye,
@@ -2823,7 +2823,7 @@ const TaskDisplay = () => {
                                                     whileHover={{ scale: 1.08 }}
                                                     whileTap={{ scale: 0.95 }}
                                                 >
-                                                    <FiMoreVertical className="w-4 h-4 text-gray-700" />
+                                                    <FiMenu  className="w-4 h-4 text-gray-700" />
                                                 </motion.button>
 
                                                 <AnimatePresence>

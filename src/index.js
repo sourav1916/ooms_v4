@@ -280,13 +280,7 @@ root.render(
         </ProtectedRoute>
       } />
  
-      <Route path="/staff/view/profile" element={
-        <ProtectedRoute>
-          <ViewStaffProfile/>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/staff/view/profile/:tab?" element={
+     <Route path="/staff/view/profile/:tab?" element={
   <ProtectedRoute>
     <ViewStaffProfile/>
   </ProtectedRoute>

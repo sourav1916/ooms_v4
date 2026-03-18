@@ -639,11 +639,11 @@ const ViewStaff = () => {
                     email: profile.email || 'N/A',
                     designation: staffMember.designation || 'Not Assigned',
                     loan: '0',
-                    balance: '0',
+                    balance: staffMember.balance || '0',
                     address: profile.address ? 
                         `${profile.address.address_line_1 || ''} ${profile.address.address_line_2 || ''} ${profile.address.city || ''} ${profile.address.state || ''}`.trim() 
                         : '',
-                    salary: '0',
+                    salary: staffMember.salary || '0',
                     joining_date: staffMember.modify_date || new Date().toISOString().split('T')[0],
                     emergency_contact: '',
                     bank_account: '',
@@ -1269,7 +1269,7 @@ const ViewStaff = () => {
                                                         <div className="flex flex-col items-center">
                                                             {isAccepted ? (
                                                                 <a
-                                                                    href={`/staff/view/profile`}
+                                                                    href={`/staff/view/profile?username=${staffMember.username}`}
                                                                     className="text-blue-600 hover:text-blue-800 font-medium block hover:underline transition-colors text-sm"
                                                                 >
                                                                     {staffMember.name}
@@ -1336,7 +1336,7 @@ const ViewStaff = () => {
                                                     <td className="text-center p-3 align-middle">
                                                         {isAccepted ? (
                                                             <a
-                                                                href={`/view-stuff-profile-ledger?username=${staffMember.username}`}
+                                                                href={`/staff/view/profile/ledger?username=${staffMember.username}`}
                                                                 className="inline-block"
                                                             >
                                                                 <span className="inline-flex items-center justify-center bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 text-xs font-bold px-3 py-1.5 rounded-lg min-w-[80px] border border-green-200 shadow-xs">
@@ -1372,7 +1372,7 @@ const ViewStaff = () => {
                                                                                 // Options for accepted staff
                                                                                 <>
                                                                                     <a
-                                                                                        href={`/view-stuff-profile?username=${staffMember.username}`}
+                                                                                        href={`/staff/view/profile/attendance?username=${staffMember.username}`}
                                                                                         className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                         onClick={() => setActiveRowDropdown(null)}
                                                                                     >
@@ -1384,7 +1384,7 @@ const ViewStaff = () => {
                                                                                         </div>
                                                                                     </a>
                                                                                     <a
-                                                                                        href={`/view-stuff-profile-expenses?username=${staffMember.username}`}
+                                                                                        href={`/staff/view/profile/expense?username=${staffMember.username}`}
                                                                                         className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                         onClick={() => setActiveRowDropdown(null)}
                                                                                     >
@@ -1396,7 +1396,7 @@ const ViewStaff = () => {
                                                                                         </div>
                                                                                     </a>
                                                                                     <a
-                                                                                        href={`/view-stuff-profile-bonus-fine?username=${staffMember.username}`}
+                                                                                        href={`/staff/view/profile/bonus-fine?username=${staffMember.username}`}
                                                                                         className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                         onClick={() => setActiveRowDropdown(null)}
                                                                                     >
@@ -1408,7 +1408,7 @@ const ViewStaff = () => {
                                                                                         </div>
                                                                                     </a>
                                                                                     <a
-                                                                                        href={`/view-stuff-profile-salary?username=${staffMember.username}`}
+                                                                                        href={`/staff/view/profile/salary?username=${staffMember.username}`}
                                                                                         className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                         onClick={() => setActiveRowDropdown(null)}
                                                                                     >
@@ -1420,7 +1420,7 @@ const ViewStaff = () => {
                                                                                         </div>
                                                                                     </a>
                                                                                     <a
-                                                                                        href={`/view-stuff-profile-ledger?username=${staffMember.username}`}
+                                                                                        href={`/staff/view/profile/ledger?username=${staffMember.username}`}
                                                                                         className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                         onClick={() => setActiveRowDropdown(null)}
                                                                                     >
@@ -1432,7 +1432,7 @@ const ViewStaff = () => {
                                                                                         </div>
                                                                                     </a>
                                                                                     <a
-                                                                                        href={`/view-stuff-profile-performance?username=${staffMember.username}`}
+                                                                                        href={`/staff/view/profile/performance?username=${staffMember.username}`}
                                                                                         className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                         onClick={() => setActiveRowDropdown(null)}
                                                                                     >
@@ -1444,7 +1444,7 @@ const ViewStaff = () => {
                                                                                         </div>
                                                                                     </a>
                                                                                     <a
-                                                                                        href={`/view-stuff-profile-profile?username=${staffMember.username}`}
+                                                                                        href={`/staff/view/profile/profile?username=${staffMember.username}`}
                                                                                         className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
                                                                                         onClick={() => setActiveRowDropdown(null)}
                                                                                     >

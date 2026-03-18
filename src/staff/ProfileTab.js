@@ -1,19 +1,95 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiEdit2, FiSave, FiX } from 'react-icons/fi';
+import { FiEdit2, FiSave, FiX, FiRefreshCw } from 'react-icons/fi';
+import API_BASE_URL from "../utils/api-controller";
+import getHeaders from "../utils/get-headers";
 
-const ProfileTab = ({ staffData, setStaffData, variants }) => {
+const ProfileTab = ({ staffData, setStaffData, variants, username }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedData, setEditedData] = useState(staffData);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
 
-    const handleSave = () => {
-        setStaffData(editedData);
-        setIsEditing(false);
+    // Update edited data when staffData changes
+    useEffect(() => {
+        setEditedData(staffData);
+    }, [staffData]);
+
+    const handleSave = async () => {
+        setSaving(true);
+        setError(null);
+        setSuccess(null);
+
+        try {
+            const headers = await getHeaders();
+            if (!headers) {
+                throw new Error('Authentication failed. Please login again.');
+            }
+            
+            // Prepare data for API update
+            const updateData = {
+                firstName: editedData.firstName,
+                lastName: editedData.lastName,
+                email: editedData.email,
+                mobile: editedData.phone.replace(/[^0-9]/g, ''), // Remove country code and spaces
+                country_code: '91', // Default country code
+                designation: editedData.designation,
+                dob: editedData.dateOfBirth,
+                gender: editedData.gender,
+                address: {
+                    state: editedData.address.state,
+                    district: editedData.address.district,
+                    city: editedData.address.city,
+                    address_line_1: editedData.address.line1,
+                    address_line_2: editedData.address.line2
+                }
+            };
+
+            console.log('Updating profile with data:', updateData);
+
+            const response = await fetch(
+                `${API_BASE_URL}/settings/staff/profile/update/?username=${username}`,
+                {
+                    method: 'PUT', // or 'POST' depending on your API
+                    headers: headers,
+                    body: JSON.stringify(updateData)
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || `Failed to update profile: ${response.status}`);
+            }
+
+            console.log('Profile update response:', data);
+            
+            // Update parent component with new data
+            setStaffData(editedData);
+            setIsEditing(false);
+            setSuccess('Profile updated successfully');
+            
+            // Clear success message after 3 seconds
+            setTimeout(() => setSuccess(null), 3000);
+            
+        } catch (err) {
+            console.error('Error updating profile:', err);
+            setError(err.message || 'Failed to update profile');
+            
+            // Clear error message after 5 seconds
+            setTimeout(() => setError(null), 5000);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleCancel = () => {
         setEditedData(staffData);
         setIsEditing(false);
+        setError(null);
+        setSuccess(null);
     };
 
     const handleChange = (e) => {
@@ -42,32 +118,67 @@ const ProfileTab = ({ staffData, setStaffData, variants }) => {
         >
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">Profile Information</h2>
-                {!isEditing ? (
-                    <button
-                        onClick={() => setIsEditing(true)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                    >
-                        <FiEdit2 className="w-4 h-4" />
-                        Edit Profile
-                    </button>
-                ) : (
-                    <div className="flex gap-2">
-                        <button
-                            onClick={handleSave}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
+                <div className="flex items-center gap-3">
+                    {/* Success Message */}
+                    {success && (
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded-lg"
                         >
-                            <FiSave className="w-4 h-4" />
-                            Save
-                        </button>
-                        <button
-                            onClick={handleCancel}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                            {success}
+                        </motion.div>
+                    )}
+                    
+                    {/* Error Message */}
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-lg"
                         >
-                            <FiX className="w-4 h-4" />
-                            Cancel
+                            {error}
+                        </motion.div>
+                    )}
+                    
+                    {!isEditing ? (
+                        <button
+                            onClick={() => setIsEditing(true)}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                            <FiEdit2 className="w-4 h-4" />
+                            Edit Profile
                         </button>
-                    </div>
-                )}
+                    ) : (
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                {saving ? (
+                                    <>
+                                        <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <FiSave className="w-4 h-4" />
+                                        Save
+                                    </>
+                                )}
+                            </button>
+                            <button
+                                onClick={handleCancel}
+                                disabled={saving}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                <FiX className="w-4 h-4" />
+                                Cancel
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -185,10 +296,11 @@ const ProfileField = ({ label, value, name, isEditing, onChange, type = 'text', 
                 type === 'select' ? (
                     <select
                         name={name}
-                        value={value}
+                        value={value || ''}
                         onChange={onChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
+                        <option value="">Select {label}</option>
                         {options.map(opt => (
                             <option key={opt} value={opt}>{opt}</option>
                         ))}
@@ -197,7 +309,7 @@ const ProfileField = ({ label, value, name, isEditing, onChange, type = 'text', 
                     <input
                         type={type}
                         name={name}
-                        value={value}
+                        value={value || ''}
                         onChange={onChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
