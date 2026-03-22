@@ -26,7 +26,12 @@ import {
     FiStar,
     FiAward,
     FiMinusCircle,
-    FiPlusCircle
+    FiPlusCircle,
+    FiTrendingUp,
+    FiTrendingDown,
+    FiInfo,
+    FiList,
+    FiCheckCircle as FiBulkVerify
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../components/header';
@@ -43,6 +48,7 @@ const ManageAttendance = () => {
     const [loading, setLoading] = useState(false);
     const [tableLoading, setTableLoading] = useState(false);
     const [verifyLoading, setVerifyLoading] = useState({});
+    const [bulkVerifyLoading, setBulkVerifyLoading] = useState(false);
     const [attendanceData, setAttendanceData] = useState([]);
     const [absentStaff, setAbsentStaff] = useState([]);
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -64,6 +70,12 @@ const ManageAttendance = () => {
         }
     });
 
+    // Bulk Verify Modal State
+    const [showBulkVerifyModal, setShowBulkVerifyModal] = useState(false);
+    const [bulkVerifyData, setBulkVerifyData] = useState([]);
+    const [selectedStatus, setSelectedStatus] = useState('');
+    const [commonRemarks, setCommonRemarks] = useState('');
+
     // Modal state for manual verification
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [selectedAttendance, setSelectedAttendance] = useState(null);
@@ -71,8 +83,18 @@ const ManageAttendance = () => {
         verify_status: 'present',
         manual_punch_in: '',
         manual_punch_out: '',
-        admin_remarks: ''
+        admin_remarks: '',
+        isManual: false
     });
+
+    // Modal state for salary calculation
+    const [showSalaryModal, setShowSalaryModal] = useState(false);
+    const [salaryData, setSalaryData] = useState(null);
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [salaryLoading, setSalaryLoading] = useState(false);
+    const [selectedStaffForSalary, setSelectedStaffForSalary] = useState(null);
+    const [activeTab, setActiveTab] = useState('full');
 
     // Departments for filter (will be populated from API)
     const [departments, setDepartments] = useState(['All Departments']);
@@ -116,12 +138,21 @@ const ManageAttendance = () => {
         });
     };
 
+    // Format currency
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(amount);
+    };
+
     // Get status badge
     const getStatusBadge = (status) => {
         const baseClasses = "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200";
 
         switch (status?.code || status) {
-            case 'present':
             case 'present':
                 return `${baseClasses} bg-gradient-to-r from-green-100 to-green-50 text-green-800 border border-green-200 shadow-sm hover:shadow`;
             case 'half_day':
@@ -138,6 +169,8 @@ const ManageAttendance = () => {
                 return `${baseClasses} bg-gradient-to-r from-orange-100 to-orange-50 text-orange-800 border border-orange-200 shadow-sm hover:shadow`;
             case 'pending':
                 return `${baseClasses} bg-gradient-to-r from-gray-100 to-gray-50 text-gray-800 border border-gray-200 shadow-sm hover:shadow`;
+            case 'weekly_off':
+                return `${baseClasses} bg-gradient-to-r from-indigo-100 to-indigo-50 text-indigo-800 border border-indigo-200 shadow-sm hover:shadow`;
             default:
                 return `${baseClasses} bg-gradient-to-r from-gray-100 to-gray-50 text-gray-800 border border-gray-200 shadow-sm hover:shadow`;
         }
@@ -147,14 +180,15 @@ const ManageAttendance = () => {
     const getStatusIcon = (status) => {
         const statusCode = status?.code || status;
         switch (statusCode) {
-            case 'present': return <FiCheckCircle className="w-4 h-4" />;
-            case 'half_day': return <FiAlertTriangle className="w-4 h-4" />;
-            case 'absent': return <FiXCircle className="w-4 h-4" />;
-            case 'paid_leave': return <FiDollarSign className="w-4 h-4" />;
-            case 'bonus': return <FiAward className="w-4 h-4" />;
-            case 'fine': return <FiMinusCircle className="w-4 h-4" />;
-            case 'pending': return <FiClock className="w-4 h-4" />;
-            default: return <FiClock className="w-4 h-4" />;
+            case 'present': return <FiCheckCircle className="w-3 h-3" />;
+            case 'half_day': return <FiAlertTriangle className="w-3 h-3" />;
+            case 'absent': return <FiXCircle className="w-3 h-3" />;
+            case 'paid_leave': return <FiDollarSign className="w-3 h-3" />;
+            case 'bonus': return <FiAward className="w-3 h-3" />;
+            case 'fine': return <FiMinusCircle className="w-3 h-3" />;
+            case 'pending': return <FiClock className="w-3 h-3" />;
+            case 'weekly_off': return <FiCalendar className="w-3 h-3" />;
+            default: return <FiClock className="w-3 h-3" />;
         }
     };
 
@@ -227,7 +261,6 @@ const ManageAttendance = () => {
             const result = await response.json();
             
             if (result.success) {
-                // Transform API data to component format
                 const presentStaff = result.data.attendance.map(item => ({
                     attendence_id: item.attendance_id,
                     username: item.username,
@@ -237,7 +270,7 @@ const ManageAttendance = () => {
                     image: item.profile.image,
                     designation: item.profile.designation,
                     department: item.profile.department || 'General',
-                    duty_time: '09:00 - 18:00', // This might come from a different API
+                    duty_time: '09:00 - 18:00',
                     status: item.status,
                     in_time: item.punch_details?.punch_in?.time || '00:00',
                     out_time: item.punch_details?.punch_out?.time || '00:00',
@@ -250,7 +283,6 @@ const ManageAttendance = () => {
                     salary: item.salary
                 }));
 
-                // Transform absent staff data
                 const absentStaffData = result.data.absent_staff.map(item => ({
                     attendence_id: `absent-${item.username}`,
                     username: item.username,
@@ -280,6 +312,45 @@ const ManageAttendance = () => {
         }
     };
 
+    // Fetch salary calculation
+    const fetchSalaryCalculation = async (username, month, year) => {
+        setSalaryLoading(true);
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/attendance/admin/salary-calculation/${username}?month=${month}&year=${year}`,
+                {
+                    method: 'GET',
+                    headers: getHeaders()
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch salary data');
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                setSalaryData(result.data);
+                setShowSalaryModal(true);
+            } else {
+                toast.error(result.message || 'Failed to load salary data');
+            }
+        } catch (error) {
+            console.error('Error fetching salary:', error);
+            toast.error('Failed to load salary calculation');
+        } finally {
+            setSalaryLoading(false);
+        }
+    };
+
+    // Open salary modal
+    const openSalaryModal = (staff) => {
+        setSelectedStaffForSalary(staff);
+        setActiveTab('full');
+        fetchSalaryCalculation(staff.username, selectedMonth, selectedYear);
+    };
+
     // Verify attendance
     const verifyAttendance = async () => {
         if (!selectedAttendance) return;
@@ -293,7 +364,6 @@ const ManageAttendance = () => {
                 admin_remarks: verifyForm.admin_remarks || `Verified as ${verifyForm.verify_status}`
             };
 
-            // Add manual punch times if provided
             if (verifyForm.manual_punch_in) {
                 payload.manual_punch_in = verifyForm.manual_punch_in;
             }
@@ -324,9 +394,9 @@ const ManageAttendance = () => {
                     verify_status: 'present',
                     manual_punch_in: '',
                     manual_punch_out: '',
-                    admin_remarks: ''
+                    admin_remarks: '',
+                    isManual: false
                 });
-                // Refresh data
                 fetchAttendanceData();
             }
         } catch (error) {
@@ -346,9 +416,129 @@ const ManageAttendance = () => {
                 new Date(attendance.in_datetime).toISOString().slice(0, 16) : '',
             manual_punch_out: attendance.out_datetime ? 
                 new Date(attendance.out_datetime).toISOString().slice(0, 16) : '',
-            admin_remarks: attendance.status?.remarks || ''
+            admin_remarks: attendance.status?.remarks || '',
+            isManual: false
         });
         setShowVerifyModal(true);
+    };
+
+    // Open Bulk Verify Modal
+    const openBulkVerifyModal = () => {
+        const selectedStaffList = [...attendanceData, ...absentStaff].filter(
+            staff => selectedStaff.has(staff.attendence_id)
+        );
+        
+        if (selectedStaffList.length === 0) {
+            toast.error('Please select staff members to verify');
+            return;
+        }
+        
+        // Prepare bulk verify data with actual times
+        const bulkData = selectedStaffList.map(staff => {
+            let workingHours = null;
+            let actualStatus = 'pending';
+            let extraMinutes = 0;
+            let lessMinutes = 0;
+            let totalMinutes = 0;
+            
+            if (staff.in_time !== '00:00' && staff.out_time !== '00:00') {
+                const [inHour, inMin] = staff.in_time.split(':');
+                const [outHour, outMin] = staff.out_time.split(':');
+                const inTotal = parseInt(inHour) * 60 + parseInt(inMin);
+                const outTotal = parseInt(outHour) * 60 + parseInt(outMin);
+                totalMinutes = outTotal - inTotal;
+                
+                const standardMinutes = 480;
+                const difference = totalMinutes - standardMinutes;
+                
+                if (difference > 0) {
+                    actualStatus = 'bonus';
+                    extraMinutes = difference;
+                    lessMinutes = 0;
+                } else if (difference < 0) {
+                    actualStatus = 'fine';
+                    extraMinutes = 0;
+                    lessMinutes = Math.abs(difference);
+                } else {
+                    actualStatus = 'present';
+                    extraMinutes = 0;
+                    lessMinutes = 0;
+                }
+            } else if (staff.in_time === '00:00' && staff.out_time === '00:00') {
+                actualStatus = 'absent';
+                totalMinutes = 0;
+            }
+            
+            return {
+                attendance_id: staff.attendence_id,
+                username: staff.username,
+                name: staff.name,
+                designation: staff.designation,
+                in_time: staff.in_time,
+                out_time: staff.out_time,
+                actual_status: actualStatus,
+                total_minutes: totalMinutes,
+                total_hours: (totalMinutes / 60).toFixed(2),
+                extra_minutes: extraMinutes,
+                less_minutes: lessMinutes,
+                current_status: staff.status?.code || 'pending'
+            };
+        });
+        
+        setBulkVerifyData(bulkData);
+        setSelectedStatus('');
+        setCommonRemarks('');
+        setShowBulkVerifyModal(true);
+    };
+
+    // Handle Bulk Verification
+    const handleBulkVerify = async () => {
+        setBulkVerifyLoading(true);
+        
+        try {
+            const selectedIds = Array.from(selectedStaff);
+            const attendanceIds = selectedIds.filter(id => !id.startsWith('absent-'));
+            
+            if (attendanceIds.length === 0) {
+                toast.error('No valid attendance records selected');
+                return;
+            }
+            
+            const payload = {
+                attendance_ids: attendanceIds,
+                ...(selectedStatus && { verify_status: selectedStatus }),
+                admin_remarks: commonRemarks || `Bulk verified`
+            };
+            
+            const response = await fetch(
+                `${API_BASE_URL}/attendance/admin/bulk-verify`,
+                {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(payload)
+                }
+            );
+            
+            if (!response.ok) {
+                throw new Error('Failed to bulk verify attendance');
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                toast.success(result.message);
+                setShowBulkVerifyModal(false);
+                setSelectedStaff(new Set());
+                fetchAttendanceData();
+            } else {
+                toast.error(result.message || 'Failed to bulk verify');
+            }
+        } catch (error) {
+            console.error('Error in bulk verification:', error);
+            toast.error('Failed to complete bulk verification');
+        } finally {
+            setBulkVerifyLoading(false);
+        }
     };
 
     // Date navigation
@@ -392,62 +582,15 @@ const ManageAttendance = () => {
         setBulkAction('');
     };
 
-    // Bulk action handler
-    const handleBulkAction = async (action) => {
-        if (selectedStaff.size === 0) return;
-
-        setLoading(true);
-        
-        try {
-            // For bulk actions, we need to verify each selected staff
-            const selectedIds = Array.from(selectedStaff);
-            
-            // Find the actual attendance records (excluding absent ones)
-            const selectedAttendances = attendanceData.filter(
-                staff => selectedIds.includes(staff.attendence_id)
-            );
-
-            // Verify each attendance
-            for (const attendance of selectedAttendances) {
-                const payload = {
-                    attendance_id: attendance.attendence_id,
-                    verify_status: action,
-                    admin_remarks: `Bulk verified as ${action}`
-                };
-
-                await fetch(
-                    `${API_BASE_URL}/attendance/admin/verify`,
-                    {
-                        method: 'POST',
-                        headers: getHeaders(),
-                        body: JSON.stringify(payload)
-                    }
-                );
-            }
-
-            toast.success(`Bulk ${action} completed successfully`);
-            setSelectedStaff(new Set());
-            setBulkAction('');
-            fetchAttendanceData();
-        } catch (error) {
-            console.error('Error in bulk action:', error);
-            toast.error('Failed to complete bulk action');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     // Get filtered data based on search and department
     const getFilteredData = () => {
         const allStaff = [...attendanceData, ...absentStaff];
         
         return allStaff.filter(staff => {
-            // Department filter
             if (filterDepartment && filterDepartment !== 'All Departments') {
                 if (staff.department !== filterDepartment) return false;
             }
             
-            // Search filter
             if (searchQuery) {
                 const query = searchQuery.toLowerCase();
                 return (
@@ -464,7 +607,6 @@ const ManageAttendance = () => {
 
     const filteredData = getFilteredData();
     const allSelected = selectedStaff.size === filteredData.length && filteredData.length > 0;
-    const someSelected = selectedStaff.size > 0 && selectedStaff.size < filteredData.length;
 
     // Skeleton Loader
     const TableSkeleton = () => (
@@ -614,7 +756,6 @@ const ManageAttendance = () => {
 
                             <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
                                 <div className="flex gap-2">
-                                    {/* Search Input */}
                                     <div className="relative">
                                         <input
                                             type="text"
@@ -626,7 +767,6 @@ const ManageAttendance = () => {
                                         <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                                     </div>
 
-                                    {/* Department Filter */}
                                     <div className="relative">
                                         <select
                                             value={filterDepartment}
@@ -642,7 +782,6 @@ const ManageAttendance = () => {
                                         <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                                     </div>
 
-                                    {/* Refresh Button */}
                                     <motion.button
                                         onClick={fetchAttendanceData}
                                         disabled={tableLoading}
@@ -657,7 +796,6 @@ const ManageAttendance = () => {
                             </div>
                         </div>
 
-                        {/* Date Navigation Section */}
                         <div className="mt-4 pt-4 border-t border-gray-200">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div className="flex items-center gap-2">
@@ -666,7 +804,6 @@ const ManageAttendance = () => {
                                 </div>
                                 
                                 <div className="flex items-center gap-3">
-                                    {/* Date Navigation */}
                                     <div className="flex items-center bg-gray-50 rounded-lg p-2 shadow-sm">
                                         <button
                                             onClick={() => navigateDate('prev')}
@@ -692,7 +829,6 @@ const ManageAttendance = () => {
                                         </button>
                                     </div>
 
-                                    {/* Today Button */}
                                     <button
                                         onClick={() => navigateDate('today')}
                                         className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow"
@@ -736,53 +872,14 @@ const ManageAttendance = () => {
                                         >
                                             Clear Selection
                                         </button>
+                                        
                                         <button
-                                            onClick={() => handleBulkAction('present')}
-                                            disabled={loading}
-                                            className="px-4 py-1.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium text-xs rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow disabled:opacity-50"
+                                            onClick={openBulkVerifyModal}
+                                            disabled={bulkVerifyLoading}
+                                            className="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium text-xs rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow disabled:opacity-50"
                                         >
-                                            <FiCheckCircle className="w-3 h-3" />
-                                            Mark Present
-                                        </button>
-                                        <button
-                                            onClick={() => handleBulkAction('absent')}
-                                            disabled={loading}
-                                            className="px-4 py-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-medium text-xs rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow disabled:opacity-50"
-                                        >
-                                            <FiXCircle className="w-3 h-3" />
-                                            Mark Absent
-                                        </button>
-                                        <button
-                                            onClick={() => handleBulkAction('half_day')}
-                                            disabled={loading}
-                                            className="px-4 py-1.5 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-white font-medium text-xs rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow disabled:opacity-50"
-                                        >
-                                            <FiAlertTriangle className="w-3 h-3" />
-                                            Half Day
-                                        </button>
-                                        <button
-                                            onClick={() => handleBulkAction('paid_leave')}
-                                            disabled={loading}
-                                            className="px-4 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium text-xs rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow disabled:opacity-50"
-                                        >
-                                            <FiDollarSign className="w-3 h-3" />
-                                            Paid Leave
-                                        </button>
-                                        <button
-                                            onClick={() => handleBulkAction('bonus')}
-                                            disabled={loading}
-                                            className="px-4 py-1.5 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-medium text-xs rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow disabled:opacity-50"
-                                        >
-                                            <FiAward className="w-3 h-3" />
-                                            Bonus
-                                        </button>
-                                        <button
-                                            onClick={() => handleBulkAction('fine')}
-                                            disabled={loading}
-                                            className="px-4 py-1.5 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white font-medium text-xs rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow disabled:opacity-50"
-                                        >
-                                            <FiMinusCircle className="w-3 h-3" />
-                                            Fine
+                                            <FiBulkVerify className="w-3 h-3" />
+                                            Bulk Verify (Actual Time)
                                         </button>
                                     </div>
                                 </div>
@@ -797,7 +894,6 @@ const ManageAttendance = () => {
                         transition={{ duration: 0.3, delay: 0.1 }}
                         className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden"
                     >
-                        {/* Table */}
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
@@ -818,7 +914,7 @@ const ManageAttendance = () => {
                                             TIME & DURATION
                                         </th>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                            VERIFICATION
+                                            ACTIONS
                                         </th>
                                         <th className="w-12 px-6 py-4 text-left">
                                             <div className="flex items-center justify-center">
@@ -859,7 +955,6 @@ const ManageAttendance = () => {
                                                     : 'hover:bg-blue-50/20'
                                                 }`}
                                             >
-                                                {/* Enhanced Staff Info */}
                                                 <td className="px-6 py-4 align-middle">
                                                     <div className="flex items-center">
                                                         <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-3 shadow-sm">
@@ -879,7 +974,6 @@ const ManageAttendance = () => {
                                                     </div>
                                                 </td>
 
-                                                {/* Enhanced Contact */}
                                                 <td className="px-6 py-4 align-middle">
                                                     <div className="flex flex-col gap-1">
                                                         <div className="flex items-center gap-2 text-gray-800 font-medium text-xs">
@@ -892,7 +986,6 @@ const ManageAttendance = () => {
                                                     </div>
                                                 </td>
 
-                                                {/* Duty Time */}
                                                 <td className="px-6 py-4 align-middle">
                                                     <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                                                         <FiClock className="w-4 h-4 text-blue-500" />
@@ -900,7 +993,6 @@ const ManageAttendance = () => {
                                                     </div>
                                                 </td>
 
-                                                {/* Enhanced Status */}
                                                 <td className="px-6 py-4 align-middle">
                                                     <span className={`inline-flex items-center gap-2 ${getStatusBadge(staff.status)}`}>
                                                         {getStatusIcon(staff.status)}
@@ -915,7 +1007,6 @@ const ManageAttendance = () => {
                                                     )}
                                                 </td>
 
-                                                {/* Enhanced Time Display */}
                                                 <td className="px-6 py-4 align-middle">
                                                     {staff.in_time !== '00:00' ? (
                                                         <div className="space-y-1">
@@ -952,23 +1043,30 @@ const ManageAttendance = () => {
                                                     )}
                                                 </td>
 
-                                                {/* Verification Actions */}
                                                 <td className="px-6 py-4 align-middle">
-                                                    {staff.status?.code !== 'absent' && (
-                                                        <div className="flex items-center gap-1">
+                                                    <div className="flex items-center gap-2">
+                                                        {staff.status?.code !== 'absent' && (
                                                             <button
                                                                 onClick={() => openVerifyModal(staff)}
                                                                 disabled={verifyLoading[staff.attendence_id]}
                                                                 className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-200 hover:from-blue-200 hover:to-blue-100 transition-all duration-200 hover:scale-105 disabled:opacity-50 shadow-sm flex items-center gap-1"
+                                                                title="Verify Attendance"
                                                             >
                                                                 <FiCheckSquare className="w-3 h-3" />
                                                                 {staff.status?.is_verified ? 'Re-verify' : 'Verify'}
                                                             </button>
-                                                        </div>
-                                                    )}
+                                                        )}
+                                                        <button
+                                                            onClick={() => openSalaryModal(staff)}
+                                                            className="px-3 py-1.5 bg-gradient-to-r from-purple-100 to-purple-50 text-purple-700 text-xs font-medium rounded-lg border border-purple-200 hover:from-purple-200 hover:to-purple-100 transition-all duration-200 hover:scale-105 shadow-sm flex items-center gap-1"
+                                                            title="View Salary"
+                                                        >
+                                                            <FiDollarSign className="w-3 h-3" />
+                                                            Salary
+                                                        </button>
+                                                    </div>
                                                 </td>
 
-                                                {/* Toggle Switch */}
                                                 <td className="px-6 py-4 align-middle">
                                                     <div className="flex items-center justify-center">
                                                         <div 
@@ -988,7 +1086,6 @@ const ManageAttendance = () => {
                             </table>
                         </div>
 
-                        {/* Enhanced Table Footer */}
                         {filteredData.length > 0 && (
                             <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-6 py-3 border-t border-gray-200">
                                 <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
@@ -1020,234 +1117,877 @@ const ManageAttendance = () => {
                 </div>
             </div>
 
-           {/* Verification Modal */}
-<AnimatePresence>
-    {showVerifyModal && selectedAttendance && (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowVerifyModal(false)}
-        >
-            <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">
-                        Verify Attendance
-                    </h3>
-                    
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                        <p className="text-sm font-medium text-gray-700">{selectedAttendance.name}</p>
-                        <p className="text-xs text-gray-500">{selectedAttendance.designation}</p>
-                    </div>
-
-                    {/* Current Punch Times Display */}
-                    {selectedAttendance.in_time !== '00:00' && (
-                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <h4 className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-1">
-                                <FiClock className="w-3 h-3" />
-                                CURRENT PUNCH TIMES
-                            </h4>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <p className="text-xs text-blue-600">Punch In</p>
-                                    <p className="text-sm font-medium text-blue-900">
-                                        {formatDateTime(selectedAttendance.in_datetime) || formatTimeDisplay(selectedAttendance.in_time)}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-blue-600">Punch Out</p>
-                                    <p className="text-sm font-medium text-blue-900">
-                                        {selectedAttendance.out_time !== '00:00' 
-                                            ? (formatDateTime(selectedAttendance.out_datetime) || formatTimeDisplay(selectedAttendance.out_time))
-                                            : 'Not Marked'}
-                                    </p>
-                                </div>
-                            </div>
-                            {selectedAttendance.working_hours && (
-                                <div className="mt-2 pt-2 border-t border-blue-200">
-                                    <p className="text-xs text-blue-600">Total Working Hours</p>
-                                    <p className="text-sm font-medium text-blue-900">
-                                        {selectedAttendance.working_hours.formatted}
-                                        {selectedAttendance.working_hours.extra_minutes > 0 && (
-                                            <span className="text-green-600 ml-2 text-xs">
-                                                (+{Math.floor(selectedAttendance.working_hours.extra_minutes/60)}h {selectedAttendance.working_hours.extra_minutes % 60}m extra)
-                                            </span>
-                                        )}
-                                        {selectedAttendance.working_hours.less_minutes > 0 && (
-                                            <span className="text-orange-600 ml-2 text-xs">
-                                                (-{Math.floor(selectedAttendance.working_hours.less_minutes/60)}h {selectedAttendance.working_hours.less_minutes % 60}m less)
-                                            </span>
-                                        )}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Manual Entry Toggle */}
-                    <div className="mb-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={verifyForm.isManual}
-                                onChange={(e) => setVerifyForm({...verifyForm, isManual: e.target.checked})}
-                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            <span className="text-sm font-medium text-gray-700">Enter Manual Punch Times</span>
-                        </label>
-                        <p className="text-xs text-gray-500 ml-6 mt-1">
-                            Enable this to override the current punch times
-                        </p>
-                    </div>
-
-                    <div className="space-y-4">
-                        {/* Status Selection */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Verification Status
-                            </label>
-                            <select
-                                value={verifyForm.verify_status}
-                                onChange={(e) => {
-                                    const newStatus = e.target.value;
-                                    setVerifyForm({...verifyForm, verify_status: newStatus});
-                                    
-                                    // Auto-calculate fine/bonus based on working hours
-                                    if (selectedAttendance.working_hours) {
-                                        if (newStatus === 'bonus' && selectedAttendance.working_hours.extra_minutes === 0) {
-                                            toast('No extra hours detected. Please verify working hours.', {
-                                                icon: '⚠️',
-                                                style: { background: '#FEF3C7', color: '#92400E' }
-                                            });
-                                        }
-                                        if (newStatus === 'fine' && selectedAttendance.working_hours.less_minutes === 0) {
-                                            toast('No less hours detected. Please verify working hours.', {
-                                                icon: '⚠️',
-                                                style: { background: '#FEF3C7', color: '#92400E' }
-                                            });
-                                        }
-                                    }
-                                }}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            >
-                                <option value="present">Present</option>
-                                <option value="half_day">Half Day</option>
-                                <option value="absent">Absent</option>
-                                <option value="paid_leave">Paid Leave</option>
-                                <option value="bonus">Bonus (Extra Hours)</option>
-                                <option value="fine">Fine (Less Hours)</option>
-                            </select>
-                        </div>
-
-                        {/* Working Hours Summary based on status */}
-                        {verifyForm.verify_status === 'bonus' && selectedAttendance.working_hours?.extra_minutes > 0 && (
-                            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                                <p className="text-xs text-green-800 flex items-center gap-1">
-                                    <FiAward className="w-3 h-3" />
-                                    Bonus Amount: ₹{Math.floor(selectedAttendance.working_hours.extra_minutes / 60) * 100} 
-                                    (₹100 per extra hour)
-                                </p>
-                            </div>
-                        )}
-
-                        {verifyForm.verify_status === 'fine' && selectedAttendance.working_hours?.less_minutes > 0 && (
-                            <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                                <p className="text-xs text-orange-800 flex items-center gap-1">
-                                    <FiMinusCircle className="w-3 h-3" />
-                                    Fine Amount: ₹{Math.floor(selectedAttendance.working_hours.less_minutes / 60) * 50} 
-                                    (₹50 per less hour)
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Manual Punch In - Only shown when manual toggle is checked */}
-                        {verifyForm.isManual && (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Manual Punch In
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={verifyForm.manual_punch_in}
-                                        onChange={(e) => setVerifyForm({...verifyForm, manual_punch_in: e.target.value})}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Current: {formatDateTime(selectedAttendance.in_datetime) || 'Not Marked'}
-                                    </p>
-                                </div>
-
-                                {/* Manual Punch Out */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Manual Punch Out
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={verifyForm.manual_punch_out}
-                                        onChange={(e) => setVerifyForm({...verifyForm, manual_punch_out: e.target.value})}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Current: {formatDateTime(selectedAttendance.out_datetime) || 'Not Marked'}
-                                    </p>
-                                </div>
-                            </>
-                        )}
-
-                        {/* Remarks */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Admin Remarks
-                            </label>
-                            <textarea
-                                value={verifyForm.admin_remarks}
-                                onChange={(e) => setVerifyForm({...verifyForm, admin_remarks: e.target.value})}
-                                rows="3"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                                placeholder="Enter verification remarks..."
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button
-                            onClick={() => setShowVerifyModal(false)}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            {/* Bulk Verify Modal */}
+            <AnimatePresence>
+                {showBulkVerifyModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                        onClick={() => setShowBulkVerifyModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={verifyAttendance}
-                            disabled={verifyLoading[selectedAttendance.attendence_id]}
-                            className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+                            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 rounded-t-xl z-10">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="text-xl font-bold">Bulk Verify Attendance</h3>
+                                        <p className="text-indigo-100 text-sm mt-1">
+                                            Based on actual punch times
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowBulkVerifyModal(false)}
+                                        className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                                    >
+                                        <FiXCircle className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="p-6">
+                                <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                        <p className="text-xs text-blue-600">Total Selected</p>
+                                        <p className="text-lg font-bold text-blue-700">{bulkVerifyData.length}</p>
+                                    </div>
+                                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                                        <p className="text-xs text-green-600">Will be Present</p>
+                                        <p className="text-lg font-bold text-green-700">
+                                            {bulkVerifyData.filter(d => d.actual_status === 'present').length}
+                                        </p>
+                                    </div>
+                                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                                        <p className="text-xs text-purple-600">Will be Bonus</p>
+                                        <p className="text-lg font-bold text-purple-700">
+                                            {bulkVerifyData.filter(d => d.actual_status === 'bonus').length}
+                                        </p>
+                                    </div>
+                                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                                        <p className="text-xs text-orange-600">Will be Fine</p>
+                                        <p className="text-lg font-bold text-orange-700">
+                                            {bulkVerifyData.filter(d => d.actual_status === 'fine').length}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Override Status (Optional)
+                                    </label>
+                                    <select
+                                        value={selectedStatus}
+                                        onChange={(e) => setSelectedStatus(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                    >
+                                        <option value="">Auto-calculate from actual time</option>
+                                        <option value="present">Present</option>
+                                        <option value="half_day">Half Day</option>
+                                        <option value="absent">Absent</option>
+                                        <option value="paid_leave">Paid Leave</option>
+                                        <option value="bonus">Bonus (Extra Hours)</option>
+                                        <option value="fine">Fine (Less Hours)</option>
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        * If not selected, status will be auto-calculated based on actual punch times
+                                    </p>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Common Remarks (Optional)
+                                    </label>
+                                    <textarea
+                                        value={commonRemarks}
+                                        onChange={(e) => setCommonRemarks(e.target.value)}
+                                        rows="2"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                        placeholder="Add common remarks for all selected records..."
+                                    />
+                                </div>
+
+                                <div className="mb-6">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                        <FiList className="w-4 h-4 text-indigo-600" />
+                                        Selected Staff with Actual Time Calculation
+                                    </h4>
+                                    <div className="border border-gray-200 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-50 sticky top-0">
+                                                <tr className="border-b border-gray-200">
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Staff</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Punch In</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Punch Out</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Total Hours</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Actual Status</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Extra/Less</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {bulkVerifyData.map((staff, index) => (
+                                                    <tr key={index} className="hover:bg-gray-50">
+                                                        <td className="px-4 py-3">
+                                                            <div>
+                                                                <p className="font-medium text-gray-900">{staff.name}</p>
+                                                                <p className="text-xs text-gray-500">{staff.designation}</p>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-700">
+                                                            {staff.in_time !== '00:00' ? formatTimeDisplay(staff.in_time) : 'Not Marked'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-700">
+                                                            {staff.out_time !== '00:00' ? formatTimeDisplay(staff.out_time) : 'Not Marked'}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className="font-semibold text-gray-900">
+                                                                {staff.total_hours} hrs
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                                                staff.actual_status === 'present' ? 'bg-green-100 text-green-700' :
+                                                                staff.actual_status === 'bonus' ? 'bg-purple-100 text-purple-700' :
+                                                                staff.actual_status === 'fine' ? 'bg-orange-100 text-orange-700' :
+                                                                staff.actual_status === 'absent' ? 'bg-red-100 text-red-700' :
+                                                                'bg-gray-100 text-gray-700'
+                                                            }`}>
+                                                                {staff.actual_status === 'bonus' && <FiAward className="w-3 h-3" />}
+                                                                {staff.actual_status === 'fine' && <FiMinusCircle className="w-3 h-3" />}
+                                                                {getStatusDisplay(staff.actual_status)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            {staff.extra_minutes > 0 && (
+                                                                <span className="text-green-600 text-xs">
+                                                                    +{Math.floor(staff.extra_minutes / 60)}h {staff.extra_minutes % 60}m
+                                                                </span>
+                                                            )}
+                                                            {staff.less_minutes > 0 && (
+                                                                <span className="text-orange-600 text-xs">
+                                                                    -{Math.floor(staff.less_minutes / 60)}h {staff.less_minutes % 60}m
+                                                                </span>
+                                                            )}
+                                                            {staff.extra_minutes === 0 && staff.less_minutes === 0 && staff.total_minutes > 0 && (
+                                                                <span className="text-green-600 text-xs">On Time</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={() => setShowBulkVerifyModal(false)}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleBulkVerify}
+                                        disabled={bulkVerifyLoading}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {bulkVerifyLoading ? (
+                                            <>
+                                                <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                                Verifying...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FiCheck className="w-4 h-4" />
+                                                Verify {bulkVerifyData.length} Records
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Individual Verification Modal */}
+            <AnimatePresence>
+                {showVerifyModal && selectedAttendance && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                        onClick={() => setShowVerifyModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            {verifyLoading[selectedAttendance.attendence_id] ? (
-                                <>
-                                    <FiRefreshCw className="w-4 h-4 animate-spin" />
-                                    Verifying...
-                                </>
+                            <div className="p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4">
+                                    Verify Attendance
+                                </h3>
+                                
+                                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                                    <p className="text-sm font-medium text-gray-700">{selectedAttendance.name}</p>
+                                    <p className="text-xs text-gray-500">{selectedAttendance.designation}</p>
+                                </div>
+
+                                {selectedAttendance.in_time !== '00:00' && (
+                                    <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                        <h4 className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-1">
+                                            <FiClock className="w-3 h-3" />
+                                            CURRENT PUNCH TIMES
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <p className="text-xs text-blue-600">Punch In</p>
+                                                <p className="text-sm font-medium text-blue-900">
+                                                    {formatDateTime(selectedAttendance.in_datetime) || formatTimeDisplay(selectedAttendance.in_time)}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-blue-600">Punch Out</p>
+                                                <p className="text-sm font-medium text-blue-900">
+                                                    {selectedAttendance.out_time !== '00:00' 
+                                                        ? (formatDateTime(selectedAttendance.out_datetime) || formatTimeDisplay(selectedAttendance.out_time))
+                                                        : 'Not Marked'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {selectedAttendance.working_hours && (
+                                            <div className="mt-2 pt-2 border-t border-blue-200">
+                                                <p className="text-xs text-blue-600">Total Working Hours</p>
+                                                <p className="text-sm font-medium text-blue-900">
+                                                    {selectedAttendance.working_hours.formatted}
+                                                    {selectedAttendance.working_hours.extra_minutes > 0 && (
+                                                        <span className="text-green-600 ml-2 text-xs">
+                                                            (+{Math.floor(selectedAttendance.working_hours.extra_minutes/60)}h {selectedAttendance.working_hours.extra_minutes % 60}m extra)
+                                                        </span>
+                                                    )}
+                                                    {selectedAttendance.working_hours.less_minutes > 0 && (
+                                                        <span className="text-orange-600 ml-2 text-xs">
+                                                            (-{Math.floor(selectedAttendance.working_hours.less_minutes/60)}h {selectedAttendance.working_hours.less_minutes % 60}m less)
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Verification Status
+                                        </label>
+                                        <select
+                                            value={verifyForm.verify_status}
+                                            onChange={(e) => {
+                                                const newStatus = e.target.value;
+                                                setVerifyForm({...verifyForm, verify_status: newStatus});
+                                                
+                                                if (selectedAttendance.working_hours) {
+                                                    if (newStatus === 'bonus' && selectedAttendance.working_hours.extra_minutes === 0) {
+                                                        toast('No extra hours detected. Please verify working hours.', {
+                                                            icon: '⚠️',
+                                                            style: { background: '#FEF3C7', color: '#92400E' }
+                                                        });
+                                                    }
+                                                    if (newStatus === 'fine' && selectedAttendance.working_hours.less_minutes === 0) {
+                                                        toast('No less hours detected. Please verify working hours.', {
+                                                            icon: '⚠️',
+                                                            style: { background: '#FEF3C7', color: '#92400E' }
+                                                        });
+                                                    }
+                                                }
+                                            }}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                        >
+                                            <option value="present">Present</option>
+                                            <option value="half_day">Half Day</option>
+                                            <option value="absent">Absent</option>
+                                            <option value="paid_leave">Paid Leave</option>
+                                            <option value="bonus">Bonus (Extra Hours)</option>
+                                            <option value="fine">Fine (Less Hours)</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Admin Remarks
+                                        </label>
+                                        <textarea
+                                            value={verifyForm.admin_remarks}
+                                            onChange={(e) => setVerifyForm({...verifyForm, admin_remarks: e.target.value})}
+                                            rows="3"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                            placeholder="Enter verification remarks..."
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button
+                                        onClick={() => setShowVerifyModal(false)}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={verifyAttendance}
+                                        disabled={verifyLoading[selectedAttendance.attendence_id]}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {verifyLoading[selectedAttendance.attendence_id] ? (
+                                            <>
+                                                <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                                Verifying...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FiCheck className="w-4 h-4" />
+                                                Verify
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Salary Calculation Modal - Fixed with proper fine and bonus calculations */}
+            <AnimatePresence>
+                {showSalaryModal && salaryData && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                        onClick={() => setShowSalaryModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-xl z-10">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="text-xl font-bold">Salary Calculation</h3>
+                                        <p className="text-blue-100 text-sm mt-1">
+                                            {salaryData.staff_info?.name} • {salaryData.staff_info?.designation}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowSalaryModal(false)}
+                                        className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                                    >
+                                        <FiXCircle className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                
+                                <div className="mt-4 flex gap-3">
+                                    <select
+                                        value={selectedMonth}
+                                        onChange={(e) => {
+                                            setSelectedMonth(parseInt(e.target.value));
+                                            fetchSalaryCalculation(selectedStaffForSalary.username, parseInt(e.target.value), selectedYear);
+                                        }}
+                                        className="px-3 py-1.5 text-sm rounded-lg bg-white/20 text-white border border-white/30 focus:outline-none cursor-pointer"
+                                    >
+                                        {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                                            <option key={month} value={month} className="text-gray-900">
+                                                {new Date(2000, month - 1, 1).toLocaleString('default', { month: 'long' })}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <select
+                                        value={selectedYear}
+                                        onChange={(e) => {
+                                            setSelectedYear(parseInt(e.target.value));
+                                            fetchSalaryCalculation(selectedStaffForSalary.username, selectedMonth, parseInt(e.target.value));
+                                        }}
+                                        className="px-3 py-1.5 text-sm rounded-lg bg-white/20 text-white border border-white/30 focus:outline-none cursor-pointer"
+                                    >
+                                        {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(year => (
+                                            <option key={year} value={year}>{year}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {salaryLoading ? (
+                                <div className="p-8 text-center">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                                    <p className="mt-4 text-gray-600">Loading salary data...</p>
+                                </div>
                             ) : (
-                                <>
-                                    <FiCheck className="w-4 h-4" />
-                                    Verify
-                                </>
+                                <div className="p-6">
+                                    <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200">
+                                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                            <FiCalendar className="w-4 h-4 text-blue-600" />
+                                            Salary Period
+                                        </h4>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                            <div>
+                                                <p className="text-gray-500 text-xs">Month</p>
+                                                <p className="font-semibold text-gray-800">{salaryData.period?.month_name} {salaryData.period?.year}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-500 text-xs">Start Date</p>
+                                                <p className="font-semibold text-gray-800">{salaryData.period?.start_date ? new Date(salaryData.period.start_date).toLocaleDateString() : '-'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-500 text-xs">End Date</p>
+                                                <p className="font-semibold text-gray-800">{salaryData.period?.end_date ? new Date(salaryData.period.end_date).toLocaleDateString() : '-'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-500 text-xs">Total Days</p>
+                                                <p className="font-semibold text-gray-800">{salaryData.period?.total_days || 0} days</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-6">
+                                        <div className="border-b border-gray-200">
+                                            <nav className="flex gap-4">
+                                                <button
+                                                    className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
+                                                        activeTab === 'full' 
+                                                            ? 'text-blue-600 border-b-2 border-blue-600' 
+                                                            : 'text-gray-500 hover:text-gray-700'
+                                                    }`}
+                                                    onClick={() => setActiveTab('full')}
+                                                >
+                                                    Full Month Summary
+                                                </button>
+                                                <button
+                                                    className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
+                                                        activeTab === 'tilldate' 
+                                                            ? 'text-blue-600 border-b-2 border-blue-600' 
+                                                            : 'text-gray-500 hover:text-gray-700'
+                                                    }`}
+                                                    onClick={() => setActiveTab('tilldate')}
+                                                >
+                                                    Till Date Summary
+                                                    {salaryData.till_date_summary?.calculated_upto?.is_current_month && (
+                                                        <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                                                            Live
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            </nav>
+                                        </div>
+                                    </div>
+
+                                    {activeTab === 'full' && (
+                                        <>
+                                            <div className="mb-6">
+                                                <h4 className="text-sm font-semibold text-gray-700 mb-3">Attendance Summary</h4>
+                                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                                                        <p className="text-xs text-green-600">Present</p>
+                                                        <p className="text-lg font-bold text-green-700">{salaryData.monthly_summary?.attendance_summary?.present || salaryData.attendance_summary?.present || 0}</p>
+                                                    </div>
+                                                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                                                        <p className="text-xs text-purple-600">Bonus</p>
+                                                        <p className="text-lg font-bold text-purple-700">{salaryData.monthly_summary?.attendance_summary?.bonus || salaryData.attendance_summary?.bonus || 0}</p>
+                                                    </div>
+                                                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                                                        <p className="text-xs text-orange-600">Fine</p>
+                                                        <p className="text-lg font-bold text-orange-700">{salaryData.monthly_summary?.attendance_summary?.fine || salaryData.attendance_summary?.fine || 0}</p>
+                                                    </div>
+                                                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                                        <p className="text-xs text-yellow-600">Half Day</p>
+                                                        <p className="text-lg font-bold text-yellow-700">{salaryData.monthly_summary?.attendance_summary?.half_day || salaryData.attendance_summary?.half_day || 0}</p>
+                                                    </div>
+                                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                                        <p className="text-xs text-blue-600">Paid Leave</p>
+                                                        <p className="text-lg font-bold text-blue-700">{salaryData.monthly_summary?.attendance_summary?.paid_leave || salaryData.attendance_summary?.paid_leave || 0}</p>
+                                                    </div>
+                                                    <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                                                        <p className="text-xs text-red-600">Absent</p>
+                                                        <p className="text-lg font-bold text-red-700">{salaryData.monthly_summary?.attendance_summary?.absent || salaryData.attendance_summary?.absent || 0}</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="mt-3 grid grid-cols-2 gap-3">
+                                                    <div className="bg-green-50 p-2 rounded-lg border border-green-200">
+                                                        <p className="text-xs text-green-600 flex items-center gap-1">
+                                                            <FiTrendingUp className="w-3 h-3" />
+                                                            Extra Time
+                                                        </p>
+                                                        <p className="text-sm font-semibold text-green-700">
+                                                            {salaryData.monthly_summary?.attendance_summary?.extra_time?.formatted || salaryData.attendance_summary?.extra_time?.formatted || '0h 0m'} 
+                                                            <span className="text-xs ml-1">
+                                                                (+{formatCurrency(Math.abs(salaryData.monthly_summary?.salary_calculation?.bonus_adjustment || salaryData.salary_calculation?.bonus_adjustment || 0))})
+                                                            </span>
+                                                        </p>
+                                                    </div>
+                                                    <div className="bg-orange-50 p-2 rounded-lg border border-orange-200">
+                                                        <p className="text-xs text-orange-600 flex items-center gap-1">
+                                                            <FiTrendingDown className="w-3 h-3" />
+                                                            Less Time
+                                                        </p>
+                                                        <p className="text-sm font-semibold text-orange-700">
+                                                            {salaryData.monthly_summary?.attendance_summary?.less_time?.formatted || salaryData.attendance_summary?.less_time?.formatted || '0h 0m'}
+                                                            <span className="text-xs ml-1">
+                                                                (-{formatCurrency(Math.abs(salaryData.monthly_summary?.salary_calculation?.fine_adjustment || salaryData.salary_calculation?.fine_adjustment || 0))})
+                                                            </span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mb-6">
+                                                <h4 className="text-sm font-semibold text-gray-700 mb-3">Salary Breakdown</h4>
+                                                <div className="bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+                                                    <div className="grid grid-cols-2 gap-0 divide-x divide-gray-200">
+                                                        <div className="p-4">
+                                                            <div className="space-y-3">
+                                                                <div className="flex justify-between text-sm">
+                                                                    <span className="text-gray-600">Monthly Salary</span>
+                                                                    <span className="font-semibold">{formatCurrency(salaryData.salary_configuration?.monthly_salary || 0)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-sm">
+                                                                    <span className="text-gray-600">Per Day Salary</span>
+                                                                    <span className="font-semibold">{formatCurrency(parseFloat(salaryData.salary_configuration?.per_day_salary) || 0)}</span>
+                                                                </div>
+                                                                <div className="border-t border-gray-200 pt-2">
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-600">Present Days</span>
+                                                                        <span className="font-semibold">{salaryData.monthly_summary?.attendance_summary?.present || salaryData.attendance_summary?.present || 0}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-600">Present Amount</span>
+                                                                        <span className="font-semibold">{formatCurrency(parseFloat(salaryData.monthly_summary?.salary_calculation?.formula?.present_amount || salaryData.salary_calculation?.formula?.present_amount || 0))}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-600">Paid Leave Days</span>
+                                                                        <span className="font-semibold">{salaryData.monthly_summary?.attendance_summary?.paid_leave || salaryData.attendance_summary?.paid_leave || 0}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-600">Paid Leave Amount</span>
+                                                                        <span className="font-semibold">{formatCurrency(parseFloat(salaryData.monthly_summary?.salary_calculation?.formula?.paid_leave_amount || salaryData.salary_calculation?.formula?.paid_leave_amount || 0))}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="p-4">
+                                                            <div className="space-y-3">
+                                                                <div className="flex justify-between text-sm text-green-600">
+                                                                    <span className="flex items-center gap-1">
+                                                                        <FiAward className="w-3 h-3" />
+                                                                        Bonus Amount
+                                                                    </span>
+                                                                    <span>+{formatCurrency(Math.abs(parseFloat(salaryData.monthly_summary?.salary_calculation?.bonus_adjustment || salaryData.salary_calculation?.bonus_adjustment || 0)))}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-sm text-orange-600">
+                                                                    <span className="flex items-center gap-1">
+                                                                        <FiMinusCircle className="w-3 h-3" />
+                                                                        Fine Amount
+                                                                    </span>
+                                                                    <span>-{formatCurrency(Math.abs(parseFloat(salaryData.monthly_summary?.salary_calculation?.fine_adjustment || salaryData.salary_calculation?.fine_adjustment || 0)))}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-sm text-yellow-600">
+                                                                    <span>Half Day Days</span>
+                                                                    <span>{salaryData.monthly_summary?.attendance_summary?.half_day || salaryData.attendance_summary?.half_day || 0}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-sm text-yellow-600">
+                                                                    <span>Half Day Deduction</span>
+                                                                    <span>-{formatCurrency(Math.abs(parseFloat(salaryData.monthly_summary?.salary_calculation?.half_day_adjustment || salaryData.salary_calculation?.half_day_adjustment || 0)))}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <p className="text-xs text-gray-600">Base Salary Earned</p>
+                                                        <p className="text-lg font-bold text-gray-900">{formatCurrency(parseFloat(salaryData.monthly_summary?.salary_calculation?.base_salary_earned || salaryData.salary_calculation?.base_salary_earned || 0))}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-gray-600">Adjustments</p>
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-green-600">+ Bonus</span>
+                                                            <span>{formatCurrency(Math.abs(parseFloat(salaryData.monthly_summary?.salary_calculation?.bonus_adjustment || salaryData.salary_calculation?.bonus_adjustment || 0)))}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-orange-600">- Fine</span>
+                                                            <span>{formatCurrency(Math.abs(parseFloat(salaryData.monthly_summary?.salary_calculation?.fine_adjustment || salaryData.salary_calculation?.fine_adjustment || 0)))}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-yellow-600">- Half Day</span>
+                                                            <span>{formatCurrency(Math.abs(parseFloat(salaryData.monthly_summary?.salary_calculation?.half_day_adjustment || salaryData.salary_calculation?.half_day_adjustment || 0)))}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 pt-3 border-t border-blue-200">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="font-bold text-gray-800">Total Salary for {salaryData.period?.month_name} {salaryData.period?.year}</span>
+                                                        <span className="text-2xl font-bold text-blue-600">{formatCurrency(parseFloat(salaryData.monthly_summary?.salary_calculation?.total_earned || salaryData.salary_calculation?.total_earned || 0))}</span>
+                                                    </div>
+                                                    <div className="mt-2 text-xs text-gray-500">
+                                                        {salaryData.monthly_summary?.salary_calculation?.salary_message || salaryData.salary_calculation?.salary_message}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {activeTab === 'tilldate' && salaryData.till_date_summary && (
+                                        <>
+                                            <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <h4 className="text-sm font-semibold text-green-800 flex items-center gap-2">
+                                                            <FiClock className="w-4 h-4" />
+                                                            Salary Calculated Till Date
+                                                        </h4>
+                                                        <p className="text-xs text-green-600 mt-1">
+                                                            {salaryData.till_date_summary.calculated_upto?.is_current_month ? 
+                                                                `Up to ${new Date().toLocaleDateString()} (Current Month - Live Data)` : 
+                                                                `Up to ${salaryData.till_date_summary.calculated_upto?.date ? new Date(salaryData.till_date_summary.calculated_upto.date).toLocaleDateString() : '-'}`}
+                                                        </p>
+                                                    </div>
+                                                    {salaryData.till_date_summary.calculated_upto?.is_current_month && (
+                                                        <div className="px-3 py-1 bg-green-600 text-white text-xs rounded-full font-semibold">
+                                                            Live Update
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="mb-6">
+                                                <h4 className="text-sm font-semibold text-gray-700 mb-3">Attendance Summary (Till Date)</h4>
+                                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                                                        <p className="text-xs text-green-600">Present</p>
+                                                        <p className="text-lg font-bold text-green-700">{salaryData.till_date_summary.attendance_summary?.present || 0}</p>
+                                                    </div>
+                                                    <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                                                        <p className="text-xs text-purple-600">Bonus</p>
+                                                        <p className="text-lg font-bold text-purple-700">{salaryData.till_date_summary.attendance_summary?.bonus || 0}</p>
+                                                    </div>
+                                                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                                                        <p className="text-xs text-orange-600">Fine</p>
+                                                        <p className="text-lg font-bold text-orange-700">{salaryData.till_date_summary.attendance_summary?.fine || 0}</p>
+                                                    </div>
+                                                    <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                                        <p className="text-xs text-yellow-600">Half Day</p>
+                                                        <p className="text-lg font-bold text-yellow-700">{salaryData.till_date_summary.attendance_summary?.half_day || 0}</p>
+                                                    </div>
+                                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                                        <p className="text-xs text-blue-600">Paid Leave</p>
+                                                        <p className="text-lg font-bold text-blue-700">{salaryData.till_date_summary.attendance_summary?.paid_leave || 0}</p>
+                                                    </div>
+                                                    <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                                                        <p className="text-xs text-red-600">Absent</p>
+                                                        <p className="text-lg font-bold text-red-700">{salaryData.till_date_summary.attendance_summary?.absent || 0}</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="mt-3 grid grid-cols-2 gap-3">
+                                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                                        <p className="text-xs text-blue-600">Working Days Till Date</p>
+                                                        <p className="text-lg font-bold text-blue-700">{salaryData.till_date_summary.attendance_summary?.total_days_worked || 0} / {(salaryData.till_date_summary.attendance_summary?.total_days_worked || 0) + (salaryData.till_date_summary.attendance_summary?.absent || 0)}</p>
+                                                        <p className="text-xs text-blue-500 mt-1">Attendance: {salaryData.till_date_summary.attendance_summary?.attendance_percentage || 0}%</p>
+                                                    </div>
+                                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                                        <p className="text-xs text-gray-600">Weekly Off</p>
+                                                        <p className="text-lg font-bold text-gray-700">{salaryData.till_date_summary.attendance_summary?.weekly_off || 0}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-3 grid grid-cols-2 gap-3">
+                                                    <div className="bg-green-50 p-2 rounded-lg border border-green-200">
+                                                        <p className="text-xs text-green-600 flex items-center gap-1">
+                                                            <FiTrendingUp className="w-3 h-3" />
+                                                            Extra Time (Till Date)
+                                                        </p>
+                                                        <p className="text-sm font-semibold text-green-700">
+                                                            {salaryData.till_date_summary.attendance_summary?.extra_time?.formatted || '0h 0m'} 
+                                                            <span className="text-xs ml-1">(+{formatCurrency(Math.abs(salaryData.till_date_summary.salary_calculation?.bonus_adjustment || 0))})</span>
+                                                        </p>
+                                                    </div>
+                                                    <div className="bg-orange-50 p-2 rounded-lg border border-orange-200">
+                                                        <p className="text-xs text-orange-600 flex items-center gap-1">
+                                                            <FiTrendingDown className="w-3 h-3" />
+                                                            Less Time (Till Date)
+                                                        </p>
+                                                        <p className="text-sm font-semibold text-orange-700">
+                                                            {salaryData.till_date_summary.attendance_summary?.less_time?.formatted || '0h 0m'}
+                                                            <span className="text-xs ml-1">(-{formatCurrency(Math.abs(salaryData.till_date_summary.salary_calculation?.fine_adjustment || 0))})</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mb-6">
+                                                <h4 className="text-sm font-semibold text-gray-700 mb-3">Salary Calculation (Till Date)</h4>
+                                                <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg overflow-hidden border border-gray-200">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                                                        <div className="space-y-3">
+                                                            <div className="flex justify-between items-center pb-2 border-b border-gray-200">
+                                                                <span className="text-gray-600 text-sm">Expected Salary (Pro-rated)</span>
+                                                                <span className="font-bold text-gray-800">{formatCurrency(parseFloat(salaryData.till_date_summary.salary_calculation?.expected_salary_till_date || 0))}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-gray-600 text-sm">Actual Earned</span>
+                                                                <span className="font-bold text-green-600">{formatCurrency(parseFloat(salaryData.till_date_summary.salary_calculation?.actual_earned_till_date || 0))}</span>
+                                                            </div>
+                                                            <div className={`flex justify-between items-center p-2 rounded-lg ${parseFloat(salaryData.till_date_summary.salary_calculation?.difference || 0) >= 0 ? 'bg-green-50' : 'bg-orange-50'}`}>
+                                                                <span className={`text-sm ${parseFloat(salaryData.till_date_summary.salary_calculation?.difference || 0) >= 0 ? 'text-green-700' : 'text-orange-700'}`}>
+                                                                    {parseFloat(salaryData.till_date_summary.salary_calculation?.difference || 0) >= 0 ? 'Extra Earned' : 'Shortfall'}
+                                                                </span>
+                                                                <span className={`font-bold ${parseFloat(salaryData.till_date_summary.salary_calculation?.difference || 0) >= 0 ? 'text-green-700' : 'text-orange-700'}`}>
+                                                                    {parseFloat(salaryData.till_date_summary.salary_calculation?.difference || 0) >= 0 ? '+' : ''}{formatCurrency(Math.abs(parseFloat(salaryData.till_date_summary.salary_calculation?.difference || 0)))}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-gray-600">Base Salary (Worked Days)</span>
+                                                                <span className="font-semibold">{formatCurrency(parseFloat(salaryData.till_date_summary.salary_calculation?.base_salary_earned || 0))}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm text-green-600">
+                                                                <span>+ Bonus Adjustment</span>
+                                                                <span>{formatCurrency(Math.abs(parseFloat(salaryData.till_date_summary.salary_calculation?.bonus_adjustment || 0)))}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm text-orange-600">
+                                                                <span>- Fine Adjustment</span>
+                                                                <span>{formatCurrency(Math.abs(parseFloat(salaryData.till_date_summary.salary_calculation?.fine_adjustment || 0)))}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm text-yellow-600">
+                                                                <span>- Half Day Adjustment</span>
+                                                                <span>{formatCurrency(Math.abs(parseFloat(salaryData.till_date_summary.salary_calculation?.half_day_adjustment || 0)))}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {salaryData.till_date_summary.projection && (
+                                                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                                                    <h4 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                                                        <FiTrendingUp className="w-4 h-4" />
+                                                        Month End Projection
+                                                    </h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <div className="text-center p-3 bg-white rounded-lg">
+                                                            <p className="text-xs text-gray-500">Estimated Month End Salary</p>
+                                                            <p className="text-xl font-bold text-purple-700">{formatCurrency(parseFloat(salaryData.till_date_summary.projection?.estimated_month_end_salary || 0))}</p>
+                                                        </div>
+                                                        <div className="text-center p-3 bg-white rounded-lg">
+                                                            <p className="text-xs text-gray-500">Projected Extra Hours</p>
+                                                            <p className="text-xl font-bold text-green-600">{salaryData.till_date_summary.projection?.estimated_extra_hours || 0} mins</p>
+                                                        </div>
+                                                        <div className="text-center p-3 bg-white rounded-lg">
+                                                            <p className="text-xs text-gray-500">Projected Less Hours</p>
+                                                            <p className="text-xl font-bold text-orange-600">{salaryData.till_date_summary.projection?.estimated_less_hours || 0} mins</p>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-xs text-purple-600 mt-3 text-center">
+                                                        {salaryData.till_date_summary.projection?.note || ''}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            <div className="mb-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                                <p className="text-sm text-blue-800 flex items-center gap-2">
+                                                    <FiInfo className="w-4 h-4" />
+                                                    {salaryData.till_date_summary.salary_calculation?.salary_message || ''}
+                                                </p>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    <details className="mt-4">
+                                        <summary className="cursor-pointer text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2 hover:text-blue-600 transition-colors">
+                                            <FiCalendar className="w-4 h-4" />
+                                            Day-wise Breakdown ({salaryData.day_wise_breakdown?.length || 0} days)
+                                            <span className="text-xs text-gray-400 ml-2">(Click to expand)</span>
+                                        </summary>
+                                        <div className="mt-3 max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-gray-50 sticky top-0">
+                                                    <tr className="border-b border-gray-200">
+                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Date</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Day</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Status</th>
+                                                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">Amount</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Remarks</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100">
+                                                    {salaryData.day_wise_breakdown?.map((day, index) => (
+                                                        <tr key={index} className={`hover:bg-gray-50 transition-colors ${day.is_till_date ? 'bg-blue-50/30' : ''}`}>
+                                                            <td className="px-4 py-2 text-sm text-gray-700">
+                                                                {day.date ? new Date(day.date).toLocaleDateString() : '-'}
+                                                                {day.is_till_date && (
+                                                                    <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-600 text-xs rounded-full">Live</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-sm text-gray-600">{day.day_of_week || '-'}</td>
+                                                            <td className="px-4 py-2">
+                                                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(day.status)}`}>
+                                                                    {getStatusIcon(day.status)}
+                                                                    {day.status_display || getStatusDisplay(day.status)}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-2 text-right font-medium text-gray-700">
+                                                                {day.calculated_amount > 0 ? formatCurrency(day.calculated_amount) : '-'}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-xs text-gray-500 max-w-xs truncate">
+                                                                {day.remarks || (day.extra_minutes > 0 ? `${day.extra_hours}h extra` : day.less_minutes > 0 ? `${day.less_hours}h less` : '-')}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </details>
+
+                                    <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                            <div>
+                                                <p className="text-xs font-semibold text-yellow-800 flex items-center gap-1">
+                                                    <FiAlertTriangle className="w-3 h-3" />
+                                                    Verification Status
+                                                </p>
+                                                <p className="text-sm text-yellow-700">{salaryData.verification_status?.pending_verification_days || 0} day(s) pending verification</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs text-yellow-800">Can be paid: {salaryData.verification_status?.can_be_paid ? 'Yes ✓' : 'No ✗'}</p>
+                                                <p className="text-xs text-yellow-800">Verified: {salaryData.verification_status?.verified_days || 0}/{salaryData.period?.total_days || 0} days</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
-                        </button>
-                    </div>
-                </div>
-            </motion.div>
-        </motion.div>
-    )}
-</AnimatePresence>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
