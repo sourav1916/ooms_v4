@@ -9,7 +9,7 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
     const [editingId, setEditingId] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [salaryHistory, setSalaryHistory] = useState(null);
+    const [salaryData, setSalaryData] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [updatingDay, setUpdatingDay] = useState(null);
     const [weeklyOffData, setWeeklyOffData] = useState(null);
@@ -17,7 +17,15 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
     const [newSalary, setNewSalary] = useState({
         username: '',
         monthly_salary: '',
-        effective_from: ''
+        effective_from: '',
+        working_hours_start: '09:00:00',
+        working_hours_end: '18:00:00',
+        expected_hours: '8',
+        grace_period_minutes: '15',
+        overtime_rate_type: 'daily',
+        fine_rate_type: 'daily',
+        overtime_enabled: false,
+        fine_enabled: false
     });
     
     const location = useLocation();
@@ -29,7 +37,7 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
         return params.get('username');
     };
 
-    // Fetch salary history and weekly off when component mounts or username changes
+    // Fetch salary history and weekly off when component mounts
     useEffect(() => {
         const username = getUsernameFromUrl();
         if (username) {
@@ -57,22 +65,6 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
             const data = await response.json();
             if (data.success) {
                 setWeeklyOffData(data.data);
-                
-                // Update salary state with weekly off data
-                if (data.data && data.data.weekly_off && data.data.weekly_off.weekly_off_day) {
-                    setSalary(prev => {
-                        const updatedList = prev.list.map(item => {
-                            if (item.isActive) {
-                                return { 
-                                    ...item, 
-                                    paidLeave: [data.data.weekly_off.weekly_off_day]
-                                };
-                            }
-                            return item;
-                        });
-                        return { ...prev, list: updatedList };
-                    });
-                }
             }
         } catch (err) {
             console.error('Error fetching weekly off:', err);
@@ -100,55 +92,48 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
             
             const data = await response.json();
             if (data.success) {
-                setSalaryHistory(data.data);
+                setSalaryData(data.data);
                 
-                // Update salary list with history data
-                if (data.data.history && data.data.history.length > 0) {
-                    const formattedHistory = data.data.history.map(item => ({
-                        id: item.id,
-                        salary_id: item.salary_id,
-                        map_id: item.map_id,
-                        amount: parseFloat(item.monthly_salary).toLocaleString('en-IN'),
-                        monthly_salary: item.monthly_salary,
-                        applyOT: 'No',
-                        applyFine: 'No',
-                        officeTime: '09:00 AM',
-                        workingHour: '8 Hours',
-                        graceTime: '15 mins',
-                        effectiveFrom: new Date(item.effective_from).toLocaleDateString('en-IN'),
-                        effectiveFrom_raw: item.effective_from,
-                        effectiveTo: item.effective_to,
-                        isActive: item.is_active === '1',
-                        paidLeave: []
-                    }));
-                    
-                    setSalary({
-                        list: formattedHistory
-                    });
-                } else if (data.data.current) {
-                    const currentItem = data.data.current;
-                    const formattedCurrent = [{
-                        id: currentItem.id,
-                        salary_id: currentItem.salary_id,
-                        map_id: currentItem.map_id,
-                        amount: parseFloat(currentItem.monthly_salary).toLocaleString('en-IN'),
-                        monthly_salary: currentItem.monthly_salary,
-                        applyOT: 'No',
-                        applyFine: 'No',
-                        officeTime: '09:00 AM',
-                        workingHour: '8 Hours',
-                        graceTime: '15 mins',
-                        effectiveFrom: new Date(currentItem.effective_from).toLocaleDateString('en-IN'),
-                        effectiveFrom_raw: currentItem.effective_from,
-                        effectiveTo: currentItem.effective_to,
-                        isActive: currentItem.is_active === '1',
-                        paidLeave: []
-                    }];
-                    
-                    setSalary({
-                        list: formattedCurrent
+                // Format all salaries for display in single table
+                const allSalaries = [];
+                
+                // Add current salary (active)
+                if (data.data.current) {
+                    allSalaries.push({
+                        ...data.data.current,
+                        status: 'active',
+                        status_display: 'Active',
+                        status_color: 'green'
                     });
                 }
+                
+                // Add scheduled salaries
+                if (data.data.scheduled && data.data.scheduled.length > 0) {
+                    data.data.scheduled.forEach(s => {
+                        allSalaries.push({
+                            ...s,
+                            status: 'scheduled',
+                            status_display: 'Scheduled',
+                            status_color: 'blue'
+                        });
+                    });
+                }
+                
+                // Add history salaries
+                if (data.data.history && data.data.history.length > 0) {
+                    data.data.history.forEach(s => {
+                        allSalaries.push({
+                            ...s,
+                            status: 'expired',
+                            status_display: 'Expired',
+                            status_color: 'gray'
+                        });
+                    });
+                }
+                
+                setSalary({
+                    list: allSalaries
+                });
             }
         } catch (err) {
             setError(err.message);
@@ -172,33 +157,67 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
             setLoading(true);
             setError(null);
             
+            // FIX: Explicitly convert checkbox values to boolean
+            const overtimeEnabledValue = newSalary.overtime_enabled === true ? true : false;
+            const fineEnabledValue = newSalary.fine_enabled === true ? true : false;
+            
+            console.log('Sending values:', {
+                overtime_enabled: overtimeEnabledValue,
+                fine_enabled: fineEnabledValue,
+                overtime_checkbox: newSalary.overtime_enabled,
+                fine_checkbox: newSalary.fine_enabled
+            });
+            
+            const requestData = {
+                username: username,
+                monthly_salary: parseFloat(newSalary.monthly_salary),
+                effective_from: newSalary.effective_from,
+                working_hours_start: newSalary.working_hours_start,
+                working_hours_end: newSalary.working_hours_end,
+                expected_hours: parseFloat(newSalary.expected_hours),
+                grace_period_minutes: parseInt(newSalary.grace_period_minutes),
+                overtime_rate_type: newSalary.overtime_rate_type,
+                fine_rate_type: newSalary.fine_rate_type,
+                overtime_enabled: overtimeEnabledValue,
+                fine_enabled: fineEnabledValue
+            };
+            
             const response = await fetch(
                 `${API_BASE_URL}/attendance/admin/set-salary`,
                 {
                     method: 'POST',
                     headers: getHeaders(),
-                    body: JSON.stringify({
-                        username: username,
-                        monthly_salary: parseFloat(newSalary.monthly_salary),
-                        effective_from: newSalary.effective_from
-                    })
+                    body: JSON.stringify(requestData)
                 }
             );
             
             if (!response.ok) {
-                throw new Error('Failed to add salary');
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to add salary');
             }
             
             const data = await response.json();
             if (data.success) {
                 toast.update(loadingToast, {
-                    render: 'Salary added successfully!',
+                    render: data.data.is_active ? 'Salary added successfully!' : 'Salary scheduled for future date!',
                     type: 'success',
                     isLoading: false,
                     autoClose: 3000
                 });
                 setShowAddForm(false);
-                setNewSalary(prev => ({ ...prev, monthly_salary: '', effective_from: '' }));
+                setNewSalary({
+                    username: username,
+                    monthly_salary: '',
+                    effective_from: '',
+                    working_hours_start: '09:00:00',
+                    working_hours_end: '18:00:00',
+                    expected_hours: '8',
+                    grace_period_minutes: '15',
+                    overtime_rate_type: 'daily',
+                    fine_rate_type: 'daily',
+                    overtime_enabled: false,
+                    fine_enabled: false
+                });
                 fetchSalaryHistory(username);
             }
         } catch (err) {
@@ -222,19 +241,16 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
             return;
         }
 
-        const currentActiveSalary = salary.list.find(item => item.isActive);
-        const currentPaidLeaveDays = currentActiveSalary?.paidLeave || [];
-        const isCurrentlyPaid = currentPaidLeaveDays.includes(day);
+        const currentWeeklyOffDay = weeklyOffData?.weekly_off?.weekly_off_day;
+        const isCurrentlyPaid = currentWeeklyOffDay === day;
         
-        if (!isCurrentlyPaid && currentPaidLeaveDays.length > 0) {
-            const currentPaidDay = currentPaidLeaveDays[0];
-            
+        if (!isCurrentlyPaid && currentWeeklyOffDay) {
             const confirmResult = await new Promise((resolve) => {
                 toast.info(
                     <div>
                         <p className="font-medium">Change Weekly Off?</p>
                         <p className="text-sm mt-1">
-                            You already have {currentPaidDay} as weekly off. 
+                            You already have {currentWeeklyOffDay} as weekly off. 
                             Setting {day} as weekly off will replace it.
                         </p>
                         <div className="flex gap-2 mt-3">
@@ -276,9 +292,6 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
         const toggleToast = toast.loading(`${action} ${day} as weekly off...`);
 
         try {
-            setUpdatingDay(day);
-            setError(null);
-            
             const response = await fetch(
                 `${API_BASE_URL}/attendance/admin/set-weekly-off`,
                 {
@@ -307,7 +320,6 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                     autoClose: 3000
                 });
                 
-                // Update weekly off data
                 setWeeklyOffData({
                     ...weeklyOffData,
                     weekly_off: {
@@ -315,20 +327,8 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                         is_active: newStatus
                     }
                 });
-                
-                setSalary(prev => {
-                    const updatedList = prev.list.map(item => {
-                        if (item.isActive) {
-                            const updatedPaidLeave = newStatus ? [day] : [];
-                            return { ...item, paidLeave: updatedPaidLeave };
-                        }
-                        return item;
-                    });
-                    return { ...prev, list: updatedList };
-                });
             }
         } catch (err) {
-            setError(err.message);
             toast.update(toggleToast, {
                 render: `Failed to update weekly off: ${err.message}`,
                 type: 'error',
@@ -336,19 +336,12 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                 autoClose: 5000
             });
             console.error('Error updating weekly off:', err);
-        } finally {
-            setUpdatingDay(null);
         }
     };
 
     const handleEdit = (id) => {
         setEditingId(id);
         toast.info('Edit mode activated');
-    };
-
-    const handleSave = (id) => {
-        setEditingId(null);
-        toast.success('Salary updated successfully!');
     };
 
     const handleDelete = async (id) => {
@@ -392,19 +385,26 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
         }
     };
 
-    const ToggleSwitch = ({ enabled, onChange, isLoading }) => (
+    const formatTimeTo12Hour = (time24) => {
+        if (!time24) return '09:00 AM';
+        const [hours, minutes] = time24.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+    };
+
+    const ToggleSwitch = ({ enabled, onChange }) => (
         <button
             onClick={onChange}
-            disabled={isLoading}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
                 enabled ? 'bg-indigo-600' : 'bg-gray-200'
-            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={isLoading ? 'Updating...' : ''}
+            }`}
         >
             <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                     enabled ? 'translate-x-6' : 'translate-x-1'
-                } ${isLoading ? 'animate-pulse' : ''}`}
+                }`}
             />
         </button>
     );
@@ -446,22 +446,7 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
     );
 
     const username = getUsernameFromUrl();
-
-    // Get current weekly off day from either source
-    const getCurrentWeeklyOffDay = () => {
-        // First check weeklyOffData
-        if (weeklyOffData?.weekly_off?.weekly_off_day) {
-            return weeklyOffData.weekly_off.weekly_off_day;
-        }
-        // Then check salary state
-        const activeSalary = salary.list.find(item => item.isActive);
-        if (activeSalary?.paidLeave?.length > 0) {
-            return activeSalary.paidLeave[0];
-        }
-        return null;
-    };
-
-    const currentWeeklyOffDay = getCurrentWeeklyOffDay();
+    const currentWeeklyOffDay = weeklyOffData?.weekly_off?.weekly_off_day;
 
     return (
         <motion.div
@@ -508,7 +493,6 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                                 disabled
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
                             />
-                            <p className="text-xs text-gray-500 mt-1">Username from URL</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Salary (₹)</label>
@@ -529,8 +513,101 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                                 value={newSalary.effective_from}
                                 onChange={(e) => setNewSalary({...newSalary, effective_from: e.target.value})}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                max={new Date().toISOString().split('T')[0]}
+                                min={new Date().toISOString().split('T')[0]}
                             />
+                            <p className="text-xs text-gray-500 mt-1">Cannot set salary for past dates</p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Working Hours Start</label>
+                            <input
+                                type="time"
+                                value={newSalary.working_hours_start}
+                                onChange={(e) => setNewSalary({...newSalary, working_hours_start: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Working Hours End</label>
+                            <input
+                                type="time"
+                                value={newSalary.working_hours_end}
+                                onChange={(e) => setNewSalary({...newSalary, working_hours_end: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Expected Hours/Day</label>
+                            <input
+                                type="number"
+                                value={newSalary.expected_hours}
+                                onChange={(e) => setNewSalary({...newSalary, expected_hours: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                placeholder="8"
+                                step="0.5"
+                                min="1"
+                                max="12"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Grace Period (Minutes)</label>
+                            <input
+                                type="number"
+                                value={newSalary.grace_period_minutes}
+                                onChange={(e) => setNewSalary({...newSalary, grace_period_minutes: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                placeholder="15"
+                                min="0"
+                                max="60"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Time allowed before counting as overtime/fine</p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Overtime Rate Type</label>
+                            <select
+                                value={newSalary.overtime_rate_type}
+                                onChange={(e) => setNewSalary({...newSalary, overtime_rate_type: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="daily">Daily (Per Minute Rate)</option>
+                                <option value="monthly">Monthly (Percentage of Monthly Salary)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Fine Rate Type</label>
+                            <select
+                                value={newSalary.fine_rate_type}
+                                onChange={(e) => setNewSalary({...newSalary, fine_rate_type: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="daily">Daily (Per Minute Rate)</option>
+                                <option value="monthly">Monthly (Percentage of Monthly Salary)</option>
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={newSalary.overtime_enabled}
+                                    onChange={(e) => {
+                                        console.log('Overtime checkbox changed to:', e.target.checked);
+                                        setNewSalary({...newSalary, overtime_enabled: e.target.checked});
+                                    }}
+                                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                />
+                                <span className="text-sm font-medium text-gray-700">Enable Overtime</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={newSalary.fine_enabled}
+                                    onChange={(e) => {
+                                        console.log('Fine checkbox changed to:', e.target.checked);
+                                        setNewSalary({...newSalary, fine_enabled: e.target.checked});
+                                    }}
+                                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                />
+                                <span className="text-sm font-medium text-gray-700">Enable Fine/Deduction</span>
+                            </label>
                         </div>
                     </div>
                     <div className="mt-4 flex justify-end gap-2">
@@ -559,37 +636,104 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
             )}
 
             {/* Staff Profile Info */}
-            {(salaryHistory?.profile || weeklyOffData?.profile) && (
+            {salaryData?.profile && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                     <div className="flex items-center gap-4">
-                        {(salaryHistory?.profile?.image || weeklyOffData?.profile?.image) ? (
+                        {salaryData.profile.image ? (
                             <img 
-                                src={salaryHistory?.profile?.image || weeklyOffData?.profile?.image} 
-                                alt={salaryHistory?.profile?.name || weeklyOffData?.profile?.name}
+                                src={salaryData.profile.image} 
+                                alt={salaryData.profile.name}
                                 className="w-12 h-12 rounded-full object-cover"
                             />
                         ) : (
                             <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
                                 <span className="text-indigo-600 font-semibold text-lg">
-                                    {(salaryHistory?.profile?.name || weeklyOffData?.profile?.name)?.charAt(0) || 'U'}
+                                    {salaryData.profile.name?.charAt(0) || 'U'}
                                 </span>
                             </div>
                         )}
                         <div>
-                            <h3 className="font-semibold text-gray-900">{salaryHistory?.profile?.name || weeklyOffData?.profile?.name}</h3>
-                            <p className="text-sm text-gray-600">{salaryHistory?.profile?.designation || weeklyOffData?.profile?.designation}</p>
+                            <h3 className="font-semibold text-gray-900">{salaryData.profile.name}</h3>
+                            <p className="text-sm text-gray-600">{salaryData.profile.designation}</p>
                             <p className="text-xs text-gray-500">
-                                {salaryHistory?.profile?.email || weeklyOffData?.profile?.email} • {salaryHistory?.profile?.mobile || weeklyOffData?.profile?.mobile}
+                                {salaryData.profile.email} • {salaryData.profile.mobile}
                             </p>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Salary List Card */}
+            {/* Current Month Summary Cards */}
+            {salaryData?.current_month_summary && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium text-gray-500">Total Earned (This Month)</h4>
+                            <span className="text-green-600 text-lg font-bold">₹</span>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900 mt-2">
+                            ₹{salaryData.current_month_summary.total_earned}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {salaryData.current_month_summary.period.month_name} {salaryData.current_month_summary.period.year}
+                        </p>
+                    </div>
+                    
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium text-gray-500">Overtime (Bonus Days)</h4>
+                            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                        </div>
+                        <p className="text-2xl font-bold text-green-600 mt-2">
+                            {salaryData.current_month_summary.overtime.bonus_days} days
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {salaryData.current_month_summary.overtime.total_extra_hours} hours overtime
+                        </p>
+                        <p className="text-xs text-gray-400">
+                            ₹{salaryData.current_month_summary.overtime.total_overtime_amount} earned
+                        </p>
+                    </div>
+                    
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium text-gray-500">Fine (Deduction Days)</h4>
+                            <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                            </svg>
+                        </div>
+                        <p className="text-2xl font-bold text-red-600 mt-2">
+                            {salaryData.current_month_summary.fine.fine_days} days
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {salaryData.current_month_summary.fine.total_less_hours} hours less
+                        </p>
+                        <p className="text-xs text-gray-400">
+                            ₹{salaryData.current_month_summary.fine.total_fine_amount} deducted
+                        </p>
+                    </div>
+                    
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium text-gray-500">Monthly Salary</h4>
+                            <ClockIcon className="text-indigo-500" />
+                        </div>
+                        <p className="text-2xl font-bold text-indigo-600 mt-2">
+                            ₹{salaryData.current?.monthly_salary?.toLocaleString('en-IN') || '0'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Per Day: ₹{((salaryData.current?.monthly_salary || 0) / 30).toFixed(2)}
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* Single Table for All Salaries */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                    <h3 className="text-base font-semibold text-gray-900">Salary Structures</h3>
+                    <h3 className="text-base font-semibold text-gray-900">Salary History</h3>
                 </div>
                 
                 {loading ? (
@@ -601,13 +745,15 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OT / Fine</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Office Time</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Working Hours</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grace Time</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Working Hrs</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grace</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OT</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fine</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OT Rate</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fine Rate</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Effective From</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Effective To</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -615,102 +761,129 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {salary.list.length > 0 ? (
-                                        salary.list.map((item, index) => (
-                                            <motion.tr 
-                                                key={item.id || index}
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                transition={{ delay: index * 0.05 }}
-                                                className={`hover:bg-gray-50 transition-colors ${item.isActive ? 'bg-green-50' : ''}`}
-                                            >
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    {index + 1}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                    <span className="font-medium">{salaryHistory?.profile?.designation || weeklyOffData?.profile?.designation || 'N/A'}</span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="text-sm font-semibold text-gray-900">₹{item.amount}</span>
-                                                    <span className="text-xs text-gray-500 ml-1">/-</span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {item.isActive ? (
-                                                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                                                            Active
-                                                        </span>
-                                                    ) : (
-                                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
-                                                            Inactive
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="space-y-1">
-                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                            item.applyOT === 'Yes' 
-                                                                ? 'bg-blue-100 text-blue-700' 
-                                                                : 'bg-gray-100 text-gray-600'
+                                        salary.list.map((item, index) => {
+                                            // Determine row styling based on status
+                                            let rowClass = "hover:bg-gray-50 transition-colors";
+                                            let statusBadgeClass = "";
+                                            let statusDotClass = "";
+                                            
+                                            if (item.status === 'active') {
+                                                rowClass = "bg-green-50 hover:bg-green-100 transition-colors";
+                                                statusBadgeClass = "bg-green-100 text-green-700";
+                                                statusDotClass = "bg-green-500";
+                                            } else if (item.status === 'scheduled') {
+                                                statusBadgeClass = "bg-blue-100 text-blue-700";
+                                                statusDotClass = "bg-blue-500";
+                                            } else {
+                                                statusBadgeClass = "bg-gray-100 text-gray-600";
+                                                statusDotClass = "bg-gray-400";
+                                            }
+                                            
+                                            return (
+                                                <motion.tr 
+                                                    key={item.id || index}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    transition={{ delay: index * 0.05 }}
+                                                    className={rowClass}
+                                                >
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                        {index + 1}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className="text-sm font-semibold text-gray-900">₹{item.monthly_salary?.toLocaleString('en-IN') || item.amount}</span>
+                                                        <span className="text-xs text-gray-500 ml-1">/-</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`w-2 h-2 rounded-full ${statusDotClass}`}></div>
+                                                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusBadgeClass}`}>
+                                                                {item.status === 'active' ? 'Active' : (item.status === 'scheduled' ? 'Scheduled' : 'Expired')}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center gap-1 text-sm">
+                                                            <ClockIcon />
+                                                            <span>{item.working_hours ? formatTimeTo12Hour(item.working_hours.start) : (item.officeTime || '09:00 AM')}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                        {item.working_hours ? `${item.working_hours.expected_hours} Hours` : (item.workingHour || '8 Hours')}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                        {item.working_hours ? `${item.working_hours.grace_period_minutes} mins` : (item.graceTime || '15 mins')}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                            item.overtime_settings?.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                                                         }`}>
-                                                            Overtime: {item.applyOT}
+                                                            {item.overtime_settings?.enabled ? 'Enabled' : 'Disabled'}
                                                         </span>
-                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                            item.applyFine === 'Yes' 
-                                                                ? 'bg-orange-100 text-orange-700' 
-                                                                : 'bg-gray-100 text-gray-600'
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                            item.fine_settings?.enabled ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'
                                                         }`}>
-                                                            Fine: {item.applyFine}
+                                                            {item.fine_settings?.enabled ? 'Enabled' : 'Disabled'}
                                                         </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center gap-1 text-sm">
-                                                        <ClockIcon />
-                                                        <span>{item.officeTime}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                    {item.workingHour}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                    {item.graceTime}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
-                                                        {item.effectiveFrom}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
-                                                        {item.effectiveTo ? new Date(item.effectiveTo).toLocaleDateString('en-IN') : 'Current'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center gap-2">
-                                                        <motion.button
-                                                            whileHover={{ scale: 1.1 }}
-                                                            whileTap={{ scale: 0.9 }}
-                                                            onClick={() => handleEdit(item.id)}
-                                                            className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
-                                                            title="Edit"
-                                                        >
-                                                            <EditIcon />
-                                                        </motion.button>
-                                                        <motion.button
-                                                            whileHover={{ scale: 1.1 }}
-                                                            whileTap={{ scale: 0.9 }}
-                                                            onClick={() => handleDelete(item.id)}
-                                                            className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                                                            title="Delete"
-                                                        >
-                                                            <DeleteIcon />
-                                                        </motion.button>
-                                                    </div>
-                                                </td>
-                                            </motion.tr>
-                                        ))
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                                            item.overtime_settings?.rate_type === 'daily' 
+                                                                ? 'bg-blue-50 text-blue-700' 
+                                                                : 'bg-purple-50 text-purple-700'
+                                                        }`}>
+                                                            {item.overtime_settings?.rate_type === 'daily' ? 'Daily' : 'Monthly'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                                            item.fine_settings?.rate_type === 'daily' 
+                                                                ? 'bg-orange-50 text-orange-700' 
+                                                                : 'bg-purple-50 text-purple-700'
+                                                        }`}>
+                                                            {item.fine_settings?.rate_type === 'daily' ? 'Daily' : 'Monthly'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
+                                                            {item.effective_from_display || item.effectiveFrom}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
+                                                            {item.effective_to ? new Date(item.effective_to).toLocaleDateString('en-IN') : (item.status === 'active' ? 'Current' : (item.status === 'scheduled' ? 'Upcoming' : 'Expired'))}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center gap-2">
+                                                            <motion.button
+                                                                whileHover={{ scale: 1.1 }}
+                                                                whileTap={{ scale: 0.9 }}
+                                                                onClick={() => handleEdit(item.id)}
+                                                                className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                                                                title="Edit"
+                                                            >
+                                                                <EditIcon />
+                                                            </motion.button>
+                                                            <motion.button
+                                                                whileHover={{ scale: 1.1 }}
+                                                                whileTap={{ scale: 0.9 }}
+                                                                onClick={() => handleDelete(item.id)}
+                                                                className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                                                                title="Delete"
+                                                            >
+                                                                <DeleteIcon />
+                                                            </motion.button>
+                                                        </div>
+                                                    </td>
+                                                </motion.tr>
+                                            );
+                                        })
                                     ) : (
                                         <tr>
-                                            <td colSpan="11" className="px-6 py-8 text-center text-gray-500">
+                                            <td colSpan="13" className="px-6 py-8 text-center text-gray-500">
                                                 {username ? (
                                                     <>
                                                         No salary structures found for user {username}. 
@@ -729,10 +902,26 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                         {/* Table Footer */}
                         <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-600">
-                                    Total {salary.list.length} salary structure{salary.list.length !== 1 ? 's' : ''}
-                                </span>
-                                {salaryHistory && (
+                                <div className="flex items-center gap-4">
+                                    <span className="text-sm text-gray-600">
+                                        Total {salary.list.length} salary structure{salary.list.length !== 1 ? 's' : ''}
+                                    </span>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                            <span className="text-xs text-gray-500">Active</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                            <span className="text-xs text-gray-500">Scheduled</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                                            <span className="text-xs text-gray-500">Expired</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {salaryData && (
                                     <span className="text-xs text-gray-500">
                                         Last updated: {new Date().toLocaleDateString('en-IN')}
                                     </span>
@@ -768,16 +957,14 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {weekDays.map((day, index) => {
+                            {weekDays.map((day) => {
                                 const isPaidLeave = day === currentWeeklyOffDay;
-                                const isUpdating = updatingDay === day;
                                 
                                 return (
                                     <motion.div
                                         key={day}
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.05 }}
                                         className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
                                             isPaidLeave 
                                                 ? 'bg-indigo-50 border border-indigo-200' 
@@ -797,7 +984,6 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                                             <ToggleSwitch 
                                                 enabled={isPaidLeave}
                                                 onChange={() => handleToggle(day)}
-                                                isLoading={isUpdating}
                                             />
                                         </div>
                                     </motion.div>
@@ -822,22 +1008,6 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                             </div>
                         </div>
                     )}
-
-                    {/* Quick Info */}
-                    <div className="mt-6 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
-                        <div className="flex items-start gap-3">
-                            <div className="p-1 bg-indigo-100 rounded">
-                                <ClockIcon />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-medium text-indigo-900">Weekly Off Configuration</h4>
-                                <p className="text-xs text-indigo-700 mt-1">
-                                    The selected day will be considered as the weekly off for this employee. 
-                                    Only one day can be selected as weekly off at a time.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -846,7 +1016,7 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                 <SummaryCard
                     title="Total Structures"
                     value={salary.list.length}
-                    subtitle="Active salary structures"
+                    subtitle="All salary records"
                     color="blue"
                 />
                 <SummaryCard
@@ -856,9 +1026,9 @@ const SalaryTab = ({ salary, setSalary, variants }) => {
                     color="green"
                 />
                 <SummaryCard
-                    title="Current Salary"
-                    value={salaryHistory?.current ? `₹${parseFloat(salaryHistory.current.monthly_salary).toLocaleString('en-IN')}` : 'N/A'}
-                    subtitle={salaryHistory?.current ? `Effective from ${new Date(salaryHistory.current.effective_from).toLocaleDateString('en-IN')}` : 'No active salary'}
+                    title="Active Salary"
+                    value={salaryData?.current ? `₹${salaryData.current.monthly_salary.toLocaleString('en-IN')}` : 'Not Set'}
+                    subtitle={salaryData?.current ? `Active from ${salaryData.current.effective_from_display}` : 'No active salary'}
                     color="purple"
                 />
             </div>
