@@ -1,15 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { FiX, FiUser, FiCalendar, FiDollarSign, FiFileText, FiCreditCard, FiHash } from 'react-icons/fi';
-
-// Enhanced professional data for received payments
-const clientOptions = [
-    { id: 'client_1', name: 'ABC Enterprises Ltd', email: 'accounts@abcenterprises.com', contact: 'Mr. Sharma', outstanding: '1,50,000' },
-    { id: 'client_2', name: 'XYZ Solutions Inc', email: 'billing@xyzsolutions.com', contact: 'Ms. Patel', outstanding: '75,000' },
-    { id: 'client_3', name: 'Global Traders Co.', email: 'finance@globaltraders.com', contact: 'Mr. Gupta', outstanding: '2,25,000' },
-    { id: 'client_4', name: 'Premium Services Ltd', email: 'accounts@premiumservices.com', contact: 'Customer Service', outstanding: '50,000' },
-    { id: 'client_5', name: 'Tech Innovations', email: 'billing@techinnovations.com', contact: 'Accounts Dept', outstanding: '1,80,000' },
-    { id: 'client_6', name: 'Professional Consultants', email: 'finance@proconsultants.com', contact: 'Finance Dept', outstanding: '95,000' }
-];
+import React, { useState, useEffect, useRef } from 'react';
+import { FiX, FiUser, FiCalendar, FiDollarSign, FiFileText, FiCreditCard, FiHash, FiSearch } from 'react-icons/fi';
+import getHeaders from '../utils/get-headers';
+import API_BASE_URL from '../utils/api-controller';
 
 const bankOptions = [
     { id: 'bank_1', name: 'HDFC Bank', account: '123456789012', holder: 'Company Name Ltd', balance: '10,50,000' },
@@ -28,56 +20,104 @@ const PaymentReceived = ({
     onClose = () => { },
     onSuccess = () => { },
     initialClientId = '',
+    initialUsername = '',
     mode = 'modal'
 }) => {
+    const usernameToUse = initialUsername || initialClientId || '';
     const [formData, setFormData] = useState({
-        client_id: initialClientId || '',
+        client_username: usernameToUse || '',
         payment_date: new Date().toISOString().split('T')[0],
         amount: '',
         remark: '',
         bank_id: '',
-        transaction_ref_id: '' // New field added
+        transaction_ref_id: ''
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [clientSearchQuery, setClientSearchQuery] = useState('');
+    const [clientSearchResults, setClientSearchResults] = useState([]);
+    const [clientSearchLoading, setClientSearchLoading] = useState(false);
     const [showClientDropdown, setShowClientDropdown] = useState(false);
+    const [selectedClient, setSelectedClient] = useState(null);
     const [sendEmail, setSendEmail] = useState(true);
     const [sendWhatsApp, setSendWhatsApp] = useState(true);
+    const clientSearchAbortRef = useRef(null);
 
-    // Filter clients based on search
-    const filteredClients = useMemo(() => {
-        if (!searchTerm) return clientOptions;
-        return clientOptions.filter(client =>
-            client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            client.contact.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [searchTerm]);
+    // Client search API – min 3 chars, debounced
+    useEffect(() => {
+        const term = (clientSearchQuery || '').trim();
+        if (term.length < 3) {
+            setClientSearchResults([]);
+            setClientSearchLoading(false);
+            return;
+        }
+        const t = setTimeout(() => {
+            setClientSearchLoading(true);
+            clientSearchAbortRef.current?.abort();
+            const controller = new AbortController();
+            clientSearchAbortRef.current = controller;
+            const url = `${API_BASE_URL.replace(/\/$/, '')}/client/search?search=${encodeURIComponent(term)}`;
+            fetch(url, { headers: getHeaders(), signal: controller.signal })
+                .then((res) => res.json())
+                .then((data) => {
+                    const list = Array.isArray(data?.data) ? data.data : [];
+                    setClientSearchResults(list);
+                })
+                .catch((err) => {
+                    if (err?.name !== 'AbortError') setClientSearchResults([]);
+                })
+                .finally(() => setClientSearchLoading(false));
+        }, 400);
+        return () => {
+            clearTimeout(t);
+            clientSearchAbortRef.current?.abort();
+        };
+    }, [clientSearchQuery]);
+
+    // Auto-select when initialUsername passed
+    useEffect(() => {
+        if (!isOpen || !usernameToUse || usernameToUse.length < 3) return;
+        const headers = getHeaders();
+        if (!headers) return;
+        const url = `${API_BASE_URL.replace(/\/$/, '')}/client/search?search=${encodeURIComponent(usernameToUse)}`;
+        fetch(url, { headers })
+            .then((res) => res.json())
+            .then((data) => {
+                const list = Array.isArray(data?.data) ? data.data : [];
+                const match = list.find((c) => String(c.username) === String(usernameToUse));
+                if (match) {
+                    setSelectedClient(match);
+                    setFormData((prev) => ({ ...prev, client_username: match.username }));
+                }
+            })
+            .catch(() => {});
+    }, [isOpen, usernameToUse]);
 
     // Reset form when modal opens
     useEffect(() => {
         if (isOpen) {
             setFormData({
-                client_id: initialClientId || '',
+                client_username: usernameToUse || '',
                 payment_date: new Date().toISOString().split('T')[0],
                 amount: '',
                 remark: '',
                 bank_id: '',
-                transaction_ref_id: '' // Reset new field
+                transaction_ref_id: ''
             });
-            setSearchTerm('');
+            setClientSearchQuery('');
+            setClientSearchResults([]);
             setShowClientDropdown(false);
+            if (!usernameToUse) setSelectedClient(null);
         }
-    }, [isOpen, initialClientId]);
+    }, [isOpen]);
 
-    const getSelectedClient = () => {
-        return clientOptions.find(client => client.id === formData.client_id);
-    };
+    const getSelectedClient = () => selectedClient;
 
     const getClientDisplayText = (client) => {
-        if (!client) return 'Select Client';
-        return `${client.name} • ₹${client.outstanding}`;
+        if (!client) return formData.client_username ? 'Loading...' : 'Select Client';
+        const name = client.name || client.username || '';
+        const extra = [client.mobile, client.email].filter(Boolean).join(' • ');
+        return extra ? `${name} • ${extra}` : name;
     };
 
     const getSelectedBank = () => {
@@ -92,10 +132,16 @@ const PaymentReceived = ({
         }));
     };
 
-    const handleClientSelect = (clientId) => {
-        setFormData(prev => ({ ...prev, client_id: clientId }));
+    const handleClientSelect = (client) => {
+        setSelectedClient(client);
+        setFormData((prev) => ({ ...prev, client_username: client.username }));
         setShowClientDropdown(false);
-        setSearchTerm('');
+        setClientSearchQuery('');
+    };
+
+    const handleClientClear = () => {
+        setSelectedClient(null);
+        setFormData((prev) => ({ ...prev, client_username: '' }));
     };
 
     const formatCurrency = (amount) => {
@@ -109,7 +155,7 @@ const PaymentReceived = ({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.client_id || !formData.bank_id || !formData.amount || isSubmitting) return;
+        if (!formData.client_username || !formData.bank_id || !formData.amount || isSubmitting) return;
 
         setIsSubmitting(true);
         try {
@@ -136,19 +182,18 @@ const PaymentReceived = ({
     };
 
     const formContent = (
-        <div className="bg-white rounded-xl shadow-2xl flex flex-col h-full border border-gray-200">
-            {/* Compact Header */}
-            <div className="flex-shrink-0 flex items-center justify-between p-3 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-t-xl">
-                <div className="flex items-center space-x-3">
-                    <div className="p-1.5 bg-white/10 rounded-lg">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-white rounded-2xl flex flex-col h-full">
+            {/* Header */}
+            <div className="flex-shrink-0 flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 text-white rounded-t-2xl shadow-lg">
+                <div className="flex items-center space-x-4">
+                    <div className="p-2.5 bg-white/20 rounded-xl">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <div className="flex items-center space-x-4">
-                        <h2 className="text-lg font-bold">Receive Payment</h2>
-                        <span className="text-indigo-200 text-sm hidden sm:inline">|</span>
-                        <p className="text-indigo-100 text-xs sm:text-sm hidden sm:block">{appSettings.company_name}</p>
+                    <div>
+                        <h2 className="text-xl font-bold">Receive Payment</h2>
+                        <p className="text-indigo-200 text-sm mt-0.5">{appSettings.company_name}</p>
                     </div>
                 </div>
                 {mode === 'modal' && (
@@ -162,7 +207,7 @@ const PaymentReceived = ({
             </div>
 
             {/* Scrollable Content Area */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-gray-50">
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-gradient-to-b from-slate-50 to-white">
                 <form onSubmit={handleSubmit}>
                     {/* Client Selection and Date Section - Compact */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -179,31 +224,33 @@ const PaymentReceived = ({
                                     className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg bg-white cursor-pointer hover:border-indigo-400 transition-all duration-200 shadow-sm text-sm"
                                     onClick={() => setShowClientDropdown(!showClientDropdown)}
                                 >
-                                    {formData.client_id ? (
+                                    {formData.client_username ? (
                                         <div className="flex justify-between items-center">
-                                            <div className="flex items-center space-x-2">
-                                                <div className="p-1.5 rounded bg-blue-100 text-blue-600">
+                                            <div className="flex items-center space-x-2 min-w-0">
+                                                <div className="p-1.5 rounded bg-blue-100 text-blue-600 shrink-0">
                                                     <FiUser className="w-4 h-4" />
                                                 </div>
-                                                <div className="truncate">
+                                                <div className="truncate min-w-0">
                                                     <span className="text-gray-800 font-medium block truncate">
                                                         {getClientDisplayText(getSelectedClient())}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <svg className="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                            </svg>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); handleClientClear(); }}
+                                                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded shrink-0"
+                                            >
+                                                <FiX className="w-4 h-4" />
+                                            </button>
                                         </div>
                                     ) : (
                                         <div className="flex justify-between items-center text-gray-500">
                                             <div className="flex items-center space-x-2">
                                                 <div className="p-1.5 rounded bg-gray-100">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                    </svg>
+                                                    <FiSearch className="w-4 h-4" />
                                                 </div>
-                                                <span className="font-medium truncate">Click to select client...</span>
+                                                <span className="font-medium truncate">Search client (min 3 characters)...</span>
                                             </div>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -216,50 +263,54 @@ const PaymentReceived = ({
                                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-64 overflow-y-auto text-sm">
                                         <div className="p-2 border-b border-gray-200 bg-gray-50 sticky top-0">
                                             <div className="relative">
-                                                <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                                </svg>
+                                                <FiSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                                                 <input
                                                     type="text"
-                                                    placeholder="Search by name, email, or contact..."
+                                                    placeholder="Search by name, mobile, email..."
                                                     className="w-full pl-8 pr-3 py-2 border-2 border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                                    value={clientSearchQuery}
+                                                    onChange={(e) => setClientSearchQuery(e.target.value)}
                                                     autoFocus
                                                 />
                                             </div>
+                                            {clientSearchQuery.trim().length > 0 && clientSearchQuery.trim().length < 3 && (
+                                                <p className="text-xs text-gray-500 mt-1">Type at least 3 characters</p>
+                                            )}
                                         </div>
                                         <div className="py-1">
-                                            {filteredClients.map(client => (
+                                            {clientSearchLoading && (
+                                                <div className="px-3 py-4 text-center text-gray-500 text-sm">Searching...</div>
+                                            )}
+                                            {!clientSearchLoading && clientSearchQuery.trim().length >= 3 && clientSearchResults.length === 0 && (
+                                                <div className="px-3 py-4 text-center text-gray-500 text-sm">No clients found</div>
+                                            )}
+                                            {!clientSearchLoading && clientSearchResults.map((client) => (
                                                 <div
-                                                    key={client.id}
-                                                    className={`px-3 py-2 cursor-pointer border-l-2 transition-all duration-150 ${formData.client_id === client.id
+                                                    key={client.username}
+                                                    className={`px-3 py-2 cursor-pointer border-l-2 transition-all duration-150 ${formData.client_username === client.username
                                                         ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
                                                         : 'border-transparent hover:bg-gray-50'
                                                         }`}
-                                                    onClick={() => handleClientSelect(client.id)}
+                                                    onClick={() => handleClientSelect(client)}
                                                 >
                                                     <div className="flex justify-between items-center">
                                                         <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center space-x-2 mb-1">
-                                                                <div className="p-1 rounded bg-blue-100 text-blue-600">
+                                                            <div className="flex items-center space-x-2 mb-0.5">
+                                                                <div className="p-1 rounded bg-blue-100 text-blue-600 shrink-0">
                                                                     <FiUser className="w-4 h-4" />
                                                                 </div>
-                                                                <div className="flex items-center min-w-0">
-                                                                    <span className="font-medium text-gray-900 truncate">{client.name}</span>
-                                                                    <span className="ml-2 px-1.5 py-0.5 text-xs rounded-full font-medium bg-green-100 text-green-800 border border-green-200">
-                                                                        CLIENT
-                                                                    </span>
-                                                                </div>
+                                                                <span className="font-medium text-gray-900 truncate">{client.name || client.username}</span>
                                                             </div>
                                                             <div className="text-xs text-gray-600 ml-7 truncate">
-                                                                {client.email} • {client.contact}
+                                                                {[client.mobile, client.email].filter(Boolean).join(' • ') || client.username}
                                                             </div>
-                                                            <div className="text-xs font-medium text-orange-600 mt-1 ml-7">
-                                                                Outstanding: ₹{client.outstanding}
-                                                            </div>
+                                                            {client.firms && client.firms.length > 0 && (
+                                                                <div className="text-xs text-gray-500 mt-0.5 ml-7 truncate">
+                                                                    Firms: {client.firms.map((f) => f.firm_name).filter(Boolean).join(', ')}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        {formData.client_id === client.id && (
+                                                        {formData.client_username === client.username && (
                                                             <svg className="w-4 h-4 text-indigo-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                             </svg>
@@ -326,37 +377,65 @@ const PaymentReceived = ({
                         </div>
 
                         {/* Bank Selection */}
-                        <div>
+                        <div className="space-y-3">
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="block text-sm font-semibold text-gray-700">
                                     Bank Account <span className="text-red-500">*</span>
                                 </label>
-                                <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">Required</span>
+                                <span className="text-xs text-gray-500 px-2 py-0.5 bg-gray-100 rounded-lg">Required</span>
                             </div>
                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                                     <FiCreditCard className="w-4 h-4 text-gray-400" />
                                 </div>
                                 <select
                                     name="bank_id"
                                     value={formData.bank_id}
                                     onChange={handleInputChange}
-                                    className="pl-9 w-full pr-10 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-all duration-200 shadow-sm appearance-none bg-white text-sm"
+                                    className="pl-10 w-full pr-10 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-300 transition-all duration-200 appearance-none bg-white text-sm font-medium"
                                     required
                                 >
                                     <option value="" disabled>Select Bank Account</option>
                                     {bankOptions.map(bank => (
                                         <option key={bank.id} value={bank.id} className="text-sm">
-                                            {bank.name} - {bank.account} (₹{bank.balance})
+                                            {bank.name} — {bank.account} (₹{bank.balance})
                                         </option>
                                     ))}
                                 </select>
-                                <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </div>
                             </div>
+                            {/* Selected Bank Details */}
+                            {formData.bank_id && getSelectedBank() && (
+                                <div className="mt-3 p-4 rounded-xl bg-white border-2 border-indigo-100 shadow-sm">
+                                    <div className="flex items-start gap-4">
+                                        <div className="p-2.5 bg-indigo-100 rounded-xl shrink-0">
+                                            <FiCreditCard className="w-5 h-5 text-indigo-600" />
+                                        </div>
+                                        <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                            <div>
+                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Bank</p>
+                                                <p className="text-sm font-semibold text-gray-900 mt-0.5">{getSelectedBank().name}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Account No</p>
+                                                <p className="text-sm font-mono font-semibold text-gray-900 mt-0.5">{getSelectedBank().account}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Account Holder</p>
+                                                <p className="text-sm font-semibold text-gray-900 mt-0.5">{getSelectedBank().holder}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</p>
+                                                <p className="text-sm font-bold text-emerald-600 mt-0.5">₹{getSelectedBank().balance}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -450,8 +529,8 @@ const PaymentReceived = ({
                 </form>
             </div>
 
-            {/* Compact Footer */}
-            <div className="flex-shrink-0 border-t border-gray-200 bg-white p-4 rounded-b-xl shadow-lg">
+            {/* Footer */}
+            <div className="flex-shrink-0 border-t border-gray-200 bg-white p-6 rounded-b-2xl shadow-inner">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     {/* Notification Options */}
                     <div className="w-full lg:w-auto">
@@ -522,7 +601,7 @@ const PaymentReceived = ({
                             <button
                                 type="submit"
                                 onClick={handleSubmit}
-                                disabled={isSubmitting || !formData.client_id || !formData.bank_id || !formData.amount}
+                                disabled={isSubmitting || !formData.client_username || !formData.bank_id || !formData.amount}
                                 className="px-5 py-2 text-xs font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 border border-transparent rounded-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 shadow hover:shadow-md min-w-[140px] flex items-center justify-center"
                             >
                                 {isSubmitting ? (
@@ -559,8 +638,8 @@ const PaymentReceived = ({
                         className="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity"
                         onClick={onClose}
                     />
-                    {/* Compact Modal panel */}
-                    <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl h-[85vh] flex flex-col transform transition-all duration-300 scale-100">
+                    {/* Modal panel - large */}
+                    <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl min-h-[90vh] max-h-[95vh] flex flex-col transform transition-all duration-300 scale-100">
                         {formContent}
                     </div>
                 </div>

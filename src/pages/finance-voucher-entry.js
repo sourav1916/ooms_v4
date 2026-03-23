@@ -13,7 +13,7 @@ import {
     FiBarChart2,
     FiActivity
 } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import SaleForm from '../components/sales-form';
 import PurchaseForm from '../components/purchase-form';
 import PaymentReceived from '../components/payment-received';
@@ -28,6 +28,8 @@ import { Header, Sidebar } from '../components/header';
 
 const FinanceEntry = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const initialClientUsername = location.state?.username || '';
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(() => {
         const saved = localStorage.getItem('sidebarMinimized');
@@ -118,7 +120,7 @@ const FinanceEntry = () => {
                 isMinimized={isMinimized}
                 setIsMinimized={setIsMinimized}
             />
-            
+
             {/* Fixed Sidebar */}
             <Sidebar
                 mobileMenuOpen={mobileMenuOpen}
@@ -163,7 +165,7 @@ const FinanceEntry = () => {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div className='bg-white rounded-lg border border-slate-200 p-4'>
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-lg font-semibold text-slate-800">Financial Reports</h3>
@@ -176,8 +178,8 @@ const FinanceEntry = () => {
                                 {/* Four Column Layout for Reports and Ledger */}
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                     {/* Sales Register */}
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-cyan-50 hover:border-cyan-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-cyan-50 hover:border-cyan-200 transition-colors w-full"
                                         onClick={() => navigate('./sales')}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -191,8 +193,8 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Purchase Register */}
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-orange-50 hover:border-orange-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-orange-50 hover:border-orange-200 transition-colors w-full"
                                         onClick={() => navigate('./purchase')}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -206,8 +208,8 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Received Register */}
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full"
                                         onClick={() => navigate('./received')}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -221,8 +223,8 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Payment Register */}
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full"
                                         onClick={() => navigate('./payment')}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -236,8 +238,8 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Contra Register */}
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full"
                                         onClick={() => navigate('./contra')}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -251,8 +253,8 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Journal Register */}
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full"
                                         onClick={() => navigate('./journal')}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -266,8 +268,8 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Expense Register */}
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full"
                                         onClick={() => navigate('./expense')}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -281,8 +283,8 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Expense Discount */}
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full"
                                         onClick={() => navigate('./discount')}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -296,8 +298,8 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Cash & Bank - Expense Discount Style */}
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full"
                                         onClick={() => navigate('./bank-list')}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -311,8 +313,8 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Capital Account - Expense Discount Style */}
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-colors w-full"
                                         onClick={() => navigate('./capital-account')}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -326,7 +328,7 @@ const FinanceEntry = () => {
                                     </motion.button>
                                 </div>
                             </div>
-                            
+
                             <div className='bg-white rounded-lg border border-slate-200 p-4'>
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-lg font-semibold text-slate-800">Financial Summary</h3>
@@ -339,7 +341,7 @@ const FinanceEntry = () => {
                                 {/* Four Column Layout for Reports and Ledger */}
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                     {/* Trail Balance */}
-                                    <motion.button 
+                                    <motion.button
                                         className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-200 transition-colors w-full"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -353,7 +355,7 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Balance Sheet */}
-                                    <motion.button 
+                                    <motion.button
                                         className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-green-50 hover:border-green-200 transition-colors w-full"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -367,7 +369,7 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Profit & Loss A/c */}
-                                    <motion.button 
+                                    <motion.button
                                         className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-purple-50 hover:border-purple-200 transition-colors w-full"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -381,7 +383,7 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* Loan & Advances */}
-                                    <motion.button 
+                                    <motion.button
                                         className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-yellow-50 hover:border-yellow-200 transition-colors w-full"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -395,7 +397,7 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* GST Sales Report */}
-                                    <motion.button 
+                                    <motion.button
                                         className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-red-50 hover:border-red-200 transition-colors w-full"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -409,7 +411,7 @@ const FinanceEntry = () => {
                                     </motion.button>
 
                                     {/* GST Purchase Report */}
-                                    <motion.button 
+                                    <motion.button
                                         className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-pink-50 hover:border-pink-200 transition-colors w-full"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -432,8 +434,8 @@ const FinanceEntry = () => {
                                 <h3 className="text-lg font-semibold text-slate-800 mb-4">Finance Entries</h3>
                                 <div className="grid grid-cols-2 gap-3">
                                     {/* Sales Card */}
-                                    <motion.div 
-                                        className="block transition-all hover:shadow-sm cursor-pointer" 
+                                    <motion.div
+                                        className="block transition-all hover:shadow-sm cursor-pointer"
                                         onClick={() => setSaleFormModal(true)}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -453,8 +455,8 @@ const FinanceEntry = () => {
                                     </motion.div>
 
                                     {/* Purchase Card */}
-                                    <motion.div 
-                                        className="block transition-all hover:shadow-sm cursor-pointer" 
+                                    <motion.div
+                                        className="block transition-all hover:shadow-sm cursor-pointer"
                                         onClick={() => setPurchaseFormModal(true)}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -474,8 +476,8 @@ const FinanceEntry = () => {
                                     </motion.div>
 
                                     {/* Received Card */}
-                                    <motion.div 
-                                        className="block transition-all hover:shadow-sm cursor-pointer" 
+                                    <motion.div
+                                        className="block transition-all hover:shadow-sm cursor-pointer"
                                         onClick={() => setPaymentReceivedFormModal(true)}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -495,8 +497,8 @@ const FinanceEntry = () => {
                                     </motion.div>
 
                                     {/* Payment Card */}
-                                    <motion.div 
-                                        className="block transition-all hover:shadow-sm cursor-pointer" 
+                                    <motion.div
+                                        className="block transition-all hover:shadow-sm cursor-pointer"
                                         onClick={() => setPaymentSendFormModal(true)}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -516,8 +518,8 @@ const FinanceEntry = () => {
                                     </motion.div>
 
                                     {/* Contra Card */}
-                                    <motion.div 
-                                        className="block transition-all hover:shadow-sm cursor-pointer" 
+                                    <motion.div
+                                        className="block transition-all hover:shadow-sm cursor-pointer"
                                         onClick={() => setContraFormModal(true)}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -537,8 +539,8 @@ const FinanceEntry = () => {
                                     </motion.div>
 
                                     {/* Journal Card */}
-                                    <motion.div 
-                                        className="block transition-all hover:shadow-sm cursor-pointer" 
+                                    <motion.div
+                                        className="block transition-all hover:shadow-sm cursor-pointer"
                                         onClick={() => setJournalFormModal(true)}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -558,8 +560,8 @@ const FinanceEntry = () => {
                                     </motion.div>
 
                                     {/* Expenses Card */}
-                                    <motion.div 
-                                        className="block transition-all hover:shadow-sm cursor-pointer" 
+                                    <motion.div
+                                        className="block transition-all hover:shadow-sm cursor-pointer"
                                         onClick={() => setExpenseFormModal(true)}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -579,8 +581,8 @@ const FinanceEntry = () => {
                                     </motion.div>
 
                                     {/* Discount Card */}
-                                    <motion.div 
-                                        className="block transition-all hover:shadow-sm cursor-pointer" 
+                                    <motion.div
+                                        className="block transition-all hover:shadow-sm cursor-pointer"
                                         onClick={() => setDiscountFormModal(true)}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -612,8 +614,8 @@ const FinanceEntry = () => {
                                     </div>
                                 </div>
                                 <div className="space-y-3">
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-200 transition-colors w-full"
                                         onClick={() => navigate('./ledger-group')}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -626,8 +628,8 @@ const FinanceEntry = () => {
                                         <span className="text-sm font-medium text-slate-700">Ledger Groups</span>
                                     </motion.button>
 
-                                    <motion.button 
-                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-green-50 hover:border-green-200 transition-colors w-full" 
+                                    <motion.button
+                                        className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-green-50 hover:border-green-200 transition-colors w-full"
                                         onClick={() => setCreateLedgerModal(true)}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -640,7 +642,7 @@ const FinanceEntry = () => {
                                         <span className="text-sm font-medium text-slate-700">Create Ledger</span>
                                     </motion.button>
 
-                                    <motion.button 
+                                    <motion.button
                                         className="flex items-center p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-purple-50 hover:border-purple-200 transition-colors w-full"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
@@ -659,7 +661,7 @@ const FinanceEntry = () => {
                     </div>
                 </div>
             </div>
-            
+
             {/* All Modals */}
             <SaleForm
                 isOpen={saleFormModal}
@@ -680,6 +682,7 @@ const FinanceEntry = () => {
                 isOpen={paymentReceivedFormModal}
                 onClose={() => setPaymentReceivedFormModal(false)}
                 onSubmit={handlePaymentReceivedSubmit}
+                initialUsername={initialClientUsername}
                 mode="modal"
             />
 
@@ -688,6 +691,7 @@ const FinanceEntry = () => {
                 isOpen={paymentSendFormModal}
                 onClose={() => setPaymentSendFormModal(false)}
                 onSubmit={handlePaymentSendSubmit}
+                initialUsername={initialClientUsername}
                 mode="modal"
             />
 

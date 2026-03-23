@@ -380,13 +380,15 @@ const BankList = () => {
     const [activeRowDropdown, setActiveRowDropdown] = useState(null);
     const [exportModal, setExportModal] = useState({ open: false, type: '', data: null });
     
-    // Pagination states
+    // Pagination and list states
     const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalItems, setTotalItems] = useState(0);
-    const [itemsPerPage] = useState(10);
+    const [limit] = useState(10);
+    const [total, setTotal] = useState(0);
+    const [count, setCount] = useState(0);
+    const [isLastPage, setIsLastPage] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+    const [fetchError, setFetchError] = useState(null);
 
     // Transaction summary states
     const [transactionSummary, setTransactionSummary] = useState({
@@ -444,20 +446,19 @@ const BankList = () => {
     // Banks data
     const [banks, setBanks] = useState([]);
 
-    // Debounce search term
+    // Debounce search term – trim and reset to page 1 on change
     useEffect(() => {
         const timer = setTimeout(() => {
-            setDebouncedSearchTerm(searchTerm);
+            setDebouncedSearchTerm((searchTerm || '').trim());
             setCurrentPage(1);
         }, 500);
-
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
     // Fetch banks on page change or search
     useEffect(() => {
         fetchBanks();
-    }, [currentPage, debouncedSearchTerm]);
+    }, [fetchBanks]);
 
     // Persist sidebar minimized state
     useEffect(() => {
@@ -491,30 +492,50 @@ const BankList = () => {
         };
     }, []);
 
-    // Fetch banks from API
-    const fetchBanks = async () => {
+    // Fetch banks from API – GET /bank/list
+    const fetchBanks = useCallback(async () => {
         setFetchLoading(true);
+        setFetchError(null);
+        const headers = getHeaders();
+        if (!headers) {
+            setFetchError('Authentication required');
+            setFetchLoading(false);
+            return;
+        }
         try {
-            const response = await axios.get(
-                `${API_BASE_URL}/transaction/bank/list?page_no=${currentPage}&limit=${itemsPerPage}&search=${debouncedSearchTerm}`,
-                { headers: getHeaders() }
-            );
+            const searchTrimmed = (debouncedSearchTerm || '').trim();
+            const response = await axios.get(`${API_BASE_URL}/bank/list`, {
+                headers,
+                params: {
+                    page_no: currentPage,
+                    limit,
+                    search: searchTrimmed
+                }
+            });
 
-            if (response.data.success) {
-                setBanks(response.data.data);
-                setTotalItems(response.data.meta.total);
-                setTotalPages(Math.ceil(response.data.meta.total / itemsPerPage));
-                
-                // Calculate transaction summary
-                calculateTransactionSummary(response.data.data);
+            if (response.data?.success) {
+                const list = Array.isArray(response.data.data) ? response.data.data : [];
+                const meta = response.data.meta || {};
+                setBanks(list);
+                setTotal(meta.total ?? 0);
+                setCount(meta.count ?? list.length);
+                setIsLastPage(meta.is_last_page ?? true);
+                setFetchError(null);
+                calculateTransactionSummary(list);
+            } else {
+                setFetchError(response.data?.message || 'Failed to fetch bank list');
+                setBanks([]);
             }
         } catch (error) {
             console.error('Error fetching banks:', error);
-            toast.error('Failed to fetch banks');
+            const errMsg = error.response?.data?.message || error.message || 'Failed to fetch bank list';
+            setFetchError(errMsg);
+            toast.error(errMsg);
+            setBanks([]);
         } finally {
             setFetchLoading(false);
         }
-    };
+    }, [currentPage, limit, debouncedSearchTerm]);
 
     // Calculate transaction summary
     const calculateTransactionSummary = (banksData) => {
@@ -785,10 +806,10 @@ const BankList = () => {
 
     // Handle page change
     const handlePageChange = useCallback((newPage) => {
-        if (newPage >= 1 && newPage <= totalPages) {
-            setCurrentPage(newPage);
-        }
-    }, [totalPages]);
+        if (newPage < 1) return;
+        if (newPage > currentPage && isLastPage) return;
+        setCurrentPage(newPage);
+    }, [currentPage, isLastPage]);
 
     // Handle refresh
     const handleRefresh = useCallback(() => {
@@ -1050,7 +1071,23 @@ const BankList = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {fetchLoading ? (
+                                    {fetchError && !fetchLoading ? (
+                                        <tr>
+                                            <td colSpan="7" className="text-center py-12">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <p className="text-red-600 font-medium mb-2">{fetchError}</p>
+                                                    <motion.button
+                                                        onClick={handleRefresh}
+                                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                    >
+                                                        Try Again
+                                                    </motion.button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : fetchLoading ? (
                                         [...Array(5)].map((_, index) => (
                                             <SkeletonRow key={index} />
                                         ))
@@ -1089,7 +1126,7 @@ const BankList = () => {
                                                 >
                                                     <td className="p-4">
                                                         <span className="text-slate-600 font-medium">
-                                                            {(currentPage - 1) * itemsPerPage + index + 1}
+                                                            {(currentPage - 1) * limit + index + 1}
                                                         </span>
                                                     </td>
                                                     <td className="p-4">
@@ -1215,11 +1252,11 @@ const BankList = () => {
                         </div>
 
                         {/* Pagination */}
-                        {!fetchLoading && banks.length > 0 && (
+                        {!fetchLoading && banks.length > 0 && !fetchError && (
                             <div className="border-t border-slate-200 px-6 py-4 bg-white">
                                 <div className="flex items-center justify-between">
                                     <div className="text-sm text-slate-600">
-                                        Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} entries
+                                        Page {currentPage} • Showing {(currentPage - 1) * limit + 1} to {(currentPage - 1) * limit + count} of {total} entries
                                     </div>
                                     <div className="flex gap-2">
                                         <motion.button
@@ -1236,7 +1273,7 @@ const BankList = () => {
                                         </span>
                                         <motion.button
                                             onClick={() => handlePageChange(currentPage + 1)}
-                                            disabled={currentPage === totalPages}
+                                            disabled={isLastPage}
                                             className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.98 }}

@@ -74,7 +74,7 @@ const ProtectedRoute = ({ children }) => {
     // Check for both possible token keys (for compatibility)
     const token = localStorage.getItem('token') || localStorage.getItem('user_token');
     const username = localStorage.getItem('username') || localStorage.getItem('user_username');
-    
+
     return !!(token && username);
   };
 
@@ -98,11 +98,11 @@ root.render(
     <Routes>
       {/* Public Routes */}
       <Route path="/login" element={
-     
-          <Login />
-        
+
+        <Login />
+
       } />
-      
+
       <Route path="/register" element={
         <PublicRoute>
           <Register />
@@ -115,7 +115,7 @@ root.render(
           <Dashboard />
         </ProtectedRoute>
       } />
-      
+
       <Route path="/my-profile" element={
         <ProtectedRoute>
           <MyProfile />
@@ -140,23 +140,23 @@ root.render(
         </ProtectedRoute>
       } />
 
- {/* <Route path="/task/edit/:task_id" element={
+      {/* <Route path="/task/edit/:task_id" element={
         <ProtectedRoute>
           <TaskEdit />
         </ProtectedRoute>
       } /> */}
       <Route path="/task/profile/:task_id/:tab" element={
-  <ProtectedRoute>
-    <TaskProfile />
-  </ProtectedRoute>
-} />
-{/* 
+        <ProtectedRoute>
+          <TaskProfile />
+        </ProtectedRoute>
+      } />
+      {/* 
  <Route path="/task/profile/client" element={
         <ProtectedRoute>
           <TaskProfileClient />
         </ProtectedRoute>
       } /> */}
-      
+
 
       <Route path="/client/create" element={
         <ProtectedRoute>
@@ -170,19 +170,19 @@ root.render(
         </ProtectedRoute>
       } />
 
-        <Route path="/client/profile/:username" element={
-  <ProtectedRoute>
-    <ClientProfile />
-  </ProtectedRoute>
-} />
+      <Route path="/client/profile/:username" element={
+        <ProtectedRoute>
+          <ClientProfile />
+        </ProtectedRoute>
+      } />
 
-{/* Tabs For ClientProfile Tab */}
-<Route path="/client/profile/:username/:tab" element={
-  <ProtectedRoute>
-    <ClientProfile />
-  </ProtectedRoute>
-} />
-   
+      {/* Tabs For ClientProfile Tab */}
+      <Route path="/client/profile/:username/:tab" element={
+        <ProtectedRoute>
+          <ClientProfile />
+        </ProtectedRoute>
+      } />
+
 
       <Route path="/client/profile" element={
         <ProtectedRoute>
@@ -279,12 +279,12 @@ root.render(
           <ViewStaff />
         </ProtectedRoute>
       } />
- 
-     <Route path="/staff/view/profile/:tab?" element={
-  <ProtectedRoute>
-    <ViewStaffProfile/>
-  </ProtectedRoute>
-} />
+
+      <Route path="/staff/view/profile/:tab?" element={
+        <ProtectedRoute>
+          <ViewStaffProfile />
+        </ProtectedRoute>
+      } />
 
 
 
@@ -323,12 +323,12 @@ root.render(
           <PasswordGroups />
         </ProtectedRoute>
       } />
-<Route path="/staff/office-assistance/password-group/:group_id/firms" element={
-  <ProtectedRoute>
-    <PasswordGroupFirms /> 
-  </ProtectedRoute>
-} />
-     
+      <Route path="/staff/office-assistance/password-group/:group_id/firms" element={
+        <ProtectedRoute>
+          <PasswordGroupFirms />
+        </ProtectedRoute>
+      } />
+
 
       <Route path="/staff/office-assistance/important-links" element={
         <ProtectedRoute>
@@ -492,12 +492,12 @@ root.render(
         </ProtectedRoute>
       } />
 
- <Route path="/finance/bank/transaction-history" element={
+      <Route path="/finance/bank/transaction-history" element={
         <ProtectedRoute>
           <TransactionHistory />
         </ProtectedRoute>
       } />
-      
+
 
       {/* Catch-all route for 404 */}
       <Route path="*" element={
