@@ -21,6 +21,7 @@ import {
     FiMoreVertical,
     FiEdit2,
     FiFile,
+    FiEye,
     FiMail,
     FiPhone,
     FiUserCheck
@@ -35,7 +36,7 @@ import DatePicker from 'react-datepicker';
 import { Calendar, X, ChevronDown } from 'lucide-react';
 import "react-datepicker/dist/react-datepicker.css";
 
-// DateRangePicker Component - Compact version with dropdown
+// DateRangePicker Component - Professional design with inline dual calendar
 const DateRangePicker = ({
     startDate,
     endDate,
@@ -45,386 +46,208 @@ const DateRangePicker = ({
     maxDate
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [localStartDate, setLocalStartDate] = useState(startDate ? new Date(startDate) : null);
-    const [localEndDate, setLocalEndDate] = useState(endDate ? new Date(endDate) : null);
-    const [showCustomPicker, setShowCustomPicker] = useState(false);
+    const [localStartDate, setLocalStartDate] = useState(startDate ? new Date(startDate + 'T12:00:00') : null);
+    const [localEndDate, setLocalEndDate] = useState(endDate ? new Date(endDate + 'T12:00:00') : null);
     const dropdownRef = useRef(null);
-    const startDatePickerRef = useRef(null);
-    const endDatePickerRef = useRef(null);
 
-    // Quick date filters - Updated with your requirements
-      // Quick date filters - Updated with your requirements
     const quickDateFilters = [
+        { label: '7 Days', type: 'last7Days' },
         { label: 'Current Month', type: 'currentMonth' },
-        { label: 'Last 7 Days', type: 'last7Days' },
         { label: 'Last Month', type: 'lastMonth' },
-        { label: 'Last 3 Months', type: 'last3Months' },
-        { label: 'Last 6 Months', type: 'last6Months' },
-        { label: 'Last Year', type: 'lastYear' },
+        { label: '3 Months', type: 'last3Months' },
+        { label: '6 Months', type: 'last6Months' },
+        { label: '1 Year', type: 'lastYear' },
     ];
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
-            // Check if the click is on the calendar popper
             const isCalendarPopper = event.target.closest('.react-datepicker-popper');
-            
-            // Only close if clicking outside both the dropdown and the calendar
             if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !isCalendarPopper) {
                 setIsOpen(false);
-                setShowCustomPicker(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Update local state when props change
     useEffect(() => {
-        setLocalStartDate(startDate ? new Date(startDate) : null);
-        setLocalEndDate(endDate ? new Date(endDate) : null);
+        setLocalStartDate(startDate ? new Date(startDate + 'T12:00:00') : null);
+        setLocalEndDate(endDate ? new Date(endDate + 'T12:00:00') : null);
     }, [startDate, endDate]);
 
     const formatRangeDisplay = () => {
-        if (!startDate && !endDate) return 'Select Range';
-        
+        if (!startDate && !endDate) return 'Select date range';
         const format = (dateStr) => {
             if (!dateStr) return '';
-            const d = new Date(dateStr);
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            return `${monthNames[d.getMonth()]} ${d.getDate()}`;
+            const d = new Date(dateStr + 'T12:00:00');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
         };
-        
-        if (startDate && endDate) {
-            return `${format(startDate)} - ${format(endDate)}`;
-        }
-        return 'Select Range';
+        return startDate && endDate ? `${format(startDate)} – ${format(endDate)}` : 'Select date range';
     };
 
-    const formatDateString = (date) => {
-        if (!date) return '';
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-    };
-
-       const handleQuickDateFilter = (filter) => {
+    const handleQuickFilter = (filter) => {
         const today = new Date();
-        let startDate = new Date();
-        let endDate = new Date();
+        today.setHours(12, 0, 0, 0);
+        let start = new Date(today);
+        let end = new Date(today);
 
-        if (filter.type === 'currentMonth') {
-            // First day of current month to today
-            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-            endDate = today;
-        } else if (filter.type === 'last7Days') {
-            // Last 7 days from today
-            startDate.setDate(today.getDate() - 7);
-            endDate = today;
-        } else if (filter.type === 'lastMonth') {
-            // First day of last month to last day of last month
-            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-            startDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
-            endDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
-        } else if (filter.type === 'last3Months') {
-            // Last 3 months from today
-            startDate.setMonth(today.getMonth() - 3);
-            endDate = today;
-        } else if (filter.type === 'last6Months') {
-            // Last 6 months from today
-            startDate.setMonth(today.getMonth() - 6);
-            endDate = today;
-        } else if (filter.type === 'lastYear') {
-            // Last 12 months from today
-            startDate.setMonth(today.getMonth() - 12);
-            endDate = today;
+        switch (filter.type) {
+            case 'currentMonth':
+                start = new Date(today.getFullYear(), today.getMonth(), 1);
+                break;
+            case 'last7Days':
+                start.setDate(today.getDate() - 7);
+                break;
+            case 'lastMonth':
+                start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                end = new Date(today.getFullYear(), today.getMonth(), 0);
+                break;
+            case 'last3Months':
+                start.setMonth(today.getMonth() - 3);
+                break;
+            case 'last6Months':
+                start.setMonth(today.getMonth() - 6);
+                break;
+            case 'lastYear':
+                start.setMonth(today.getMonth() - 12);
+                break;
+            default:
+                break;
         }
 
-        setLocalStartDate(startDate);
-        setLocalEndDate(endDate);
-        
-        onStartDateChange(startDate.toISOString().split('T')[0]);
-        onEndDateChange(endDate.toISOString().split('T')[0]);
+        const toISO = (d) => d.toISOString().split('T')[0];
+        setLocalStartDate(start);
+        setLocalEndDate(end);
+        onStartDateChange(toISO(start));
+        onEndDateChange(toISO(end));
         setIsOpen(false);
-        setShowCustomPicker(false);
     };
 
-    const handleApplyDate = () => {
-        if (localStartDate && localEndDate) {
-            onStartDateChange(localStartDate.toISOString().split('T')[0]);
-            onEndDateChange(localEndDate.toISOString().split('T')[0]);
-            setIsOpen(false);
-            setShowCustomPicker(false);
+    const handleRangeChange = (update) => {
+        if (Array.isArray(update)) {
+            const [start, end] = update;
+            setLocalStartDate(start);
+            setLocalEndDate(end ?? start);
+            if (start) onStartDateChange(start.toISOString().split('T')[0]);
+            if (end) onEndDateChange(end.toISOString().split('T')[0]);
         }
     };
 
-    const clearDates = () => {
+    const handleApply = () => {
+        if (localStartDate && localEndDate) {
+            const [s, e] = [localStartDate, localEndDate].sort((a, b) => a - b);
+            onStartDateChange(s.toISOString().split('T')[0]);
+            onEndDateChange(e.toISOString().split('T')[0]);
+            setIsOpen(false);
+        }
+    };
+
+    const clearDates = (e) => {
+        e?.stopPropagation();
         setLocalStartDate(null);
         setLocalEndDate(null);
         onStartDateChange('');
         onEndDateChange('');
         setIsOpen(false);
-        setShowCustomPicker(false);
     };
 
     return (
         <div className="relative" ref={dropdownRef}>
             <style>{`
-                .react-datepicker-popper {
-                    z-index: 99999 !important;
-                }
-                .react-datepicker {
-                    font-family: inherit;
-                    border: 2px solid #e5e7eb;
-                    border-radius: 0.75rem;
-                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-                    overflow: hidden;
-                }
-                .react-datepicker__header {
-                    background: linear-gradient(to right, #eef2ff, #f5f3ff);
-                    border-bottom: 1px solid #e5e7eb;
-                    padding-top: 0.75rem;
-                }
-                .react-datepicker__current-month {
-                    color: #374151;
-                    font-weight: 600;
-                    font-size: 0.9rem;
-                    margin-bottom: 0.5rem;
-                }
-                .react-datepicker__day-names {
-                    display: flex;
-                    justify-content: space-around;
-                    padding: 0.5rem 0;
-                    margin: 0;
-                }
-                .react-datepicker__day-name {
-                    color: #6b7280;
-                    font-weight: 600;
-                    font-size: 0.7rem;
-                    width: 2rem;
-                    line-height: 2rem;
-                    margin: 0;
-                    text-transform: uppercase;
-                }
-                .react-datepicker__month {
-                    margin: 0.5rem;
-                }
-                .react-datepicker__week {
-                    display: flex;
-                    justify-content: space-around;
-                }
-                .react-datepicker__day {
-                    width: 2rem;
-                    height: 2rem;
-                    line-height: 2rem;
-                    margin: 0.125rem;
-                    border-radius: 0.375rem;
-                    color: #374151;
-                    font-weight: 500;
-                    font-size: 0.85rem;
-                    transition: all 0.15s ease;
-                }
-                .react-datepicker__day:hover {
-                    background-color: #eef2ff;
-                    color: #4f46e5;
-                }
-                .react-datepicker__day--selected,
-                .react-datepicker__day--in-range,
-                .react-datepicker__day--in-selecting-range {
-                    background-color: #4f46e5 !important;
-                    color: white !important;
-                    font-weight: 600;
-                }
-                .react-datepicker__day--range-start,
-                .react-datepicker__day--range-end {
-                    background-color: #4338ca !important;
-                }
-                .react-datepicker__day--keyboard-selected {
-                    background-color: #eef2ff;
-                    color: #4f46e5;
-                }
-                .react-datepicker__day--today {
-                    font-weight: 700;
-                    color: #4f46e5;
-                    background-color: #eef2ff;
-                }
-                .react-datepicker__day--disabled {
-                    color: #d1d5db;
-                    cursor: not-allowed;
-                }
-                .react-datepicker__day--disabled:hover {
-                    background-color: transparent;
-                }
-                .react-datepicker__day--outside-month {
-                    color: #d1d5db;
-                }
-                .react-datepicker__navigation {
-                    top: 0.75rem;
-                }
-                .react-datepicker__navigation-icon::before {
-                    border-color: #6b7280;
-                }
-                .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
-                    border-color: #4f46e5;
-                }
+                .daterange-picker .react-datepicker { font-family: inherit; border: none; }
+                .daterange-picker .react-datepicker__month-container { padding: 0.5rem; }
+                .daterange-picker .react-datepicker__header { background: transparent; border: none; padding: 0.5rem 0.5rem 0.75rem; }
+                .daterange-picker .react-datepicker__current-month { color: #1e293b; font-weight: 600; font-size: 0.875rem; }
+                .daterange-picker .react-datepicker__day-names { margin: 0.5rem 0 0; }
+                .daterange-picker .react-datepicker__day-name { color: #64748b; font-weight: 600; font-size: 0.7rem; width: 2.25rem; line-height: 2rem; }
+                .daterange-picker .react-datepicker__day { width: 2.25rem; height: 2.25rem; line-height: 2.25rem; margin: 0.125rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 500; }
+                .daterange-picker .react-datepicker__day:hover { background: #eef2ff; color: #4f46e5; }
+                .daterange-picker .react-datepicker__day--in-range { background: #c7d2fe !important; color: #312e81 !important; }
+                .daterange-picker .react-datepicker__day--range-start,
+                .daterange-picker .react-datepicker__day--range-end { background: #4f46e5 !important; color: white !important; }
+                .daterange-picker .react-datepicker__day--today { font-weight: 700; color: #4f46e5; background: #eef2ff; }
+                .daterange-picker .react-datepicker__day--outside-month { color: #cbd5e1; }
+                .daterange-picker .react-datepicker__day--disabled { color: #e2e8f0; cursor: not-allowed; }
+                .daterange-picker .react-datepicker__navigation { top: 0.6rem; }
+                .daterange-picker .react-datepicker__navigation-icon::before { border-color: #64748b; border-width: 2px 2px 0 0; }
             `}</style>
 
-            {/* Compact Dropdown Button */}
+            {/* Trigger Button */}
             <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center justify-between w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                className="flex items-center justify-between w-full min-w-[280px] px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-indigo-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
             >
-                <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-indigo-500" />
-                    <span className="text-gray-700">
-                        {formatRangeDisplay()}
-                    </span>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg shadow-sm">
+                        <Calendar className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="text-left">
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Date range</p>
+                        <p className="text-sm font-semibold text-slate-800">{formatRangeDisplay()}</p>
+                    </div>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center gap-1">
                     {(startDate || endDate) && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                clearDates();
-                            }}
-                            className="mr-1 text-gray-400 hover:text-red-500"
-                        >
-                            <X className="h-3 w-3" />
+                        <button type="button" onClick={clearDates} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Clear">
+                            <X className="h-4 w-4" />
                         </button>
                     )}
-                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-5 w-5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                 </div>
             </button>
 
-            {/* Dropdown Menu */}
+            {/* Dropdown Panel */}
             {isOpen && (
-                <div className="absolute left-0 mt-1 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] overflow-visible">
-                    <div className="p-3">
-                        {/* Month Selection Dropdown */}
-                        <div className="mb-3">
-                            <select
-                                onChange={(e) => {
-                                    const filter = quickDateFilters.find(f => f.label === e.target.value);
-                                    if (filter) handleQuickDateFilter(filter);
-                                }}
-                                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                defaultValue=""
-                            >
-                                <option value="" disabled>Select Month Range</option>
-                                {quickDateFilters.map((filter, index) => (
-                                    <option key={index} value={filter.label}>
-                                        {filter.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Custom Range Toggle */}
-                        <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-medium text-gray-500">Custom Range</span>
-                            <button
-                                onClick={() => setShowCustomPicker(!showCustomPicker)}
-                                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-                            >
-                                {showCustomPicker ? 'Hide' : 'Show'}
-                            </button>
-                        </div>
-
-                        {/* Custom Date Range Selection */}
-                        {showCustomPicker && (
-                            <div className="space-y-3 mb-3">
-                                {/* From Date */}
-                                <div className="relative" ref={startDatePickerRef}>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                                        From Date
-                                    </label>
-                                    <DatePicker
-                                        selected={localStartDate}
-                                        onChange={(date) => setLocalStartDate(date)}
-                                        customInput={
-                                            <div className="relative cursor-pointer">
-                                                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                                                    <Calendar className="h-3 w-3 text-indigo-500" />
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    value={localStartDate ? formatDateString(localStartDate) : ''}
-                                                    readOnly
-                                                    className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 cursor-pointer"
-                                                    placeholder="DD/MM/YYYY"
-                                                />
-                                            </div>
-                                        }
-                                        dateFormat="dd/MM/yyyy"
-                                        minDate={minDate ? new Date(minDate) : null}
-                                        maxDate={localEndDate || (maxDate ? new Date(maxDate) : new Date())}
-                                        popperClassName="!z-[99999]"
-                                        popperPlacement="bottom-start"
-                                        shouldCloseOnSelect={true}
-                                        withPortal={false}
-                                    />
-                                </div>
-                                
-                                {/* To Date */}
-                                <div className="relative" ref={endDatePickerRef}>
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                                        To Date
-                                    </label>
-                                    <DatePicker
-                                        selected={localEndDate}
-                                        onChange={(date) => setLocalEndDate(date)}
-                                        customInput={
-                                            <div className="relative cursor-pointer">
-                                                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                                                    <Calendar className="h-3 w-3 text-indigo-500" />
-                                                </div>
-                                                <input
-                                                    type="text"
-                                                    value={localEndDate ? formatDateString(localEndDate) : ''}
-                                                    readOnly
-                                                    className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 cursor-pointer"
-                                                    placeholder="DD/MM/YYYY"
-                                                />
-                                            </div>
-                                        }
-                                        dateFormat="dd/MM/yyyy"
-                                        minDate={localStartDate || (minDate ? new Date(minDate) : null)}
-                                        maxDate={maxDate ? new Date(maxDate) : new Date()}
-                                        popperClassName="!z-[99999]"
-                                        popperPlacement="bottom-start"
-                                        shouldCloseOnSelect={true}
-                                        withPortal={false}
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        {showCustomPicker && (
-                            <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
+                <div className="absolute left-0 mt-2 w-[min(420px,95vw)] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[9999]">
+                    {/* Quick filters */}
+                    <div className="p-4 bg-gradient-to-r from-slate-50 to-indigo-50/30 border-b border-slate-100">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Quick select</p>
+                        <div className="flex flex-wrap gap-2">
+                            {quickDateFilters.map((f) => (
                                 <button
-                                    onClick={() => {
-                                        setIsOpen(false);
-                                        setShowCustomPicker(false);
-                                    }}
-                                    className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+                                    key={f.type}
+                                    type="button"
+                                    onClick={() => handleQuickFilter(f)}
+                                    className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all duration-150 shadow-sm"
                                 >
-                                    Cancel
+                                    {f.label}
                                 </button>
-                                <button
-                                    onClick={handleApplyDate}
-                                    disabled={!localStartDate || !localEndDate}
-                                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${
-                                        localStartDate && localEndDate
-                                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                    }`}
-                                >
-                                    Apply
-                                </button>
-                            </div>
-                        )}
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Inline dual calendar */}
+                    <div className="p-4 daterange-picker">
+                        <DatePicker
+                            inline
+                            selectsRange
+                            monthsShown={2}
+                            startDate={localStartDate}
+                            endDate={localEndDate}
+                            onChange={handleRangeChange}
+                            minDate={minDate ? new Date(minDate) : undefined}
+                            maxDate={maxDate ? new Date(maxDate) : new Date()}
+                            dateFormat="dd/MM/yyyy"
+                        />
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-t border-slate-200">
+                        <span className="text-xs text-slate-500">
+                            {localStartDate && localEndDate
+                                ? `${localStartDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${localEndDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`
+                                : 'Select start and end dates'}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={handleApply}
+                            disabled={!localStartDate || !localEndDate}
+                            className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            Apply
+                        </button>
                     </div>
                 </div>
             )}
@@ -451,8 +274,10 @@ const ClientLedger = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
-    const [itemsPerPage] = useState(20);
-    const [openingBalance, setOpeningBalance] = useState(0);
+    const [itemsPerPage, setItemsPerPage] = useState(20);
+    const LIMIT_OPTIONS = [5, 10, 20, 50, 100];
+    const [pageJumpInput, setPageJumpInput] = useState('');
+    const [openingBalance, setOpeningBalance] = useState({ debit: 0, credit: 0, balance: 0 });
     const [summary, setSummary] = useState({
         totalCredit: 0,
         totalDebit: 0,
@@ -461,7 +286,8 @@ const ClientLedger = () => {
     const [showTransactionModal, setShowTransactionModal] = useState(false);
     const [transactionType, setTransactionType] = useState('');
     const [showActionMenu, setShowActionMenu] = useState(null);
-    const [selectedBank, setSelectedBank] = useState(null); // ADD THIS LINE
+    const [selectedBank, setSelectedBank] = useState(null);
+    const [detailsTransaction, setDetailsTransaction] = useState(null);
 
     // Fetch client profile and ledger transactions
     useEffect(() => {
@@ -474,12 +300,17 @@ const ClientLedger = () => {
         }
     }, [username]);
 
-    // Fetch transactions when page, fromDate, or toDate changes
+    // Reset to page 1 when date filters or limit change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [fromDate, toDate, itemsPerPage]);
+
+    // Fetch transactions when page, limit, fromDate, toDate, or clientProfile (for party_id) changes
     useEffect(() => {
         if (username) {
             fetchTransactions();
         }
-    }, [currentPage, fromDate, toDate]);
+    }, [currentPage, itemsPerPage, fromDate, toDate, clientProfile?.id]);
 
     // Close action menu when clicking outside
     useEffect(() => {
@@ -510,24 +341,34 @@ const ClientLedger = () => {
     // Fetch transactions for client ledger
     const fetchTransactions = async () => {
         setFetchingTransactions(true);
+        const partyId = clientProfile?.id ?? username;
         try {
             const response = await axios.get(
-                `${API_BASE_URL}/transaction/list?page_no=${currentPage}&limit=${itemsPerPage}&from_date=${fromDate}&to_date=${toDate}&party_type=client&party_id=${username}`,
+                `${API_BASE_URL}/transaction/list?page_no=${currentPage}&limit=${itemsPerPage}&from_date=${fromDate}&to_date=${toDate}&party_type=client&party_id=${encodeURIComponent(partyId)}`,
                 { headers: getHeaders() }
             );
 
             if (response.data.success) {
+                const openingBal = response.data.opening_balance;
+                const openingBalObj = typeof openingBal === 'object' && openingBal !== null
+                    ? { debit: openingBal.debit ?? 0, credit: openingBal.credit ?? 0, balance: openingBal.balance ?? 0 }
+                    : { debit: 0, credit: 0, balance: openingBal ?? 0 };
+
                 setTransactions(response.data.data || []);
-                setOpeningBalance(response.data.opening_balance || 0);
-                setTotalItems(response.data.meta?.total || 0);
-                setTotalPages(Math.ceil((response.data.meta?.total || 0) / itemsPerPage));
-                
-                calculateSummary(response.data.data || [], response.data.opening_balance || 0);
+                setOpeningBalance(openingBalObj);
+                const meta = response.data.meta || {};
+                const total = meta.total ?? 0;
+                const limit = meta.limit ?? itemsPerPage;
+                setTotalItems(total);
+                setTotalPages(Math.max(1, Math.ceil(total / limit)));
+
+                calculateSummary(response.data.data || [], openingBalObj.balance);
             }
         } catch (error) {
             console.error('Error fetching transactions:', error);
             toast.error('Failed to fetch transactions');
             setTransactions([]);
+            setOpeningBalance({ debit: 0, credit: 0, balance: 0 });
             calculateSummary([], 0);
         } finally {
             setFetchingTransactions(false);
@@ -535,19 +376,17 @@ const ClientLedger = () => {
         }
     };
 
-    // Calculate transaction summary
+    // Calculate transaction summary (supports new API: payment/sale/etc with debit/credit/balance)
     const calculateSummary = (transactionsData, openingBal) => {
         let totalCredit = 0;
         let totalDebit = 0;
         let closingBalance = openingBal;
 
         transactionsData.forEach(transaction => {
-            if (transaction.type === "1") {
-                totalCredit += transaction.amount;
-            } else if (transaction.type === "0") {
-                totalDebit += transaction.amount;
-            }
-            closingBalance = transaction.new_balance;
+            const amounts = getTransactionAmounts(transaction);
+            totalDebit += amounts.debit;
+            totalCredit += amounts.credit;
+            if (amounts.balance != null) closingBalance = amounts.balance;
         });
 
         setSummary({
@@ -555,6 +394,17 @@ const ClientLedger = () => {
             totalDebit,
             closingBalance
         });
+    };
+
+    // Get debit/credit/balance from transaction (new API: type-specific object e.g. payment, sale)
+    const getTransactionAmounts = (transaction) => {
+        const key = transaction.transaction_type;
+        const amounts = key && transaction[key] ? transaction[key] : transaction.payment || {};
+        return {
+            debit: amounts.debit ?? 0,
+            credit: amounts.credit ?? 0,
+            balance: amounts.balance
+        };
     };
 
     // Handle search
@@ -620,6 +470,12 @@ const ClientLedger = () => {
         setShowActionMenu(null);
     };
 
+    // Handle view details
+    const handleViewDetails = (transaction) => {
+        setDetailsTransaction(transaction);
+        setShowActionMenu(null);
+    };
+
     // Format currency
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-IN', {
@@ -645,13 +501,11 @@ const ClientLedger = () => {
         });
     };
 
-    // Get transaction type color
-    const getTransactionTypeColor = (type) => {
-        if (type === "0") {
-            return 'text-blue-600 bg-blue-50 border-blue-200';
-        } else if (type === "1") {
-            return 'text-orange-600 bg-orange-50 border-orange-200';
-        }
+    // Get transaction type color (debit=blue, credit=orange)
+    const getTransactionTypeColor = (transaction) => {
+        const amounts = getTransactionAmounts(transaction);
+        if (amounts.debit > 0) return 'text-blue-600 bg-blue-50 border-blue-200';
+        if (amounts.credit > 0) return 'text-orange-600 bg-orange-50 border-orange-200';
         return 'text-slate-600 bg-slate-50 border-slate-200';
     };
 
@@ -675,8 +529,19 @@ const ClientLedger = () => {
 
     // Handle page change
     const handlePageChange = (newPage) => {
-        if (newPage >= 1 && newPage <= totalPages) {
-            setCurrentPage(newPage);
+        const page = Math.max(1, Math.min(totalPages, Math.floor(newPage)));
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+            setPageJumpInput('');
+        }
+    };
+
+    // Handle page jump
+    const handlePageJump = (e) => {
+        e.preventDefault();
+        const page = parseInt(pageJumpInput, 10);
+        if (!isNaN(page)) {
+            handlePageChange(page);
         }
     };
 
@@ -693,8 +558,20 @@ const ClientLedger = () => {
         }
     };
 
-    // Get particulars display
+    // Get particulars display (new API: particular.type + particular.details, fallback to create_by)
     const getParticularsDisplay = (transaction) => {
+        const particular = transaction.particular;
+        if (particular?.type === 'bank' && particular?.details) {
+            const d = particular.details;
+            return (
+                <div className="flex flex-col">
+                    <div className="font-medium text-slate-800">{d.bank || 'Bank'}</div>
+                    <div className="text-xs text-slate-500">
+                        {[d.account_no, d.holder, d.ifsc, d.branch].filter(Boolean).join(' • ')}
+                    </div>
+                </div>
+            );
+        }
         if (transaction.create_by) {
             return (
                 <div className="flex flex-col">
@@ -814,9 +691,9 @@ const ClientLedger = () => {
                     className="bg-white rounded-xl p-4 shadow-lg border border-slate-200"
                 >
                     <p className="text-sm text-slate-500 mb-1">Opening</p>
-                    <p className={`text-xl font-bold ${openingBalance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                        ₹{formatCurrency(openingBalance)}
-                        {openingBalance >= 0 ? 
+                    <p className={`text-xl font-bold ${(openingBalance.balance ?? 0) >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                        ₹{formatCurrency(openingBalance.balance ?? 0)}
+                        {(openingBalance.balance ?? 0) >= 0 ? 
                             <span className="text-xs ml-1 text-blue-600">(Receivable)</span> : 
                             <span className="text-xs ml-1 text-orange-600">(Payable)</span>
                         }
@@ -878,7 +755,7 @@ const ClientLedger = () => {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         {/* DateRangePicker Component */}
-                        <div className="w-48">
+                        <div className="min-w-[280px] flex-1 max-w-md">
                             <DateRangePicker
                                 startDate={fromDate}
                                 endDate={toDate}
@@ -944,16 +821,28 @@ const ClientLedger = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {/* Opening Balance Row - Always Show */}
+                            {/* Opening Balance Row - Always Show debit, credit, balance */}
                             <tr className="bg-blue-50/50 font-medium">
                                 <td className="p-4 text-slate-600"></td>
                                 <td className="p-4 text-slate-800" colSpan="2">Opening Balance</td>
                                 <td className="p-4"></td>
                                 <td className="p-4"></td>
-                                <td className="p-4 text-right text-slate-400">-</td>
-                                <td className="p-4 text-right text-slate-400">-</td>
-                                <td className={`p-4 text-right font-bold ${openingBalance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                                    ₹{formatCurrency(openingBalance)}
+                                <td className="p-4 text-right">
+                                    {openingBalance.debit > 0 ? (
+                                        <span className="text-sm font-semibold text-blue-600">₹{formatCurrency(openingBalance.debit)}</span>
+                                    ) : (
+                                        <span className="text-sm text-slate-600">₹{formatCurrency(0)}</span>
+                                    )}
+                                </td>
+                                <td className="p-4 text-right">
+                                    {openingBalance.credit > 0 ? (
+                                        <span className="text-sm font-semibold text-orange-600">₹{formatCurrency(openingBalance.credit)}</span>
+                                    ) : (
+                                        <span className="text-sm text-slate-600">₹{formatCurrency(0)}</span>
+                                    )}
+                                </td>
+                                <td className={`p-4 text-right font-bold ${(openingBalance.balance ?? 0) >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                    ₹{formatCurrency(openingBalance.balance ?? 0)}
                                 </td>
                                 <td className="p-4"></td>
                             </tr>
@@ -990,8 +879,8 @@ const ClientLedger = () => {
                                         </td>
                                         <td className="p-4">
                                             <div className="flex flex-col">
-                                                <span className={`px-3 py-1 rounded-lg text-xs font-medium border w-fit ${getTransactionTypeColor(transaction.type)}`}>
-                                                    {transaction.transaction_type?.toUpperCase() || (transaction.type === "0" ? 'DEBIT' : 'CREDIT')}
+                                                <span className={`px-3 py-1 rounded-lg text-xs font-medium border w-fit ${getTransactionTypeColor(transaction)}`}>
+                                                    {(transaction.transaction_type || 'N/A').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                                                 </span>
                                             </div>
                                         </td>
@@ -1001,30 +890,29 @@ const ClientLedger = () => {
                                             </span>
                                         </td>
                                         <td className="p-4 text-right">
-                                            {transaction.type === "0" ? (
-                                                <span className="text-sm font-semibold text-blue-600">
-                                                    ₹{formatCurrency(transaction.amount)}
-                                                </span>
-                                            ) : (
-                                                <span className="text-sm text-slate-400">-</span>
-                                            )}
+                                            {(() => {
+                                                const amounts = getTransactionAmounts(transaction);
+                                                return amounts.debit > 0 ? (
+                                                    <span className="text-sm font-semibold text-blue-600">₹{formatCurrency(amounts.debit)}</span>
+                                                ) : (
+                                                    <span className="text-sm text-slate-600">₹{formatCurrency(0)}</span>
+                                                );
+                                            })()}
                                         </td>
                                         <td className="p-4 text-right">
-                                            {transaction.type === "1" ? (
-                                                <span className="text-sm font-semibold text-orange-600">
-                                                    ₹{formatCurrency(transaction.amount)}
-                                                </span>
-                                            ) : (
-                                                <span className="text-sm text-slate-400">-</span>
-                                            )}
+                                            {(() => {
+                                                const amounts = getTransactionAmounts(transaction);
+                                                return amounts.credit > 0 ? (
+                                                    <span className="text-sm font-semibold text-orange-600">₹{formatCurrency(amounts.credit)}</span>
+                                                ) : (
+                                                    <span className="text-sm text-slate-600">₹{formatCurrency(0)}</span>
+                                                );
+                                            })()}
                                         </td>
                                         <td className="p-4 text-right">
-                                            <span className={`text-sm font-bold ${transaction.new_balance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                                                ₹{formatCurrency(transaction.new_balance)}
+                                            <span className={`text-sm font-bold ${((getTransactionAmounts(transaction).balance) ?? 0) >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                                ₹{formatCurrency(getTransactionAmounts(transaction).balance ?? 0)}
                                             </span>
-                                            <div className="text-xs text-slate-400">
-                                                Prev: ₹{formatCurrency(transaction.old_balance)}
-                                            </div>
                                         </td>
                                         <td className="p-4 text-center relative">
                                             <button
@@ -1037,6 +925,13 @@ const ClientLedger = () => {
                                             {/* Action Menu */}
                                             {showActionMenu === transaction.transaction_id && (
                                                 <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50">
+                                                    <button
+                                                        onClick={() => handleViewDetails(transaction)}
+                                                        className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-indigo-50 flex items-center gap-2 transition-colors"
+                                                    >
+                                                        <FiEye className="w-4 h-4 text-indigo-600" />
+                                                        Details
+                                                    </button>
                                                     <button
                                                         onClick={() => handleEdit(transaction)}
                                                         className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 transition-colors"
@@ -1073,39 +968,245 @@ const ClientLedger = () => {
                 </div>
 
                 {/* Pagination */}
-                {!loading && !fetchingTransactions && transactions.length > 0 && (
+                {!loading && !fetchingTransactions && (transactions.length > 0 || totalItems > 0) && totalPages > 0 && (
                     <div className="border-t border-slate-200 px-6 py-4 bg-white">
-                        <div className="flex items-center justify-between">
-                            <div className="text-sm text-slate-600">
-                                Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} entries
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="flex flex-wrap items-center gap-4">
+                                <div className="text-sm text-slate-600">
+                                    Showing {totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} entries
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <label htmlFor="limit-select" className="text-sm text-slate-500">Show</label>
+                                    <select
+                                        id="limit-select"
+                                        value={itemsPerPage}
+                                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                                        className="px-2 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-700"
+                                    >
+                                        {LIMIT_OPTIONS.map((n) => (
+                                            <option key={n} value={n}>{n}</option>
+                                        ))}
+                                    </select>
+                                    <span className="text-sm text-slate-500">per page</span>
+                                </div>
                             </div>
-                            <div className="flex gap-2">
-                                <motion.button
-                                    onClick={() => handlePageChange(currentPage - 1)}
-                                    disabled={currentPage === 1}
-                                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                >
-                                    Previous
-                                </motion.button>
-                                <span className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg">
-                                    {currentPage}
-                                </span>
-                                <motion.button
-                                    onClick={() => handlePageChange(currentPage + 1)}
-                                    disabled={currentPage === totalPages}
-                                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                >
-                                    Next
-                                </motion.button>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); handlePageChange(currentPage - 1); }}
+                                        disabled={currentPage <= 1}
+                                        className="px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg min-w-[2.5rem] text-center">
+                                        {currentPage}
+                                    </span>
+                                    <span className="text-slate-400 text-sm px-1">/</span>
+                                    <span className="px-2 py-2 text-sm font-medium text-slate-600">
+                                        {totalPages}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); handlePageChange(currentPage + 1); }}
+                                        disabled={currentPage >= totalPages}
+                                        className="px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                                <form onSubmit={handlePageJump} className="flex items-center gap-2">
+                                    <span className="text-sm text-slate-500">Go to</span>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={totalPages}
+                                        value={pageJumpInput}
+                                        onChange={(e) => setPageJumpInput(e.target.value)}
+                                        placeholder={String(currentPage)}
+                                        className="w-14 px-2 py-1.5 text-sm text-center border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="px-2 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
+                                    >
+                                        Go
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>
                 )}
             </motion.div>
+
+            {/* Transaction Details Modal */}
+            {detailsTransaction && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                    onClick={() => setDetailsTransaction(null)}
+                >
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-white rounded-2xl shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="sticky top-0 z-10 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 px-6 py-5">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-white/20 rounded-xl">
+                                        <FiFileText className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-white">
+                                            Transaction Details
+                                        </h2>
+                                        <p className="text-indigo-200 text-sm mt-0.5">
+                                            {(detailsTransaction.transaction_type || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} • {detailsTransaction.invoice_no || 'N/A'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setDetailsTransaction(null)}
+                                    className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                                >
+                                    <FiX className="w-6 h-6 text-white" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="overflow-y-auto p-6 space-y-6 max-h-[calc(90vh-180px)]">
+                            {/* Basic Info */}
+                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Transaction Info</h3>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div><span className="text-slate-500">Date</span><p className="font-medium text-slate-800">{formatDate(detailsTransaction.transaction_date)} {formatTime(detailsTransaction.transaction_date)}</p></div>
+                                    <div><span className="text-slate-500">Voucher No</span><p className="font-mono font-medium text-slate-800">{detailsTransaction.invoice_no || 'N/A'}</p></div>
+                                    <div><span className="text-slate-500">Type</span><p className="font-medium text-slate-800">{(detailsTransaction.transaction_type || 'N/A').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</p></div>
+                                    <div className="col-span-2"><span className="text-slate-500">Transaction ID</span><p className="font-mono text-xs text-slate-600 break-all">{detailsTransaction.transaction_id || 'N/A'}</p></div>
+                                </div>
+                            </div>
+
+                            {/* Amounts */}
+                            {(() => {
+                                const amt = getTransactionAmounts(detailsTransaction);
+                                return (
+                                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Amounts</h3>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div className="bg-white rounded-lg p-3 border border-blue-100">
+                                                <p className="text-xs text-slate-500 mb-1">Debit</p>
+                                                <p className="text-lg font-bold text-blue-600">₹{formatCurrency(amt.debit)}</p>
+                                            </div>
+                                            <div className="bg-white rounded-lg p-3 border border-orange-100">
+                                                <p className="text-xs text-slate-500 mb-1">Credit</p>
+                                                <p className="text-lg font-bold text-orange-600">₹{formatCurrency(amt.credit)}</p>
+                                            </div>
+                                            <div className="bg-white rounded-lg p-3 border border-indigo-100">
+                                                <p className="text-xs text-slate-500 mb-1">Balance</p>
+                                                <p className={`text-lg font-bold ${(amt.balance ?? 0) >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>₹{formatCurrency(amt.balance ?? 0)}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Particulars - Dynamic based on type */}
+                            {detailsTransaction.particular && (
+                                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                                        Particulars {detailsTransaction.particular.type && `(${detailsTransaction.particular.type})`}
+                                    </h3>
+                                    {detailsTransaction.particular.type === 'bank' && detailsTransaction.particular.details ? (
+                                        <div className="bg-white rounded-lg p-4 border border-indigo-100 space-y-2">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <FiHome className="w-5 h-5 text-indigo-600" />
+                                                <span className="font-semibold text-slate-800">{detailsTransaction.particular.details.bank || 'Bank'}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div><span className="text-slate-500">Account No</span><p className="font-medium">{detailsTransaction.particular.details.account_no || '-'}</p></div>
+                                                <div><span className="text-slate-500">Account Holder</span><p className="font-medium">{detailsTransaction.particular.details.holder || '-'}</p></div>
+                                                <div><span className="text-slate-500">IFSC</span><p className="font-mono font-medium">{detailsTransaction.particular.details.ifsc || '-'}</p></div>
+                                                <div><span className="text-slate-500">Branch</span><p className="font-medium">{detailsTransaction.particular.details.branch || '-'}</p></div>
+                                                <div><span className="text-slate-500">Type</span><p className="font-medium capitalize">{detailsTransaction.particular.details.type || '-'}</p></div>
+                                            </div>
+                                        </div>
+                                    ) : detailsTransaction.particular.details && typeof detailsTransaction.particular.details === 'object' ? (
+                                        <div className="bg-white rounded-lg p-4 border border-slate-200">
+                                            <div className="space-y-2">
+                                                {Object.entries(detailsTransaction.particular.details)
+                                                    .filter(([, val]) => val != null && val !== '')
+                                                    .map(([key, val]) => (
+                                                        <div key={key} className="flex justify-between text-sm">
+                                                            <span className="text-slate-500 capitalize">{key.replace(/_/g, ' ')}</span>
+                                                            <span className="font-medium text-slate-800">{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-slate-600 text-sm">{JSON.stringify(detailsTransaction.particular)}</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Created By */}
+                            {detailsTransaction.create_by && (
+                                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Created By</h3>
+                                    <div className="flex items-center gap-3 bg-white rounded-lg p-4 border border-slate-200">
+                                        <div className="p-2 bg-indigo-100 rounded-full">
+                                            <FiUser className="w-5 h-5 text-indigo-600" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                            <div><span className="text-slate-500">Name</span><p className="font-medium">{detailsTransaction.create_by.name || '-'}</p></div>
+                                            <div><span className="text-slate-500">Username</span><p className="font-mono font-medium">{detailsTransaction.create_by.username || '-'}</p></div>
+                                            {detailsTransaction.create_by.email && <div className="col-span-2 flex items-center gap-2"><FiMail className="w-4 h-4 text-slate-400" /><span className="text-slate-600">{detailsTransaction.create_by.email}</span></div>}
+                                            {detailsTransaction.create_by.mobile && <div className="col-span-2 flex items-center gap-2"><FiPhone className="w-4 h-4 text-slate-400" /><span className="text-slate-600">+{detailsTransaction.create_by.country_code || ''} {detailsTransaction.create_by.mobile}</span></div>}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Modified By - if different from create_by */}
+                            {detailsTransaction.modify_by && JSON.stringify(detailsTransaction.modify_by) !== JSON.stringify(detailsTransaction.create_by) && (
+                                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Modified By</h3>
+                                    <div className="flex items-center gap-3 bg-white rounded-lg p-4 border border-slate-200">
+                                        <div className="p-2 bg-amber-100 rounded-full">
+                                            <FiUserCheck className="w-5 h-5 text-amber-600" />
+                                        </div>
+                                        <div className="text-sm">
+                                            <p className="font-medium">{detailsTransaction.modify_by.name || '-'}</p>
+                                            <p className="text-slate-500 text-xs">{detailsTransaction.modify_by.email || detailsTransaction.modify_by.username || ''}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Timestamps */}
+                            <div className="flex gap-4 text-xs text-slate-500">
+                                {detailsTransaction.create_date && <span>Created: {formatDate(detailsTransaction.create_date)} {formatTime(detailsTransaction.create_date)}</span>}
+                                {detailsTransaction.modify_date && <span>Modified: {formatDate(detailsTransaction.modify_date)} {formatTime(detailsTransaction.modify_date)}</span>}
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="sticky bottom-0 border-t border-slate-200 bg-slate-50 px-6 py-4">
+                            <button
+                                onClick={() => setDetailsTransaction(null)}
+                                className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
 
             {/* Transaction Modal Manager - MODIFIED */}
             <TransactionModalManager
