@@ -31,7 +31,9 @@ import {
     FiTrendingDown,
     FiInfo,
     FiList,
-    FiCheckCircle as FiBulkVerify
+    FiCheckCircle as FiBulkVerify,
+    FiBriefcase,
+    FiMail
 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../components/header';
@@ -203,6 +205,55 @@ const ManageAttendance = () => {
         return 'Unknown';
     };
 
+    // Get available status options based on feature status
+    const getAvailableStatusOptions = (featureStatus, currentStatus) => {
+        const options = [
+            { value: 'present', label: 'Present', selected: currentStatus === 'present', enabled: true }
+        ];
+        
+        // OT/Bonus option - only if enabled
+        if (featureStatus?.overtime?.enabled) {
+            options.push({ 
+                value: 'bonus', 
+                label: 'Bonus (OT)', 
+                selected: currentStatus === 'bonus',
+                enabled: true
+            });
+        } else {
+            options.push({ 
+                value: 'bonus', 
+                label: 'Bonus (OT)', 
+                selected: false,
+                enabled: false,
+                disabled_reason: 'Overtime not enabled for this employee'
+            });
+        }
+        
+        options.push({ value: 'half_day', label: 'Half Day', selected: currentStatus === 'half_day', enabled: true });
+        options.push({ value: 'paid_leave', label: 'Paid Leave', selected: currentStatus === 'paid_leave', enabled: true });
+        options.push({ value: 'absent', label: 'Absent', selected: currentStatus === 'absent', enabled: true });
+        
+        // Fine option - only if enabled
+        if (featureStatus?.fine?.enabled) {
+            options.push({ 
+                value: 'fine', 
+                label: 'Fine', 
+                selected: currentStatus === 'fine',
+                enabled: true
+            });
+        } else {
+            options.push({ 
+                value: 'fine', 
+                label: 'Fine', 
+                selected: false,
+                enabled: false,
+                disabled_reason: 'Fine not enabled for this employee'
+            });
+        }
+        
+        return options;
+    };
+
     // Persist sidebar minimized state
     useEffect(() => {
         localStorage.setItem('sidebarMinimized', JSON.stringify(isMinimized));
@@ -229,13 +280,13 @@ const ManageAttendance = () => {
     useEffect(() => {
         const depts = new Set();
         attendanceData.forEach(staff => {
-            if (staff.profile?.department) {
-                depts.add(staff.profile.department);
+            if (staff.department) {
+                depts.add(staff.department);
             }
         });
         absentStaff.forEach(staff => {
-            if (staff.profile?.department) {
-                depts.add(staff.profile.department);
+            if (staff.department) {
+                depts.add(staff.department);
             }
         });
         setDepartments(['All Departments', ...Array.from(depts)]);
@@ -262,42 +313,59 @@ const ManageAttendance = () => {
             
             if (result.success) {
                 const presentStaff = result.data.attendance.map(item => ({
-                    attendence_id: item.attendance_id,
+                    attendance_id: item.attendance_id,
                     username: item.username,
                     name: item.profile.name,
                     mobile: item.profile.mobile,
                     email: item.profile.email,
                     image: item.profile.image,
                     designation: item.profile.designation,
-                    department: item.profile.department || 'General',
-                    duty_time: '09:00 - 18:00',
+                    department: item.profile.designation || 'General',
+                    // Duty time from salary settings
+                    duty_time: {
+                        start: item.duty_time?.expected?.start_time || '09:00',
+                        end: item.duty_time?.expected?.end_time || '18:00',
+                        schedule: item.duty_time?.expected?.schedule || '09:00 to 18:00',
+                        expected_hours: item.duty_time?.expected?.hours || 8
+                    },
                     status: item.status,
+                    feature_status: item.feature_status,
                     in_time: item.punch_details?.punch_in?.time || '00:00',
                     out_time: item.punch_details?.punch_out?.time || '00:00',
                     in_datetime: item.punch_details?.punch_in?.datetime,
                     out_datetime: item.punch_details?.punch_out?.datetime,
+                    punch_in_status: item.punch_details?.punch_in?.status,
+                    punch_out_status: item.punch_details?.punch_out?.status,
                     working_hours: item.working_hours,
                     is_verified: item.status.is_verified,
                     is_manual: item.is_manual,
                     manual_reason: item.manual_reason,
-                    salary: item.salary
+                    salary: item.salary,
+                    available_options: getAvailableStatusOptions(item.feature_status, item.status.code)
                 }));
 
                 const absentStaffData = result.data.absent_staff.map(item => ({
-                    attendence_id: `absent-${item.username}`,
+                    attendance_id: `absent-${item.username}`,
                     username: item.username,
                     name: item.profile.name,
                     mobile: item.profile.mobile,
                     email: item.profile.email,
                     image: item.profile.image,
                     designation: item.profile.designation,
-                    department: item.profile.department || 'General',
-                    duty_time: '09:00 - 18:00',
+                    department: item.profile.designation || 'General',
+                    duty_time: {
+                        start: item.duty_time?.expected?.start_time || '09:00',
+                        end: item.duty_time?.expected?.end_time || '18:00',
+                        schedule: item.duty_time?.expected?.schedule || '09:00 to 18:00',
+                        expected_hours: item.duty_time?.expected?.hours || 8
+                    },
                     status: { code: 'absent', display: '❌ Absent', is_verified: false },
+                    feature_status: item.feature_status,
                     in_time: '00:00',
                     out_time: '00:00',
                     is_verified: false,
-                    salary: item.salary
+                    salary: item.salary,
+                    available_options: getAvailableStatusOptions(item.feature_status, 'absent')
                 }));
 
                 setAttendanceData(presentStaff);
@@ -355,11 +423,11 @@ const ManageAttendance = () => {
     const verifyAttendance = async () => {
         if (!selectedAttendance) return;
 
-        setVerifyLoading(prev => ({ ...prev, [selectedAttendance.attendence_id]: true }));
+        setVerifyLoading(prev => ({ ...prev, [selectedAttendance.attendance_id]: true }));
         
         try {
             const payload = {
-                attendance_id: selectedAttendance.attendence_id,
+                attendance_id: selectedAttendance.attendance_id,
                 verify_status: verifyForm.verify_status,
                 admin_remarks: verifyForm.admin_remarks || `Verified as ${verifyForm.verify_status}`
             };
@@ -403,7 +471,7 @@ const ManageAttendance = () => {
             console.error('Error verifying attendance:', error);
             toast.error('Failed to verify attendance');
         } finally {
-            setVerifyLoading(prev => ({ ...prev, [selectedAttendance.attendence_id]: false }));
+            setVerifyLoading(prev => ({ ...prev, [selectedAttendance.attendance_id]: false }));
         }
     };
 
@@ -425,7 +493,7 @@ const ManageAttendance = () => {
     // Open Bulk Verify Modal
     const openBulkVerifyModal = () => {
         const selectedStaffList = [...attendanceData, ...absentStaff].filter(
-            staff => selectedStaff.has(staff.attendence_id)
+            staff => selectedStaff.has(staff.attendance_id)
         );
         
         if (selectedStaffList.length === 0) {
@@ -448,14 +516,14 @@ const ManageAttendance = () => {
                 const outTotal = parseInt(outHour) * 60 + parseInt(outMin);
                 totalMinutes = outTotal - inTotal;
                 
-                const standardMinutes = 480;
+                const standardMinutes = (staff.duty_time?.expected_hours || 8) * 60;
                 const difference = totalMinutes - standardMinutes;
                 
-                if (difference > 0) {
+                if (difference > 0 && staff.feature_status?.overtime?.enabled) {
                     actualStatus = 'bonus';
                     extraMinutes = difference;
                     lessMinutes = 0;
-                } else if (difference < 0) {
+                } else if (difference < 0 && staff.feature_status?.fine?.enabled) {
                     actualStatus = 'fine';
                     extraMinutes = 0;
                     lessMinutes = Math.abs(difference);
@@ -470,18 +538,20 @@ const ManageAttendance = () => {
             }
             
             return {
-                attendance_id: staff.attendence_id,
+                attendance_id: staff.attendance_id,
                 username: staff.username,
                 name: staff.name,
                 designation: staff.designation,
                 in_time: staff.in_time,
                 out_time: staff.out_time,
+                duty_time: staff.duty_time,
                 actual_status: actualStatus,
                 total_minutes: totalMinutes,
                 total_hours: (totalMinutes / 60).toFixed(2),
                 extra_minutes: extraMinutes,
                 less_minutes: lessMinutes,
-                current_status: staff.status?.code || 'pending'
+                current_status: staff.status?.code || 'pending',
+                feature_status: staff.feature_status
             };
         });
         
@@ -572,7 +642,7 @@ const ManageAttendance = () => {
         if (selectedStaff.size === allStaff.length) {
             setSelectedStaff(new Set());
         } else {
-            const allIds = allStaff.map(staff => staff.attendence_id);
+            const allIds = allStaff.map(staff => staff.attendance_id);
             setSelectedStaff(new Set(allIds));
         }
     };
@@ -902,7 +972,7 @@ const ManageAttendance = () => {
                                             STAFF MEMBER
                                         </th>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                            CONTACT & DEPARTMENT
+                                            CONTACT & DESIGNATION
                                         </th>
                                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                             DUTY TIME
@@ -949,8 +1019,8 @@ const ManageAttendance = () => {
                                     ) : (
                                         filteredData.map((staff) => (
                                             <tr
-                                                key={staff.attendence_id}
-                                                className={`transition-all duration-150 ${selectedStaff.has(staff.attendence_id) 
+                                                key={staff.attendance_id}
+                                                className={`transition-all duration-150 ${selectedStaff.has(staff.attendance_id) 
                                                     ? 'bg-gradient-to-r from-blue-50 to-blue-25' 
                                                     : 'hover:bg-blue-50/20'
                                                 }`}
@@ -980,31 +1050,56 @@ const ManageAttendance = () => {
                                                             <FiPhone className="w-3 h-3 text-blue-500" />
                                                             {staff.mobile}
                                                         </div>
-                                                        <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded inline-block">
-                                                            {staff.department || 'General'}
+                                                        {staff.email && (
+                                                            <div className="flex items-center gap-2 text-gray-500 text-xs">
+                                                                <FiMail className="w-3 h-3" />
+                                                                {staff.email}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+
+                                                <td className="px-6 py-4 align-middle">
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                                            <FiClock className="w-4 h-4 text-blue-500" />
+                                                            {staff.duty_time?.schedule || '09:00 to 18:00'}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            Expected: {staff.duty_time?.expected_hours || 8} hours
                                                         </div>
                                                     </div>
                                                 </td>
 
                                                 <td className="px-6 py-4 align-middle">
-                                                    <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                                                        <FiClock className="w-4 h-4 text-blue-500" />
-                                                        {staff.duty_time}
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className={`inline-flex items-center gap-2 ${getStatusBadge(staff.status)}`}>
+                                                            {getStatusIcon(staff.status)}
+                                                            <span className="text-xs font-semibold">
+                                                                {getStatusDisplay(staff.status)}
+                                                            </span>
+                                                        </span>
+                                                        {staff.status?.is_verified && (
+                                                            <span className="text-xs text-green-600">
+                                                                ✓ Verified
+                                                            </span>
+                                                        )}
+                                                        {/* Show OT/Fine status badges */}
+                                                        {staff.feature_status && (
+                                                            <div className="flex gap-1 mt-1">
+                                                                {!staff.feature_status.overtime?.enabled && (
+                                                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                                                                        OT Disabled
+                                                                    </span>
+                                                                )}
+                                                                {!staff.feature_status.fine?.enabled && (
+                                                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                                                                        Fine Disabled
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </td>
-
-                                                <td className="px-6 py-4 align-middle">
-                                                    <span className={`inline-flex items-center gap-2 ${getStatusBadge(staff.status)}`}>
-                                                        {getStatusIcon(staff.status)}
-                                                        <span className="text-xs font-semibold">
-                                                            {getStatusDisplay(staff.status)}
-                                                        </span>
-                                                    </span>
-                                                    {staff.status?.is_verified && (
-                                                        <span className="ml-2 text-xs text-green-600">
-                                                            ✓ Verified
-                                                        </span>
-                                                    )}
                                                 </td>
 
                                                 <td className="px-6 py-4 align-middle">
@@ -1014,21 +1109,31 @@ const ManageAttendance = () => {
                                                                 <span className="text-xs font-medium text-green-700">
                                                                     In: {formatTimeDisplay(staff.in_time)}
                                                                 </span>
+                                                                {staff.punch_in_status && (
+                                                                    <span className={`text-xs ${staff.punch_in_status.is_late ? 'text-red-500' : staff.punch_in_status.is_early ? 'text-orange-500' : 'text-green-500'}`}>
+                                                                        ({staff.punch_in_status.formatted})
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-xs font-medium text-blue-700">
                                                                     Out: {formatTimeDisplay(staff.out_time)}
                                                                 </span>
+                                                                {staff.punch_out_status && (
+                                                                    <span className={`text-xs ${staff.punch_out_status.is_early ? 'text-red-500' : staff.punch_out_status.is_late ? 'text-purple-500' : 'text-green-500'}`}>
+                                                                        ({staff.punch_out_status.formatted})
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             {staff.working_hours && (
                                                                 <div className="text-xs text-gray-500">
                                                                     Worked: {staff.working_hours.formatted}
-                                                                    {staff.working_hours.extra_minutes > 0 && (
+                                                                    {staff.working_hours.extra_minutes > 0 && staff.feature_status?.overtime?.enabled && (
                                                                         <span className="text-green-600 ml-1">
                                                                             (+{Math.floor(staff.working_hours.extra_minutes/60)}h extra)
                                                                         </span>
                                                                     )}
-                                                                    {staff.working_hours.less_minutes > 0 && (
+                                                                    {staff.working_hours.less_minutes > 0 && staff.feature_status?.fine?.enabled && (
                                                                         <span className="text-orange-600 ml-1">
                                                                             (-{Math.floor(staff.working_hours.less_minutes/60)}h less)
                                                                         </span>
@@ -1048,7 +1153,7 @@ const ManageAttendance = () => {
                                                         {staff.status?.code !== 'absent' && (
                                                             <button
                                                                 onClick={() => openVerifyModal(staff)}
-                                                                disabled={verifyLoading[staff.attendence_id]}
+                                                                disabled={verifyLoading[staff.attendance_id]}
                                                                 className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-200 hover:from-blue-200 hover:to-blue-100 transition-all duration-200 hover:scale-105 disabled:opacity-50 shadow-sm flex items-center gap-1"
                                                                 title="Verify Attendance"
                                                             >
@@ -1070,11 +1175,11 @@ const ManageAttendance = () => {
                                                 <td className="px-6 py-4 align-middle">
                                                     <div className="flex items-center justify-center">
                                                         <div 
-                                                            onClick={() => toggleStaffSelection(staff.attendence_id)}
-                                                            className={`relative inline-flex items-center h-5 rounded-full w-9 cursor-pointer transition-all duration-200 ${selectedStaff.has(staff.attendence_id) ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gray-200 hover:bg-gray-300'}`}
+                                                            onClick={() => toggleStaffSelection(staff.attendance_id)}
+                                                            className={`relative inline-flex items-center h-5 rounded-full w-9 cursor-pointer transition-all duration-200 ${selectedStaff.has(staff.attendance_id) ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gray-200 hover:bg-gray-300'}`}
                                                         >
                                                             <div 
-                                                                className={`inline-block w-3 h-3 transform bg-white rounded-full transition-all duration-200 ${selectedStaff.has(staff.attendence_id) ? 'translate-x-5' : 'translate-x-1'}`}
+                                                                className={`inline-block w-3 h-3 transform bg-white rounded-full transition-all duration-200 ${selectedStaff.has(staff.attendance_id) ? 'translate-x-5' : 'translate-x-1'}`}
                                                             />
                                                         </div>
                                                     </div>
@@ -1117,7 +1222,194 @@ const ManageAttendance = () => {
                 </div>
             </div>
 
-            {/* Bulk Verify Modal */}
+            {/* Individual Verification Modal with Conditional OT/Fine Options */}
+            <AnimatePresence>
+                {showVerifyModal && selectedAttendance && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                        onClick={() => setShowVerifyModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4">
+                                    Verify Attendance
+                                </h3>
+                                
+                                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                                    <p className="text-sm font-medium text-gray-700">{selectedAttendance.name}</p>
+                                    <p className="text-xs text-gray-500">{selectedAttendance.designation}</p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Duty Time: {selectedAttendance.duty_time?.schedule || '09:00 to 18:00'}
+                                    </p>
+                                </div>
+
+                                {selectedAttendance.in_time !== '00:00' && (
+                                    <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                        <h4 className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-1">
+                                            <FiClock className="w-3 h-3" />
+                                            CURRENT PUNCH TIMES
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <p className="text-xs text-blue-600">Punch In</p>
+                                                <p className="text-sm font-medium text-blue-900">
+                                                    {formatDateTime(selectedAttendance.in_datetime) || formatTimeDisplay(selectedAttendance.in_time)}
+                                                </p>
+                                                {selectedAttendance.punch_in_status && (
+                                                    <p className="text-xs text-orange-600 mt-1">
+                                                        {selectedAttendance.punch_in_status.formatted}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-blue-600">Punch Out</p>
+                                                <p className="text-sm font-medium text-blue-900">
+                                                    {selectedAttendance.out_time !== '00:00' 
+                                                        ? (formatDateTime(selectedAttendance.out_datetime) || formatTimeDisplay(selectedAttendance.out_time))
+                                                        : 'Not Marked'}
+                                                </p>
+                                                {selectedAttendance.punch_out_status && (
+                                                    <p className="text-xs text-orange-600 mt-1">
+                                                        {selectedAttendance.punch_out_status.formatted}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {selectedAttendance.working_hours && (
+                                            <div className="mt-2 pt-2 border-t border-blue-200">
+                                                <p className="text-xs text-blue-600">Total Working Hours</p>
+                                                <p className="text-sm font-medium text-blue-900">
+                                                    {selectedAttendance.working_hours.formatted}
+                                                    {selectedAttendance.working_hours.extra_minutes > 0 && selectedAttendance.feature_status?.overtime?.enabled && (
+                                                        <span className="text-green-600 ml-2 text-xs">
+                                                            (+{Math.floor(selectedAttendance.working_hours.extra_minutes/60)}h {selectedAttendance.working_hours.extra_minutes % 60}m extra)
+                                                        </span>
+                                                    )}
+                                                    {selectedAttendance.working_hours.less_minutes > 0 && selectedAttendance.feature_status?.fine?.enabled && (
+                                                        <span className="text-orange-600 ml-2 text-xs">
+                                                            (-{Math.floor(selectedAttendance.working_hours.less_minutes/60)}h {selectedAttendance.working_hours.less_minutes % 60}m less)
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Verification Status
+                                        </label>
+                                        <div className="space-y-2">
+                                            {selectedAttendance.available_options?.map((option) => (
+                                                <label
+                                                    key={option.value}
+                                                    className={`flex items-center p-3 rounded-lg border transition-all cursor-pointer ${
+                                                        verifyForm.verify_status === option.value
+                                                            ? 'border-blue-500 bg-blue-50'
+                                                            : 'border-gray-200 hover:border-gray-300'
+                                                    } ${!option.enabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="verify_status"
+                                                        value={option.value}
+                                                        checked={verifyForm.verify_status === option.value}
+                                                        onChange={(e) => {
+                                                            if (option.enabled) {
+                                                                setVerifyForm({...verifyForm, verify_status: e.target.value});
+                                                                if (option.value === 'bonus' && selectedAttendance.working_hours?.extra_minutes === 0) {
+                                                                    toast('No extra hours detected. Please verify working hours.', {
+                                                                        icon: '⚠️'
+                                                                    });
+                                                                }
+                                                                if (option.value === 'fine' && selectedAttendance.working_hours?.less_minutes === 0) {
+                                                                    toast('No less hours detected. Please verify working hours.', {
+                                                                        icon: '⚠️'
+                                                                    });
+                                                                }
+                                                            }
+                                                        }}
+                                                        disabled={!option.enabled}
+                                                        className="mr-3"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <span className={`font-medium ${verifyForm.verify_status === option.value ? 'text-blue-700' : 'text-gray-700'}`}>
+                                                            {option.label}
+                                                        </span>
+                                                        {!option.enabled && option.disabled_reason && (
+                                                            <p className="text-xs text-gray-400 mt-1">
+                                                                {option.disabled_reason}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    {option.value === 'bonus' && (
+                                                        <FiAward className={`w-4 h-4 ${verifyForm.verify_status === option.value ? 'text-purple-500' : 'text-gray-300'}`} />
+                                                    )}
+                                                    {option.value === 'fine' && (
+                                                        <FiMinusCircle className={`w-4 h-4 ${verifyForm.verify_status === option.value ? 'text-orange-500' : 'text-gray-300'}`} />
+                                                    )}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Admin Remarks
+                                        </label>
+                                        <textarea
+                                            value={verifyForm.admin_remarks}
+                                            onChange={(e) => setVerifyForm({...verifyForm, admin_remarks: e.target.value})}
+                                            rows="3"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                            placeholder="Enter verification remarks..."
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button
+                                        onClick={() => setShowVerifyModal(false)}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={verifyAttendance}
+                                        disabled={verifyLoading[selectedAttendance.attendance_id]}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {verifyLoading[selectedAttendance.attendance_id] ? (
+                                            <>
+                                                <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                                Verifying...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FiCheck className="w-4 h-4" />
+                                                Verify
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Bulk Verify Modal with Conditional OT/Fine Options */}
             <AnimatePresence>
                 {showBulkVerifyModal && (
                     <motion.div
@@ -1139,7 +1431,7 @@ const ManageAttendance = () => {
                                     <div>
                                         <h3 className="text-xl font-bold">Bulk Verify Attendance</h3>
                                         <p className="text-indigo-100 text-sm mt-1">
-                                            Based on actual punch times
+                                            Based on actual punch times and salary settings
                                         </p>
                                     </div>
                                     <button
@@ -1168,11 +1460,17 @@ const ManageAttendance = () => {
                                         <p className="text-lg font-bold text-purple-700">
                                             {bulkVerifyData.filter(d => d.actual_status === 'bonus').length}
                                         </p>
+                                        <p className="text-xs text-purple-500 mt-1">
+                                            (Only for OT enabled staff)
+                                        </p>
                                     </div>
                                     <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
                                         <p className="text-xs text-orange-600">Will be Fine</p>
                                         <p className="text-lg font-bold text-orange-700">
                                             {bulkVerifyData.filter(d => d.actual_status === 'fine').length}
+                                        </p>
+                                        <p className="text-xs text-orange-500 mt-1">
+                                            (Only for Fine enabled staff)
                                         </p>
                                     </div>
                                 </div>
@@ -1191,11 +1489,15 @@ const ManageAttendance = () => {
                                         <option value="half_day">Half Day</option>
                                         <option value="absent">Absent</option>
                                         <option value="paid_leave">Paid Leave</option>
-                                        <option value="bonus">Bonus (Extra Hours)</option>
-                                        <option value="fine">Fine (Less Hours)</option>
+                                        {bulkVerifyData.some(d => d.feature_status?.overtime?.enabled) && (
+                                            <option value="bonus">Bonus (Extra Hours)</option>
+                                        )}
+                                        {bulkVerifyData.some(d => d.feature_status?.fine?.enabled) && (
+                                            <option value="fine">Fine (Less Hours)</option>
+                                        )}
                                     </select>
                                     <p className="text-xs text-gray-500 mt-2">
-                                        * If not selected, status will be auto-calculated based on actual punch times
+                                        * If not selected, status will be auto-calculated based on actual punch times and salary settings
                                     </p>
                                 </div>
 
@@ -1222,11 +1524,12 @@ const ManageAttendance = () => {
                                             <thead className="bg-gray-50 sticky top-0">
                                                 <tr className="border-b border-gray-200">
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Staff</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Duty Time</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Punch In</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Punch Out</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Total Hours</th>
                                                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Actual Status</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Extra/Less</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Features</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
@@ -1237,6 +1540,9 @@ const ManageAttendance = () => {
                                                                 <p className="font-medium text-gray-900">{staff.name}</p>
                                                                 <p className="text-xs text-gray-500">{staff.designation}</p>
                                                             </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-700">
+                                                            {staff.duty_time?.schedule || '09:00 to 18:00'}
                                                         </td>
                                                         <td className="px-4 py-3 text-sm text-gray-700">
                                                             {staff.in_time !== '00:00' ? formatTimeDisplay(staff.in_time) : 'Not Marked'}
@@ -1263,19 +1569,18 @@ const ManageAttendance = () => {
                                                             </span>
                                                         </td>
                                                         <td className="px-4 py-3">
-                                                            {staff.extra_minutes > 0 && (
-                                                                <span className="text-green-600 text-xs">
-                                                                    +{Math.floor(staff.extra_minutes / 60)}h {staff.extra_minutes % 60}m
-                                                                </span>
-                                                            )}
-                                                            {staff.less_minutes > 0 && (
-                                                                <span className="text-orange-600 text-xs">
-                                                                    -{Math.floor(staff.less_minutes / 60)}h {staff.less_minutes % 60}m
-                                                                </span>
-                                                            )}
-                                                            {staff.extra_minutes === 0 && staff.less_minutes === 0 && staff.total_minutes > 0 && (
-                                                                <span className="text-green-600 text-xs">On Time</span>
-                                                            )}
+                                                            <div className="flex gap-1">
+                                                                {staff.feature_status?.overtime?.enabled ? (
+                                                                    <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">OT ✓</span>
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">OT ✗</span>
+                                                                )}
+                                                                {staff.feature_status?.fine?.enabled ? (
+                                                                    <span className="text-xs text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">Fine ✓</span>
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">Fine ✗</span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -1315,159 +1620,6 @@ const ManageAttendance = () => {
                 )}
             </AnimatePresence>
 
-            {/* Individual Verification Modal */}
-            <AnimatePresence>
-                {showVerifyModal && selectedAttendance && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-                        onClick={() => setShowVerifyModal(false)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">
-                                    Verify Attendance
-                                </h3>
-                                
-                                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                                    <p className="text-sm font-medium text-gray-700">{selectedAttendance.name}</p>
-                                    <p className="text-xs text-gray-500">{selectedAttendance.designation}</p>
-                                </div>
-
-                                {selectedAttendance.in_time !== '00:00' && (
-                                    <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                        <h4 className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-1">
-                                            <FiClock className="w-3 h-3" />
-                                            CURRENT PUNCH TIMES
-                                        </h4>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <p className="text-xs text-blue-600">Punch In</p>
-                                                <p className="text-sm font-medium text-blue-900">
-                                                    {formatDateTime(selectedAttendance.in_datetime) || formatTimeDisplay(selectedAttendance.in_time)}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-blue-600">Punch Out</p>
-                                                <p className="text-sm font-medium text-blue-900">
-                                                    {selectedAttendance.out_time !== '00:00' 
-                                                        ? (formatDateTime(selectedAttendance.out_datetime) || formatTimeDisplay(selectedAttendance.out_time))
-                                                        : 'Not Marked'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {selectedAttendance.working_hours && (
-                                            <div className="mt-2 pt-2 border-t border-blue-200">
-                                                <p className="text-xs text-blue-600">Total Working Hours</p>
-                                                <p className="text-sm font-medium text-blue-900">
-                                                    {selectedAttendance.working_hours.formatted}
-                                                    {selectedAttendance.working_hours.extra_minutes > 0 && (
-                                                        <span className="text-green-600 ml-2 text-xs">
-                                                            (+{Math.floor(selectedAttendance.working_hours.extra_minutes/60)}h {selectedAttendance.working_hours.extra_minutes % 60}m extra)
-                                                        </span>
-                                                    )}
-                                                    {selectedAttendance.working_hours.less_minutes > 0 && (
-                                                        <span className="text-orange-600 ml-2 text-xs">
-                                                            (-{Math.floor(selectedAttendance.working_hours.less_minutes/60)}h {selectedAttendance.working_hours.less_minutes % 60}m less)
-                                                        </span>
-                                                    )}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Verification Status
-                                        </label>
-                                        <select
-                                            value={verifyForm.verify_status}
-                                            onChange={(e) => {
-                                                const newStatus = e.target.value;
-                                                setVerifyForm({...verifyForm, verify_status: newStatus});
-                                                
-                                                if (selectedAttendance.working_hours) {
-                                                    if (newStatus === 'bonus' && selectedAttendance.working_hours.extra_minutes === 0) {
-                                                        toast('No extra hours detected. Please verify working hours.', {
-                                                            icon: '⚠️',
-                                                            style: { background: '#FEF3C7', color: '#92400E' }
-                                                        });
-                                                    }
-                                                    if (newStatus === 'fine' && selectedAttendance.working_hours.less_minutes === 0) {
-                                                        toast('No less hours detected. Please verify working hours.', {
-                                                            icon: '⚠️',
-                                                            style: { background: '#FEF3C7', color: '#92400E' }
-                                                        });
-                                                    }
-                                                }
-                                            }}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                                        >
-                                            <option value="present">Present</option>
-                                            <option value="half_day">Half Day</option>
-                                            <option value="absent">Absent</option>
-                                            <option value="paid_leave">Paid Leave</option>
-                                            <option value="bonus">Bonus (Extra Hours)</option>
-                                            <option value="fine">Fine (Less Hours)</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Admin Remarks
-                                        </label>
-                                        <textarea
-                                            value={verifyForm.admin_remarks}
-                                            onChange={(e) => setVerifyForm({...verifyForm, admin_remarks: e.target.value})}
-                                            rows="3"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                                            placeholder="Enter verification remarks..."
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end gap-3 mt-6">
-                                    <button
-                                        onClick={() => setShowVerifyModal(false)}
-                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={verifyAttendance}
-                                        disabled={verifyLoading[selectedAttendance.attendence_id]}
-                                        className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors disabled:opacity-50 flex items-center gap-2"
-                                    >
-                                        {verifyLoading[selectedAttendance.attendence_id] ? (
-                                            <>
-                                                <FiRefreshCw className="w-4 h-4 animate-spin" />
-                                                Verifying...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <FiCheck className="w-4 h-4" />
-                                                Verify
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Salary Calculation Modal - Fixed with proper fine and bonus calculations */}
             <AnimatePresence>
                 {showSalaryModal && salaryData && (
                     <motion.div
