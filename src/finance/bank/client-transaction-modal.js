@@ -227,10 +227,10 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
         
         const payload = {
             amount: parseFloat(amount),
-            party1_id: selectedBank.bank_id,
-            party2_id: clientUsername, // Using the client username from params
-            party1_type: "bank",
-            party2_type: "client",
+            party1_id: clientUsername, // Client username as party1_id
+            party1_type: "client",     // party1_type is client
+            party2_id: selectedBank.bank_id, // Bank ID as party2_id
+            party2_type: "bank",       // party2_type is bank
             remark: description || `Payment received from ${clientName}`,
             transaction_date: date
         };
@@ -402,17 +402,34 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
     );
 };
 
-// Payment Modal - API Integrated with Bank Search (No Client Search)
+// Payment Modal - API Integrated with Bank Search
 export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency, summary, clientUsername, clientName }) => {
     const [loading, setLoading] = useState(false);
     const [selectedBank, setSelectedBank] = useState(bankDetails);
     const [showBankSearch, setShowBankSearch] = useState(false);
 
+    // Initialize selectedBank when bankDetails is available
+    useEffect(() => {
+        if (bankDetails && bankDetails.bank_id) {
+            setSelectedBank(bankDetails);
+        }
+    }, [bankDetails]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         
+        console.log('PaymentModal - Form submitted');
+        console.log('Selected bank:', selectedBank);
+        console.log('Client username:', clientUsername);
+        console.log('Client name:', clientName);
+        
         if (!selectedBank) {
             toast.error('Please select a bank');
+            return;
+        }
+
+        if (!clientUsername) {
+            toast.error('Client information not available');
             return;
         }
 
@@ -421,6 +438,8 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
         const date = formData.get('date');
         const description = formData.get('description');
         const paymentMode = formData.get('payment_mode');
+
+        console.log('Form values:', { amount, date, description, paymentMode });
 
         if (!amount || parseFloat(amount) <= 0) {
             toast.error('Please enter a valid amount');
@@ -437,13 +456,15 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
         
         const payload = {
             amount: parseFloat(amount),
-            party1_id: selectedBank.bank_id,
-            party2_id: clientUsername, // Using the client username from params
-            party1_type: "bank",
-            party2_type: "client",
+            party1_id: selectedBank.bank_id,  // Bank ID as party1_id
+            party1_type: "bank",              // party1_type is bank
+            party2_id: clientUsername,        // Client username as party2_id
+            party2_type: "client",            // party2_type is client
             remark: description || `Payment made to ${clientName} via ${paymentMode}`,
             transaction_date: date
         };
+
+        console.log('Payment payload:', JSON.stringify(payload, null, 2));
 
         try {
             const response = await axios.post(
@@ -452,17 +473,26 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                 { headers: getHeaders() }
             );
 
+            console.log('Payment response:', response.data);
+
             if (response.data.success) {
                 toast.success(response.data.message || 'Payment made successfully');
-                onSubmit('PAYMENT', response.data.data);
+                if (onSubmit) {
+                    onSubmit('PAYMENT', response.data.data);
+                }
                 onClose();
                 // Reset form
                 setSelectedBank(bankDetails);
                 setShowBankSearch(false);
+                e.target.reset();
+            } else {
+                toast.error(response.data.message || 'Payment failed');
             }
         } catch (error) {
             console.error('Error creating payment transaction:', error);
-            toast.error(error.response?.data?.message || 'Failed to create payment transaction');
+            console.error('Error response:', error.response?.data);
+            const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to create payment transaction';
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -593,6 +623,18 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                             <span className="font-medium">From Bank:</span>
                             <span className="text-red-600">{selectedBank?.bank || 'Not selected'}</span>
                         </div>
+                        <div className="flex items-center justify-between text-sm mt-1">
+                            <span className="font-medium">Bank ID:</span>
+                            <span className="text-gray-600">{selectedBank?.bank_id || 'Not selected'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm mt-1">
+                            <span className="font-medium">Client Username:</span>
+                            <span className="text-gray-600">{clientUsername}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm mt-1">
+                            <span className="font-medium">Available Balance:</span>
+                            <span className="text-green-600">₹{formatCurrency(selectedBank?.balance || 0)}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -628,7 +670,6 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
         </BaseModal>
     );
 };
-
 // Sale Modal - UI Only with Bank Search
 export const SaleModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency, clientUsername, clientName }) => {
     const [items, setItems] = useState([{ id: 1, service: '', description: '', price: 0 }]);
@@ -1477,3 +1518,5 @@ export const TransactionModalManager = ({
             return null;
     }
 };
+
+export default TransactionModalManager ;

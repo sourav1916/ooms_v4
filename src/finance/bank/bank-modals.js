@@ -107,8 +107,17 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
     const handleSubmit = async (e) => {
         e.preventDefault();
         
+        console.log('=== RECEIVE MODAL - FORM SUBMITTED ===');
+        
         if (!selectedFirm) {
+            console.error('Validation failed: No client selected');
             toast.error('Please select a client');
+            return;
+        }
+
+        if (!bankId) {
+            console.error('Validation failed: No bank selected');
+            toast.error('Bank information not available');
             return;
         }
 
@@ -117,22 +126,33 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
         const date = formData.get('date');
         const description = formData.get('description');
 
+        console.log('Form values:', { amount, date, description });
+        console.log('Selected client:', selectedFirm);
+        console.log('Bank ID:', bankId);
+        console.log('Bank details:', bankDetails);
+
         if (!amount || parseFloat(amount) <= 0) {
+            console.error('Validation failed: Invalid amount', amount);
             toast.error('Please enter a valid amount');
             return;
         }
 
         setLoading(true);
         
+        // CORRECTED: For RECEIVE API - Client is party1, Bank is party2
+        // This means the client is giving money (sending) and bank is receiving it
         const payload = {
             amount: parseFloat(amount),
-            party1_id: bankId,
-            party2_id: selectedFirm.client?.username,
-            party1_type: "bank",
-            party2_type: "client",
+            party1_id: selectedFirm.client?.username,  // Client username as party1_id
+            party1_type: "client",                    // party1_type is client
+            party2_id: bankId,                        // Bank ID as party2_id
+            party2_type: "bank",                      // party2_type is bank
             remark: description || `Payment received from ${selectedFirm.client?.name}`,
             transaction_date: date
         };
+
+        console.log('Receive payment payload:', JSON.stringify(payload, null, 2));
+        console.log('API Endpoint:', `${API_BASE_URL}/transaction/payment/receive`);
 
         try {
             const response = await axios.post(
@@ -141,18 +161,63 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                 { headers: getHeaders() }
             );
 
+            console.log('Receive payment response status:', response.status);
+            console.log('Receive payment response data:', response.data);
+
             if (response.data.success) {
+                console.log('Receive payment successful:', response.data.message);
                 toast.success(response.data.message || 'Payment received successfully');
-                onSubmit('RECEIVE', response.data.data);
+                if (onSubmit) {
+                    onSubmit('RECEIVE', response.data.data);
+                }
                 onClose();
                 // Reset form
                 setSearchTerm('');
                 setSelectedFirm(null);
                 setFirms([]);
+            } else {
+                console.error('Receive payment failed:', response.data);
+                toast.error(response.data.message || 'Payment receive failed');
             }
         } catch (error) {
-            console.error('Error creating receive transaction:', error);
-            toast.error(error.response?.data?.message || 'Failed to create receive transaction');
+            console.error('=== ERROR IN RECEIVE PAYMENT ===');
+            console.error('Error object:', error);
+            console.error('Error message:', error.message);
+            
+            if (error.response) {
+                console.error('Error response status:', error.response.status);
+                console.error('Error response status text:', error.response.statusText);
+                console.error('Error response data:', error.response.data);
+                
+                if (error.response.data) {
+                    console.error('Error details:', {
+                        message: error.response.data.message,
+                        error: error.response.data.error,
+                        ...error.response.data
+                    });
+                    
+                    // Check for party_id specific errors
+                    if (error.response.data.message && error.response.data.message.includes('party_id')) {
+                        console.error('Party ID validation failed:', {
+                            party1_id: payload.party1_id,
+                            party1_type: payload.party1_type,
+                            party2_id: payload.party2_id,
+                            party2_type: payload.party2_type
+                        });
+                    }
+                }
+                
+                const errorMessage = error.response?.data?.message || 
+                                    error.response?.data?.error || 
+                                    `Server error: ${error.response.status} ${error.response.statusText}`;
+                toast.error(errorMessage);
+            } else if (error.request) {
+                console.error('No response received from server');
+                toast.error('No response from server. Please check your network connection.');
+            } else {
+                console.error('Error setting up request:', error.message);
+                toast.error(`Request error: ${error.message}`);
+            }
         } finally {
             setLoading(false);
         }
@@ -168,16 +233,12 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                             <p className="text-sm font-bold text-slate-700">{bankDetails?.bank || 'Current Bank'}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-blue-600 font-medium">Credit</p>
-                            <p className="text-sm font-bold text-green-600">₹{formatCurrency(summary?.totalCredit || 0)}</p>
+                            <p className="text-xs text-blue-600 font-medium">Bank Balance</p>
+                            <p className="text-lg font-bold text-blue-700">₹{formatCurrency(bankDetails?.balance || 0)}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-blue-600 font-medium">Debit</p>
-                            <p className="text-sm font-bold text-red-600">₹{formatCurrency(summary?.totalDebit || 0)}</p>
-                        </div>
-                        <div className="col-span-3 mt-2 pt-2 border-t border-blue-200">
-                            <p className="text-xs text-blue-600 font-medium">Current Balance</p>
-                            <p className="text-lg font-bold text-blue-700">₹{formatCurrency(bankDetails?.balance || 0)}</p>
+                            <p className="text-xs text-blue-600 font-medium">Bank ID</p>
+                            <p className="text-xs font-mono text-slate-600">{bankId || 'N/A'}</p>
                         </div>
                     </div>
                 </div>
@@ -229,6 +290,7 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                                         key={firm.firm_id}
                                         type="button"
                                         onClick={() => {
+                                            console.log('Selected firm:', firm);
                                             setSelectedFirm(firm);
                                             setSearchTerm(firm.firm_name);
                                             setShowDropdown(false);
@@ -249,14 +311,14 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                                             </span>
                                         </div>
                                         <div className="text-xs text-slate-400 mt-1">
-                                            PAN: {firm.client?.pan_number || firm.pan_no || 'N/A'}
+                                            Username: {firm.client?.username || 'N/A'} | PAN: {firm.client?.pan_number || firm.pan_no || 'N/A'}
                                         </div>
                                     </button>
                                 ))}
                             </div>
                         )}
 
-                        {/* Selected Client Details Card - Simplified */}
+                        {/* Selected Client Details Card */}
                         {selectedFirm && (
                             <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg">
                                 <div className="flex items-center justify-between mb-2">
@@ -264,10 +326,15 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                                     <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">Active</span>
                                 </div>
                                 
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <p className="text-xs text-blue-600 font-medium mb-1">Client Name</p>
                                         <p className="text-sm font-semibold text-slate-800">{selectedFirm.client?.name}</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <p className="text-xs text-blue-600 font-medium mb-1">Username</p>
+                                        <p className="text-sm font-mono text-slate-700">{selectedFirm.client?.username}</p>
                                     </div>
                                     
                                     <div>
@@ -339,20 +406,20 @@ export const ReceiveModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Select Bank <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            name="bank"
-                            required
-                            disabled
-                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-50"
-                        >
-                            <option value={bankId}>
-                                {bankDetails?.bank || 'Current Bank'} - Balance: ₹{formatCurrency(bankDetails?.balance || 0)}
-                            </option>
-                        </select>
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <p className="text-xs text-slate-600 mb-2">Transaction Flow Summary</p>
+                        <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">From (Client):</span>
+                            <span className="text-blue-600">{selectedFirm?.client?.name || 'Not selected'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm mt-1">
+                            <span className="font-medium">To (Bank):</span>
+                            <span className="text-blue-600">{bankDetails?.bank || 'Not selected'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm mt-1">
+                            <span className="font-medium">Transaction Type:</span>
+                            <span className="text-green-600">Receive Payment</span>
+                        </div>
                     </div>
                 </div>
 

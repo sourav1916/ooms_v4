@@ -81,8 +81,7 @@ const DateRangePicker = ({
     const startDatePickerRef = useRef(null);
     const endDatePickerRef = useRef(null);
 
-    // Quick date filters - Updated with your requirements
-       // Quick date filters - Updated with your requirements
+    // Quick date filters
     const quickDateFilters = [
         { label: 'Current Month', type: 'currentMonth' },
         { label: 'Last 7 Days', type: 'last7Days' },
@@ -91,13 +90,12 @@ const DateRangePicker = ({
         { label: 'Last 6 Months', type: 'last6Months' },
         { label: 'Last Year', type: 'lastYear' },
     ];
+    
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
-            // Check if the click is on the calendar popper
             const isCalendarPopper = event.target.closest('.react-datepicker-popper');
             
-            // Only close if clicking outside both the dropdown and the calendar
             if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !isCalendarPopper) {
                 setIsOpen(false);
                 setShowCustomPicker(false);
@@ -136,34 +134,29 @@ const DateRangePicker = ({
         const year = date.getFullYear();
         return `${day}/${month}/${year}`;
     };
+    
     const handleQuickDateFilter = (filter) => {
         const today = new Date();
         let startDate = new Date();
         let endDate = new Date();
 
         if (filter.type === 'currentMonth') {
-            // First day of current month to today
             startDate = new Date(today.getFullYear(), today.getMonth(), 1);
             endDate = today;
         } else if (filter.type === 'last7Days') {
-            // Last 7 days from today
             startDate.setDate(today.getDate() - 7);
             endDate = today;
         } else if (filter.type === 'lastMonth') {
-            // First day of last month to last day of last month
             const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
             startDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
             endDate = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
         } else if (filter.type === 'last3Months') {
-            // Last 3 months from today
             startDate.setMonth(today.getMonth() - 3);
             endDate = today;
         } else if (filter.type === 'last6Months') {
-            // Last 6 months from today
             startDate.setMonth(today.getMonth() - 6);
             endDate = today;
         } else if (filter.type === 'lastYear') {
-            // Last 12 months from today
             startDate.setMonth(today.getMonth() - 12);
             endDate = today;
         }
@@ -176,6 +169,7 @@ const DateRangePicker = ({
         setIsOpen(false);
         setShowCustomPicker(false);
     };
+    
     const handleApplyDate = () => {
         if (localStartDate && localEndDate) {
             onStartDateChange(localStartDate.toISOString().split('T')[0]);
@@ -569,13 +563,40 @@ const TransactionHistory = () => {
             );
 
             if (response.data.success) {
-                setTransactions(response.data.data || []);
-                setOpeningBalance(response.data.opening_balance || 0);
+                // Map the data to match the expected structure
+                const mappedTransactions = (response.data.data || []).map(transaction => ({
+                    ...transaction,
+                    transaction_date: transaction.transaction_date,
+                    transaction_type: transaction.transaction_type,
+                    // Map payment data
+                    type: transaction.payment?.debit > 0 ? "0" : (transaction.payment?.credit > 0 ? "1" : ""),
+                    amount: transaction.payment?.debit > 0 ? transaction.payment.debit : (transaction.payment?.credit > 0 ? transaction.payment.credit : 0),
+                    old_balance: transaction.payment?.balance ? (transaction.payment.balance - (transaction.payment?.debit > 0 ? transaction.payment.debit : -transaction.payment.credit)) : 0,
+                    new_balance: transaction.payment?.balance || 0,
+                    invoice_no: transaction.invoice_no,
+                    invoice_id: transaction.invoice_id,
+                    create_by: transaction.create_by,
+                    modify_by: transaction.modify_by,
+                    particular: transaction.particular
+                }));
+                
+                setTransactions(mappedTransactions);
+                
+                // Set opening balance from response
+                if (response.data.opening_balance) {
+                    const openingBal = response.data.opening_balance.balance || 0;
+                    setOpeningBalance(openingBal);
+                    setSummary(prev => ({
+                        ...prev,
+                        closingBalance: openingBal
+                    }));
+                }
+                
                 setTotalItems(response.data.meta?.total || 0);
                 setTotalPages(Math.ceil((response.data.meta?.total || 0) / itemsPerPage));
                 
-                // Calculate summary
-                calculateSummary(response.data.data || [], response.data.opening_balance || 0);
+                // Calculate summary from mapped transactions
+                calculateSummary(mappedTransactions, response.data.opening_balance?.balance || 0);
             }
         } catch (error) {
             console.error('Error fetching transactions:', error);
@@ -590,19 +611,22 @@ const TransactionHistory = () => {
 
     // Calculate transaction summary
     const calculateSummary = (transactionsData, openingBal) => {
-        let totalCredit = 0;
-        let totalDebit = 0;
+        let totalCredit = 0; // Money Out (Credit)
+        let totalDebit = 0; // Money In (Debit)
         let closingBalance = openingBal;
 
         transactionsData.forEach(transaction => {
-            // type: "0" means Debit (Money In), "1" means Credit (Money Out)
-            if (transaction.type === "1") {
-                totalCredit += transaction.amount;
-            } else if (transaction.type === "0") {
-                totalDebit += transaction.amount;
+            // From payment object: debit = Money In, credit = Money Out
+            if (transaction.payment?.debit > 0) {
+                totalDebit += transaction.payment.debit;
+            }
+            if (transaction.payment?.credit > 0) {
+                totalCredit += transaction.payment.credit;
             }
             // Update closing balance from last transaction
-            closingBalance = transaction.new_balance;
+            if (transaction.payment?.balance !== undefined) {
+                closingBalance = transaction.payment.balance;
+            }
         });
 
         setSummary({
@@ -689,6 +713,7 @@ const TransactionHistory = () => {
 
     // Format date
     const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleDateString('en-IN', {
             day: '2-digit',
             month: 'short',
@@ -698,32 +723,32 @@ const TransactionHistory = () => {
 
     // Format time
     const formatTime = (dateString) => {
+        if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleTimeString('en-IN', {
             hour: '2-digit',
             minute: '2-digit'
         });
     };
 
-    // Get transaction type color
-    const getTransactionTypeColor = (type) => {
-        // type: "0" = Debit (Money In), "1" = Credit (Money Out)
-        if (type === "0") {
-            return 'text-green-600 bg-green-50 border-green-200'; // Debit (Money In)
-        } else if (type === "1") {
-            return 'text-red-600 bg-red-50 border-red-200'; // Credit (Money Out)
+    // Get transaction type color based on payment object
+    const getTransactionTypeColor = (transaction) => {
+        if (transaction.payment?.debit > 0) {
+            return 'text-green-600 bg-green-50 border-green-200'; // Money In
+        } else if (transaction.payment?.credit > 0) {
+            return 'text-red-600 bg-red-50 border-red-200'; // Money Out
         }
         return 'text-slate-600 bg-slate-50 border-slate-200';
     };
 
     // Get transaction type display name
-    // const getTransactionTypeDisplay = (type) => {
-    //     if (type === "0") {
-    //         return 'Money In';
-    //     } else if (type === "1") {
-    //         return 'Money Out';
-    //     }
-    //     return '';
-    // };
+    const getTransactionTypeDisplay = (transaction) => {
+        if (transaction.payment?.debit > 0) {
+            return 'Money In';
+        } else if (transaction.payment?.credit > 0) {
+            return 'Money Out';
+        }
+        return transaction.transaction_type?.toUpperCase() || 'N/A';
+    };
 
     // Get payment mode icon
     const getPaymentModeIcon = (mode) => {
@@ -763,8 +788,26 @@ const TransactionHistory = () => {
         }
     };
 
-    // Get particulars display
+    // Get particulars display with proper details from API response
     const getParticularsDisplay = (transaction) => {
+        // Check if particular exists with details
+        if (transaction.particular?.details) {
+            const details = transaction.particular.details;
+            return (
+                <div className="flex flex-col">
+                    <div className="font-medium text-slate-800">{details.name || 'N/A'}</div>
+                    <div className="text-xs text-slate-500">{details.email || ''}</div>
+                    {details.mobile && (
+                        <div className="text-xs text-slate-500">+{details.country_code || ''} {details.mobile}</div>
+                    )}
+                    {transaction.particular.remark && (
+                        <div className="text-xs text-slate-400 mt-1 italic">Note: {transaction.particular.remark}</div>
+                    )}
+                </div>
+            );
+        }
+        
+        // Fallback to create_by if particular not available
         if (transaction.create_by) {
             return (
                 <div className="flex flex-col">
@@ -776,6 +819,7 @@ const TransactionHistory = () => {
                 </div>
             );
         }
+        
         return <span className="text-sm text-slate-500">N/A</span>;
     };
 
@@ -1032,21 +1076,21 @@ const TransactionHistory = () => {
                                         <th className="text-right p-4 font-semibold text-slate-600">Credit</th>
                                         <th className="text-right p-4 font-semibold text-slate-600">Balance</th>
                                         <th className="text-center p-4 font-semibold text-slate-600 w-20">Action</th>
-                                    </tr>
+                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {/* Opening Balance Row - Always Show */}
                                     <tr className="bg-blue-50/50 font-medium">
-                                        <td className="p-4 text-slate-600"></td>
+                                        <td className="p-4 text-slate-600"> </td>
                                         <td className="p-4 text-slate-800" colSpan="2">Opening Balance</td>
-                                        <td className="p-4"></td>
-                                        <td className="p-4"></td>
+                                        <td className="p-4"> </td>
+                                        <td className="p-4"> </td>
                                         <td className="p-4 text-right text-slate-400">-</td>
                                         <td className="p-4 text-right text-slate-400">-</td>
                                         <td className={`p-4 text-right font-bold ${openingBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                             ₹{formatCurrency(openingBalance)}
                                         </td>
-                                        <td className="p-4"></td>
+                                        <td className="p-4"> </td>
                                     </tr>
 
                                     {loading || fetchingTransactions ? (
@@ -1064,105 +1108,113 @@ const TransactionHistory = () => {
                                             </td>
                                         </tr>
                                     ) : (
-                                        transactions.map((transaction, index) => (
-                                            <motion.tr
-                                                key={transaction.transaction_id || index}
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                transition={{ delay: index * 0.02 }}
-                                                className="hover:bg-blue-50/30 transition-colors duration-150"
-                                            >
-                                                <td className="p-4 text-slate-600">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                                               <td className="p-3 text-slate-600 text-sm">
-    {formatDate(transaction.transaction_date)}
-</td>
-                                                <td className="p-4">
-                                                    {getParticularsDisplay(transaction)}
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className="flex flex-col">
-                                                        <span className={`px-3 py-1 rounded-lg text-xs font-medium border w-fit ${getTransactionTypeColor(transaction.type)}`}>
-                                                            {transaction.transaction_type?.toUpperCase()}
-                                                        </span>
-                                                        {/* <span className="text-xs text-slate-500 mt-1">
-                                                            {getTransactionTypeDisplay(transaction.type)}
-                                                        </span> */}
-                                                    </div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className="text-sm font-mono text-slate-600">
-                                                        {transaction.invoice_no || 'N/A'}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    {transaction.type === "0" ? (
-                                                        <span className="text-sm font-semibold text-green-600">
-                                                            ₹{formatCurrency(transaction.amount)}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-sm text-slate-400">-</span>
-                                                    )}
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    {transaction.type === "1" ? (
-                                                        <span className="text-sm font-semibold text-red-600">
-                                                            ₹{formatCurrency(transaction.amount)}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-sm text-slate-400">-</span>
-                                                    )}
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    <span className={`text-sm font-bold ${transaction.new_balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                        ₹{formatCurrency(transaction.new_balance)}
-                                                        {transaction.new_balance < 0 && <span className="text-xs ml-1">(OD)</span>}
-                                                    </span>
-                                                    <div className="text-xs text-slate-400">
-                                                        Prev: ₹{formatCurrency(transaction.old_balance)}
-                                                    </div>
-                                                </td>
-                                                <td className="p-4 text-center relative">
-                                                    <button
-                                                        onClick={(e) => handleActionClick(e, transaction.transaction_id)}
-                                                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                                                    >
-                                                        <FiMoreVertical className="w-5 h-5 text-slate-600" />
-                                                    </button>
-                                                    
-                                                    {/* Action Menu */}
-                                                    {showActionMenu === transaction.transaction_id && (
-                                                        <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50">
-                                                            <button
-                                                                onClick={() => handleEdit(transaction)}
-                                                                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 transition-colors"
-                                                            >
-                                                                <FiEdit2 className="w-4 h-4 text-blue-600" />
-                                                                Edit
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleViewInvoice(transaction)}
-                                                                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 transition-colors"
-                                                            >
-                                                                <FiFile className="w-4 h-4 text-green-600" />
-                                                                Invoice
-                                                            </button>
+                                        transactions.map((transaction, index) => {
+                                            const isDebit = transaction.payment?.debit > 0;
+                                            const isCredit = transaction.payment?.credit > 0;
+                                            const amount = isDebit ? transaction.payment.debit : (isCredit ? transaction.payment.credit : 0);
+                                            
+                                            return (
+                                                <motion.tr
+                                                    key={transaction.transaction_id || index}
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    transition={{ delay: index * 0.02 }}
+                                                    className="hover:bg-blue-50/30 transition-colors duration-150"
+                                                >
+                                                    <td className="p-4 text-slate-600">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                                                    <td className="p-3 text-slate-600 text-sm">
+                                                        {formatDate(transaction.transaction_date)}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        {getParticularsDisplay(transaction)}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex flex-col">
+                                                            <span className={`px-3 py-1 rounded-lg text-xs font-medium border w-fit ${getTransactionTypeColor(transaction)}`}>
+                                                                {getTransactionTypeDisplay(transaction)}
+                                                            </span>
+                                                            <span className="text-xs text-slate-500 mt-1 capitalize">
+                                                                {transaction.transaction_type}
+                                                            </span>
                                                         </div>
-                                                    )}
-                                                </td>
-                                            </motion.tr>
-                                        ))
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className="text-sm font-mono text-slate-600">
+                                                            {transaction.invoice_no || 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        {isDebit ? (
+                                                            <span className="text-sm font-semibold text-green-600">
+                                                                ₹{formatCurrency(amount)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-sm text-slate-400">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        {isCredit ? (
+                                                            <span className="text-sm font-semibold text-red-600">
+                                                                ₹{formatCurrency(amount)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-sm text-slate-400">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <span className={`text-sm font-bold ${transaction.payment?.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                            ₹{formatCurrency(transaction.payment?.balance || 0)}
+                                                            {transaction.payment?.balance < 0 && <span className="text-xs ml-1">(OD)</span>}
+                                                        </span>
+                                                        <div className="text-xs text-slate-400">
+                                                            Prev: ₹{formatCurrency(transaction.payment?.balance - (isDebit ? amount : -amount) || 0)}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-center relative">
+                                                        <button
+                                                            onClick={(e) => handleActionClick(e, transaction.transaction_id)}
+                                                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                                                        >
+                                                            <FiMoreVertical className="w-5 h-5 text-slate-600" />
+                                                        </button>
+                                                        
+                                                        {/* Action Menu */}
+                                                        {showActionMenu === transaction.transaction_id && (
+                                                            <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50">
+                                                                <button
+                                                                    onClick={() => handleEdit(transaction)}
+                                                                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 transition-colors"
+                                                                >
+                                                                    <FiEdit2 className="w-4 h-4 text-blue-600" />
+                                                                    Edit
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleViewInvoice(transaction)}
+                                                                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 flex items-center gap-2 transition-colors"
+                                                                >
+                                                                    <FiFile className="w-4 h-4 text-green-600" />
+                                                                    Invoice
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </motion.tr>
+                                            );
+                                        })
                                     )}
 
                                     {/* Total Row - Always Show */}
-                                    <tr className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                                        <td className="p-4 text-slate-800" colSpan="5">Total</td>
-                                        <td className="p-4 text-right text-green-600">₹{formatCurrency(summary.totalDebit)}</td>
-                                        <td className="p-4 text-right text-red-600">₹{formatCurrency(summary.totalCredit)}</td>
-                                        <td className={`p-4 text-right ${summary.closingBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            ₹{formatCurrency(summary.closingBalance)}
-                                        </td>
-                                        <td className="p-4"></td>
-                                    </tr>
+                                    {transactions.length > 0 && (
+                                        <tr className="bg-slate-100 font-bold border-t-2 border-slate-300">
+                                            <td className="p-4 text-slate-800" colSpan="5">Total</td>
+                                            <td className="p-4 text-right text-green-600">₹{formatCurrency(summary.totalDebit)}</td>
+                                            <td className="p-4 text-right text-red-600">₹{formatCurrency(summary.totalCredit)}</td>
+                                            <td className={`p-4 text-right ${summary.closingBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                ₹{formatCurrency(summary.closingBalance)}
+                                            </td>
+                                            <td className="p-4"> </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
