@@ -446,6 +446,51 @@ const BankList = () => {
     // Banks data
     const [banks, setBanks] = useState([]);
 
+    // Fetch banks from API – GET /bank/list
+    const fetchBanks = useCallback(async () => {
+        setFetchLoading(true);
+        setFetchError(null);
+        const headers = getHeaders();
+        if (!headers) {
+            setFetchError('Authentication required');
+            setFetchLoading(false);
+            return;
+        }
+        try {
+            const searchTrimmed = (debouncedSearchTerm || '').trim();
+            const response = await axios.get(`${API_BASE_URL}/transaction/bank/list`, {
+                headers,
+                params: {
+                    page_no: currentPage,
+                    limit,
+                    search: searchTrimmed
+                }
+            });
+
+            if (response.data?.success) {
+                const list = Array.isArray(response.data.data) ? response.data.data : [];
+                const meta = response.data.meta || {};
+                setBanks(list);
+                setTotal(meta.total ?? 0);
+                setCount(meta.count ?? list.length);
+                setIsLastPage(meta.is_last_page ?? true);
+                setFetchError(null);
+                calculateTransactionSummary(list);
+            } else {
+                setFetchError(response.data?.message || 'Failed to fetch bank list');
+                setBanks([]);
+            }
+        } catch (error) {
+            console.error('Error fetching banks:', error);
+            const errMsg = error.response?.data?.message || error.message || 'Failed to fetch bank list';
+            setFetchError(errMsg);
+            toast.error(errMsg);
+            setBanks([]);
+        } finally {
+            setFetchLoading(false);
+        }
+    }, [currentPage, limit, debouncedSearchTerm]);
+
     // Debounce search term – trim and reset to page 1 on change
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -491,51 +536,6 @@ const BankList = () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
-
-    // Fetch banks from API – GET /bank/list
-    const fetchBanks = useCallback(async () => {
-        setFetchLoading(true);
-        setFetchError(null);
-        const headers = getHeaders();
-        if (!headers) {
-            setFetchError('Authentication required');
-            setFetchLoading(false);
-            return;
-        }
-        try {
-            const searchTrimmed = (debouncedSearchTerm || '').trim();
-            const response = await axios.get(`${API_BASE_URL}/bank/list`, {
-                headers,
-                params: {
-                    page_no: currentPage,
-                    limit,
-                    search: searchTrimmed
-                }
-            });
-
-            if (response.data?.success) {
-                const list = Array.isArray(response.data.data) ? response.data.data : [];
-                const meta = response.data.meta || {};
-                setBanks(list);
-                setTotal(meta.total ?? 0);
-                setCount(meta.count ?? list.length);
-                setIsLastPage(meta.is_last_page ?? true);
-                setFetchError(null);
-                calculateTransactionSummary(list);
-            } else {
-                setFetchError(response.data?.message || 'Failed to fetch bank list');
-                setBanks([]);
-            }
-        } catch (error) {
-            console.error('Error fetching banks:', error);
-            const errMsg = error.response?.data?.message || error.message || 'Failed to fetch bank list';
-            setFetchError(errMsg);
-            toast.error(errMsg);
-            setBanks([]);
-        } finally {
-            setFetchLoading(false);
-        }
-    }, [currentPage, limit, debouncedSearchTerm]);
 
     // Calculate transaction summary
     const calculateTransactionSummary = (banksData) => {
