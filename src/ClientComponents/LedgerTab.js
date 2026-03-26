@@ -24,7 +24,8 @@ import {
     FiEye,
     FiMail,
     FiPhone,
-    FiUserCheck
+    FiUserCheck,
+    FiBarChart2
 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -288,6 +289,16 @@ const ClientLedger = () => {
     const [showActionMenu, setShowActionMenu] = useState(null);
     const [selectedBank, setSelectedBank] = useState(null);
     const [detailsTransaction, setDetailsTransaction] = useState(null);
+    const [showOpeningBalanceModal, setShowOpeningBalanceModal] = useState(false);
+    const [openingBalanceData, setOpeningBalanceData] = useState(null);
+    const [openingBalanceLoading, setOpeningBalanceLoading] = useState(false);
+    const [openingBalanceSubmitting, setOpeningBalanceSubmitting] = useState(false);
+    const [openingBalanceForm, setOpeningBalanceForm] = useState({
+        amount: '',
+        type: 'credit',
+        transaction_date: new Date().toISOString().split('T')[0],
+        remark: ''
+    });
 
     // Fetch client profile and ledger transactions
     useEffect(() => {
@@ -418,6 +429,91 @@ const ClientLedger = () => {
         fetchTransactions();
         toast.success('Data refreshed');
     }, []);
+
+    // Fetch opening balance (get-opening-balance API)
+    const fetchOpeningBalance = useCallback(async () => {
+        const partyId = clientProfile?.id ?? username;
+        if (!partyId) return;
+        setOpeningBalanceLoading(true);
+        try {
+            const res = await axios.get(
+                `${API_BASE_URL}/transaction/get-opening-balance?party_type=client&party_id=${encodeURIComponent(partyId)}`,
+                { headers: getHeaders() }
+            );
+            if (res.data.success && res.data.data) {
+                const d = res.data.data;
+                setOpeningBalanceData(d);
+                setOpeningBalanceForm({
+                    amount: String(d.amount || ''),
+                    type: d.type || 'credit',
+                    transaction_date: d.transaction_date ? d.transaction_date.split('T')[0] : new Date().toISOString().split('T')[0],
+                    remark: d.remark || ''
+                });
+            } else {
+                setOpeningBalanceData(null);
+                setOpeningBalanceForm({
+                    amount: '',
+                    type: 'credit',
+                    transaction_date: new Date().toISOString().split('T')[0],
+                    remark: ''
+                });
+            }
+        } catch (err) {
+            console.error('Fetch opening balance error:', err);
+            toast.error(err.response?.data?.message || 'Failed to fetch opening balance');
+            setOpeningBalanceData(null);
+        } finally {
+            setOpeningBalanceLoading(false);
+        }
+    }, [username, clientProfile?.id]);
+
+    // Open opening balance modal
+    const handleOpenOpeningBalanceModal = () => {
+        setShowOpeningBalanceModal(true);
+        fetchOpeningBalance();
+    };
+
+    // Set/Update opening balance (set-opening-balance API)
+    const handleSetOpeningBalance = async (e) => {
+        e.preventDefault();
+        const partyId = clientProfile?.id ?? username;
+        if (!partyId) {
+            toast.error('Client not found');
+            return;
+        }
+        const amt = parseFloat(openingBalanceForm.amount);
+        if (isNaN(amt) || amt <= 0) {
+            toast.error('Please enter a valid amount');
+            return;
+        }
+        setOpeningBalanceSubmitting(true);
+        try {
+            const res = await axios.post(
+                `${API_BASE_URL}/transaction/set-opening-balance`,
+                {
+                    amount: amt,
+                    type: openingBalanceForm.type,
+                    party_type: 'client',
+                    party_id: partyId,
+                    remark: openingBalanceForm.remark.trim() || undefined,
+                    transaction_date: openingBalanceForm.transaction_date
+                },
+                { headers: getHeaders() }
+            );
+            if (res.data.success) {
+                toast.success(res.data.message || 'Opening balance saved successfully');
+                setShowOpeningBalanceModal(false);
+                fetchTransactions();
+            } else {
+                toast.error(res.data.message || 'Failed to set opening balance');
+            }
+        } catch (err) {
+            console.error('Set opening balance error:', err);
+            toast.error(err.response?.data?.message || 'Failed to set opening balance');
+        } finally {
+            setOpeningBalanceSubmitting(false);
+        }
+    };
 
     // Handle export
     const handleExport = useCallback((type) => {
@@ -558,29 +654,53 @@ const ClientLedger = () => {
         }
     };
 
-    // Get particulars display (new API: particular.type + particular.details, fallback to create_by)
+    // Get particulars display (new API: particular.type + particular.details + particular.remark, fallback to transaction_type + remark)
     const getParticularsDisplay = (transaction) => {
         const particular = transaction.particular;
+        const remark = particular?.remark;
         if (particular?.type === 'bank' && particular?.details) {
             const d = particular.details;
             return (
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                     <div className="font-medium text-slate-800">{d.bank || 'Bank'}</div>
                     <div className="text-xs text-slate-500">
                         {[d.account_no, d.holder, d.ifsc, d.branch].filter(Boolean).join(' • ')}
                     </div>
+                    {remark && (
+                        <div className="text-xs text-slate-600 mt-1 truncate max-w-[200px]" title={remark}>
+                            {remark}
+                        </div>
+                    )}
                 </div>
             );
         }
-        if (transaction.create_by) {
+        if (transaction.create_by && particular?.type) {
             return (
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                     <div className="font-medium text-slate-800">{transaction.create_by.name || 'Company'}</div>
                     <div className="text-xs text-slate-500">{transaction.create_by.email || ''}</div>
+                    {remark && (
+                        <div className="text-xs text-slate-600 mt-1 truncate max-w-[200px]" title={remark}>
+                            {remark}
+                        </div>
+                    )}
                 </div>
             );
         }
-        return <span className="text-sm text-slate-500">N/A</span>;
+        // No particulars (e.g. opening balance) – show transaction type + remark
+        const txType = (transaction.transaction_type || '')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+        return (
+            <div className="flex flex-col min-w-0">
+                <div className="font-medium text-slate-800">{txType || 'N/A'}</div>
+                {remark && (
+                    <div className="text-xs text-slate-600 mt-1 truncate max-w-[200px]" title={remark}>
+                        {remark}
+                    </div>
+                )}
+            </div>
+        );
     };
 
     // Navigate to client profile
@@ -754,6 +874,15 @@ const ClientLedger = () => {
                         <span className="text-xs font-medium text-slate-700">Date Range:</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                        {/* Opening Balance Icon - opens modal */}
+                        <button
+                            type="button"
+                            onClick={handleOpenOpeningBalanceModal}
+                            className="p-2.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50 transition-all shadow-sm"
+                            title="Set Opening Balance"
+                        >
+                            <FiBarChart2 className="w-5 h-5 text-indigo-600" />
+                        </button>
                         {/* DateRangePicker Component */}
                         <div className="min-w-[280px] flex-1 max-w-md">
                             <DateRangePicker
@@ -1040,6 +1169,141 @@ const ClientLedger = () => {
                 )}
             </motion.div>
 
+            {/* Opening Balance Modal */}
+            {showOpeningBalanceModal && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                    onClick={() => !openingBalanceSubmitting && setShowOpeningBalanceModal(false)}
+                >
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 px-6 py-5">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-white/20 rounded-xl">
+                                        <FiBarChart2 className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-white">
+                                            {openingBalanceData ? 'Edit' : 'Set'} Opening Balance
+                                        </h2>
+                                        <p className="text-indigo-200 text-sm mt-0.5">
+                                            {clientProfile?.name || username}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => !openingBalanceSubmitting && setShowOpeningBalanceModal(false)}
+                                    className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                                >
+                                    <FiX className="w-6 h-6 text-white" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-6">
+                            {openingBalanceLoading ? (
+                                <div className="py-12 flex justify-center">
+                                    <svg className="animate-spin h-10 w-10 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleSetOpeningBalance} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Amount (₹) *</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0.01"
+                                            required
+                                            value={openingBalanceForm.amount}
+                                            onChange={(e) => setOpeningBalanceForm(f => ({ ...f, amount: e.target.value }))}
+                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Type *</label>
+                                        <select
+                                            value={openingBalanceForm.type}
+                                            onChange={(e) => setOpeningBalanceForm(f => ({ ...f, type: e.target.value }))}
+                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        >
+                                            <option value="credit">Credit (Client owes you)</option>
+                                            <option value="debit">Debit (You owe client)</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Transaction Date *</label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={openingBalanceForm.transaction_date}
+                                            onChange={(e) => setOpeningBalanceForm(f => ({ ...f, transaction_date: e.target.value }))}
+                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Remark</label>
+                                        <textarea
+                                            rows={3}
+                                            value={openingBalanceForm.remark}
+                                            onChange={(e) => setOpeningBalanceForm(f => ({ ...f, remark: e.target.value }))}
+                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                                            placeholder="Optional note..."
+                                        />
+                                    </div>
+
+                                    {openingBalanceData && (
+                                        <p className="text-xs text-slate-500">
+                                            Current: ₹{formatCurrency(openingBalanceData.amount)} ({openingBalanceData.type})
+                                            {openingBalanceData.invoice_no && ` • ${openingBalanceData.invoice_no}`}
+                                        </p>
+                                    )}
+
+                                    <div className="flex gap-3 pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => !openingBalanceSubmitting && setShowOpeningBalanceModal(false)}
+                                            className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={openingBalanceSubmitting || !openingBalanceForm.amount || parseFloat(openingBalanceForm.amount) <= 0}
+                                            className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            {openingBalanceSubmitting ? (
+                                                <span className="flex items-center justify-center gap-2">
+                                                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                    </svg>
+                                                    Saving...
+                                                </span>
+                                            ) : (
+                                                openingBalanceData ? 'Update' : 'Set Opening Balance'
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
             {/* Transaction Details Modal */}
             {detailsTransaction && (
                 <div
@@ -1134,6 +1398,12 @@ const ClientLedger = () => {
                                                 <div><span className="text-slate-500">Branch</span><p className="font-medium">{detailsTransaction.particular.details.branch || '-'}</p></div>
                                                 <div><span className="text-slate-500">Type</span><p className="font-medium capitalize">{detailsTransaction.particular.details.type || '-'}</p></div>
                                             </div>
+                                            {detailsTransaction.particular.remark && (
+                                                <div className="pt-2 mt-2 border-t border-slate-100">
+                                                    <span className="text-slate-500 text-xs">Remark</span>
+                                                    <p className="text-sm text-slate-700 mt-0.5">{detailsTransaction.particular.remark}</p>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : detailsTransaction.particular.details && typeof detailsTransaction.particular.details === 'object' ? (
                                         <div className="bg-white rounded-lg p-4 border border-slate-200">
@@ -1147,6 +1417,12 @@ const ClientLedger = () => {
                                                         </div>
                                                     ))}
                                             </div>
+                                            {detailsTransaction.particular.remark && (
+                                                <div className="pt-2 mt-2 border-t border-slate-100">
+                                                    <span className="text-slate-500 text-xs">Remark</span>
+                                                    <p className="text-sm text-slate-700 mt-0.5">{detailsTransaction.particular.remark}</p>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <p className="text-slate-600 text-sm">{JSON.stringify(detailsTransaction.particular)}</p>
