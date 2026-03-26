@@ -2,13 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FiX, FiUser, FiCalendar, FiDollarSign, FiFileText, FiCreditCard, FiHash, FiSearch } from 'react-icons/fi';
 import getHeaders from '../utils/get-headers';
 import API_BASE_URL from '../utils/api-controller';
-
-const bankOptions = [
-    { id: 'bank_1', name: 'HDFC Bank', account: '123456789012', holder: 'Company Name Ltd', balance: '10,50,000' },
-    { id: 'bank_2', name: 'ICICI Bank', account: '987654321098', holder: 'Company Name Ltd', balance: '25,75,000' },
-    { id: 'bank_3', name: 'State Bank of India', account: '456789012345', holder: 'Company Name Ltd', balance: '15,20,000' },
-    { id: 'bank_4', name: 'Axis Bank', account: '321098765432', holder: 'Company Name Ltd', balance: '8,90,000' }
-];
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const appSettings = {
     company_name: 'Professional Accounting Services',
@@ -41,7 +36,38 @@ const PaymentReceived = ({
     const [selectedClient, setSelectedClient] = useState(null);
     const [sendEmail, setSendEmail] = useState(true);
     const [sendWhatsApp, setSendWhatsApp] = useState(true);
+    const [bankOptions, setBankOptions] = useState([]);
+    const [bankLoading, setBankLoading] = useState(false);
     const clientSearchAbortRef = useRef(null);
+
+    // Fetch banks from API
+    useEffect(() => {
+        if (isOpen) {
+            fetchBanks();
+        }
+    }, [isOpen]);
+
+    const fetchBanks = async () => {
+        setBankLoading(true);
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/transaction/bank/list?page_no=1&limit=100&search=`,
+                { headers: getHeaders() }
+            );
+            
+            if (response.data.success) {
+                const bankData = response.data.data || [];
+                setBankOptions(bankData);
+            } else {
+                toast.error('Failed to fetch bank accounts');
+            }
+        } catch (error) {
+            console.error('Error fetching banks:', error);
+            toast.error('Failed to load bank accounts');
+        } finally {
+            setBankLoading(false);
+        }
+    };
 
     // Client search API – min 3 chars, debounced
     useEffect(() => {
@@ -121,7 +147,7 @@ const PaymentReceived = ({
     };
 
     const getSelectedBank = () => {
-        return bankOptions.find(bank => bank.id === formData.bank_id);
+        return bankOptions.find(bank => bank.bank_id === formData.bank_id);
     };
 
     const handleInputChange = (e) => {
@@ -155,27 +181,91 @@ const PaymentReceived = ({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.client_username || !formData.bank_id || !formData.amount || isSubmitting) return;
+        
+        if (!formData.client_username) {
+            toast.error('Please select a client');
+            return;
+        }
+        
+        if (!formData.bank_id) {
+            toast.error('Please select a bank account');
+            return;
+        }
+        
+        if (!formData.amount || parseFloat(formData.amount) <= 0) {
+            toast.error('Please enter a valid amount');
+            return;
+        }
 
         setIsSubmitting(true);
+        
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const submissionData = {
-                ...formData,
-                selected_client: getSelectedClient(),
-                selected_bank: getSelectedBank(),
-                timestamp: new Date().toISOString(),
-                company: appSettings.company_name,
-                notifications: {
-                    email: sendEmail,
-                    whatsapp: sendWhatsApp
-                }
+            const selectedBank = getSelectedBank();
+            const payload = {
+                amount: parseFloat(formData.amount),
+                party1_id: formData.client_username,
+                party1_type: "client",
+                party2_id: formData.bank_id,
+                party2_type: "bank",
+                remark: formData.remark || `Payment received from ${selectedClient?.name || selectedClient?.username}`,
+                transaction_date: formData.payment_date
             };
-            console.log('Payment Received submitted:', submissionData);
-            onSuccess(submissionData);
-            if (mode === 'modal') onClose();
+
+            console.log('Payment received payload:', payload);
+
+            const response = await axios.post(
+                `${API_BASE_URL}/transaction/payment/receive`,
+                payload,
+                { headers: getHeaders() }
+            );
+
+            if (response.data.success) {
+                toast.success(response.data.message || 'Payment received successfully');
+                
+                const submissionData = {
+                    ...formData,
+                    selected_client: getSelectedClient(),
+                    selected_bank: getSelectedBank(),
+                    transaction_id: response.data.data?.transaction_id,
+                    timestamp: new Date().toISOString(),
+                    company: appSettings.company_name,
+                    notifications: {
+                        email: sendEmail,
+                        whatsapp: sendWhatsApp
+                    }
+                };
+                
+                onSuccess(submissionData);
+                if (mode === 'modal') onClose();
+                
+                // Reset form
+                setFormData({
+                    client_username: '',
+                    payment_date: new Date().toISOString().split('T')[0],
+                    amount: '',
+                    remark: '',
+                    bank_id: '',
+                    transaction_ref_id: ''
+                });
+                setSelectedClient(null);
+                setClientSearchQuery('');
+            } else {
+                toast.error(response.data.message || 'Failed to receive payment');
+            }
         } catch (error) {
-            console.error('Error submitting form:', error);
+            console.error('Error submitting payment:', error);
+            
+            if (error.response) {
+                console.error('Error response:', error.response.data);
+                const errorMessage = error.response?.data?.message || 
+                                    error.response?.data?.error || 
+                                    'Failed to process payment';
+                toast.error(errorMessage);
+            } else if (error.request) {
+                toast.error('No response from server. Please check your network connection.');
+            } else {
+                toast.error(`Error: ${error.message}`);
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -394,11 +484,12 @@ const PaymentReceived = ({
                                     onChange={handleInputChange}
                                     className="pl-10 w-full pr-10 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-300 transition-all duration-200 appearance-none bg-white text-sm font-medium"
                                     required
+                                    disabled={bankLoading}
                                 >
-                                    <option value="" disabled>Select Bank Account</option>
+                                    <option value="" disabled>{bankLoading ? 'Loading banks...' : 'Select Bank Account'}</option>
                                     {bankOptions.map(bank => (
-                                        <option key={bank.id} value={bank.id} className="text-sm">
-                                            {bank.name} — {bank.account} (₹{bank.balance})
+                                        <option key={bank.bank_id} value={bank.bank_id} className="text-sm">
+                                            {bank.bank} — {bank.account_no} (₹{formatCurrency(bank.balance || 0)})
                                         </option>
                                     ))}
                                 </select>
@@ -418,19 +509,19 @@ const PaymentReceived = ({
                                         <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-4 gap-3">
                                             <div>
                                                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Bank</p>
-                                                <p className="text-sm font-semibold text-gray-900 mt-0.5">{getSelectedBank().name}</p>
+                                                <p className="text-sm font-semibold text-gray-900 mt-0.5">{getSelectedBank().bank}</p>
                                             </div>
                                             <div>
                                                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Account No</p>
-                                                <p className="text-sm font-mono font-semibold text-gray-900 mt-0.5">{getSelectedBank().account}</p>
+                                                <p className="text-sm font-mono font-semibold text-gray-900 mt-0.5">{getSelectedBank().account_no}</p>
                                             </div>
                                             <div>
-                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Account Holder</p>
-                                                <p className="text-sm font-semibold text-gray-900 mt-0.5">{getSelectedBank().holder}</p>
+                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">IFSC Code</p>
+                                                <p className="text-sm font-mono font-semibold text-gray-900 mt-0.5">{getSelectedBank().ifsc || 'N/A'}</p>
                                             </div>
                                             <div>
                                                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</p>
-                                                <p className="text-sm font-bold text-emerald-600 mt-0.5">₹{getSelectedBank().balance}</p>
+                                                <p className="text-sm font-bold text-emerald-600 mt-0.5">₹{formatCurrency(getSelectedBank().balance || 0)}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -515,7 +606,7 @@ const PaymentReceived = ({
                             <div className="text-center p-2 bg-white rounded border border-gray-200">
                                 <div className="text-xs text-gray-600 mb-1">Bank</div>
                                 <div className="font-semibold text-gray-900 text-sm truncate">
-                                    {getSelectedBank()?.name || 'Not selected'}
+                                    {getSelectedBank()?.bank || 'Not selected'}
                                 </div>
                             </div>
                             <div className="text-center p-2 bg-white rounded border border-gray-200">
