@@ -1,28 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { IoTrash } from "react-icons/io5";
-
-// Enhanced professional data
-const partyOptions = [
-    { id: 'bank_1', type: 'bank', name: 'HDFC Bank', account: '1234567890', holder: 'John Doe', balance: '15,00,000' },
-    { id: 'bank_2', type: 'bank', name: 'ICICI Bank', account: '0987654321', holder: 'Jane Smith', balance: '25,00,000' },
-    { id: 'bank_3', type: 'bank', name: 'SBI', account: '1122334455', holder: 'Bob Wilson', balance: '18,00,000' },
-    { id: 'client_1', type: 'client', name: 'ABC Corporation', email: 'abc@corp.com', contact: 'Corporate', outstanding: '2,50,000' },
-    { id: 'client_2', type: 'client', name: 'XYZ Ltd', email: 'xyz@ltd.com', contact: 'Corporate', outstanding: '1,75,000' },
-    { id: 'client_3', type: 'client', name: 'Individual Client', email: 'client@email.com', contact: 'Individual', outstanding: '45,000' },
-    { id: 'ca_1', type: 'ca', name: 'CA Firm Associates', license: 'CA12345', specialization: 'Tax & Audit' },
-    { id: 'ca_2', type: 'ca', name: 'Professional CA Services', license: 'CA67890', specialization: 'Accounting' },
-    { id: 'capital_1', type: 'capital', name: 'Main Capital Account', account_number: 'CAP001', balance: '50,00,000' },
-    { id: 'capital_2', type: 'capital', name: 'Reserve Capital', account_number: 'CAP002', balance: '25,00,000' }
-];
-
-const serviceOptions = [
-    { service_id: '1', name: 'Tax Consultation', fees: '5000', category: 'Advisory', duration: '1 Session' },
-    { service_id: '2', name: 'Audit Services', fees: '10000', category: 'Compliance', duration: 'Monthly' },
-    { service_id: '3', name: 'Accounting Services', fees: '3000', category: 'Regular', duration: 'Monthly' },
-    { service_id: '4', name: 'GST Filing', fees: '2000', category: 'Compliance', duration: 'Monthly' },
-    { service_id: '5', name: 'Financial Planning', fees: '8000', category: 'Advisory', duration: '1 Session' },
-    { service_id: '6', name: 'Company Incorporation', fees: '15000', category: 'Registration', duration: 'One-time' }
-];
+import API_BASE_URL from '../utils/api-controller';
+import getHeaders from '../utils/get-headers';
 
 const appSettings = {
     company_name: 'Professional Accounting Services',
@@ -36,13 +15,16 @@ const SaleForm = ({
     onClose = () => { },
     onSuccess = () => { },
     initialPartyId = '',
-    mode = 'modal'
+    mode = 'modal',
+    defaultSaleType = 'user' // 'user' or 'bank'
 }) => {
+    const [saleType, setSaleType] = useState(defaultSaleType);
     const [formData, setFormData] = useState({
         party_id: initialPartyId || '',
+        party_type: defaultSaleType,
         payment_date: new Date().toISOString().split('T')[0],
         invoice_number: `INV-${Date.now().toString().slice(-6)}`,
-        items: [{ service_id: '', description: '', price: '', amount: 0 }],
+        items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
         subtotal: 0,
         discount: 0,
         discount_type: 'percentage',
@@ -52,33 +34,161 @@ const SaleForm = ({
         cgst_amount: 0,
         round_off: 0,
         grand_total: 0,
-        notes: ''
+        notes: '',
+        remark: '',
+        tax_rate: appSettings.default_gst_rate,
+        additional_charge: 0,
+        apply_round_off: false
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
     const [showPartyDropdown, setShowPartyDropdown] = useState(false);
     const [sendEmail, setSendEmail] = useState(true);
     const [sendWhatsApp, setSendWhatsApp] = useState(true);
+    const [serviceOptions, setServiceOptions] = useState([]);
+    const [userOptions, setUserOptions] = useState([]);
+    const [bankOptions, setBankOptions] = useState([]);
+    const [isLoadingServices, setIsLoadingServices] = useState(false);
+    const [isLoadingParties, setIsLoadingParties] = useState(false);
+    const [isLoadingBanks, setIsLoadingBanks] = useState(false);
+    const [userSearchTerm, setUserSearchTerm] = useState('');
 
-    // Filter parties based on search
-    const filteredParties = useMemo(() => {
-        if (!searchTerm) return partyOptions;
-        return partyOptions.filter(party =>
-            party.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (party.account && party.account.includes(searchTerm)) ||
-            (party.email && party.email.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-    }, [searchTerm]);
+    // Fetch services from API
+    useEffect(() => {
+        fetchServices();
+    }, []);
 
-    // Reset form when modal opens
+    // Fetch banks when component mounts (for bank flow)
+    useEffect(() => {
+        if (saleType === 'bank') {
+            fetchAllBanks();
+        }
+    }, [saleType]);
+
+    // Fetch users based on search term (with debounce) - only for user flow
+    useEffect(() => {
+        if (saleType === 'user' && userSearchTerm) {
+            const delayDebounce = setTimeout(() => {
+                fetchUsers();
+            }, 500);
+            return () => clearTimeout(delayDebounce);
+        }
+    }, [saleType, userSearchTerm]);
+
+    const fetchServices = async () => {
+        setIsLoadingServices(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/service/list?search=&category_id`, {
+                method: 'GET',
+                headers: getHeaders()
+            });
+            const data = await response.json();
+            if (data.success) {
+                setServiceOptions(data.data.map(service => ({
+                    service_id: service.service_id,
+                    name: service.name,
+                    fees: parseFloat(service.fees),
+                    category: service.category_name,
+                    duration: service.is_recurring ? 'Recurring' : 'One-time',
+                    gst_rate: parseFloat(service.gst_rate),
+                    sac_code: service.sac_code,
+                    remark: service.remark
+                })));
+            }
+        } catch (error) {
+            console.error('Error fetching services:', error);
+        } finally {
+            setIsLoadingServices(false);
+        }
+    };
+
+    const fetchAllBanks = async () => {
+        setIsLoadingBanks(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/transaction/bank/list`, {
+                method: 'GET',
+                headers: getHeaders()
+            });
+            const data = await response.json();
+            console.log('Bank API Response:', data); // Debug log to see actual response structure
+            
+            if (data.success && data.data) {
+                const formattedBanks = data.data.map(bank => ({
+                    id: bank.bank_id || bank.id,
+                    type: 'bank',
+                    name: bank.bank || bank.name || 'Unnamed Bank',
+                    account: bank.account_number || bank.account_no || bank.account || 'N/A',
+                    holder: bank.account_holder || bank.holder_name || bank.holder || 'N/A',
+                    ifsc: bank.ifsc_code || bank.ifsc || 'N/A',
+                    branch: bank.branch_name || bank.branch || 'N/A',
+                    balance: bank.balance || bank.current_balance || 0
+                }));
+                setBankOptions(formattedBanks);
+                console.log('Formatted Banks:', formattedBanks); // Debug log
+            } else {
+                console.error('Invalid bank data structure:', data);
+                setBankOptions([]);
+            }
+        } catch (error) {
+            console.error('Error fetching banks:', error);
+            setBankOptions([]);
+        } finally {
+            setIsLoadingBanks(false);
+        }
+    };
+
+    const fetchUsers = async () => {
+        if (!userSearchTerm) return;
+        
+        setIsLoadingParties(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/client/search?search=${encodeURIComponent(userSearchTerm)}`, {
+                method: 'GET',
+                headers: getHeaders()
+            });
+            const data = await response.json();
+            if (data.success) {
+                setUserOptions(data.data.map(client => ({
+                    id: client.client_id || client.username,
+                    type: 'user',
+                    name: client.name || client.firm_name,
+                    email: client.email,
+                    contact: client.mobile,
+                    gst_no: client.gst_no,
+                    pan_no: client.pan_number,
+                    username: client.username,
+                    address: client.address,
+                    city: client.city,
+                    state: client.state,
+                    pincode: client.pincode
+                })));
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        } finally {
+            setIsLoadingParties(false);
+        }
+    };
+
+    // Combined party options based on sale type
+    const partyOptions = useMemo(() => {
+        if (saleType === 'user') {
+            return userOptions;
+        } else if (saleType === 'bank') {
+            return bankOptions;
+        }
+        return [];
+    }, [saleType, userOptions, bankOptions]);
+
+    // Reset form when modal opens or sale type changes
     useEffect(() => {
         if (isOpen) {
             setFormData({
                 party_id: initialPartyId || '',
+                party_type: saleType,
                 payment_date: new Date().toISOString().split('T')[0],
                 invoice_number: `INV-${Date.now().toString().slice(-6)}`,
-                items: [{ service_id: '', description: '', price: '', amount: 0 }],
+                items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
                 subtotal: 0,
                 discount: 0,
                 discount_type: 'percentage',
@@ -88,29 +198,42 @@ const SaleForm = ({
                 cgst_amount: 0,
                 round_off: 0,
                 grand_total: 0,
-                notes: ''
+                notes: '',
+                remark: '',
+                tax_rate: appSettings.default_gst_rate,
+                additional_charge: 0,
+                apply_round_off: false
             });
-            setSearchTerm('');
+            setUserSearchTerm('');
             setShowPartyDropdown(false);
+            setUserOptions([]);
         }
-    }, [isOpen, initialPartyId]);
+    }, [isOpen, initialPartyId, saleType]);
+
+    const handleSaleTypeChange = (type) => {
+        setSaleType(type);
+        setFormData(prev => ({ ...prev, party_id: '', party_type: type }));
+        setUserSearchTerm('');
+        setShowPartyDropdown(false);
+        setUserOptions([]);
+        // If switching to bank, ensure banks are loaded
+        if (type === 'bank' && bankOptions.length === 0) {
+            fetchAllBanks();
+        }
+    };
 
     const getSelectedParty = () => {
         return partyOptions.find(party => party.id === formData.party_id);
     };
 
     const getPartyDisplayText = (party) => {
-        if (!party) return 'Select Party';
+        if (!party) return `Select ${saleType === 'user' ? 'User/Client' : 'Bank'}`;
 
         switch (party.type) {
             case 'bank':
-                return `${party.name} • ${party.account} • ${party.holder}`;
-            case 'client':
-                return `${party.name} • ${party.email}`;
-            case 'ca':
-                return `${party.name} • ${party.license}`;
-            case 'capital':
-                return `${party.name} • ₹${party.balance}`;
+                return `${party.name}${party.account !== 'N/A' ? ` • ${party.account}` : ''}${party.holder !== 'N/A' ? ` • ${party.holder}` : ''}`;
+            case 'user':
+                return `${party.name} • ${party.email || party.contact}`;
             default:
                 return party.name;
         }
@@ -121,7 +244,7 @@ const SaleForm = ({
             ...prev,
             items: [
                 ...prev.items,
-                { service_id: '', description: '', price: '', amount: 0 }
+                { service_id: '', description: '', price: '', amount: 0, remark: '' }
             ]
         }));
     };
@@ -139,7 +262,7 @@ const SaleForm = ({
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: name === 'additional_charge' || name === 'discount' ? parseFloat(value) || 0 : value
         }));
     };
 
@@ -148,12 +271,9 @@ const SaleForm = ({
             if (i === index) {
                 const updatedItem = {
                     ...item,
-                    [field]: field === 'price' ? Number(value) || 0 : value
+                    [field]: field === 'price' ? parseFloat(value) || 0 : value
                 };
-
-                // Calculate amount
                 updatedItem.amount = updatedItem.price || 0;
-
                 return updatedItem;
             }
             return item;
@@ -169,8 +289,10 @@ const SaleForm = ({
                 i === index ? {
                     ...item,
                     service_id: serviceId,
-                    price: Number(service.fees),
-                    amount: Number(service.fees)
+                    price: parseFloat(service.fees),
+                    amount: parseFloat(service.fees),
+                    description: service.name,
+                    remark: service.remark || ''
                 } : item
             );
 
@@ -184,7 +306,7 @@ const SaleForm = ({
     const handlePartySelect = (partyId) => {
         setFormData(prev => ({ ...prev, party_id: partyId }));
         setShowPartyDropdown(false);
-        setSearchTerm('');
+        setUserSearchTerm('');
     };
 
     // Calculate totals
@@ -194,21 +316,27 @@ const SaleForm = ({
             subtotal += Number(item.amount) || 0;
         });
 
-        // Calculate discount
         let discountAmount = 0;
-        if (formData.discount_type === 'percentage') {
-            discountAmount = subtotal * (Number(formData.discount) / 100);
-        } else {
-            discountAmount = Number(formData.discount) || 0;
+        if (formData.discount > 0) {
+            if (formData.discount_type === 'percentage') {
+                discountAmount = subtotal * (Number(formData.discount) / 100);
+            } else {
+                discountAmount = Number(formData.discount) || 0;
+            }
         }
 
         const amountAfterDiscount = Math.max(0, subtotal - discountAmount);
+        
         const sgst_amount = amountAfterDiscount * (Number(formData.sgst_rate) / 100);
         const cgst_amount = amountAfterDiscount * (Number(formData.cgst_rate) / 100);
-
-        let grand_total = amountAfterDiscount + sgst_amount + cgst_amount;
-        const round_off = Math.round(grand_total) - grand_total;
-        grand_total = Math.round(grand_total);
+        
+        let grand_total = amountAfterDiscount + sgst_amount + cgst_amount + (Number(formData.additional_charge) || 0);
+        
+        let round_off = 0;
+        if (formData.apply_round_off) {
+            round_off = Math.round(grand_total) - grand_total;
+            grand_total = Math.round(grand_total);
+        }
 
         setFormData(prev => ({
             ...prev,
@@ -218,30 +346,100 @@ const SaleForm = ({
             round_off,
             grand_total
         }));
-    }, [formData.items, formData.discount, formData.discount_type, formData.sgst_rate, formData.cgst_rate]);
+    }, [formData.items, formData.discount, formData.discount_type, formData.sgst_rate, formData.cgst_rate, formData.additional_charge, formData.apply_round_off]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.party_id || isSubmitting) return;
 
+        const hasValidItems = formData.items.some(item => item.service_id && item.price > 0);
+        if (!hasValidItems) {
+            alert('Please add at least one valid service item');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const submissionData = {
-                ...formData,
-                selected_party: getSelectedParty(),
-                timestamp: new Date().toISOString(),
-                company: appSettings.company_name,
-                notifications: {
-                    email: sendEmail,
-                    whatsapp: sendWhatsApp
-                }
+            const selectedParty = getSelectedParty();
+            
+            const basePayload = {
+                transaction_date: formData.payment_date,
+                remark: formData.notes || formData.remark,
+                tax_rate: formData.tax_rate,
+                items: formData.items
+                    .filter(item => item.service_id && item.price > 0)
+                    .map(item => ({
+                        service_id: item.service_id,
+                        fees: item.price,
+                        remark: item.remark || item.description
+                    })),
+                additional_charge: Number(formData.additional_charge) || 0,
+                round_off: formData.apply_round_off
             };
-            console.log('Form submitted:', submissionData);
-            onSuccess(submissionData);
-            if (mode === 'modal') onClose();
+
+            if (formData.discount > 0) {
+                basePayload.discount_type = formData.discount_type;
+                if (formData.discount_type === 'percentage') {
+                    basePayload.discount_perc_rate = Number(formData.discount);
+                } else {
+                    basePayload.discount_value = Number(formData.discount);
+                }
+            } else {
+                basePayload.discount_type = 'not applicable';
+            }
+
+            let endpoint = '';
+            let finalPayload = {};
+
+            if (saleType === 'user') {
+                endpoint = `${API_BASE_URL}/sale/create/user`;
+                finalPayload = {
+                    ...basePayload,
+                    username: selectedParty?.username || selectedParty?.id,
+                    user_type: 'client',
+                    firm_id: selectedParty?.id
+                };
+            } else if (saleType === 'bank') {
+                endpoint = `${API_BASE_URL}/sale/create/bank`;
+                finalPayload = {
+                    ...basePayload,
+                    bank_id: selectedParty?.id
+                };
+            }
+
+            console.log('Submitting to:', endpoint);
+            console.log('Payload:', finalPayload);
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(finalPayload)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const submissionData = {
+                    ...formData,
+                    sale_type: saleType,
+                    selected_party: selectedParty,
+                    timestamp: new Date().toISOString(),
+                    company: appSettings.company_name,
+                    api_response: data,
+                    notifications: {
+                        email: sendEmail,
+                        whatsapp: sendWhatsApp
+                    }
+                };
+                console.log('Form submitted successfully:', submissionData);
+                onSuccess(submissionData);
+                if (mode === 'modal') onClose();
+            } else {
+                throw new Error(data.message || `Failed to create ${saleType} sale`);
+            }
         } catch (error) {
             console.error('Error submitting form:', error);
+            alert(error.message || `Error creating ${saleType} sale. Please try again.`);
         } finally {
             setIsSubmitting(false);
         }
@@ -262,7 +460,7 @@ const SaleForm = ({
 
     const formContent = (
         <div className="bg-white rounded-xl shadow-2xl flex flex-col h-full border border-gray-200">
-            {/* Professional Header - Compact */}
+            {/* Header with Toggle Buttons */}
             <div className="flex-shrink-0 flex items-center justify-between p-3 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-t-xl">
                 <div className="flex items-center space-x-3">
                     <div className="p-1.5 bg-white/10 rounded-lg">
@@ -270,12 +468,48 @@ const SaleForm = ({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
-                    <div className="flex items-center space-x-4">
+                    <div>
                         <h2 className="text-lg font-bold">Create Sale Invoice</h2>
-                        <span className="text-indigo-200 text-sm hidden sm:inline">|</span>
-                        <p className="text-indigo-100 text-xs sm:text-sm hidden sm:block">{appSettings.company_name}</p>
+                        <p className="text-indigo-100 text-xs hidden sm:block">{appSettings.company_name}</p>
                     </div>
                 </div>
+                
+                {/* Sale Type Toggle Buttons */}
+                <div className="flex items-center gap-2 bg-indigo-500/30 rounded-lg p-1">
+                    <button
+                        type="button"
+                        onClick={() => handleSaleTypeChange('user')}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                            saleType === 'user'
+                                ? 'bg-white text-indigo-700 shadow-md'
+                                : 'text-indigo-100 hover:bg-indigo-500/50'
+                        }`}
+                    >
+                        <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span>User/Client</span>
+                        </div>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleSaleTypeChange('bank')}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                            saleType === 'bank'
+                                ? 'bg-white text-indigo-700 shadow-md'
+                                : 'text-indigo-100 hover:bg-indigo-500/50'
+                        }`}
+                    >
+                        <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            <span>Bank</span>
+                        </div>
+                    </button>
+                </div>
+
                 {mode === 'modal' && (
                     <button
                         onClick={onClose}
@@ -291,13 +525,13 @@ const SaleForm = ({
             {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-gray-50">
                 <form onSubmit={handleSubmit}>
-                    {/* Party Selection and Date Section - Compact */}
+                    {/* Party Selection and Date Section */}
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
-                        {/* Party Selection - takes 4 columns */}
+                        {/* Party Selection */}
                         <div className="lg:col-span-4">
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="block text-sm font-semibold text-gray-700">
-                                    Select Party <span className="text-red-500">*</span>
+                                    Select {saleType === 'user' ? 'User/Client' : 'Bank'} <span className="text-red-500">*</span>
                                 </label>
                                 <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">Required</span>
                             </div>
@@ -309,15 +543,9 @@ const SaleForm = ({
                                     {formData.party_id ? (
                                         <div className="flex justify-between items-center">
                                             <div className="flex items-center space-x-2">
-                                                <div className={`p-1.5 rounded ${getSelectedParty()?.type === 'bank' ? 'bg-green-100 text-green-600' :
-                                                    getSelectedParty()?.type === 'client' ? 'bg-blue-100 text-blue-600' :
-                                                        getSelectedParty()?.type === 'ca' ? 'bg-purple-100 text-purple-600' :
-                                                            'bg-orange-100 text-orange-600'
-                                                    }`}>
+                                                <div className={`p-1.5 rounded ${saleType === 'bank' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
                                                     <span className="text-xs">
-                                                        {getSelectedParty()?.type === 'bank' ? '🏦' :
-                                                            getSelectedParty()?.type === 'client' ? '👤' :
-                                                                getSelectedParty()?.type === 'ca' ? '📊' : '💼'}
+                                                        {saleType === 'bank' ? '🏦' : '👥'}
                                                     </span>
                                                 </div>
                                                 <div className="truncate">
@@ -338,7 +566,11 @@ const SaleForm = ({
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                                     </svg>
                                                 </div>
-                                                <span className="font-medium truncate">Click to select a party...</span>
+                                                <span className="font-medium truncate">
+                                                    {saleType === 'bank' && isLoadingBanks ? 'Loading banks...' : 
+                                                     saleType === 'user' && isLoadingParties ? 'Loading users...' : 
+                                                     `Click to select a ${saleType === 'user' ? 'user/client' : 'bank'}...`}
+                                                </span>
                                             </div>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -348,62 +580,92 @@ const SaleForm = ({
                                 </div>
 
                                 {showPartyDropdown && (
-                                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-64 overflow-y-auto text-sm">
-                                        <div className="p-2 border-b border-gray-200 bg-gray-50 sticky top-0">
-                                            <div className="relative">
-                                                <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                                </svg>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Search by name, account, or email..."
-                                                    className="w-full pl-8 pr-3 py-2 border-2 border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                                    autoFocus
-                                                />
+                                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-80 overflow-y-auto text-sm">
+                                        {/* Search input - Only show for user flow */}
+                                        {saleType === 'user' && (
+                                            <div className="p-2 border-b border-gray-200 bg-gray-50 sticky top-0">
+                                                <div className="relative">
+                                                    <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search by name, email, or mobile..."
+                                                        className="w-full pl-8 pr-3 py-2 border-2 border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                                        value={userSearchTerm}
+                                                        onChange={(e) => setUserSearchTerm(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
+                                        
                                         <div className="py-1">
-                                            {filteredParties.map(party => (
+                                            {partyOptions.length === 0 && !isLoadingParties && !isLoadingBanks && saleType === 'user' && (
+                                                <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                                                    No users/clients found
+                                                </div>
+                                            )}
+                                            {partyOptions.length === 0 && saleType === 'bank' && !isLoadingBanks && (
+                                                <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                                                    No banks available
+                                                </div>
+                                            )}
+                                            {isLoadingParties && saleType === 'user' && (
+                                                <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                                                    Searching users...
+                                                </div>
+                                            )}
+                                            {isLoadingBanks && saleType === 'bank' && (
+                                                <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                                                    Loading banks...
+                                                </div>
+                                            )}
+                                            {partyOptions.map(party => (
                                                 <div
                                                     key={party.id}
-                                                    className={`px-3 py-2 cursor-pointer border-l-2 transition-all duration-150 ${formData.party_id === party.id
-                                                        ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
-                                                        : 'border-transparent hover:bg-gray-50'
-                                                        }`}
+                                                    className={`px-3 py-2 cursor-pointer border-l-2 transition-all duration-150 ${
+                                                        formData.party_id === party.id
+                                                            ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
+                                                            : 'border-transparent hover:bg-gray-50'
+                                                    }`}
                                                     onClick={() => handlePartySelect(party.id)}
                                                 >
                                                     <div className="flex justify-between items-center">
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center space-x-2 mb-1">
-                                                                <span className={`p-1 rounded ${party.type === 'bank' ? 'bg-green-100 text-green-600' :
-                                                                    party.type === 'client' ? 'bg-blue-100 text-blue-600' :
-                                                                        party.type === 'ca' ? 'bg-purple-100 text-purple-600' :
-                                                                            'bg-orange-100 text-orange-600'
-                                                                    }`}>
+                                                                <span className={`p-1 rounded ${saleType === 'bank' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
                                                                     <span className="text-xs">
-                                                                        {party.type === 'bank' ? '🏦' :
-                                                                            party.type === 'client' ? '👤' :
-                                                                                party.type === 'ca' ? '📊' : '💼'}
+                                                                        {saleType === 'bank' ? '🏦' : '👥'}
                                                                     </span>
                                                                 </span>
                                                                 <div className="flex items-center min-w-0">
                                                                     <span className="font-medium text-gray-900 truncate">{party.name}</span>
-                                                                    <span className={`ml-2 px-1.5 py-0.5 text-xs rounded-full font-medium ${party.type === 'bank' ? 'bg-green-100 text-green-800 border border-green-200' :
-                                                                        party.type === 'client' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                                                                            party.type === 'ca' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                                                                                'bg-orange-100 text-orange-800 border border-orange-200'
-                                                                        }`}>
-                                                                        {party.type.charAt(0).toUpperCase() + party.type.slice(1)}
+                                                                    <span className={`ml-2 px-1.5 py-0.5 text-xs rounded-full font-medium ${
+                                                                        saleType === 'bank' 
+                                                                            ? 'bg-green-100 text-green-800 border border-green-200' 
+                                                                            : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                                                    }`}>
+                                                                        {saleType === 'bank' ? 'Bank' : 'User'}
                                                                     </span>
                                                                 </div>
                                                             </div>
                                                             <div className="text-xs text-gray-600 ml-7 truncate">
-                                                                {party.type === 'bank' && `Acc: ${party.account} • ${party.holder}`}
-                                                                {party.type === 'client' && `${party.email} • ${party.contact}`}
-                                                                {party.type === 'ca' && `Lic: ${party.license}`}
-                                                                {party.type === 'capital' && `Acc: ${party.account_number}`}
+                                                                {saleType === 'bank' && (
+                                                                    <>
+                                                                        {party.account && party.account !== 'N/A' && `Acc: ${party.account} • `}
+                                                                        {party.holder && party.holder !== 'N/A' && `${party.holder}`}
+                                                                        {party.ifsc && party.ifsc !== 'N/A' && ` • IFSC: ${party.ifsc}`}
+                                                                        {party.branch && party.branch !== 'N/A' && ` • ${party.branch}`}
+                                                                    </>
+                                                                )}
+                                                                {saleType === 'user' && (
+                                                                    <>
+                                                                        {party.email && `${party.email} • `}
+                                                                        {party.contact && `Mob: ${party.contact}`}
+                                                                        {party.gst_no && ` • GST: ${party.gst_no}`}
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         {formData.party_id === party.id && (
@@ -420,7 +682,7 @@ const SaleForm = ({
                             </div>
                         </div>
 
-                        {/* Date - takes 1 column */}
+                        {/* Date */}
                         <div className="lg:col-span-1">
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="block text-sm font-semibold text-gray-700">
@@ -446,7 +708,7 @@ const SaleForm = ({
                         </div>
                     </div>
 
-                    {/* Services Section - Compact */}
+                    {/* Services Section */}
                     <div className="mb-6">
                         <div className="flex justify-between items-center mb-4">
                             <div>
@@ -456,7 +718,8 @@ const SaleForm = ({
                             <button
                                 type="button"
                                 onClick={addItem}
-                                className="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-1 transition-all duration-200 shadow-sm text-sm"
+                                disabled={isLoadingServices}
+                                className="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-1 transition-all duration-200 shadow-sm text-sm disabled:opacity-50"
                             >
                                 <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -476,67 +739,108 @@ const SaleForm = ({
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {formData.items.map((item, index) => {
-                                        const service = getServiceDetails(item.service_id);
-                                        return (
-                                            <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
-                                                <td className="px-3 py-2.5">
-                                                    <select
-                                                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
-                                                        value={item.service_id}
-                                                        onChange={(e) => handleServiceChange(index, e.target.value)}
-                                                        required
-                                                    >
-                                                        <option value="" className="text-gray-500 text-sm">Select Service</option>
-                                                        {serviceOptions.map(service => (
-                                                            <option key={service.service_id} value={service.service_id} className="py-1 text-sm">
-                                                                {service.name} - ₹{service.fees}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </td>
-                                                <td className="px-3 py-2.5">
+                                    {formData.items.map((item, index) => (
+                                        <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
+                                            <td className="px-3 py-2.5">
+                                                <select
+                                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
+                                                    value={item.service_id}
+                                                    onChange={(e) => handleServiceChange(index, e.target.value)}
+                                                    required
+                                                    disabled={isLoadingServices}
+                                                >
+                                                    <option value="" className="text-gray-500 text-sm">
+                                                        {isLoadingServices ? 'Loading services...' : 'Select Service'}
+                                                    </option>
+                                                    {serviceOptions.map(service => (
+                                                        <option key={service.service_id} value={service.service_id} className="py-1 text-sm">
+                                                            {service.name} - ₹{service.fees}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                            <td className="px-3 py-2.5">
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
+                                                    placeholder="Description..."
+                                                    value={item.description}
+                                                    onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                                />
+                                            </td>
+                                            <td className="px-3 py-2.5">
+                                                <div className="relative">
+                                                    <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₹</span>
                                                     <input
-                                                        type="text"
-                                                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
-                                                        placeholder="Description..."
-                                                        value={item.description}
-                                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                                        type="number"
+                                                        className="w-full pl-7 pr-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150 text-right"
+                                                        placeholder="0"
+                                                        value={item.price}
+                                                        onChange={(e) => handleItemChange(index, 'price', e.target.value)}
+                                                        required
                                                     />
-                                                </td>
-                                                <td className="px-3 py-2.5">
-                                                    <div className="relative">
-                                                        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₹</span>
-                                                        <input
-                                                            type="number"
-                                                            className="w-full pl-7 pr-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150 text-right"
-                                                            placeholder="0"
-                                                            value={item.price}
-                                                            onChange={(e) => handleItemChange(index, 'price', e.target.value)}
-                                                            required
-                                                        />
-                                                    </div>
-                                                </td>
-                                                <td className="px-3 py-2.5 text-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeItem(index)}
-                                                        disabled={formData.items.length <= 1}
-                                                        className="inline-flex items-center px-2 py-1 bg-red-50 text-red-600 rounded border border-red-200 text-xs font-medium hover:bg-red-100 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        <IoTrash className="w-3 h-3" />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-2.5 text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeItem(index)}
+                                                    disabled={formData.items.length <= 1}
+                                                    className="inline-flex items-center px-2 py-1 bg-red-50 text-red-600 rounded border border-red-200 text-xs font-medium hover:bg-red-100 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <IoTrash className="w-3 h-3" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
-                    {/* Financial Summary - Compact */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* Additional Fields Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="flex items-center mb-3">
+                                <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded mr-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h4 className="text-sm font-bold text-gray-900">Additional Settings</h4>
+                            </div>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Additional Charge (₹)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₹</span>
+                                        <input
+                                            type="number"
+                                            className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                            name="additional_charge"
+                                            value={formData.additional_charge}
+                                            onChange={handleInputChange}
+                                            min="0"
+                                            step="1"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">Additional charge will be added after GST calculation</p>
+                                </div>
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="apply_round_off"
+                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                        checked={formData.apply_round_off}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, apply_round_off: e.target.checked }))}
+                                    />
+                                    <label htmlFor="apply_round_off" className="ml-2 text-xs font-medium text-gray-700">
+                                        Apply Round Off
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Notes Section */}
                         <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
                             <div className="flex items-center mb-3">
@@ -548,14 +852,17 @@ const SaleForm = ({
                                 <h4 className="text-sm font-bold text-gray-900">Notes</h4>
                             </div>
                             <textarea
-                                className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150 resize-none bg-gray-50 text-sm"
+                                className="w-full h-28 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150 resize-none bg-gray-50 text-sm"
                                 placeholder="Additional notes or instructions..."
                                 name="notes"
                                 value={formData.notes}
                                 onChange={handleInputChange}
                             />
                         </div>
+                    </div>
 
+                    {/* Discount and Totals Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         {/* Discount Section */}
                         <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
                             <div className="flex items-center mb-3">
@@ -575,8 +882,8 @@ const SaleForm = ({
                                         value={formData.discount_type}
                                         onChange={handleInputChange}
                                     >
-                                        <option value="percentage" className="text-sm">Percentage (%)</option>
-                                        <option value="fixed" className="text-sm">Fixed Amount (₹)</option>
+                                        <option value="percentage">Percentage (%)</option>
+                                        <option value="flat">Flat Amount (₹)</option>
                                     </select>
                                 </div>
                                 <div>
@@ -604,7 +911,7 @@ const SaleForm = ({
                         </div>
 
                         {/* Totals Section */}
-                        <div className="bg-gradient-to-br from-indigo-50 to-white p-4 rounded-lg border border-indigo-100 shadow-sm">
+                        <div className="lg:col-span-2 bg-gradient-to-br from-indigo-50 to-white p-4 rounded-lg border border-indigo-100 shadow-sm">
                             <div className="flex items-center mb-4">
                                 <div className="p-1.5 bg-indigo-600 text-white rounded mr-2">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -643,6 +950,13 @@ const SaleForm = ({
                                     </>
                                 )}
 
+                                {formData.additional_charge > 0 && (
+                                    <div className="flex justify-between items-center py-1">
+                                        <span className="text-gray-600">Additional Charge:</span>
+                                        <span className="font-semibold text-gray-900">{formatCurrency(formData.additional_charge)}</span>
+                                    </div>
+                                )}
+
                                 {Math.abs(formData.round_off) > 0.01 && (
                                     <div className="flex justify-between items-center py-1">
                                         <span className="text-gray-600">Round Off:</span>
@@ -664,10 +978,9 @@ const SaleForm = ({
                 </form>
             </div>
 
-            {/* Footer with Actions - Compact */}
+            {/* Footer with Actions */}
             <div className="flex-shrink-0 border-t border-gray-200 bg-white p-4 rounded-b-xl shadow-lg">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                    {/* Notification Options */}
                     <div className="w-full lg:w-auto">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                             <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Send Invoice:</span>
@@ -703,19 +1016,17 @@ const SaleForm = ({
                                         <div className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-200 transform ${sendWhatsApp ? 'translate-x-4' : ''}`}></div>
                                     </div>
                                     <div className="ml-2 flex items-center">
-    <svg className="w-4 h-4 text-green-600 mr-1.5" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.76.982.998-3.675-.236-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.9 6.994c-.004 5.45-4.438 9.88-9.888 9.88m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.333.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.333 11.893-11.892 0-3.18-1.24-6.162-3.495-8.411" />
-    </svg>
-    <span className="text-xs text-gray-700 font-medium">WhatsApp</span>
-</div>
+                                        <svg className="w-4 h-4 text-green-600 mr-1.5" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.76.982.998-3.675-.236-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.9 6.994c-.004 5.45-4.438 9.88-9.888 9.88m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.333.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.333 11.893-11.892 0-3.18-1.24-6.162-3.495-8.411" />
+                                        </svg>
+                                        <span className="text-xs text-gray-700 font-medium">WhatsApp</span>
+                                    </div>
                                 </label>
                             </div>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
-                        {/* Total Display */}
                         <div className="hidden lg:block px-3 py-1.5 bg-gradient-to-r from-indigo-50 to-indigo-100 rounded border border-indigo-200">
                             <div className="text-xs text-indigo-700 font-semibold">
                                 Total: <span className="text-sm">{formatCurrency(formData.grand_total)}</span>
@@ -736,7 +1047,7 @@ const SaleForm = ({
                             <button
                                 type="submit"
                                 onClick={handleSubmit}
-                                disabled={isSubmitting || !formData.party_id}
+                                disabled={isSubmitting || !formData.party_id || formData.items.every(item => !item.service_id)}
                                 className="px-5 py-2 text-xs font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 border border-transparent rounded-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 shadow hover:shadow-md min-w-[140px] flex items-center justify-center"
                             >
                                 {isSubmitting ? (
@@ -752,7 +1063,7 @@ const SaleForm = ({
                                         <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        Create Invoice
+                                        Create {saleType === 'user' ? 'User' : 'Bank'} Invoice
                                     </>
                                 )}
                             </button>
@@ -763,17 +1074,14 @@ const SaleForm = ({
         </div>
     );
 
-    // Render as modal or standalone component
     if (mode === 'modal') {
         return isOpen ? (
             <div className="fixed inset-0 z-50 overflow-y-auto">
                 <div className="flex items-center justify-center min-h-screen p-2 sm:p-4">
-                    {/* Overlay */}
                     <div
                         className="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity"
                         onClick={onClose}
                     />
-                    {/* Professional Modal panel - Smaller */}
                     <div className="relative w-full max-w-4xl bg-white rounded-xl shadow-2xl h-[85vh] flex flex-col transform transition-all duration-300 scale-100">
                         {formContent}
                     </div>
@@ -782,7 +1090,6 @@ const SaleForm = ({
         ) : null;
     }
 
-    // Render as standalone page component
     return formContent;
 };
 

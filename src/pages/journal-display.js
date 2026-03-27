@@ -11,7 +11,8 @@ import {
     FiPrinter,
     FiChevronLeft,
     FiChevronRight as FiChevronRightIcon,
-    FiDollarSign
+    FiDollarSign,
+    FiX
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
@@ -19,6 +20,9 @@ import JournalEntry from '../components/journal';
 import DateFilter from '../components/DateFilter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header, Sidebar } from '../components/header';
+import API_BASE_URL from '../utils/api-controller';
+import getHeaders from '../utils/get-headers';
+import axios from 'axios';
 
 const ViewJournal = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -32,6 +36,8 @@ const ViewJournal = () => {
     const [journals, setJournals] = useState([]);
     const [journalFormModal, setJournalEntryModal] = useState(false);
     const [totalAmount, setTotalAmount] = useState(0);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
     // State for dropdown menus
     const [showAddDropdown, setShowAddDropdown] = useState(false);
@@ -41,11 +47,33 @@ const ViewJournal = () => {
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
-    const [showAll, setShowAll] = useState(false);
+    const [totalItems, setTotalItems] = useState(0);
+    const [isLastPage, setIsLastPage] = useState(false);
+    
+    // Date state
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
+
+    // Debounce search term
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // Fetch data when dependencies change
+    useEffect(() => {
+        if (fromDate && toDate) {
+            fetchJournalData();
+        }
+    }, [currentPage, debouncedSearchTerm, fromDate, toDate]);
 
     const handleJournalSuccess = (journalData) => {
         console.log('Journal entry created successfully:', journalData);
         alert('Journal entry confirmed! Refreshing data...');
+        fetchJournalData(); // Refresh the list
     };
 
     const handleExport = (type, data = null) => {
@@ -58,153 +86,180 @@ const ViewJournal = () => {
         }, 1500);
     };
 
-    // Mock journal data
-    const mockJournalData = [
-        {
-            journal_id: '1',
-            invoice_id: 'INV001',
-            date: '2024-01-15',
-            from: 'Cash Account',
-            from_type: 'cash',
-            to: 'Office Equipment',
-            to_type: 'asset',
-            invoice_no: 'JNL-001',
-            amount: 50000,
-            remark: 'Purchase of office equipment'
-        },
-        {
-            journal_id: '2',
-            invoice_id: 'INV002',
-            date: '2024-01-10',
-            from: 'Client Receivable',
-            from_type: 'client',
-            to: 'Bank Account',
-            to_type: 'bank',
-            invoice_no: 'JNL-002',
-            amount: 75000,
-            remark: 'Client payment received'
-        },
-        {
-            journal_id: '3',
-            invoice_id: 'INV003',
-            date: '2024-01-05',
-            from: 'Capital Account',
-            from_type: 'capital',
-            to: 'Business Account',
-            to_type: 'business',
-            invoice_no: 'JNL-003',
-            amount: 100000,
-            remark: 'Capital investment'
-        },
-        {
-            journal_id: '4',
-            invoice_id: 'INV004',
-            date: '2024-01-20',
-            from: 'Vendor Payable',
-            from_type: 'vendor',
-            to: 'Bank Transfer',
-            to_type: 'bank',
-            invoice_no: 'JNL-004',
-            amount: 25000,
-            remark: 'Vendor payment'
-        },
-        {
-            journal_id: '5',
-            invoice_id: 'INV005',
-            date: '2024-01-25',
-            from: 'Sales Account',
-            from_type: 'sales',
-            to: 'Income Account',
-            to_type: 'income',
-            invoice_no: 'JNL-005',
-            amount: 150000,
-            remark: 'Sales revenue recording'
-        },
-        {
-            journal_id: '6',
-            invoice_id: 'INV006',
-            date: '2024-01-18',
-            from: 'Expense Account',
-            from_type: 'expense',
-            to: 'Cash Account',
-            to_type: 'cash',
-            invoice_no: 'JNL-006',
-            amount: 35000,
-            remark: 'Office expenses'
-        },
-        {
-            journal_id: '7',
-            invoice_id: 'INV007',
-            date: '2024-01-22',
-            from: 'Bank Account',
-            from_type: 'bank',
-            to: 'Loan Account',
-            to_type: 'loan',
-            invoice_no: 'JNL-007',
-            amount: 200000,
-            remark: 'Loan repayment'
-        },
-        {
-            journal_id: '8',
-            invoice_id: 'INV008',
-            date: '2024-01-28',
-            from: 'Inventory Account',
-            from_type: 'asset',
-            to: 'Cost of Goods Sold',
-            to_type: 'expense',
-            invoice_no: 'JNL-008',
-            amount: 45000,
-            remark: 'Inventory consumption'
-        },
-        {
-            journal_id: '9',
-            invoice_id: 'INV009',
-            date: '2024-01-30',
-            from: 'Prepaid Expenses',
-            from_type: 'asset',
-            to: 'Expense Account',
-            to_type: 'expense',
-            invoice_no: 'JNL-009',
-            amount: 15000,
-            remark: 'Amortization of prepaid expenses'
-        },
-        {
-            journal_id: '10',
-            invoice_id: 'INV010',
-            date: '2024-01-12',
-            from: 'Accounts Receivable',
-            from_type: 'client',
-            to: 'Sales Account',
-            to_type: 'sales',
-            invoice_no: 'JNL-010',
-            amount: 85000,
-            remark: 'Sales on credit'
-        },
-        {
-            journal_id: '11',
-            invoice_id: 'INV011',
-            date: '2024-01-14',
-            from: 'Depreciation Account',
-            from_type: 'expense',
-            to: 'Accumulated Depreciation',
-            to_type: 'asset',
-            invoice_no: 'JNL-011',
-            amount: 12000,
-            remark: 'Monthly depreciation'
-        },
-        {
-            journal_id: '12',
-            invoice_id: 'INV012',
-            date: '2024-01-17',
-            from: 'Salary Payable',
-            from_type: 'expense',
-            to: 'Cash Account',
-            to_type: 'cash',
-            invoice_no: 'JNL-012',
-            amount: 65000,
-            remark: 'Salary payment'
+    // Format currency
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(parseFloat(amount));
+    };
+
+    // API call to fetch journal data
+    const fetchJournalData = async () => {
+        setLoading(true);
+        
+        try {
+            const headers = await getHeaders();
+            const url = `${API_BASE_URL}/transaction/report/journal`;
+            
+            const params = {
+                page_no: currentPage,
+                limit: itemsPerPage,
+                from_date: fromDate,
+                to_date: toDate
+            };
+            
+            // Add search parameter if search term exists
+            if (debouncedSearchTerm.trim()) {
+                params.search = debouncedSearchTerm.trim();
+            }
+            
+            const response = await axios.get(url, {
+                headers,
+                params
+            });
+            
+            if (response.data.success) {
+                const journalData = transformApiData(response.data.data);
+                setJournals(journalData);
+                
+                // Update pagination info
+                setTotalItems(response.data.meta.total);
+                setIsLastPage(response.data.meta.is_last_page);
+                
+                // Calculate total amount from all data (not just current page)
+                // If API provides total amount in meta, use that; otherwise calculate from current page
+                // For now, we'll calculate from current page but ideally API should provide total
+                const total = journalData.reduce((acc, item) => acc + item.amount, 0);
+                setTotalAmount(total);
+            }
+        } catch (error) {
+            console.error('Error fetching journal data:', error);
+            alert('Failed to fetch journal entries. Please try again.');
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
+
+    // Transform API response to match the component's expected format
+    const transformApiData = (apiData) => {
+        return apiData.map((item, index) => ({
+            journal_id: item.transaction_id,
+            invoice_id: item.invoice_id,
+            date: formatDateForDisplay(item.transaction_date),
+            from: item.payment_from?.details?.name || getTypeLabel(item.payment_from?.type),
+            from_type: item.payment_from?.type || '',
+            to: item.payment_to?.details?.name || getTypeLabel(item.payment_to?.type),
+            to_type: item.payment_to?.type || '',
+            invoice_no: item.invoice_no,
+            amount: parseFloat(item.amount),
+            remark: item.remark || '',
+            raw_data: item // Keep raw data for reference
+        }));
+    };
+
+    // Helper function to get type label when details are not available
+    const getTypeLabel = (type) => {
+        const typeLabels = {
+            'client': 'Client Account',
+            'vendor': 'Vendor Account',
+            'cash': 'Cash Account',
+            'bank': 'Bank Account',
+            'capital': 'Capital Account',
+            'asset': 'Asset Account',
+            'expense': 'Expense Account',
+            'income': 'Income Account',
+            'sales': 'Sales Account',
+            'business': 'Business Account',
+            'loan': 'Loan Account'
+        };
+        return typeLabels[type] || type || 'Unknown Account';
+    };
+
+    // Format date from API to display format
+    const formatDateForDisplay = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    };
+
+    // Format date for API (YYYY-MM-DD)
+    const formatDateForAPI = (date) => {
+        return date.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+    };
+
+    // Handle search
+    const handleSearch = () => {
+        // Reset to first page when searching
+        setCurrentPage(1);
+        fetchJournalData();
+    };
+
+    // Handle search input change
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
+
+    // Clear search
+    const clearSearch = () => {
+        setSearchTerm('');
+        setDebouncedSearchTerm('');
+        setCurrentPage(1);
+    };
+
+    // Handle date filter change
+    const handleDateFilterChange = (filter) => {
+        console.log('Selected filter:', filter);
+        if (filter.range) {
+            setDateRange(filter.range);
+            const [from, to] = filter.range.split(' - ');
+            
+            // Parse dates for API format
+            const parseDate = (dateStr) => {
+                const [day, month, year] = dateStr.split('/');
+                return `${year}-${month}-${day}`;
+            };
+            
+            const fromDateFormatted = parseDate(from);
+            const toDateFormatted = parseDate(to);
+            
+            setFromDate(fromDateFormatted);
+            setToDate(toDateFormatted);
+            setFromToDate(`From ${from} to ${to}`);
+            setCurrentPage(1); // Reset to first page on date change
+        }
+    };
+
+    // Initialize with current month date range
+    useEffect(() => {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        
+        const from = formatDateForAPI(firstDay);
+        const to = formatDateForAPI(today);
+        
+        setFromDate(from);
+        setToDate(to);
+        
+        // Format for display
+        const formatDisplayDate = (date) => {
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        };
+        
+        const fromDisplay = formatDisplayDate(firstDay);
+        const toDisplay = formatDisplayDate(today);
+        
+        setDateRange(`${fromDisplay} - ${toDisplay}`);
+        setFromToDate(`From ${fromDisplay} to ${toDisplay}`);
+    }, []);
 
     // Persist sidebar minimized state
     useEffect(() => {
@@ -222,70 +277,6 @@ const ViewJournal = () => {
             document.body.style.overflow = 'auto';
         };
     }, [mobileMenuOpen]);
-
-    // Initialize with current month date range
-    useEffect(() => {
-        const today = new Date();
-        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-        const lastDay = today;
-
-        const formatDate = (date) => {
-            return date.toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            }).replace(/\//g, '/');
-        };
-
-        const from = formatDate(firstDay);
-        const to = formatDate(lastDay);
-
-        setDateRange(`${from} - ${to}`);
-        setFromToDate(`From ${from} to ${to}`);
-        fetchJournalData(from, to);
-    }, []);
-
-    // Format currency
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-IN', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(amount);
-    };
-
-    // Simulate API call to fetch journal data
-    const fetchJournalData = async (from, to) => {
-        setLoading(true);
-
-        // Simulate API delay
-        setTimeout(() => {
-            const journalData = mockJournalData;
-            setJournals(journalData);
-
-            // Calculate total amount
-            const total = journalData.reduce((acc, item) => acc + item.amount, 0);
-            setTotalAmount(total);
-            setLoading(false);
-        }, 1500);
-    };
-
-    // Handle search
-    const handleSearch = () => {
-        const [from, to] = dateRange.split(' - ');
-        setFromToDate(`From ${from} to ${to}`);
-        fetchJournalData(from, to);
-    };
-
-    // Handle date filter change
-    const handleDateFilterChange = (filter) => {
-        console.log('Selected filter:', filter);
-        if (filter.range) {
-            setDateRange(filter.range);
-            const [from, to] = filter.range.split(' - ');
-            setFromToDate(`From ${from} to ${to}`);
-            fetchJournalData(from, to);
-        }
-    };
 
     // Get action links based on from_type and to_type
     const getActionLinks = (item) => {
@@ -309,6 +300,7 @@ const ViewJournal = () => {
 
     // Format date
     const formatDate = (dateString) => {
+        if (!dateString) return '';
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB');
     };
@@ -333,14 +325,36 @@ const ViewJournal = () => {
         };
     }, []);
 
-    // Get current items based on pagination
-    const indexOfLastItem = showAll ? journals.length : currentPage * itemsPerPage;
-    const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
-    const currentItems = journals.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(journals.length / itemsPerPage);
+    // Pagination handlers
+    const goToNextPage = () => {
+        if (!isLastPage) {
+            setCurrentPage(prev => prev + 1);
+        }
+    };
 
-    // Calculate paginated total
-    const paginatedTotal = currentItems.reduce((acc, journal) => acc + journal.amount, 0);
+    const goToPrevPage = () => {
+        if (currentPage > 1) {
+            setCurrentPage(prev => prev - 1);
+        }
+    };
+
+    // Get account type color
+    const getAccountTypeColor = (type) => {
+        switch(type) {
+            case 'cash': return 'bg-yellow-100 text-yellow-700';
+            case 'bank': return 'bg-blue-100 text-blue-700';
+            case 'asset': return 'bg-purple-100 text-purple-700';
+            case 'client': return 'bg-green-100 text-green-700';
+            case 'vendor': return 'bg-orange-100 text-orange-700';
+            case 'capital': return 'bg-indigo-100 text-indigo-700';
+            case 'sales': return 'bg-teal-100 text-teal-700';
+            case 'income': return 'bg-emerald-100 text-emerald-700';
+            case 'expense': return 'bg-red-100 text-red-700';
+            case 'business': return 'bg-sky-100 text-sky-700';
+            case 'loan': return 'bg-gray-100 text-gray-700';
+            default: return 'bg-slate-100 text-slate-700';
+        }
+    };
 
     // Skeleton loader component
     const SkeletonRow = () => (
@@ -435,29 +449,6 @@ const ViewJournal = () => {
         </div>
     );
 
-    // Get account type color
-    const getAccountTypeColor = (type) => {
-        switch(type) {
-            case 'cash': return 'bg-yellow-100 text-yellow-700';
-            case 'bank': return 'bg-blue-100 text-blue-700';
-            case 'asset': return 'bg-purple-100 text-purple-700';
-            case 'client': return 'bg-green-100 text-green-700';
-            case 'vendor': return 'bg-orange-100 text-orange-700';
-            case 'capital': return 'bg-indigo-100 text-indigo-700';
-            case 'sales': return 'bg-teal-100 text-teal-700';
-            case 'income': return 'bg-emerald-100 text-emerald-700';
-            case 'expense': return 'bg-red-100 text-red-700';
-            case 'business': return 'bg-sky-100 text-sky-700';
-            case 'loan': return 'bg-gray-100 text-gray-700';
-            default: return 'bg-slate-100 text-slate-700';
-        }
-    };
-
-    // Show skeleton while loading
-    if (loading) {
-        return <SkeletonLoader />;
-    }
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             <Header
@@ -485,8 +476,11 @@ const ViewJournal = () => {
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-blue-100 text-xs font-medium">Total Journal Amount</p>
+                                <p className="text-blue-100 text-xs font-medium">Total Journal Amount (Current Page)</p>
                                 <h3 className="text-lg font-bold mt-1">₹{formatCurrency(totalAmount)}</h3>
+                                <p className="text-blue-100 text-xs mt-1">
+                                    Total Records: {totalItems}
+                                </p>
                             </div>
                             <FiDollarSign className="w-5 h-5 opacity-80" />
                         </div>
@@ -522,6 +516,26 @@ const ViewJournal = () => {
                                 </div>
 
                                 <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+                                    {/* Search Bar */}
+                                    <div className="relative w-full lg:w-64">
+                                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search by invoice no, remark, name..."
+                                            value={searchTerm}
+                                            onChange={handleSearchChange}
+                                            className="w-full pl-9 pr-8 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        />
+                                        {searchTerm && (
+                                            <button
+                                                onClick={clearSearch}
+                                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                            >
+                                                <FiX className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+
                                     {/* Date Filter Component */}
                                     <div className="w-full lg:w-auto">
                                         <DateFilter onChange={handleDateFilterChange} />
@@ -604,10 +618,10 @@ const ViewJournal = () => {
                         </div>
 
                         {/* Table Container */}
-                        <div className="w-full">
-                            <table className="w-full text-xs table-fixed">
-                                <thead>
-                                    <tr className="bg-gradient-to-r from-slate-50 to-slate-100">
+                        <div className="w-full overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0">
+                                    <tr>
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider w-[5%]">
                                             Sl No
                                         </th>
@@ -635,7 +649,12 @@ const ViewJournal = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-slate-100">
-                                    {journals.length === 0 ? (
+                                    {loading ? (
+                                        // Show skeleton rows while loading
+                                        [...Array(5)].map((_, idx) => (
+                                            <SkeletonRow key={idx} />
+                                        ))
+                                    ) : journals.length === 0 ? (
                                         <tr>
                                             <td colSpan="8" className="text-center py-8 text-slate-500">
                                                 <div className="flex flex-col items-center justify-center">
@@ -643,22 +662,26 @@ const ViewJournal = () => {
                                                         <FiFileText className="w-8 h-8 text-slate-400" />
                                                     </div>
                                                     <p className="text-slate-600 text-sm font-medium mb-1">No journal entries found</p>
-                                                    <p className="text-slate-500 text-xs mb-4">Start by creating your first journal entry</p>
-                                                    <motion.button
-                                                        onClick={() => setJournalEntryModal(true)}
-                                                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-xs font-semibold hover:shadow transition-all duration-200"
-                                                        whileHover={{ scale: 1.02 }}
-                                                        whileTap={{ scale: 0.98 }}
-                                                    >
-                                                        Create Your First Journal Entry
-                                                    </motion.button>
+                                                    <p className="text-slate-500 text-xs mb-4">
+                                                        {searchTerm ? 'Try adjusting your search or date filter' : 'Start by creating your first journal entry'}
+                                                    </p>
+                                                    {!searchTerm && (
+                                                        <motion.button
+                                                            onClick={() => setJournalEntryModal(true)}
+                                                            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-xs font-semibold hover:shadow transition-all duration-200"
+                                                            whileHover={{ scale: 1.02 }}
+                                                            whileTap={{ scale: 0.98 }}
+                                                        >
+                                                            Create Your First Journal Entry
+                                                        </motion.button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
                                     ) : (
-                                        currentItems.map((journal, index) => {
+                                        journals.map((journal, index) => {
                                             const isDropdownOpen = activeRowDropdown === journal.journal_id;
-                                            const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
+                                            const serialNumber = (currentPage - 1) * itemsPerPage + index + 1;
                                             const { editLink, invoiceLink } = getActionLinks(journal);
                                             
                                             return (
@@ -671,7 +694,7 @@ const ViewJournal = () => {
                                                 >
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="text-slate-700 font-medium text-xs">
-                                                            {actualIndex + 1}
+                                                            {serialNumber}
                                                         </div>
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
@@ -686,7 +709,7 @@ const ViewJournal = () => {
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="px-2">
-                                                            <div className="text-slate-800 font-semibold text-xs truncate">
+                                                            <div className="text-slate-800 font-semibold text-xs truncate" title={journal.from}>
                                                                 {journal.from}
                                                             </div>
                                                             <div className="flex items-center justify-center gap-1 mt-1">
@@ -698,7 +721,7 @@ const ViewJournal = () => {
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="px-2">
-                                                            <div className="text-slate-800 font-semibold text-xs truncate">
+                                                            <div className="text-slate-800 font-semibold text-xs truncate" title={journal.to}>
                                                                 {journal.to}
                                                             </div>
                                                             <div className="flex items-center justify-center gap-1 mt-1">
@@ -715,8 +738,8 @@ const ViewJournal = () => {
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="px-2">
-                                                            <div className="text-slate-500 text-[10px] italic truncate">
-                                                                "{journal.remark}"
+                                                            <div className="text-slate-500 text-[10px] italic truncate" title={journal.remark}>
+                                                                {journal.remark || '-'}
                                                             </div>
                                                         </div>
                                                     </td>
@@ -791,6 +814,46 @@ const ViewJournal = () => {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination */}
+                        {!loading && journals.length > 0 && (
+                            <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-3">
+                                <div className="text-xs text-slate-600">
+                                    Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} entries
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <motion.button
+                                        onClick={goToPrevPage}
+                                        disabled={currentPage === 1}
+                                        className={`p-2 rounded-lg border transition-all duration-200 ${
+                                            currentPage === 1
+                                                ? 'border-slate-200 text-slate-300 cursor-not-allowed'
+                                                : 'border-slate-300 text-slate-600 hover:bg-blue-50 hover:border-blue-300'
+                                        }`}
+                                        whileHover={currentPage !== 1 ? { scale: 1.05 } : {}}
+                                        whileTap={currentPage !== 1 ? { scale: 0.95 } : {}}
+                                    >
+                                        <FiChevronLeft className="w-4 h-4" />
+                                    </motion.button>
+                                    <span className="px-3 py-1 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700">
+                                        Page {currentPage} of {Math.ceil(totalItems / itemsPerPage)}
+                                    </span>
+                                    <motion.button
+                                        onClick={goToNextPage}
+                                        disabled={isLastPage}
+                                        className={`p-2 rounded-lg border transition-all duration-200 ${
+                                            isLastPage
+                                                ? 'border-slate-200 text-slate-300 cursor-not-allowed'
+                                                : 'border-slate-300 text-slate-600 hover:bg-blue-50 hover:border-blue-300'
+                                        }`}
+                                        whileHover={!isLastPage ? { scale: 1.05 } : {}}
+                                        whileTap={!isLastPage ? { scale: 0.95 } : {}}
+                                    >
+                                        <FiChevronRightIcon className="w-4 h-4" />
+                                    </motion.button>
+                                </div>
+                            </div>
+                        )}
                     </motion.div>
                 </div>
             </div>

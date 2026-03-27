@@ -1,39 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { FiX, FiCalendar, FiDollarSign, FiFileText, FiArrowRight, FiMinus, FiPlus, FiHash, FiCreditCard, FiUser } from 'react-icons/fi';
-
-// Enhanced professional data for journal entries
-const accountOptions = [
-    // Clients
-    { id: 'client_1', type: 'client', name: 'ABC Enterprises Ltd', email: 'accounts@abcenterprises.com', contact: 'Mr. Sharma', balance: '1,50,000' },
-    { id: 'client_2', type: 'client', name: 'XYZ Solutions Inc', email: 'billing@xyzsolutions.com', contact: 'Ms. Patel', balance: '75,000' },
-    { id: 'client_3', type: 'client', name: 'Global Traders Co.', email: 'finance@globaltraders.com', contact: 'Mr. Gupta', balance: '2,25,000' },
-    
-    // Banks
-    { id: 'bank_1', type: 'bank', name: 'HDFC Bank', account: '123456789012', holder: 'Company Name Ltd', balance: '10,50,000' },
-    { id: 'bank_2', type: 'bank', name: 'ICICI Bank', account: '987654321098', holder: 'Company Name Ltd', balance: '25,75,000' },
-    { id: 'bank_3', type: 'bank', name: 'State Bank of India', account: '456789012345', holder: 'Company Name Ltd', balance: '15,20,000' },
-    
-    // Staff
-    { id: 'staff_1', type: 'staff', name: 'Rajesh Kumar', email: 'rajesh@company.com', designation: 'Account Manager', balance: '50,000' },
-    { id: 'staff_2', type: 'staff', name: 'Priya Sharma', email: 'priya@company.com', designation: 'Sales Executive', balance: '25,000' },
-    
-    // Capital Accounts
-    { id: 'capital_1', type: 'capital', name: 'Proprietor Capital', description: 'Owner Investment', balance: '50,00,000' },
-    { id: 'capital_2', type: 'capital', name: 'Partner Capital A', description: 'Partner A Investment', balance: '25,00,000' },
-    
-    // Expenses
-    { id: 'expense_1', type: 'expense', name: 'Office Rent', category: 'Fixed Expenses', balance: '75,000' },
-    { id: 'expense_2', type: 'expense', name: 'Salary Expenses', category: 'Staff Costs', balance: '2,50,000' },
-    
-    // Income
-    { id: 'income_1', type: 'income', name: 'Service Revenue', category: 'Service Income', balance: '15,00,000' },
-    { id: 'income_2', type: 'income', name: 'Product Sales', category: 'Sales Income', balance: '25,00,000' }
-];
-
-const appSettings = {
-    company_name: 'Professional Accounting Services',
-    currency: 'INR',
-};
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { FiX, FiCalendar, FiDollarSign, FiFileText, FiArrowRight, FiMinus, FiPlus, FiHash, FiCreditCard, FiUser, FiSearch } from 'react-icons/fi';
+import axios from 'axios';
+import API_BASE_URL from '../../src/utils/api-controller';
+import getHeaders from '../../src/utils/get-headers';
+import toast from 'react-hot-toast';
 
 const JournalEntry = ({
     isOpen = false,
@@ -52,31 +22,184 @@ const JournalEntry = ({
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Separate state for from and to dropdowns
     const [fromSearchTerm, setFromSearchTerm] = useState('');
     const [toSearchTerm, setToSearchTerm] = useState('');
     const [showFromDropdown, setShowFromDropdown] = useState(false);
     const [showToDropdown, setShowToDropdown] = useState(false);
+    
+    // Separate API data for from and to dropdowns
+    const [fromClients, setFromClients] = useState([]);
+    const [toClients, setToClients] = useState([]);
+    const [loadingFrom, setLoadingFrom] = useState(false);
+    const [loadingTo, setLoadingTo] = useState(false);
+    const [fromPage, setFromPage] = useState(1);
+    const [toPage, setToPage] = useState(1);
+    const [hasMoreFrom, setHasMoreFrom] = useState(true);
+    const [hasMoreTo, setHasMoreTo] = useState(true);
+    
+    // Refs for dropdowns
+    const fromDropdownRef = useRef(null);
+    const toDropdownRef = useRef(null);
+    
+    // Store search terms for each dropdown
+    const [fromSearchValue, setFromSearchValue] = useState('');
+    const [toSearchValue, setToSearchValue] = useState('');
 
-    // Filter accounts based on search
+    // Fetch clients for FROM dropdown
+    const fetchFromClients = useCallback(async (search = '', pageNum = 1, append = false) => {
+        setLoadingFrom(true);
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/client/search?page_no=${pageNum}&limit=10&search=${search}`,
+                { headers: getHeaders() }
+            );
+            
+            if (response.data.success) {
+                const clientData = response.data.data || [];
+                const formattedClients = clientData.map(client => ({
+                    id: client.username,
+                    type: 'client',
+                    name: client.name || client.username,
+                    username: client.username,
+                    email: client.email || '',
+                    contact: client.phone || '',
+                    balance: client.balance || '0',
+                    isActive: client.is_active
+                }));
+                
+                if (append) {
+                    setFromClients(prev => [...prev, ...formattedClients]);
+                } else {
+                    setFromClients(formattedClients);
+                }
+                
+                setHasMoreFrom(!response.data.is_last_page);
+            }
+        } catch (error) {
+            console.error('Error fetching from clients:', error);
+            toast.error('Failed to fetch clients');
+        } finally {
+            setLoadingFrom(false);
+        }
+    }, []);
+
+    // Fetch clients for TO dropdown
+    const fetchToClients = useCallback(async (search = '', pageNum = 1, append = false) => {
+        setLoadingTo(true);
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/client/search?page_no=${pageNum}&limit=10&search=${search}`,
+                { headers: getHeaders() }
+            );
+            
+            if (response.data.success) {
+                const clientData = response.data.data || [];
+                const formattedClients = clientData.map(client => ({
+                    id: client.username,
+                    type: 'client',
+                    name: client.name || client.username,
+                    username: client.username,
+                    email: client.email || '',
+                    contact: client.phone || '',
+                    balance: client.balance || '0',
+                    isActive: client.is_active
+                }));
+                
+                if (append) {
+                    setToClients(prev => [...prev, ...formattedClients]);
+                } else {
+                    setToClients(formattedClients);
+                }
+                
+                setHasMoreTo(!response.data.is_last_page);
+            }
+        } catch (error) {
+            console.error('Error fetching to clients:', error);
+            toast.error('Failed to fetch clients');
+        } finally {
+            setLoadingTo(false);
+        }
+    }, []);
+
+    // Debounced search for FROM dropdown
+    useEffect(() => {
+        const debounceTimer = setTimeout(() => {
+            setFromPage(1);
+            fetchFromClients(fromSearchValue, 1, false);
+        }, 500);
+
+        return () => clearTimeout(debounceTimer);
+    }, [fromSearchValue, fetchFromClients]);
+
+    // Debounced search for TO dropdown
+    useEffect(() => {
+        const debounceTimer = setTimeout(() => {
+            setToPage(1);
+            fetchToClients(toSearchValue, 1, false);
+        }, 500);
+
+        return () => clearTimeout(debounceTimer);
+    }, [toSearchValue, fetchToClients]);
+
+    // Load more clients for FROM dropdown
+    const loadMoreFromClients = () => {
+        const nextPage = fromPage + 1;
+        setFromPage(nextPage);
+        fetchFromClients(fromSearchValue, nextPage, true);
+    };
+
+    // Load more clients for TO dropdown
+    const loadMoreToClients = () => {
+        const nextPage = toPage + 1;
+        setToPage(nextPage);
+        fetchToClients(toSearchValue, nextPage, true);
+    };
+
+    // Initial load when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            fetchFromClients('', 1, false);
+            fetchToClients('', 1, false);
+        }
+    }, [isOpen, fetchFromClients, fetchToClients]);
+
+    // Click outside handlers
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (fromDropdownRef.current && !fromDropdownRef.current.contains(event.target)) {
+                setShowFromDropdown(false);
+            }
+            if (toDropdownRef.current && !toDropdownRef.current.contains(event.target)) {
+                setShowToDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Filter FROM accounts based on search
     const filteredFromAccounts = useMemo(() => {
-        if (!fromSearchTerm) return accountOptions;
-        return accountOptions.filter(account =>
-            account.name.toLowerCase().includes(fromSearchTerm.toLowerCase()) ||
-            (account.email && account.email.toLowerCase().includes(fromSearchTerm.toLowerCase())) ||
-            (account.contact && account.contact.toLowerCase().includes(fromSearchTerm.toLowerCase())) ||
-            account.type.toLowerCase().includes(fromSearchTerm.toLowerCase())
+        if (!fromSearchValue) return fromClients;
+        return fromClients.filter(account =>
+            account.name?.toLowerCase().includes(fromSearchValue.toLowerCase()) ||
+            account.email?.toLowerCase().includes(fromSearchValue.toLowerCase()) ||
+            account.contact?.toLowerCase().includes(fromSearchValue.toLowerCase()) ||
+            account.username?.toLowerCase().includes(fromSearchValue.toLowerCase())
         );
-    }, [fromSearchTerm]);
+    }, [fromSearchValue, fromClients]);
 
+    // Filter TO accounts based on search
     const filteredToAccounts = useMemo(() => {
-        if (!toSearchTerm) return accountOptions;
-        return accountOptions.filter(account =>
-            account.name.toLowerCase().includes(toSearchTerm.toLowerCase()) ||
-            (account.email && account.email.toLowerCase().includes(toSearchTerm.toLowerCase())) ||
-            (account.contact && account.contact.toLowerCase().includes(toSearchTerm.toLowerCase())) ||
-            account.type.toLowerCase().includes(toSearchTerm.toLowerCase())
+        if (!toSearchValue) return toClients;
+        return toClients.filter(account =>
+            account.name?.toLowerCase().includes(toSearchValue.toLowerCase()) ||
+            account.email?.toLowerCase().includes(toSearchValue.toLowerCase()) ||
+            account.contact?.toLowerCase().includes(toSearchValue.toLowerCase()) ||
+            account.username?.toLowerCase().includes(toSearchValue.toLowerCase())
         );
-    }, [toSearchTerm]);
+    }, [toSearchValue, toClients]);
 
     // Reset form when modal opens
     useEffect(() => {
@@ -89,66 +212,30 @@ const JournalEntry = ({
                 remark: '',
                 transaction_ref_id: ''
             });
-            setFromSearchTerm('');
-            setToSearchTerm('');
+            setFromSearchValue('');
+            setToSearchValue('');
             setShowFromDropdown(false);
             setShowToDropdown(false);
+            setFromPage(1);
+            setToPage(1);
         }
     }, [isOpen, initialFromAccountId]);
 
     const getSelectedFromAccount = () => {
-        return accountOptions.find(account => account.id === formData.from_account_id);
+        return fromClients.find(account => account.id === formData.from_account_id);
     };
 
     const getSelectedToAccount = () => {
-        return accountOptions.find(account => account.id === formData.to_account_id);
+        return toClients.find(account => account.id === formData.to_account_id);
     };
 
     const getAccountDisplayText = (account) => {
         if (!account) return 'Select Account';
-        
-        switch (account.type) {
-            case 'client':
-                return `${account.name} • ${account.email}`;
-            case 'bank':
-                return `${account.name} • ${account.account}`;
-            case 'staff':
-                return `${account.name} • ${account.designation}`;
-            case 'capital':
-                return `${account.name} • ${account.description}`;
-            case 'expense':
-                return `${account.name} • ${account.category}`;
-            case 'income':
-                return `${account.name} • ${account.category}`;
-            default:
-                return account.name;
-        }
+        return `${account.name} • ${account.email || account.username}`;
     };
 
     const getAccountTypeBadge = (type) => {
-        const typeConfig = {
-            client: { color: 'bg-green-100 text-green-800', label: 'C' },
-            bank: { color: 'bg-blue-100 text-blue-800', label: 'B' },
-            staff: { color: 'bg-purple-100 text-purple-800', label: 'S' },
-            capital: { color: 'bg-orange-100 text-orange-800', label: 'CAP' },
-            expense: { color: 'bg-red-100 text-red-800', label: 'EXP' },
-            income: { color: 'bg-teal-100 text-teal-800', label: 'INC' }
-        };
-        
-        const config = typeConfig[type] || { color: 'bg-gray-100 text-gray-800', label: type.charAt(0).toUpperCase() };
-        return `text-xs font-bold px-2 py-1 rounded ${config.color}`;
-    };
-
-    const getAccountIcon = (type) => {
-        const icons = {
-            client: <FiUser className="w-4 h-4" />,
-            bank: <FiCreditCard className="w-4 h-4" />,
-            staff: <FiUser className="w-4 h-4" />,
-            capital: <FiDollarSign className="w-4 h-4" />,
-            expense: <FiMinus className="w-4 h-4" />,
-            income: <FiPlus className="w-4 h-4" />
-        };
-        return icons[type] || <FiUser className="w-4 h-4" />;
+        return 'text-xs font-bold px-2 py-1 rounded bg-green-100 text-green-800';
     };
 
     const handleInputChange = (e) => {
@@ -162,13 +249,13 @@ const JournalEntry = ({
     const handleFromAccountSelect = (accountId) => {
         setFormData(prev => ({ ...prev, from_account_id: accountId }));
         setShowFromDropdown(false);
-        setFromSearchTerm('');
+        // Don't clear search value immediately to maintain dropdown content
+        // but we'll keep the selected account visible
     };
 
     const handleToAccountSelect = (accountId) => {
         setFormData(prev => ({ ...prev, to_account_id: accountId }));
         setShowToDropdown(false);
-        setToSearchTerm('');
     };
 
     const formatCurrency = (amount) => {
@@ -182,26 +269,212 @@ const JournalEntry = ({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.from_account_id || !formData.to_account_id || !formData.amount || isSubmitting) return;
+        
+        if (!formData.from_account_id || !formData.to_account_id || !formData.amount) {
+            toast.error('Please fill all required fields');
+            return;
+        }
+
+        if (formData.from_account_id === formData.to_account_id) {
+            toast.error('Cannot transfer between the same account');
+            return;
+        }
+
+        if (isSubmitting) return;
 
         setIsSubmitting(true);
+        
+        const fromAccount = getSelectedFromAccount();
+        const toAccount = getSelectedToAccount();
+
+        if (!fromAccount || !toAccount) {
+            toast.error('Invalid account selection');
+            setIsSubmitting(false);
+            return;
+        }
+
+        const payload = {
+            amount: parseFloat(formData.amount),
+            party1_id: fromAccount.id,
+            party2_id: toAccount.id,
+            party1_type: fromAccount.type,
+            party2_type: toAccount.type,
+            remark: formData.remark || `Journal entry from ${fromAccount.name} to ${toAccount.name}`,
+            transaction_date: formData.date
+        };
+
+        if (formData.transaction_ref_id) {
+            payload.transaction_ref_id = formData.transaction_ref_id;
+        }
+
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const submissionData = {
-                ...formData,
-                selected_from_account: getSelectedFromAccount(),
-                selected_to_account: getSelectedToAccount(),
-                timestamp: new Date().toISOString(),
-                company: appSettings.company_name
-            };
-            console.log('Journal Entry submitted:', submissionData);
-            onSuccess(submissionData);
-            if (mode === 'modal') onClose();
+            const response = await axios.post(
+                `${API_BASE_URL}/transaction/payment/journal`,
+                payload,
+                { headers: getHeaders() }
+            );
+
+            if (response.data.success) {
+                toast.success(response.data.message || 'Journal entry created successfully');
+                onSuccess(response.data.data);
+                if (mode === 'modal') {
+                    onClose();
+                }
+                // Reset form
+                setFormData({
+                    from_account_id: initialFromAccountId || '',
+                    to_account_id: '',
+                    date: new Date().toISOString().split('T')[0],
+                    amount: '',
+                    remark: '',
+                    transaction_ref_id: ''
+                });
+            } else {
+                toast.error(response.data.message || 'Failed to create journal entry');
+            }
         } catch (error) {
-            console.error('Error submitting form:', error);
+            console.error('Error creating journal entry:', error);
+            const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to create journal entry';
+            toast.error(errorMessage);
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    // Account Dropdown Component
+    const AccountDropdown = ({ 
+        type, 
+        selectedId, 
+        onSelect, 
+        searchValue,
+        setSearchValue,
+        showDropdown, 
+        setShowDropdown,
+        accounts,
+        isLoading,
+        hasMore,
+        onLoadMore
+    }) => {
+        const dropdownRef = type === 'from' ? fromDropdownRef : toDropdownRef;
+        const selectedAccount = accounts.find(a => a.id === selectedId);
+        
+        return (
+            <div className="relative" ref={dropdownRef}>
+                <div
+                    className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg bg-white cursor-pointer hover:border-indigo-400 transition-all duration-200 shadow-sm"
+                    onClick={() => setShowDropdown(!showDropdown)}
+                >
+                    {selectedId && selectedAccount ? (
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                                <div className={`p-1 ${type === 'from' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'} rounded`}>
+                                    {type === 'from' ? <FiMinus className="w-3.5 h-3.5" /> : <FiPlus className="w-3.5 h-3.5" />}
+                                </div>
+                                <div>
+                                    <div className="text-sm font-medium text-gray-900 truncate max-w-[200px]">
+                                        {selectedAccount.name}
+                                    </div>
+                                    <div className="text-xs text-gray-600 truncate max-w-[200px]">
+                                        {getAccountDisplayText(selectedAccount)}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <span className={getAccountTypeBadge(selectedAccount.type)}>
+                                    CL
+                                </span>
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between text-gray-500">
+                            <div className="flex items-center space-x-2">
+                                {type === 'from' ? <FiMinus className="w-4 h-4 text-gray-400" /> : <FiPlus className="w-4 h-4 text-gray-400" />}
+                                <span className="text-sm">Select client...</span>
+                            </div>
+                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    )}
+                </div>
+
+                {showDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-80 overflow-y-auto">
+                        <div className="sticky top-0 p-2 border-b border-gray-200 bg-gray-50">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Search clients..."
+                                    className="w-full px-3 py-2 pl-8 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                    value={searchValue}
+                                    onChange={(e) => setSearchValue(e.target.value)}
+                                    autoFocus
+                                />
+                                <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            </div>
+                        </div>
+                        <div className="py-1">
+                            {isLoading && accounts.length === 0 ? (
+                                <div className="px-4 py-3 text-center text-gray-500">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent mx-auto mb-2"></div>
+                                    Loading clients...
+                                </div>
+                            ) : accounts.length > 0 ? (
+                                <>
+                                    {accounts.map(account => (
+                                        <div
+                                            key={account.id}
+                                            className={`px-3 py-2 cursor-pointer hover:bg-gray-50 border-l-2 ${selectedId === account.id
+                                                ? type === 'from' ? 'bg-red-50 border-red-500' : 'bg-green-50 border-green-500'
+                                                : 'border-transparent'
+                                                }`}
+                                            onClick={() => onSelect(account.id)}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center space-x-2">
+                                                    <div className={`p-1 ${type === 'from' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'} rounded`}>
+                                                        {type === 'from' ? <FiMinus className="w-3 h-3" /> : <FiPlus className="w-3 h-3" />}
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-900">{account.name}</div>
+                                                        <div className="text-xs text-gray-600">
+                                                            {account.email || account.username}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <span className="text-xs text-gray-500">₹{account.balance}</span>
+                                                    <span className={getAccountTypeBadge(account.type)}>
+                                                        CL
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {hasMore && (
+                                        <button
+                                            type="button"
+                                            onClick={onLoadMore}
+                                            disabled={isLoading}
+                                            className="w-full px-4 py-2 text-center bg-gray-50 hover:bg-gray-100 text-indigo-600 font-medium text-sm border-t border-gray-200 transition-colors disabled:opacity-50"
+                                        >
+                                            {isLoading ? 'Loading...' : 'Load More Clients'}
+                                        </button>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="px-4 py-3 text-center text-gray-500">
+                                    {searchValue ? 'No clients found' : 'No clients available'}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
     };
 
     const formContent = (
@@ -215,7 +488,7 @@ const JournalEntry = ({
                     <div className="flex items-center space-x-4">
                         <h2 className="text-lg font-bold">Journal Entry</h2>
                         <span className="text-indigo-200 text-sm hidden sm:inline">|</span>
-                        <p className="text-indigo-100 text-xs sm:text-sm hidden sm:block">{appSettings.company_name}</p>
+                        <p className="text-indigo-100 text-xs sm:text-sm hidden sm:block">Client to Client Transfer</p>
                     </div>
                 </div>
                 {mode === 'modal' && (
@@ -231,7 +504,7 @@ const JournalEntry = ({
             {/* Scrollable Content Area */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-gray-50">
                 <form onSubmit={handleSubmit}>
-                    {/* Account Selection Section - Compact */}
+                    {/* Account Selection Section */}
                     <div className="mb-6">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {/* Decrease From Account */}
@@ -242,111 +515,24 @@ const JournalEntry = ({
                                     </label>
                                     <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">Required</span>
                                 </div>
-                                <div className="relative">
-                                    <div
-                                        className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg bg-white cursor-pointer hover:border-red-400 transition-all duration-200 shadow-sm"
-                                        onClick={() => setShowFromDropdown(!showFromDropdown)}
-                                    >
-                                        {formData.from_account_id ? (
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center space-x-2">
-                                                    <div className="p-1 bg-red-100 text-red-600 rounded">
-                                                        <FiMinus className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-sm font-medium text-gray-900 truncate max-w-[200px]">
-                                                            {getSelectedFromAccount()?.name}
-                                                        </div>
-                                                        <div className="text-xs text-gray-600 truncate max-w-[200px]">
-                                                            {getAccountDisplayText(getSelectedFromAccount())}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <span className={getAccountTypeBadge(getSelectedFromAccount()?.type)}>
-                                                        {getSelectedFromAccount()?.type === 'capital' ? 'CAP' : 
-                                                         getSelectedFromAccount()?.type === 'expense' ? 'EXP' : 
-                                                         getSelectedFromAccount()?.type === 'income' ? 'INC' : 
-                                                         getSelectedFromAccount()?.type?.charAt(0).toUpperCase()}
-                                                    </span>
-                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center justify-between text-gray-500">
-                                                <div className="flex items-center space-x-2">
-                                                    <FiMinus className="w-4 h-4 text-gray-400" />
-                                                    <span className="text-sm">Select account to decrease...</span>
-                                                </div>
-                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {showFromDropdown && (
-                                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-                                            <div className="p-2 border-b border-gray-200 bg-gray-50">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Search accounts..."
-                                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                                                    value={fromSearchTerm}
-                                                    onChange={(e) => setFromSearchTerm(e.target.value)}
-                                                    autoFocus
-                                                />
-                                            </div>
-                                            <div className="py-1">
-                                                {filteredFromAccounts.map(account => (
-                                                    <div
-                                                        key={account.id}
-                                                        className={`px-3 py-2 cursor-pointer hover:bg-gray-50 border-l-2 ${formData.from_account_id === account.id
-                                                            ? 'bg-red-50 border-red-500'
-                                                            : 'border-transparent'
-                                                            }`}
-                                                        onClick={() => handleFromAccountSelect(account.id)}
-                                                    >
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center space-x-2">
-                                                                <div className="p-1 bg-red-100 text-red-600 rounded">
-                                                                    <FiMinus className="w-3 h-3" />
-                                                                </div>
-                                                                <div>
-                                                                    <div className="text-sm font-medium text-gray-900">{account.name}</div>
-                                                                    <div className="text-xs text-gray-600">
-                                                                        {account.type === 'client' && `${account.email}`}
-                                                                        {account.type === 'bank' && `Account: ${account.account}`}
-                                                                        {account.type === 'staff' && `${account.designation}`}
-                                                                        {account.type === 'capital' && `${account.description}`}
-                                                                        {account.type === 'expense' && `Category: ${account.category}`}
-                                                                        {account.type === 'income' && `Category: ${account.category}`}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center space-x-2">
-                                                                <span className="text-xs text-gray-500">₹{account.balance}</span>
-                                                                <span className={getAccountTypeBadge(account.type)}>
-                                                                    {account.type === 'capital' ? 'CAP' : 
-                                                                     account.type === 'expense' ? 'EXP' : 
-                                                                     account.type === 'income' ? 'INC' : 
-                                                                     account.type.charAt(0).toUpperCase()}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                <AccountDropdown
+                                    type="from"
+                                    selectedId={formData.from_account_id}
+                                    onSelect={handleFromAccountSelect}
+                                    searchValue={fromSearchValue}
+                                    setSearchValue={setFromSearchValue}
+                                    showDropdown={showFromDropdown}
+                                    setShowDropdown={setShowFromDropdown}
+                                    accounts={filteredFromAccounts}
+                                    isLoading={loadingFrom}
+                                    hasMore={hasMoreFrom}
+                                    onLoadMore={loadMoreFromClients}
+                                />
                                 {formData.from_account_id && (
                                     <div className="mt-1.5 text-xs text-gray-600 flex items-center space-x-2">
-                                        <span className="font-medium">Balance: ₹{getSelectedFromAccount()?.balance}</span>
+                                        <span className="font-medium">Balance: ₹{getSelectedFromAccount()?.balance || 0}</span>
                                         <span className="text-gray-400">•</span>
-                                        <span className="text-gray-500">{getSelectedFromAccount()?.type?.toUpperCase()}</span>
+                                        <span className="text-gray-500">CLIENT</span>
                                     </div>
                                 )}
                             </div>
@@ -359,118 +545,31 @@ const JournalEntry = ({
                                     </label>
                                     <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">Required</span>
                                 </div>
-                                <div className="relative">
-                                    <div
-                                        className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg bg-white cursor-pointer hover:border-green-400 transition-all duration-200 shadow-sm"
-                                        onClick={() => setShowToDropdown(!showToDropdown)}
-                                    >
-                                        {formData.to_account_id ? (
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center space-x-2">
-                                                    <div className="p-1 bg-green-100 text-green-600 rounded">
-                                                        <FiPlus className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-sm font-medium text-gray-900 truncate max-w-[200px]">
-                                                            {getSelectedToAccount()?.name}
-                                                        </div>
-                                                        <div className="text-xs text-gray-600 truncate max-w-[200px]">
-                                                            {getAccountDisplayText(getSelectedToAccount())}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <span className={getAccountTypeBadge(getSelectedToAccount()?.type)}>
-                                                        {getSelectedToAccount()?.type === 'capital' ? 'CAP' : 
-                                                         getSelectedToAccount()?.type === 'expense' ? 'EXP' : 
-                                                         getSelectedToAccount()?.type === 'income' ? 'INC' : 
-                                                         getSelectedToAccount()?.type?.charAt(0).toUpperCase()}
-                                                    </span>
-                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center justify-between text-gray-500">
-                                                <div className="flex items-center space-x-2">
-                                                    <FiPlus className="w-4 h-4 text-gray-400" />
-                                                    <span className="text-sm">Select account to increase...</span>
-                                                </div>
-                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {showToDropdown && (
-                                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-                                            <div className="p-2 border-b border-gray-200 bg-gray-50">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Search accounts..."
-                                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                                                    value={toSearchTerm}
-                                                    onChange={(e) => setToSearchTerm(e.target.value)}
-                                                    autoFocus
-                                                />
-                                            </div>
-                                            <div className="py-1">
-                                                {filteredToAccounts.map(account => (
-                                                    <div
-                                                        key={account.id}
-                                                        className={`px-3 py-2 cursor-pointer hover:bg-gray-50 border-l-2 ${formData.to_account_id === account.id
-                                                            ? 'bg-green-50 border-green-500'
-                                                            : 'border-transparent'
-                                                            }`}
-                                                        onClick={() => handleToAccountSelect(account.id)}
-                                                    >
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center space-x-2">
-                                                                <div className="p-1 bg-green-100 text-green-600 rounded">
-                                                                    <FiPlus className="w-3 h-3" />
-                                                                </div>
-                                                                <div>
-                                                                    <div className="text-sm font-medium text-gray-900">{account.name}</div>
-                                                                    <div className="text-xs text-gray-600">
-                                                                        {account.type === 'client' && `${account.email}`}
-                                                                        {account.type === 'bank' && `Account: ${account.account}`}
-                                                                        {account.type === 'staff' && `${account.designation}`}
-                                                                        {account.type === 'capital' && `${account.description}`}
-                                                                        {account.type === 'expense' && `Category: ${account.category}`}
-                                                                        {account.type === 'income' && `Category: ${account.category}`}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center space-x-2">
-                                                                <span className="text-xs text-gray-500">₹{account.balance}</span>
-                                                                <span className={getAccountTypeBadge(account.type)}>
-                                                                    {account.type === 'capital' ? 'CAP' : 
-                                                                     account.type === 'expense' ? 'EXP' : 
-                                                                     account.type === 'income' ? 'INC' : 
-                                                                     account.type.charAt(0).toUpperCase()}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                <AccountDropdown
+                                    type="to"
+                                    selectedId={formData.to_account_id}
+                                    onSelect={handleToAccountSelect}
+                                    searchValue={toSearchValue}
+                                    setSearchValue={setToSearchValue}
+                                    showDropdown={showToDropdown}
+                                    setShowDropdown={setShowToDropdown}
+                                    accounts={filteredToAccounts}
+                                    isLoading={loadingTo}
+                                    hasMore={hasMoreTo}
+                                    onLoadMore={loadMoreToClients}
+                                />
                                 {formData.to_account_id && (
                                     <div className="mt-1.5 text-xs text-gray-600 flex items-center space-x-2">
-                                        <span className="font-medium">Balance: ₹{getSelectedToAccount()?.balance}</span>
+                                        <span className="font-medium">Balance: ₹{getSelectedToAccount()?.balance || 0}</span>
                                         <span className="text-gray-400">•</span>
-                                        <span className="text-gray-500">{getSelectedToAccount()?.type?.toUpperCase()}</span>
+                                        <span className="text-gray-500">CLIENT</span>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Date and Amount Section - Compact */}
+                    {/* Date and Amount Section */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                         {/* Date */}
                         <div>
@@ -522,7 +621,7 @@ const JournalEntry = ({
                         </div>
                     </div>
 
-                    {/* Transaction Ref ID and Description Section - Compact */}
+                    {/* Transaction Ref ID and Description Section */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                         {/* Transaction Ref ID */}
                         <div>
@@ -572,7 +671,7 @@ const JournalEntry = ({
                         </div>
                     </div>
 
-                    {/* Journal Summary - Compact */}
+                    {/* Journal Summary */}
                     <div className="bg-gradient-to-br from-indigo-50 to-white p-4 rounded-lg border border-indigo-100 shadow-sm">
                         <div className="flex items-center mb-3">
                             <div className="p-1.5 bg-indigo-600 text-white rounded mr-2">
@@ -589,7 +688,7 @@ const JournalEntry = ({
                                     {getSelectedFromAccount()?.name || 'Not selected'}
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1">
-                                    {getSelectedFromAccount()?.type?.toUpperCase() || 'N/A'}
+                                    CLIENT
                                 </div>
                             </div>
                             <div className="text-center p-2 bg-white rounded border border-gray-200">
@@ -604,7 +703,7 @@ const JournalEntry = ({
                                     {getSelectedToAccount()?.name || 'Not selected'}
                                 </div>
                                 <div className="text-xs text-gray-500 mt-1">
-                                    {getSelectedToAccount()?.type?.toUpperCase() || 'N/A'}
+                                    CLIENT
                                 </div>
                             </div>
                             <div className="text-center p-2 bg-white rounded border border-gray-200">
@@ -618,7 +717,7 @@ const JournalEntry = ({
                 </form>
             </div>
 
-            {/* Compact Footer */}
+            {/* Footer */}
             <div className="flex-shrink-0 border-t border-gray-200 bg-white p-4 rounded-b-xl shadow-lg">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     {/* Warning Message */}
@@ -691,7 +790,7 @@ const JournalEntry = ({
                         className="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity"
                         onClick={onClose}
                     />
-                    {/* Compact Modal panel */}
+                    {/* Modal panel */}
                     <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl h-[85vh] flex flex-col transform transition-all duration-300 scale-100">
                         {formContent}
                     </div>

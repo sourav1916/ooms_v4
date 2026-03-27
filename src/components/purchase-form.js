@@ -1,28 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { IoTrash } from "react-icons/io5";
-
-// Enhanced professional data for purchase
-const partyOptions = [
-    { id: 'supplier_1', type: 'supplier', name: 'ABC Suppliers Ltd', email: 'accounts@abcsuppliers.com', contact: 'Mr. Sharma', payment_terms: '30 days' },
-    { id: 'supplier_2', type: 'supplier', name: 'XYZ Raw Materials', email: 'purchase@xyzraw.com', contact: 'Ms. Patel', payment_terms: '15 days' },
-    { id: 'supplier_3', type: 'supplier', name: 'Global Equipment Co.', email: 'sales@globalequip.com', contact: 'Mr. Gupta', payment_terms: '45 days' },
-    { id: 'vendor_1', type: 'vendor', name: 'Office Supplies Inc', email: 'orders@officesupplies.com', contact: 'Customer Service', credit_limit: '1,00,000' },
-    { id: 'vendor_2', type: 'vendor', name: 'IT Solutions Provider', email: 'billing@itsolutions.com', contact: 'Technical Dept', credit_limit: '2,50,000' },
-    { id: 'vendor_3', type: 'vendor', name: 'Professional Services Co.', email: 'accounts@proservices.com', contact: 'Accounts Dept', credit_limit: '5,00,000' },
-    { id: 'contractor_1', type: 'contractor', name: 'Construction Contractors', license: 'CC12345', specialization: 'Civil Work' },
-    { id: 'contractor_2', type: 'contractor', name: 'Electrical Works Ltd', license: 'EW67890', specialization: 'Electrical' }
-];
-
-const itemOptions = [
-    { item_id: '1', name: 'Office Furniture', price: '15000', category: 'Assets', hsn_code: '94033000' },
-    { item_id: '2', name: 'Computer Equipment', price: '45000', category: 'Assets', hsn_code: '84713000' },
-    { item_id: '3', name: 'Raw Materials', price: '1200', category: 'Materials', hsn_code: '39269099' },
-    { item_id: '4', name: 'Printing Services', price: '5000', category: 'Services', hsn_code: '998886' },
-    { item_id: '5', name: 'Professional Services', price: '25000', category: 'Services', hsn_code: '998515' },
-    { item_id: '6', name: 'Office Supplies', price: '800', category: 'Consumables', hsn_code: '39269099' },
-    { item_id: '7', name: 'Software License', price: '18000', category: 'Software', hsn_code: '85234900' },
-    { item_id: '8', name: 'Maintenance Services', price: '7500', category: 'Services', hsn_code: '998886' }
-];
+import API_BASE_URL from '../utils/api-controller';
+import getHeaders from '../utils/get-headers';
 
 const appSettings = {
     company_name: 'Professional Accounting Services',
@@ -36,13 +15,16 @@ const PurchaseForm = ({
     onClose = () => { },
     onSuccess = () => { },
     initialPartyId = '',
-    mode = 'modal'
+    mode = 'modal',
+    defaultPurchaseType = 'user' // 'user' or 'bank'
 }) => {
+    const [purchaseType, setPurchaseType] = useState(defaultPurchaseType);
     const [formData, setFormData] = useState({
         party_id: initialPartyId || '',
+        party_type: defaultPurchaseType,
         purchase_date: new Date().toISOString().split('T')[0],
         bill_number: `BILL-${Date.now().toString().slice(-6)}`,
-        items: [{ item_id: '', description: '', quantity: 1, price: '', amount: 0 }],
+        items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
         subtotal: 0,
         discount: 0,
         discount_type: 'percentage',
@@ -52,35 +34,161 @@ const PurchaseForm = ({
         cgst_amount: 0,
         round_off: 0,
         grand_total: 0,
-        payment_terms: '30 days',
-        delivery_date: '',
-        notes: ''
+        notes: '',
+        remark: '',
+        tax_rate: appSettings.default_gst_rate,
+        additional_charge: 0,
+        apply_round_off: false,
+        delivery_date: ''
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
     const [showPartyDropdown, setShowPartyDropdown] = useState(false);
     const [sendEmail, setSendEmail] = useState(true);
     const [sendWhatsApp, setSendWhatsApp] = useState(true);
+    const [serviceOptions, setServiceOptions] = useState([]);
+    const [userOptions, setUserOptions] = useState([]);
+    const [bankOptions, setBankOptions] = useState([]);
+    const [isLoadingServices, setIsLoadingServices] = useState(false);
+    const [isLoadingParties, setIsLoadingParties] = useState(false);
+    const [isLoadingBanks, setIsLoadingBanks] = useState(false);
+    const [userSearchTerm, setUserSearchTerm] = useState('');
 
-    // Filter parties based on search
-    const filteredParties = useMemo(() => {
-        if (!searchTerm) return partyOptions;
-        return partyOptions.filter(party =>
-            party.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (party.email && party.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (party.contact && party.contact.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-    }, [searchTerm]);
+    // Fetch services from API
+    useEffect(() => {
+        fetchServices();
+    }, []);
 
-    // Reset form when modal opens
+    // Fetch banks when component mounts (for bank flow)
+    useEffect(() => {
+        if (purchaseType === 'bank') {
+            fetchAllBanks();
+        }
+    }, [purchaseType]);
+
+    // Fetch users based on search term (with debounce) - only for user flow
+    useEffect(() => {
+        if (purchaseType === 'user' && userSearchTerm) {
+            const delayDebounce = setTimeout(() => {
+                fetchUsers();
+            }, 500);
+            return () => clearTimeout(delayDebounce);
+        }
+    }, [purchaseType, userSearchTerm]);
+
+    const fetchServices = async () => {
+        setIsLoadingServices(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/service/list?search=&category_id`, {
+                method: 'GET',
+                headers: getHeaders()
+            });
+            const data = await response.json();
+            if (data.success) {
+                setServiceOptions(data.data.map(service => ({
+                    service_id: service.service_id,
+                    name: service.name,
+                    fees: parseFloat(service.fees),
+                    category: service.category_name,
+                    duration: service.is_recurring ? 'Recurring' : 'One-time',
+                    gst_rate: parseFloat(service.gst_rate),
+                    sac_code: service.sac_code,
+                    remark: service.remark
+                })));
+            }
+        } catch (error) {
+            console.error('Error fetching services:', error);
+        } finally {
+            setIsLoadingServices(false);
+        }
+    };
+
+    const fetchAllBanks = async () => {
+        setIsLoadingBanks(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/transaction/bank/list`, {
+                method: 'GET',
+                headers: getHeaders()
+            });
+            const data = await response.json();
+            console.log('Bank API Response:', data);
+            
+            if (data.success && data.data) {
+                const formattedBanks = data.data.map(bank => ({
+                    id: bank.bank_id || bank.id,
+                    type: 'bank',
+                    name: bank.bank || bank.name || 'Unnamed Bank',
+                    account: bank.account_number || bank.account_no || bank.account || 'N/A',
+                    holder: bank.account_holder || bank.holder_name || bank.holder || 'N/A',
+                    ifsc: bank.ifsc_code || bank.ifsc || 'N/A',
+                    branch: bank.branch_name || bank.branch || 'N/A',
+                    balance: bank.balance || bank.current_balance || 0
+                }));
+                setBankOptions(formattedBanks);
+            } else {
+                console.error('Invalid bank data structure:', data);
+                setBankOptions([]);
+            }
+        } catch (error) {
+            console.error('Error fetching banks:', error);
+            setBankOptions([]);
+        } finally {
+            setIsLoadingBanks(false);
+        }
+    };
+
+    const fetchUsers = async () => {
+        if (!userSearchTerm) return;
+        
+        setIsLoadingParties(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/client/search?search=${encodeURIComponent(userSearchTerm)}`, {
+                method: 'GET',
+                headers: getHeaders()
+            });
+            const data = await response.json();
+            if (data.success) {
+                setUserOptions(data.data.map(client => ({
+                    id: client.client_id || client.username,
+                    type: 'user',
+                    name: client.name || client.firm_name,
+                    email: client.email,
+                    contact: client.mobile,
+                    gst_no: client.gst_no,
+                    pan_no: client.pan_number,
+                    username: client.username,
+                    address: client.address,
+                    city: client.city,
+                    state: client.state,
+                    pincode: client.pincode
+                })));
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        } finally {
+            setIsLoadingParties(false);
+        }
+    };
+
+    // Combined party options based on purchase type
+    const partyOptions = useMemo(() => {
+        if (purchaseType === 'user') {
+            return userOptions;
+        } else if (purchaseType === 'bank') {
+            return bankOptions;
+        }
+        return [];
+    }, [purchaseType, userOptions, bankOptions]);
+
+    // Reset form when modal opens or purchase type changes
     useEffect(() => {
         if (isOpen) {
             setFormData({
                 party_id: initialPartyId || '',
+                party_type: purchaseType,
                 purchase_date: new Date().toISOString().split('T')[0],
                 bill_number: `BILL-${Date.now().toString().slice(-6)}`,
-                items: [{ item_id: '', description: '', quantity: 1, price: '', amount: 0 }],
+                items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
                 subtotal: 0,
                 discount: 0,
                 discount_type: 'percentage',
@@ -90,29 +198,42 @@ const PurchaseForm = ({
                 cgst_amount: 0,
                 round_off: 0,
                 grand_total: 0,
-                payment_terms: '30 days',
-                delivery_date: '',
-                notes: ''
+                notes: '',
+                remark: '',
+                tax_rate: appSettings.default_gst_rate,
+                additional_charge: 0,
+                apply_round_off: false,
+                delivery_date: ''
             });
-            setSearchTerm('');
+            setUserSearchTerm('');
             setShowPartyDropdown(false);
+            setUserOptions([]);
         }
-    }, [isOpen, initialPartyId]);
+    }, [isOpen, initialPartyId, purchaseType]);
+
+    const handlePurchaseTypeChange = (type) => {
+        setPurchaseType(type);
+        setFormData(prev => ({ ...prev, party_id: '', party_type: type }));
+        setUserSearchTerm('');
+        setShowPartyDropdown(false);
+        setUserOptions([]);
+        if (type === 'bank' && bankOptions.length === 0) {
+            fetchAllBanks();
+        }
+    };
 
     const getSelectedParty = () => {
         return partyOptions.find(party => party.id === formData.party_id);
     };
 
     const getPartyDisplayText = (party) => {
-        if (!party) return 'Select Supplier/Vendor';
+        if (!party) return `Select ${purchaseType === 'user' ? 'User/Client' : 'Bank'}`;
 
         switch (party.type) {
-            case 'supplier':
-                return `${party.name} • ${party.email}`;
-            case 'vendor':
-                return `${party.name} • Credit: ₹${party.credit_limit}`;
-            case 'contractor':
-                return `${party.name} • ${party.specialization}`;
+            case 'bank':
+                return `${party.name}${party.account !== 'N/A' ? ` • ${party.account}` : ''}${party.holder !== 'N/A' ? ` • ${party.holder}` : ''}`;
+            case 'user':
+                return `${party.name} • ${party.email || party.contact}`;
             default:
                 return party.name;
         }
@@ -123,7 +244,7 @@ const PurchaseForm = ({
             ...prev,
             items: [
                 ...prev.items,
-                { item_id: '', description: '', quantity: 1, price: '', amount: 0 }
+                { service_id: '', description: '', price: '', amount: 0, remark: '' }
             ]
         }));
     };
@@ -141,7 +262,7 @@ const PurchaseForm = ({
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: name === 'additional_charge' || name === 'discount' ? parseFloat(value) || 0 : value
         }));
     };
 
@@ -150,12 +271,9 @@ const PurchaseForm = ({
             if (i === index) {
                 const updatedItem = {
                     ...item,
-                    [field]: field === 'price' || field === 'quantity' ? Number(value) || 0 : value
+                    [field]: field === 'price' ? parseFloat(value) || 0 : value
                 };
-
-                // Calculate amount
-                updatedItem.amount = (updatedItem.quantity || 1) * (updatedItem.price || 0);
-
+                updatedItem.amount = updatedItem.price || 0;
                 return updatedItem;
             }
             return item;
@@ -164,16 +282,18 @@ const PurchaseForm = ({
         setFormData(prev => ({ ...prev, items: updatedItems }));
     };
 
-    const handleItemSelect = (index, itemId) => {
-        const item = itemOptions.find(i => i.item_id === itemId);
-        if (item) {
-            const updatedItems = formData.items.map((itemData, i) =>
+    const handleServiceChange = (index, serviceId) => {
+        const service = serviceOptions.find(s => s.service_id === serviceId);
+        if (service) {
+            const updatedItems = formData.items.map((item, i) =>
                 i === index ? {
-                    ...itemData,
-                    item_id: itemId,
-                    price: Number(item.price),
-                    amount: (itemData.quantity || 1) * Number(item.price)
-                } : itemData
+                    ...item,
+                    service_id: serviceId,
+                    price: parseFloat(service.fees),
+                    amount: parseFloat(service.fees),
+                    description: service.name,
+                    remark: service.remark || ''
+                } : item
             );
 
             setFormData(prev => ({
@@ -186,7 +306,7 @@ const PurchaseForm = ({
     const handlePartySelect = (partyId) => {
         setFormData(prev => ({ ...prev, party_id: partyId }));
         setShowPartyDropdown(false);
-        setSearchTerm('');
+        setUserSearchTerm('');
     };
 
     // Calculate totals
@@ -196,21 +316,27 @@ const PurchaseForm = ({
             subtotal += Number(item.amount) || 0;
         });
 
-        // Calculate discount
         let discountAmount = 0;
-        if (formData.discount_type === 'percentage') {
-            discountAmount = subtotal * (Number(formData.discount) / 100);
-        } else {
-            discountAmount = Number(formData.discount) || 0;
+        if (formData.discount > 0) {
+            if (formData.discount_type === 'percentage') {
+                discountAmount = subtotal * (Number(formData.discount) / 100);
+            } else {
+                discountAmount = Number(formData.discount) || 0;
+            }
         }
 
         const amountAfterDiscount = Math.max(0, subtotal - discountAmount);
+        
         const sgst_amount = amountAfterDiscount * (Number(formData.sgst_rate) / 100);
         const cgst_amount = amountAfterDiscount * (Number(formData.cgst_rate) / 100);
-
-        let grand_total = amountAfterDiscount + sgst_amount + cgst_amount;
-        const round_off = Math.round(grand_total) - grand_total;
-        grand_total = Math.round(grand_total);
+        
+        let grand_total = amountAfterDiscount + sgst_amount + cgst_amount + (Number(formData.additional_charge) || 0);
+        
+        let round_off = 0;
+        if (formData.apply_round_off) {
+            round_off = Math.round(grand_total) - grand_total;
+            grand_total = Math.round(grand_total);
+        }
 
         setFormData(prev => ({
             ...prev,
@@ -220,30 +346,86 @@ const PurchaseForm = ({
             round_off,
             grand_total
         }));
-    }, [formData.items, formData.discount, formData.discount_type, formData.sgst_rate, formData.cgst_rate]);
+    }, [formData.items, formData.discount, formData.discount_type, formData.sgst_rate, formData.cgst_rate, formData.additional_charge, formData.apply_round_off]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.party_id || isSubmitting) return;
 
+        const hasValidItems = formData.items.some(item => item.service_id && item.price > 0);
+        if (!hasValidItems) {
+            alert('Please add at least one valid service item');
+            return;
+        }
+
         setIsSubmitting(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const submissionData = {
-                ...formData,
-                selected_party: getSelectedParty(),
-                timestamp: new Date().toISOString(),
-                company: appSettings.company_name,
-                notifications: {
-                    email: sendEmail,
-                    whatsapp: sendWhatsApp
-                }
+            const selectedParty = getSelectedParty();
+            
+            const basePayload = {
+                transaction_date: formData.purchase_date,
+                remark: formData.notes || formData.remark,
+                tax_rate: formData.tax_rate,
+                items: formData.items
+                    .filter(item => item.service_id && item.price > 0)
+                    .map(item => ({
+                        service_id: item.service_id,
+                        fees: item.price,
+                        remark: item.remark || item.description
+                    }))
             };
-            console.log('Purchase Form submitted:', submissionData);
-            onSuccess(submissionData);
-            if (mode === 'modal') onClose();
+
+            let endpoint = '';
+            let finalPayload = {};
+
+            if (purchaseType === 'user') {
+                endpoint = `${API_BASE_URL}/purchase/create/user`;
+                finalPayload = {
+                    ...basePayload,
+                    username: selectedParty?.username || selectedParty?.id,
+                    user_type: 'client'
+                };
+            } else if (purchaseType === 'bank') {
+                endpoint = `${API_BASE_URL}/purchase/create/bank`;
+                finalPayload = {
+                    ...basePayload,
+                    bank_id: selectedParty?.id
+                };
+            }
+
+            console.log('Submitting to:', endpoint);
+            console.log('Payload:', finalPayload);
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(finalPayload)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const submissionData = {
+                    ...formData,
+                    purchase_type: purchaseType,
+                    selected_party: selectedParty,
+                    timestamp: new Date().toISOString(),
+                    company: appSettings.company_name,
+                    api_response: data,
+                    notifications: {
+                        email: sendEmail,
+                        whatsapp: sendWhatsApp
+                    }
+                };
+                console.log('Purchase Form submitted successfully:', submissionData);
+                onSuccess(submissionData);
+                if (mode === 'modal') onClose();
+            } else {
+                throw new Error(data.message || `Failed to create ${purchaseType} purchase`);
+            }
         } catch (error) {
             console.error('Error submitting form:', error);
+            alert(error.message || `Error creating ${purchaseType} purchase. Please try again.`);
         } finally {
             setIsSubmitting(false);
         }
@@ -258,13 +440,13 @@ const PurchaseForm = ({
         }).format(amount);
     };
 
-    const getItemDetails = (itemId) => {
-        return itemOptions.find(i => i.item_id === itemId);
+    const getServiceDetails = (serviceId) => {
+        return serviceOptions.find(s => s.service_id === serviceId);
     };
 
     const formContent = (
         <div className="bg-white rounded-xl shadow-2xl flex flex-col h-full border border-gray-200">
-            {/* Professional Header - Compact */}
+            {/* Header with Toggle Buttons */}
             <div className="flex-shrink-0 flex items-center justify-between p-3 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-t-xl">
                 <div className="flex items-center space-x-3">
                     <div className="p-1.5 bg-white/10 rounded-lg">
@@ -272,12 +454,48 @@ const PurchaseForm = ({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                         </svg>
                     </div>
-                    <div className="flex items-center space-x-4">
+                    <div>
                         <h2 className="text-lg font-bold">Create Purchase Bill</h2>
-                        <span className="text-indigo-200 text-sm hidden sm:inline">|</span>
-                        <p className="text-indigo-100 text-xs sm:text-sm hidden sm:block">{appSettings.company_name}</p>
+                        <p className="text-indigo-100 text-xs hidden sm:block">{appSettings.company_name}</p>
                     </div>
                 </div>
+                
+                {/* Purchase Type Toggle Buttons */}
+                <div className="flex items-center gap-2 bg-indigo-500/30 rounded-lg p-1">
+                    <button
+                        type="button"
+                        onClick={() => handlePurchaseTypeChange('user')}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                            purchaseType === 'user'
+                                ? 'bg-white text-indigo-700 shadow-md'
+                                : 'text-indigo-100 hover:bg-indigo-500/50'
+                        }`}
+                    >
+                        <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span>User/Client</span>
+                        </div>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handlePurchaseTypeChange('bank')}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                            purchaseType === 'bank'
+                                ? 'bg-white text-indigo-700 shadow-md'
+                                : 'text-indigo-100 hover:bg-indigo-500/50'
+                        }`}
+                    >
+                        <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            <span>Bank</span>
+                        </div>
+                    </button>
+                </div>
+
                 {mode === 'modal' && (
                     <button
                         onClick={onClose}
@@ -293,13 +511,13 @@ const PurchaseForm = ({
             {/* Scrollable Body */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-gray-50">
                 <form onSubmit={handleSubmit}>
-                    {/* Party Selection and Date Section - Compact */}
+                    {/* Party Selection and Date Section */}
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
-                        {/* Party Selection - takes 3 columns */}
+                        {/* Party Selection */}
                         <div className="lg:col-span-3">
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="block text-sm font-semibold text-gray-700">
-                                    Supplier/Vendor <span className="text-red-500">*</span>
+                                    Select {purchaseType === 'user' ? 'User/Client' : 'Bank'} <span className="text-red-500">*</span>
                                 </label>
                                 <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">Required</span>
                             </div>
@@ -311,13 +529,9 @@ const PurchaseForm = ({
                                     {formData.party_id ? (
                                         <div className="flex justify-between items-center">
                                             <div className="flex items-center space-x-2">
-                                                <div className={`p-1.5 rounded ${getSelectedParty()?.type === 'supplier' ? 'bg-blue-100 text-blue-600' :
-                                                    getSelectedParty()?.type === 'vendor' ? 'bg-purple-100 text-purple-600' :
-                                                        'bg-orange-100 text-orange-600'
-                                                    }`}>
+                                                <div className={`p-1.5 rounded ${purchaseType === 'bank' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
                                                     <span className="text-xs">
-                                                        {getSelectedParty()?.type === 'supplier' ? '🏭' :
-                                                            getSelectedParty()?.type === 'vendor' ? '🏪' : '👷'}
+                                                        {purchaseType === 'bank' ? '🏦' : '👥'}
                                                     </span>
                                                 </div>
                                                 <div className="truncate">
@@ -338,7 +552,11 @@ const PurchaseForm = ({
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                                     </svg>
                                                 </div>
-                                                <span className="font-medium truncate">Click to select supplier/vendor...</span>
+                                                <span className="font-medium truncate">
+                                                    {purchaseType === 'bank' && isLoadingBanks ? 'Loading banks...' : 
+                                                     purchaseType === 'user' && isLoadingParties ? 'Loading users...' : 
+                                                     `Click to select a ${purchaseType === 'user' ? 'user/client' : 'bank'}...`}
+                                                </span>
                                             </div>
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -348,58 +566,91 @@ const PurchaseForm = ({
                                 </div>
 
                                 {showPartyDropdown && (
-                                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-64 overflow-y-auto text-sm">
-                                        <div className="p-2 border-b border-gray-200 bg-gray-50 sticky top-0">
-                                            <div className="relative">
-                                                <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                                </svg>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Search by name, email, or contact..."
-                                                    className="w-full pl-8 pr-3 py-2 border-2 border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                                    autoFocus
-                                                />
+                                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-80 overflow-y-auto text-sm">
+                                        {purchaseType === 'user' && (
+                                            <div className="p-2 border-b border-gray-200 bg-gray-50 sticky top-0">
+                                                <div className="relative">
+                                                    <svg className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search by name, email, or mobile..."
+                                                        className="w-full pl-8 pr-3 py-2 border-2 border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                                        value={userSearchTerm}
+                                                        onChange={(e) => setUserSearchTerm(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
+                                        
                                         <div className="py-1">
-                                            {filteredParties.map(party => (
+                                            {partyOptions.length === 0 && !isLoadingParties && !isLoadingBanks && purchaseType === 'user' && (
+                                                <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                                                    No users/clients found
+                                                </div>
+                                            )}
+                                            {partyOptions.length === 0 && purchaseType === 'bank' && !isLoadingBanks && (
+                                                <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                                                    No banks available
+                                                </div>
+                                            )}
+                                            {isLoadingParties && purchaseType === 'user' && (
+                                                <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                                                    Searching users...
+                                                </div>
+                                            )}
+                                            {isLoadingBanks && purchaseType === 'bank' && (
+                                                <div className="px-3 py-4 text-center text-gray-500 text-sm">
+                                                    Loading banks...
+                                                </div>
+                                            )}
+                                            {partyOptions.map(party => (
                                                 <div
                                                     key={party.id}
-                                                    className={`px-3 py-2 cursor-pointer border-l-2 transition-all duration-150 ${formData.party_id === party.id
-                                                        ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
-                                                        : 'border-transparent hover:bg-gray-50'
-                                                        }`}
+                                                    className={`px-3 py-2 cursor-pointer border-l-2 transition-all duration-150 ${
+                                                        formData.party_id === party.id
+                                                            ? 'bg-indigo-50 border-indigo-500 text-indigo-700'
+                                                            : 'border-transparent hover:bg-gray-50'
+                                                    }`}
                                                     onClick={() => handlePartySelect(party.id)}
                                                 >
                                                     <div className="flex justify-between items-center">
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center space-x-2 mb-1">
-                                                                <span className={`p-1 rounded ${party.type === 'supplier' ? 'bg-blue-100 text-blue-600' :
-                                                                    party.type === 'vendor' ? 'bg-purple-100 text-purple-600' :
-                                                                        'bg-orange-100 text-orange-600'
-                                                                    }`}>
+                                                                <span className={`p-1 rounded ${purchaseType === 'bank' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
                                                                     <span className="text-xs">
-                                                                        {party.type === 'supplier' ? '🏭' :
-                                                                            party.type === 'vendor' ? '🏪' : '👷'}
+                                                                        {purchaseType === 'bank' ? '🏦' : '👥'}
                                                                     </span>
                                                                 </span>
                                                                 <div className="flex items-center min-w-0">
                                                                     <span className="font-medium text-gray-900 truncate">{party.name}</span>
-                                                                    <span className={`ml-2 px-1.5 py-0.5 text-xs rounded-full font-medium ${party.type === 'supplier' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                                                                        party.type === 'vendor' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                                                                            'bg-orange-100 text-orange-800 border border-orange-200'
-                                                                        }`}>
-                                                                        {party.type.charAt(0).toUpperCase() + party.type.slice(1)}
+                                                                    <span className={`ml-2 px-1.5 py-0.5 text-xs rounded-full font-medium ${
+                                                                        purchaseType === 'bank' 
+                                                                            ? 'bg-green-100 text-green-800 border border-green-200' 
+                                                                            : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                                                    }`}>
+                                                                        {purchaseType === 'bank' ? 'Bank' : 'User'}
                                                                     </span>
                                                                 </div>
                                                             </div>
                                                             <div className="text-xs text-gray-600 ml-7 truncate">
-                                                                {party.type === 'supplier' && `${party.email} • Terms: ${party.payment_terms}`}
-                                                                {party.type === 'vendor' && `${party.email} • Credit: ₹${party.credit_limit}`}
-                                                                {party.type === 'contractor' && `License: ${party.license}`}
+                                                                {purchaseType === 'bank' && (
+                                                                    <>
+                                                                        {party.account && party.account !== 'N/A' && `Acc: ${party.account} • `}
+                                                                        {party.holder && party.holder !== 'N/A' && `${party.holder}`}
+                                                                        {party.ifsc && party.ifsc !== 'N/A' && ` • IFSC: ${party.ifsc}`}
+                                                                        {party.branch && party.branch !== 'N/A' && ` • ${party.branch}`}
+                                                                    </>
+                                                                )}
+                                                                {purchaseType === 'user' && (
+                                                                    <>
+                                                                        {party.email && `${party.email} • `}
+                                                                        {party.contact && `Mob: ${party.contact}`}
+                                                                        {party.gst_no && ` • GST: ${party.gst_no}`}
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         {formData.party_id === party.id && (
@@ -416,7 +667,7 @@ const PurchaseForm = ({
                             </div>
                         </div>
 
-                        {/* Date - takes 1 column */}
+                        {/* Bill Date */}
                         <div className="lg:col-span-1">
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="block text-sm font-semibold text-gray-700">
@@ -441,7 +692,7 @@ const PurchaseForm = ({
                             </div>
                         </div>
 
-                        {/* Delivery Date - takes 1 column */}
+                        {/* Delivery Date */}
                         <div className="lg:col-span-1">
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="block text-sm font-semibold text-gray-700">
@@ -466,17 +717,18 @@ const PurchaseForm = ({
                         </div>
                     </div>
 
-                    {/* Items Section - Compact */}
+                    {/* Services Section */}
                     <div className="mb-6">
                         <div className="flex justify-between items-center mb-4">
                             <div>
                                 <h3 className="text-base font-bold text-gray-900">Purchase Items</h3>
-                                <p className="text-xs text-gray-600 mt-0.5">Add items and services for this purchase</p>
+                                <p className="text-xs text-gray-600 mt-0.5">Add services and items for this purchase</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={addItem}
-                                className="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-1 transition-all duration-200 shadow-sm text-sm"
+                                disabled={isLoadingServices}
+                                className="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-1 transition-all duration-200 shadow-sm text-sm disabled:opacity-50"
                             >
                                 <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -489,70 +741,55 @@ const PurchaseForm = ({
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                                     <tr>
-                                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Item</th>
+                                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Service/Item</th>
                                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Description</th>
-                                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Qty</th>
                                         <th className="px-3 py-2.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Price</th>
-                                        <th className="px-3 py-2.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Amount</th>
                                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {formData.items.map((item, index) => {
-                                        const itemDetail = getItemDetails(item.item_id);
-                                        return (
-                                            <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
-                                                <td className="px-3 py-2.5">
-                                                    <select
-                                                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
-                                                        value={item.item_id}
-                                                        onChange={(e) => handleItemSelect(index, e.target.value)}
-                                                        required
-                                                    >
-                                                        <option value="" className="text-gray-500 text-sm">Select Item</option>
-                                                        {itemOptions.map(item => (
-                                                            <option key={item.item_id} value={item.item_id} className="py-1 text-sm">
-                                                                {item.name} - ₹{item.price}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </td>
-                                                <td className="px-3 py-2.5">
-                                                    <input
-                                                        type="text"
-                                                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
-                                                        placeholder="Description..."
-                                                        value={item.description}
-                                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                                    />
-                                                </td>
-                                                <td className="px-3 py-2.5">
+                                    {formData.items.map((item, index) => (
+                                        <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
+                                            <td className="px-3 py-2.5">
+                                                <select
+                                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
+                                                    value={item.service_id}
+                                                    onChange={(e) => handleServiceChange(index, e.target.value)}
+                                                    required
+                                                    disabled={isLoadingServices}
+                                                >
+                                                    <option value="" className="text-gray-500 text-sm">
+                                                        {isLoadingServices ? 'Loading services...' : 'Select Service'}
+                                                    </option>
+                                                    {serviceOptions.map(service => (
+                                                        <option key={service.service_id} value={service.service_id} className="py-1 text-sm">
+                                                            {service.name} - ₹{service.fees}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                            <td className="px-3 py-2.5">
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
+                                                    placeholder="Description..."
+                                                    value={item.description}
+                                                    onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                                />
+                                            </td>
+                                            <td className="px-3 py-2.5">
+                                                <div className="relative">
+                                                    <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₹</span>
                                                     <input
                                                         type="number"
-                                                        className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
-                                                        placeholder="1"
-                                                        min="1"
-                                                        value={item.quantity}
-                                                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                                        className="w-full pl-7 pr-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150 text-right"
+                                                        placeholder="0"
+                                                        value={item.price}
+                                                        onChange={(e) => handleItemChange(index, 'price', e.target.value)}
                                                         required
                                                     />
-                                                </td>
-                                                <td className="px-3 py-2.5">
-                                                    <div className="relative">
-                                                        <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₹</span>
-                                                        <input
-                                                            type="number"
-                                                            className="w-full pl-7 pr-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150 text-right"
-                                                            placeholder="0"
-                                                            value={item.price}
-                                                            onChange={(e) => handleItemChange(index, 'price', e.target.value)}
-                                                            required
-                                                        />
-                                                    </div>
-                                                </td>
-                                                <td className="px-3 py-2.5 text-right font-semibold text-gray-900">
-                                                    {formatCurrency(item.amount)}
-                                                </td>
+                                                </div>
+                                            </td>
                                                 <td className="px-3 py-2.5 text-center">
                                                     <button
                                                         type="button"
@@ -564,56 +801,14 @@ const PurchaseForm = ({
                                                     </button>
                                                 </td>
                                             </tr>
-                                        );
-                                    })}
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
-                    {/* Financial Summary - Compact */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        {/* Purchase Details Section */}
-                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                            <div className="flex items-center mb-3">
-                                <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded mr-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                                    </svg>
-                                </div>
-                                <h4 className="text-sm font-bold text-gray-900">Purchase Details</h4>
-                            </div>
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Payment Terms</label>
-                                    <select
-                                        className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
-                                        name="payment_terms"
-                                        value={formData.payment_terms}
-                                        onChange={handleInputChange}
-                                    >
-                                        <option value="7 days" className="text-sm">7 days</option>
-                                        <option value="15 days" className="text-sm">15 days</option>
-                                        <option value="30 days" className="text-sm">30 days</option>
-                                        <option value="45 days" className="text-sm">45 days</option>
-                                        <option value="60 days" className="text-sm">60 days</option>
-                                        <option value="Cash" className="text-sm">Cash</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Notes</label>
-                                    <textarea
-                                        className="w-full h-28 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150 resize-none text-sm"
-                                        placeholder="Purchase notes or instructions..."
-                                        name="notes"
-                                        value={formData.notes}
-                                        onChange={handleInputChange}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Discount & Tax Section */}
+                    {/* Additional Settings Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                         <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
                             <div className="flex items-center mb-3">
                                 <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded mr-2">
@@ -621,7 +816,71 @@ const PurchaseForm = ({
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <h4 className="text-sm font-bold text-gray-900">Discount & Tax</h4>
+                                <h4 className="text-sm font-bold text-gray-900">Additional Settings</h4>
+                            </div>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Additional Charge (₹)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₹</span>
+                                        <input
+                                            type="number"
+                                            className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                            name="additional_charge"
+                                            value={formData.additional_charge}
+                                            onChange={handleInputChange}
+                                            min="0"
+                                            step="1"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">Additional charge will be added after GST calculation</p>
+                                </div>
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="apply_round_off"
+                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                        checked={formData.apply_round_off}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, apply_round_off: e.target.checked }))}
+                                    />
+                                    <label htmlFor="apply_round_off" className="ml-2 text-xs font-medium text-gray-700">
+                                        Apply Round Off
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Notes Section */}
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="flex items-center mb-3">
+                                <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded mr-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <h4 className="text-sm font-bold text-gray-900">Notes</h4>
+                            </div>
+                            <textarea
+                                className="w-full h-28 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150 resize-none bg-gray-50 text-sm"
+                                placeholder="Additional notes or instructions..."
+                                name="notes"
+                                value={formData.notes}
+                                onChange={handleInputChange}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Discount and Totals Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {/* Discount Section */}
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="flex items-center mb-3">
+                                <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded mr-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h4 className="text-sm font-bold text-gray-900">Discount</h4>
                             </div>
                             <div className="space-y-3">
                                 <div>
@@ -632,8 +891,8 @@ const PurchaseForm = ({
                                         value={formData.discount_type}
                                         onChange={handleInputChange}
                                     >
-                                        <option value="percentage" className="text-sm">Percentage (%)</option>
-                                        <option value="fixed" className="text-sm">Fixed Amount (₹)</option>
+                                        <option value="percentage">Percentage (%)</option>
+                                        <option value="flat">Flat Amount (₹)</option>
                                     </select>
                                 </div>
                                 <div>
@@ -661,7 +920,7 @@ const PurchaseForm = ({
                         </div>
 
                         {/* Totals Section */}
-                        <div className="bg-gradient-to-br from-indigo-50 to-white p-4 rounded-lg border border-indigo-100 shadow-sm">
+                        <div className="lg:col-span-2 bg-gradient-to-br from-indigo-50 to-white p-4 rounded-lg border border-indigo-100 shadow-sm">
                             <div className="flex items-center mb-4">
                                 <div className="p-1.5 bg-indigo-600 text-white rounded mr-2">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -700,6 +959,13 @@ const PurchaseForm = ({
                                     </>
                                 )}
 
+                                {formData.additional_charge > 0 && (
+                                    <div className="flex justify-between items-center py-1">
+                                        <span className="text-gray-600">Additional Charge:</span>
+                                        <span className="font-semibold text-gray-900">{formatCurrency(formData.additional_charge)}</span>
+                                    </div>
+                                )}
+
                                 {Math.abs(formData.round_off) > 0.01 && (
                                     <div className="flex justify-between items-center py-1">
                                         <span className="text-gray-600">Round Off:</span>
@@ -721,10 +987,9 @@ const PurchaseForm = ({
                 </form>
             </div>
 
-            {/* Footer with Actions - Compact */}
+            {/* Footer with Actions */}
             <div className="flex-shrink-0 border-t border-gray-200 bg-white p-4 rounded-b-xl shadow-lg">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                    {/* Notification Options */}
                     <div className="w-full lg:w-auto">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                             <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Send Bill:</span>
@@ -770,9 +1035,7 @@ const PurchaseForm = ({
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
-                        {/* Total Display */}
                         <div className="hidden lg:block px-3 py-1.5 bg-gradient-to-r from-indigo-50 to-indigo-100 rounded border border-indigo-200">
                             <div className="text-xs text-indigo-700 font-semibold">
                                 Total: <span className="text-sm">{formatCurrency(formData.grand_total)}</span>
@@ -793,7 +1056,7 @@ const PurchaseForm = ({
                             <button
                                 type="submit"
                                 onClick={handleSubmit}
-                                disabled={isSubmitting || !formData.party_id}
+                                disabled={isSubmitting || !formData.party_id || formData.items.every(item => !item.service_id)}
                                 className="px-5 py-2 text-xs font-medium text-white bg-gradient-to-r from-indigo-600 to-indigo-700 border border-transparent rounded-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 shadow hover:shadow-md min-w-[140px] flex items-center justify-center"
                             >
                                 {isSubmitting ? (
@@ -820,17 +1083,14 @@ const PurchaseForm = ({
         </div>
     );
 
-    // Render as modal or standalone component
     if (mode === 'modal') {
         return isOpen ? (
             <div className="fixed inset-0 z-50 overflow-y-auto">
                 <div className="flex items-center justify-center min-h-screen p-2 sm:p-4">
-                    {/* Overlay */}
                     <div
                         className="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity"
                         onClick={onClose}
                     />
-                    {/* Professional Modal panel - Smaller */}
                     <div className="relative w-full max-w-4xl bg-white rounded-xl shadow-2xl h-[85vh] flex flex-col transform transition-all duration-300 scale-100">
                         {formContent}
                     </div>
@@ -839,7 +1099,6 @@ const PurchaseForm = ({
         ) : null;
     }
 
-    // Render as standalone page component
     return formContent;
 };
 

@@ -553,35 +553,61 @@ const ClientLedger = () => {
             case 'SALE': return <FiShoppingBag className="w-5 h-5" />;
             case 'PURCHASE': return <FiTruck className="w-5 h-5" />;
             case 'EXPENSE': return <FiFileText className="w-5 h-5" />;
-            case 'CONTRA': return <FiRepeat className="w-5 h-5" />;
+            case 'JOURNAL': return <FiRepeat className="w-5 h-5" />;
             default: return <FiPlus className="w-5 h-5" />;
         }
     };
 
-    // Get particulars display (new API: particular.type + particular.details, fallback to create_by)
-    const getParticularsDisplay = (transaction) => {
-        const particular = transaction.particular;
-        if (particular?.type === 'bank' && particular?.details) {
-            const d = particular.details;
-            return (
-                <div className="flex flex-col">
-                    <div className="font-medium text-slate-800">{d.bank || 'Bank'}</div>
-                    <div className="text-xs text-slate-500">
-                        {[d.account_no, d.holder, d.ifsc, d.branch].filter(Boolean).join(' • ')}
+   // Get particulars display (new API: particular.type + particular.details, fallback to create_by)
+const getParticularsDisplay = (transaction) => {
+    const particular = transaction.particular;
+    
+    // Handle client-type particulars (your actual data structure)
+    if (particular?.type === 'client' && particular?.details) {
+        const d = particular.details;
+        return (
+            <div className="flex flex-col">
+                <div className="font-medium text-slate-800">{d.name || 'Client'}</div>
+                <div className="text-xs text-slate-500">
+                    {[
+                        d.email,
+                        d.country_code && d.mobile && `+${d.country_code} ${d.mobile}`
+                    ].filter(Boolean).join(' • ')}
+                </div>
+                {particular.remark && (
+                    <div className="text-xs text-indigo-600 mt-1 font-medium">
+                        {particular.remark}
                     </div>
+                )}
+            </div>
+        );
+    }
+    
+    // Handle bank-type particulars
+    if (particular?.type === 'bank' && particular?.details) {
+        const d = particular.details;
+        return (
+            <div className="flex flex-col">
+                <div className="font-medium text-slate-800">{d.bank || 'Bank'}</div>
+                <div className="text-xs text-slate-500">
+                    {[d.account_no, d.holder, d.ifsc, d.branch].filter(Boolean).join(' • ')}
                 </div>
-            );
-        }
-        if (transaction.create_by) {
-            return (
-                <div className="flex flex-col">
-                    <div className="font-medium text-slate-800">{transaction.create_by.name || 'Company'}</div>
-                    <div className="text-xs text-slate-500">{transaction.create_by.email || ''}</div>
-                </div>
-            );
-        }
-        return <span className="text-sm text-slate-500">N/A</span>;
-    };
+            </div>
+        );
+    }
+    
+    // Fallback to create_by information
+    if (transaction.create_by) {
+        return (
+            <div className="flex flex-col">
+                <div className="font-medium text-slate-800">{transaction.create_by.name || 'Company'}</div>
+                <div className="text-xs text-slate-500">{transaction.create_by.email || ''}</div>
+            </div>
+        );
+    }
+    
+    return <span className="text-sm text-slate-500">N/A</span>;
+};
 
     // Navigate to client profile
     const goToClientProfile = () => {
@@ -667,7 +693,7 @@ const ClientLedger = () => {
                         
                         {/* Dropdown Menu */}
                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-2 hidden group-hover:block z-50">
-                            {['RECEIVE', 'PAYMENT', 'SALE', 'PURCHASE', 'EXPENSE', 'CONTRA'].map((type) => (
+                            {['RECEIVE', 'PAYMENT', 'SALE', 'PURCHASE', 'EXPENSE', 'JOURNAL'].map((type) => (
                                 <button
                                     key={type}
                                     onClick={() => handleTransactionTypeClick(type)}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     FiSearch,
     FiPlus,
@@ -20,7 +20,16 @@ import {
     FiChevronDown,
     FiChevronUp,
     FiChevronLeft,
-    FiChevronRight as FiChevronRightIcon
+    FiChevronRight as FiChevronRightIcon,
+    FiEye,
+    FiInfo,
+    FiCalendar,
+    FiHash,
+    FiTag,
+    FiHome,
+    FiBriefcase,
+    FiPercent,
+    FiPlusCircle
 } from 'react-icons/fi';
 import { PiExportBold } from "react-icons/pi";
 import { PiFilePdfDuotone, PiMicrosoftExcelLogoDuotone } from "react-icons/pi";
@@ -32,6 +41,9 @@ import EmailSelectionModal from '../components/email-selection';
 import MobileSelectionModal from '../components/mobile-selection';
 import SaleForm from '../components/sales-form';
 import DateFilter from '../components/DateFilter';
+import API_BASE_URL from '../utils/api-controller';
+import getHeaders from '../utils/get-headers';
+import axios from 'axios';
 
 const ViewSales = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -50,6 +62,14 @@ const ViewSales = () => {
         grand_total: 0
     });
 
+    // View Modal State
+    const [viewModalOpen, setViewModalOpen] = useState(false);
+    const [selectedSale, setSelectedSale] = useState(null);
+
+    // Search state
+    const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
     // State for dropdown menus
     const [showAddDropdown, setShowAddDropdown] = useState(false);
     const [activeRowDropdown, setActiveRowDropdown] = useState(null);
@@ -63,272 +83,28 @@ const ViewSales = () => {
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(10);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
     const [showAll, setShowAll] = useState(false);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [isLastPage, setIsLastPage] = useState(false);
+    const [apiStats, setApiStats] = useState(null);
 
-    // Mock sales data
-    const mockSalesData = [
-        {
-            invoice_id: '1',
-            invoice_no: 'INV-001',
-            date: '2024-01-15',
-            particulars: 'Tax Filing Services',
-            sale_from: 'client',
-            firm_name: 'ABC Corporation',
-            remark: 'Quarterly tax filing',
-            total: 5000,
-            tax: 900,
-            grand_total: 5900,
-            task_id: null
-        },
-        {
-            invoice_id: '2',
-            invoice_no: 'INV-002',
-            date: '2024-01-10',
-            particulars: 'GST Return Filing',
-            sale_from: 'task',
-            firm_name: 'XYZ Enterprises',
-            remark: 'Monthly GST return',
-            total: 3000,
-            tax: 540,
-            grand_total: 3540,
-            task_id: 'TASK001'
-        },
-        {
-            invoice_id: '3',
-            invoice_no: 'INV-003',
-            date: '2024-01-05',
-            particulars: 'Audit Services',
-            sale_from: 'ca',
-            firm_name: '',
-            remark: 'Annual audit',
-            total: 15000,
-            tax: 2700,
-            grand_total: 17700,
-            task_id: null
-        },
-        {
-            invoice_id: '4',
-            invoice_no: 'INV-004',
-            date: '2024-01-20',
-            particulars: 'Company Registration',
-            sale_from: 'bank',
-            firm_name: 'Tech Innovators Inc',
-            remark: 'New company registration',
-            total: 8000,
-            tax: 1440,
-            grand_total: 9440,
-            task_id: null
-        },
-        {
-            invoice_id: '5',
-            invoice_no: 'INV-005',
-            date: '2024-01-18',
-            particulars: 'Bookkeeping Services',
-            sale_from: 'client',
-            firm_name: 'Global Traders Ltd',
-            remark: 'Monthly bookkeeping',
-            total: 7500,
-            tax: 1350,
-            grand_total: 8850,
-            task_id: null
-        },
-        {
-            invoice_id: '6',
-            invoice_no: 'INV-006',
-            date: '2024-01-12',
-            particulars: 'Financial Consulting',
-            sale_from: 'task',
-            firm_name: 'Startup Solutions',
-            remark: 'Business strategy consultation',
-            total: 12000,
-            tax: 2160,
-            grand_total: 14160,
-            task_id: 'TASK002'
-        },
-        {
-            invoice_id: '7',
-            invoice_no: 'INV-007',
-            date: '2024-01-08',
-            particulars: 'Tax Advisory Services',
-            sale_from: 'ca',
-            firm_name: '',
-            remark: 'Corporate tax planning',
-            total: 25000,
-            tax: 4500,
-            grand_total: 29500,
-            task_id: null
-        },
-        {
-            invoice_id: '8',
-            invoice_no: 'INV-008',
-            date: '2024-01-25',
-            particulars: 'Payroll Processing',
-            sale_from: 'staff',
-            firm_name: 'Manufacturing Corp',
-            remark: 'Monthly payroll for 50 employees',
-            total: 6000,
-            tax: 1080,
-            grand_total: 7080,
-            task_id: null
-        },
-        {
-            invoice_id: '9',
-            invoice_no: 'INV-009',
-            date: '2024-01-22',
-            particulars: 'Compliance Review',
-            sale_from: 'agent',
-            firm_name: 'Retail Chain Inc',
-            remark: 'Annual compliance check',
-            total: 9000,
-            tax: 1620,
-            grand_total: 10620,
-            task_id: null
-        },
-        {
-            invoice_id: '10',
-            invoice_no: 'INV-010',
-            date: '2024-01-14',
-            particulars: 'Financial Statement Preparation',
-            sale_from: 'client',
-            firm_name: 'Service Providers Co',
-            remark: 'Year-end financial statements',
-            total: 11000,
-            tax: 1980,
-            grand_total: 12980,
-            task_id: null
-        },
-        {
-            invoice_id: '11',
-            invoice_no: 'INV-011',
-            date: '2024-01-30',
-            particulars: 'Business Valuation',
-            sale_from: 'task',
-            firm_name: 'Acquisition Target Ltd',
-            remark: 'Company valuation for merger',
-            total: 35000,
-            tax: 6300,
-            grand_total: 41300,
-            task_id: 'TASK003'
-        },
-        {
-            invoice_id: '12',
-            invoice_no: 'INV-012',
-            date: '2024-01-28',
-            particulars: 'Internal Audit',
-            sale_from: 'ca',
-            firm_name: '',
-            remark: 'Quarterly internal audit',
-            total: 18000,
-            tax: 3240,
-            grand_total: 21240,
-            task_id: null
-        },
-        {
-            invoice_id: '13',
-            invoice_no: 'INV-013',
-            date: '2024-01-17',
-            particulars: 'Accounting Software Setup',
-            sale_from: 'bank',
-            firm_name: 'Digital Solutions LLC',
-            remark: 'QuickBooks implementation',
-            total: 8500,
-            tax: 1530,
-            grand_total: 10030,
-            task_id: null
-        },
-        {
-            invoice_id: '14',
-            invoice_no: 'INV-014',
-            date: '2024-01-11',
-            particulars: 'Tax Return Filing - Individual',
-            sale_from: 'client',
-            firm_name: '',
-            remark: 'Personal income tax return',
-            total: 2500,
-            tax: 450,
-            grand_total: 2950,
-            task_id: null
-        },
-        {
-            invoice_id: '15',
-            invoice_no: 'INV-015',
-            date: '2024-01-03',
-            particulars: 'Due Diligence Services',
-            sale_from: 'task',
-            firm_name: 'Investment Group',
-            remark: 'Financial due diligence',
-            total: 42000,
-            tax: 7560,
-            grand_total: 49560,
-            task_id: 'TASK004'
-        },
-        {
-            invoice_id: '16',
-            invoice_no: 'INV-016',
-            date: '2024-01-19',
-            particulars: 'Budget Preparation',
-            sale_from: 'capital',
-            firm_name: 'Expansion Projects Inc',
-            remark: 'Annual budget planning',
-            total: 9500,
-            tax: 1710,
-            grand_total: 11210,
-            task_id: null
-        },
-        {
-            invoice_id: '17',
-            invoice_no: 'INV-017',
-            date: '2024-01-24',
-            particulars: 'Cost Analysis',
-            sale_from: 'client',
-            firm_name: 'Manufacturing Unit',
-            remark: 'Production cost analysis',
-            total: 12500,
-            tax: 2250,
-            grand_total: 14750,
-            task_id: null
-        },
-        {
-            invoice_id: '18',
-            invoice_no: 'INV-018',
-            date: '2024-01-07',
-            particulars: 'Financial Planning',
-            sale_from: 'task',
-            firm_name: 'Wealth Management',
-            remark: 'Retirement planning',
-            total: 8000,
-            tax: 1440,
-            grand_total: 9440,
-            task_id: 'TASK005'
-        },
-        {
-            invoice_id: '19',
-            invoice_no: 'INV-019',
-            date: '2024-01-29',
-            particulars: 'Accounting System Review',
-            sale_from: 'ca',
-            firm_name: '',
-            remark: 'System optimization',
-            total: 15000,
-            tax: 2700,
-            grand_total: 17700,
-            task_id: null
-        },
-        {
-            invoice_id: '20',
-            invoice_no: 'INV-020',
-            date: '2024-01-31',
-            particulars: 'Business Registration',
-            sale_from: 'bank',
-            firm_name: 'New Ventures LLC',
-            remark: 'LLC formation services',
-            total: 7000,
-            tax: 1260,
-            grand_total: 8260,
-            task_id: null
-        }
-    ];
+    // Debounce search term
+    useEffect(() => {
+        const timerId = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 500);
+
+        return () => {
+            clearTimeout(timerId);
+        };
+    }, [searchTerm]);
+
+    // Reset to first page when search term changes
+    useEffect(() => {
+        setCurrentPage(1);
+        setShowAll(false);
+    }, [debouncedSearchTerm, dateRange]);
 
     // Persist sidebar minimized state
     useEffect(() => {
@@ -346,6 +122,24 @@ const ViewSales = () => {
             document.body.style.overflow = 'auto';
         };
     }, [mobileMenuOpen]);
+
+    // Lock body scroll when view modal is open
+    useEffect(() => {
+        if (viewModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'auto';
+        }
+        return () => {
+            document.body.style.overflow = 'auto';
+        };
+    }, [viewModalOpen]);
+
+    // Format date for API
+    const formatDateForAPI = (dateString) => {
+        const [day, month, year] = dateString.split('/');
+        return `${year}-${month}-${day}`;
+    };
 
     // Initialize with current month date range
     useEffect(() => {
@@ -366,43 +160,110 @@ const ViewSales = () => {
 
         setDateRange(`${from} - ${to}`);
         setFromToDate(`From ${from} to ${to}`);
-        fetchSalesData(from, to);
     }, []);
 
-    // Format currency
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-IN', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(amount);
-    };
+    // Fetch sales data from API
+    const fetchSalesData = useCallback(async () => {
+        if (!dateRange) return;
 
-    // Simulate API call to fetch sales data
-    const fetchSalesData = async (from, to) => {
         setLoading(true);
 
-        // Simulate API delay
-        setTimeout(() => {
-            const salesData = mockSalesData;
-            setSales(salesData);
+        try {
+            const [from, to] = dateRange.split(' - ');
+            const fromDateFormatted = formatDateForAPI(from);
+            const toDateFormatted = formatDateForAPI(to);
 
-            // Calculate summary
-            const summaryData = salesData.reduce((acc, sale) => ({
-                total: acc.total + sale.total,
-                tax: acc.tax + sale.tax,
-                grand_total: acc.grand_total + sale.grand_total
-            }), { total: 0, tax: 0, grand_total: 0 });
+            // Determine pagination parameters
+            const page = showAll ? 1 : currentPage;
+            const limit = showAll ? 1000 : itemsPerPage;
 
-            setSummary(summaryData);
+            const params = {
+                page_no: page,
+                limit: limit,
+                from_date: fromDateFormatted,
+                to_date: toDateFormatted,
+                search: debouncedSearchTerm || ''
+            };
+
+            // Get headers with authentication
+            const headers = await getHeaders();
+            
+            const response = await axios.get(`${API_BASE_URL}/sale/list`, { 
+                params,
+                headers 
+            });
+
+            if (response.data.success) {
+                const salesData = response.data.data;
+                setSales(salesData);
+                setTotalRecords(response.data.meta.total);
+                setIsLastPage(response.data.meta.is_last_page);
+                setApiStats(response.data.stats);
+
+                // Calculate summary from stats if available
+                if (response.data.stats) {
+                    setSummary({
+                        total: parseFloat(response.data.stats.amount) || 0,
+                        tax: 0,
+                        grand_total: parseFloat(response.data.stats.amount) || 0
+                    });
+                } else {
+                    // Calculate summary from sales data if stats not provided
+                    const summaryData = salesData.reduce((acc, sale) => ({
+                        total: acc.total + parseFloat(sale.calculation?.total || sale.amount || 0),
+                        tax: acc.tax + parseFloat(sale.calculation?.gst_value || 0),
+                        grand_total: acc.grand_total + parseFloat(sale.calculation?.grand_total || sale.amount || 0)
+                    }), { total: 0, tax: 0, grand_total: 0 });
+                    setSummary(summaryData);
+                }
+            } else {
+                console.error('API returned success false');
+                setSales([]);
+                setTotalRecords(0);
+            }
+        } catch (error) {
+            console.error('Error fetching sales data:', error);
+            setSales([]);
+            setTotalRecords(0);
+            
+            if (error.response) {
+                if (error.response.status === 401) {
+                    console.error('Unauthorized access - please login again');
+                } else if (error.response.status === 404) {
+                    console.error('API endpoint not found');
+                } else {
+                    console.error('Server error:', error.response.status);
+                }
+            } else if (error.request) {
+                console.error('Network error - no response received');
+            } else {
+                console.error('Error setting up request:', error.message);
+            }
+        } finally {
             setLoading(false);
-        }, 1500);
+        }
+    }, [dateRange, debouncedSearchTerm, currentPage, itemsPerPage, showAll]);
+
+    // Fetch data when dependencies change
+    useEffect(() => {
+        fetchSalesData();
+    }, [fetchSalesData]);
+
+    // Handle view sale details
+    const handleViewSale = (sale) => {
+        setSelectedSale(sale);
+        setViewModalOpen(true);
+        setActiveRowDropdown(null);
     };
 
-    // Handle search
+    // Handle search input change
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
+
+    // Handle search button click
     const handleSearch = () => {
-        const [from, to] = dateRange.split(' - ');
-        setFromToDate(`From ${from} to ${to}`);
-        fetchSalesData(from, to);
+        fetchSalesData();
     };
 
     // Handle date filter change
@@ -415,9 +276,28 @@ const ViewSales = () => {
         }
     };
 
+    // Handle items per page change
+    const handleItemsPerPageChange = (e) => {
+        const newLimit = parseInt(e.target.value);
+        setItemsPerPage(newLimit);
+        setCurrentPage(1);
+        setShowAll(false);
+    };
+
+    // Handle show all toggle
+    const handleShowAll = () => {
+        setShowAll(true);
+        setCurrentPage(1);
+    };
+
+    const handleShowLess = () => {
+        setShowAll(false);
+        setCurrentPage(1);
+    };
+
     const handleSaleSuccess = (saleData) => {
         console.log('Sale created successfully:', saleData);
-        alert('Sale entry confirmed! Refreshing data...');
+        fetchSalesData();
     };
 
     const handleEmailSubmit = (email) => {
@@ -432,50 +312,68 @@ const ViewSales = () => {
         console.log('Selected number:', number);
     };
 
-    const handleExport = (type, data = null) => {
+    const handleExport = async (type, data = null) => {
         setExportModal({ open: true, type, data });
 
-        // Simulate export process
-        setTimeout(() => {
-            setExportModal({ open: false, type: '', data: null });
-            alert(`${type.toUpperCase()} export completed successfully!`);
-        }, 1500);
+        try {
+            const headers = await getHeaders();
+            
+            const exportData = {
+                type: type,
+                data: data || sales,
+                date_range: dateRange,
+                search: searchTerm
+            };
+
+            const response = await axios.post(`${API_BASE_URL}/sale/export`, exportData, {
+                headers,
+                responseType: type === 'pdf' ? 'blob' : 'json'
+            });
+
+            if (type === 'pdf') {
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `sales_report_${new Date().toISOString()}.pdf`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+            } else if (type === 'excel') {
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `sales_report_${new Date().toISOString()}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert(`${type.toUpperCase()} export completed successfully!`);
+            }
+        } catch (error) {
+            console.error(`Error exporting ${type}:`, error);
+            alert(`Failed to export ${type}. Please try again.`);
+        } finally {
+            setTimeout(() => {
+                setExportModal({ open: false, type: '', data: null });
+            }, 1500);
+        }
     };
 
-    // Get edit link and invoice link based on sale_from
+    // Get edit link and invoice link based on sale_type
     const getActionLinks = (sale) => {
         let editLink = '';
         let invoiceLink = '';
 
-        switch (sale.sale_from) {
+        switch (sale.sale_type) {
             case 'client':
                 editLink = `/edit-sale-client?redirect=${window.location.href}&invoice_id=${sale.invoice_id}`;
                 invoiceLink = `/preview-invoice-sale?invoice_id=${sale.invoice_id}`;
                 break;
-            case 'task':
-                editLink = `/view-task-details?task_id=${sale.task_id}`;
-                invoiceLink = `/preview-invoice-sale?invoice_id=${sale.invoice_id}`;
-                break;
-            case 'ca':
-                editLink = `/edit-sale-ca?redirect=${window.location.href}&invoice_id=${sale.invoice_id}`;
-                invoiceLink = `/preview-invoice-sale?invoice_id=${sale.invoice_id}`;
-                break;
-            case 'staff':
-                editLink = `/edit-sale-staff?redirect=${window.location.href}&invoice_id=${sale.invoice_id}`;
-                invoiceLink = `/preview-invoice-sale?invoice_id=${sale.invoice_id}`;
-                break;
-            case 'agent':
-                editLink = `/edit-sale-agent?redirect=${window.location.href}&invoice_id=${sale.invoice_id}`;
-                invoiceLink = `/preview-invoice-sale?invoice_id=${sale.invoice_id}`;
-                break;
-            case 'cash':
-            case 'savings':
-            case 'current':
-            case 'loan':
+            case 'bank':
                 editLink = `/edit-sale-bank?redirect=${window.location.href}&invoice_id=${sale.invoice_id}`;
-                break;
-            case 'capital':
-                editLink = `/edit-sale-capital?redirect=${window.location.href}&invoice_id=${sale.invoice_id}`;
+                invoiceLink = `/preview-invoice-sale?invoice_id=${sale.invoice_id}`;
                 break;
             default:
                 editLink = '#';
@@ -489,6 +387,76 @@ const ViewSales = () => {
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-GB');
+    };
+
+    // Format date with time
+    const formatDateTime = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    // Format currency
+    const formatCurrency = (amount) => {
+        const numAmount = parseFloat(amount);
+        if (isNaN(numAmount)) return '0.00';
+        return new Intl.NumberFormat('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(numAmount);
+    };
+
+    // Get sale party name
+    const getSalePartyName = (sale) => {
+        if (sale.sale_type === 'client' && sale.sale_party) {
+            return sale.sale_party.name || '';
+        }
+        if (sale.sale_type === 'bank' && sale.sale_party) {
+            return sale.sale_party.holder || sale.sale_party.bank || '';
+        }
+        return '';
+    };
+
+    // Get sale type display name
+    const getSaleTypeDisplay = (saleType) => {
+        const typeMap = {
+            'client': 'Client',
+            'bank': 'Bank',
+            'cash': 'Cash',
+            'savings': 'Savings',
+            'current': 'Current',
+            'loan': 'Loan',
+            'capital': 'Capital'
+        };
+        return typeMap[saleType] || saleType;
+    };
+
+    // Get sale party details for display
+    const getSalePartyDetails = (sale) => {
+        if (sale.sale_type === 'client' && sale.sale_party) {
+            return {
+                name: sale.sale_party.name,
+                email: sale.sale_party.email,
+                mobile: sale.sale_party.mobile,
+                username: sale.sale_party.username
+            };
+        }
+        if (sale.sale_type === 'bank' && sale.sale_party) {
+            return {
+                name: sale.sale_party.holder,
+                bank: sale.sale_party.bank,
+                account_no: sale.sale_party.account_no,
+                ifsc: sale.sale_party.ifsc,
+                branch: sale.sale_party.branch,
+                type: sale.sale_party.type
+            };
+        }
+        return null;
     };
 
     // Toggle row dropdown
@@ -512,16 +480,16 @@ const ViewSales = () => {
     }, []);
 
     // Get current items based on pagination
+    const indexOfFirstItem = (currentPage - 1) * itemsPerPage;
     const indexOfLastItem = showAll ? sales.length : currentPage * itemsPerPage;
-    const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
-    const currentItems = sales.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(sales.length / itemsPerPage);
+    const currentItems = showAll ? sales : sales.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(totalRecords / itemsPerPage);
 
     // Calculate paginated summary
     const paginatedSummary = currentItems.reduce((acc, sale) => ({
-        total: acc.total + sale.total,
-        tax: acc.tax + sale.tax,
-        grand_total: acc.grand_total + sale.grand_total
+        total: acc.total + parseFloat(sale.calculation?.total || sale.amount || 0),
+        tax: acc.tax + parseFloat(sale.calculation?.gst_value || 0),
+        grand_total: acc.grand_total + parseFloat(sale.calculation?.grand_total || sale.amount || 0)
     }), { total: 0, tax: 0, grand_total: 0 });
 
     // Skeleton loader component
@@ -573,7 +541,6 @@ const ViewSales = () => {
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-6">
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                        {/* Skeleton Header */}
                         <div className="border-b border-slate-200 px-6 py-4">
                             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                                 <div>
@@ -586,8 +553,6 @@ const ViewSales = () => {
                                 </div>
                             </div>
                         </div>
-
-                        {/* Skeleton Table */}
                         <div className="overflow-hidden">
                             <div className="border-b border-slate-200">
                                 <table className="w-full text-sm">
@@ -602,7 +567,6 @@ const ViewSales = () => {
                                     </thead>
                                 </table>
                             </div>
-
                             <div className="p-4">
                                 {[...Array(6)].map((_, index) => (
                                     <div key={index} className="mb-4">
@@ -617,8 +581,247 @@ const ViewSales = () => {
         </div>
     );
 
+    // View Modal Component
+    const ViewSaleModal = () => {
+        if (!selectedSale) return null;
+
+        const partyDetails = getSalePartyDetails(selectedSale);
+        const calculation = selectedSale.calculation || {};
+        
+        return (
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                onClick={() => setViewModalOpen(false)}
+            >
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                    className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* Modal Header */}
+                    <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-t-2xl">
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-white/20 rounded-lg">
+                                    <FiFileText className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold">Sale Details</h2>
+                                    <p className="text-blue-100 text-sm">Invoice #{selectedSale.invoice_no}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setViewModalOpen(false)}
+                                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                            >
+                                <FiX className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Modal Content */}
+                    <div className="p-6 space-y-6">
+                        {/* Basic Information */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-slate-50 rounded-xl p-4">
+                                <div className="flex items-center gap-2 text-slate-600 mb-2">
+                                    <FiCalendar className="w-4 h-4" />
+                                    <span className="text-xs font-medium uppercase tracking-wider">Transaction Date</span>
+                                </div>
+                                <p className="text-slate-800 font-semibold">{formatDateTime(selectedSale.transaction_date)}</p>
+                            </div>
+                            <div className="bg-slate-50 rounded-xl p-4">
+                                <div className="flex items-center gap-2 text-slate-600 mb-2">
+                                    <FiHash className="w-4 h-4" />
+                                    <span className="text-xs font-medium uppercase tracking-wider">Transaction ID</span>
+                                </div>
+                                <p className="text-slate-800 font-mono text-sm break-all">{selectedSale.transaction_id}</p>
+                            </div>
+                        </div>
+
+                        {/* Party Information */}
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                                <FiUsers className="w-4 h-4 text-blue-600" />
+                                Party Information
+                            </h3>
+                            <div className="bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 border border-slate-200">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-xs text-slate-500 mb-1">Sale Type</p>
+                                        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                                            selectedSale.sale_type === 'client' ? 'bg-blue-100 text-blue-700' :
+                                            selectedSale.sale_type === 'bank' ? 'bg-amber-100 text-amber-700' :
+                                            'bg-slate-100 text-slate-700'
+                                        }`}>
+                                            {getSaleTypeDisplay(selectedSale.sale_type)}
+                                        </span>
+                                    </div>
+                                    {partyDetails && (
+                                        <>
+                                            <div>
+                                                <p className="text-xs text-slate-500 mb-1">Name</p>
+                                                <p className="text-slate-800 font-medium">{partyDetails.name || 'N/A'}</p>
+                                            </div>
+                                            {partyDetails.email && (
+                                                <div>
+                                                    <p className="text-xs text-slate-500 mb-1">Email</p>
+                                                    <p className="text-slate-800">{partyDetails.email}</p>
+                                                </div>
+                                            )}
+                                            {partyDetails.mobile && (
+                                                <div>
+                                                    <p className="text-xs text-slate-500 mb-1">Mobile</p>
+                                                    <p className="text-slate-800">{partyDetails.mobile}</p>
+                                                </div>
+                                            )}
+                                            {partyDetails.bank && (
+                                                <div>
+                                                    <p className="text-xs text-slate-500 mb-1">Bank</p>
+                                                    <p className="text-slate-800">{partyDetails.bank}</p>
+                                                </div>
+                                            )}
+                                            {partyDetails.account_no && (
+                                                <div>
+                                                    <p className="text-xs text-slate-500 mb-1">Account No</p>
+                                                    <p className="text-slate-800 font-mono">{partyDetails.account_no}</p>
+                                                </div>
+                                            )}
+                                            {partyDetails.ifsc && (
+                                                <div>
+                                                    <p className="text-xs text-slate-500 mb-1">IFSC Code</p>
+                                                    <p className="text-slate-800 font-mono">{partyDetails.ifsc}</p>
+                                                </div>
+                                            )}
+                                            {partyDetails.branch && (
+                                                <div>
+                                                    <p className="text-xs text-slate-500 mb-1">Branch</p>
+                                                    <p className="text-slate-800">{partyDetails.branch}</p>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Calculation Details */}
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                                <FiDollarSign className="w-4 h-4 text-green-600" />
+                                Financial Details
+                            </h3>
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div>
+                                        <p className="text-xs text-slate-500 mb-1">Subtotal</p>
+                                        <p className="text-lg font-bold text-green-700">₹{formatCurrency(calculation.subtotal || selectedSale.amount || 0)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 mb-1">Tax Rate</p>
+                                        <p className="text-slate-800 font-medium">{calculation.tax_rate || '0'}%</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 mb-1">GST Value</p>
+                                        <p className="text-lg font-bold text-amber-600">₹{formatCurrency(calculation.gst_value || 0)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 mb-1">Discount Type</p>
+                                        <p className="text-slate-800 capitalize">{calculation.discount_type || 'Not Applicable'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 mb-1">Discount Value</p>
+                                        <p className="text-slate-800">₹{formatCurrency(calculation.discount_value || 0)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 mb-1">Additional Charges</p>
+                                        <p className="text-slate-800">₹{formatCurrency(calculation.additional_charge || 0)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500 mb-1">Round Off</p>
+                                        <p className="text-slate-800">₹{formatCurrency(calculation.round_off || 0)}</p>
+                                    </div>
+                                    <div className="md:col-span-2 lg:col-span-3">
+                                        <p className="text-xs text-slate-500 mb-1">Grand Total</p>
+                                        <p className="text-2xl font-bold text-blue-600">₹{formatCurrency(calculation.grand_total || selectedSale.amount || 0)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Remark */}
+                        {selectedSale.remark && (
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                                    <FiMessageSquare className="w-4 h-4 text-purple-600" />
+                                    Remarks
+                                </h3>
+                                <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
+                                    <p className="text-slate-700 italic">"{selectedSale.remark}"</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Created/Modified By */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            {selectedSale.create_by && (
+                                <div className="bg-slate-50 rounded-xl p-4">
+                                    <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
+                                        <FiUser className="w-3 h-3" />
+                                        Created By
+                                    </p>
+                                    <p className="font-medium text-slate-800">{selectedSale.create_by.name}</p>
+                                    <p className="text-xs text-slate-500">{selectedSale.create_by.email}</p>
+                                    <p className="text-xs text-slate-500">{selectedSale.create_by.mobile}</p>
+                                </div>
+                            )}
+                            {selectedSale.modify_by && selectedSale.modify_by !== selectedSale.create_by && (
+                                <div className="bg-slate-50 rounded-xl p-4">
+                                    <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
+                                        <FiEdit className="w-3 h-3" />
+                                        Last Modified By
+                                    </p>
+                                    <p className="font-medium text-slate-800">{selectedSale.modify_by.name}</p>
+                                    <p className="text-xs text-slate-500">{selectedSale.modify_by.email}</p>
+                                    <p className="text-xs text-slate-500">{selectedSale.modify_by.mobile}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="sticky bottom-0 bg-slate-50 px-6 py-4 rounded-b-2xl border-t border-slate-200 flex justify-end gap-3">
+                        <button
+                            onClick={() => setViewModalOpen(false)}
+                            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                            Close
+                        </button>
+                        <button
+                            onClick={() => {
+                                const { editLink } = getActionLinks(selectedSale);
+                                if (editLink && editLink !== '#') {
+                                    window.location.href = editLink;
+                                }
+                            }}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                        >
+                            <FiEdit className="w-4 h-4" />
+                            Edit Sale
+                        </button>
+                    </div>
+                </motion.div>
+            </motion.div>
+        );
+    };
+
     // Show skeleton while loading
-    if (loading) {
+    if (loading && sales.length === 0) {
         return <SkeletonLoader />;
     }
 
@@ -643,7 +846,7 @@ const ViewSales = () => {
             {/* Main Content Area - Full Page Scroll */}
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                    {/* Header Stats Cards - Smaller */}
+                    {/* Header Stats Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                         <motion.div 
                             initial={{ opacity: 0, y: 10 }}
@@ -655,6 +858,11 @@ const ViewSales = () => {
                                 <div>
                                     <p className="text-blue-100 text-xs font-medium">Total Value</p>
                                     <h3 className="text-lg font-bold mt-1">₹{formatCurrency(summary.total)}</h3>
+                                    {apiStats && (
+                                        <p className="text-blue-100 text-[10px] mt-1">
+                                            {apiStats.count} transactions
+                                        </p>
+                                    )}
                                 </div>
                                 <FiDollarSign className="w-5 h-5 opacity-80" />
                             </div>
@@ -721,6 +929,18 @@ const ViewSales = () => {
                                 </div>
 
                                 <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+                                    {/* Search Input */}
+                                    <div className="relative w-full lg:w-64">
+                                        <input
+                                            type="text"
+                                            placeholder="Search by invoice no, party name..."
+                                            value={searchTerm}
+                                            onChange={handleSearchChange}
+                                            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                        />
+                                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                    </div>
+
                                     {/* Date Filter Component */}
                                     <div className="w-full lg:w-auto">
                                         <DateFilter onChange={handleDateFilterChange} />
@@ -828,16 +1048,16 @@ const ViewSales = () => {
                                             Particulars
                                         </th>
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[120px]">
-                                            Voucher No
+                                            Invoice No
                                         </th>
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
-                                            T Value
+                                            Total Value
                                         </th>
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
                                             Tax
                                         </th>
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[100px]">
-                                            Total
+                                            Grand Total
                                         </th>
                                         <th className="text-center p-3 font-semibold text-slate-700 text-[10px] uppercase tracking-wider min-w-[80px]">
                                             Actions
@@ -845,7 +1065,11 @@ const ViewSales = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-slate-100">
-                                    {sales.length === 0 ? (
+                                    {loading ? (
+                                        [...Array(5)].map((_, index) => (
+                                            <SkeletonRow key={index} />
+                                        ))
+                                    ) : currentItems.length === 0 ? (
                                         <tr>
                                             <td colSpan="8" className="text-center py-8 text-slate-500">
                                                 <div className="flex flex-col items-center justify-center">
@@ -853,7 +1077,7 @@ const ViewSales = () => {
                                                         <FiFileText className="w-8 h-8 text-slate-400" />
                                                     </div>
                                                     <p className="text-slate-600 text-sm font-medium mb-1">No sales records found</p>
-                                                    <p className="text-slate-500 text-xs mb-4">Start by creating your first sale entry</p>
+                                                    <p className="text-slate-500 text-xs mb-4">Try adjusting your search or date filter</p>
                                                     <motion.button
                                                         onClick={() => setSaleFormModal(true)}
                                                         className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-xs font-semibold hover:shadow transition-all duration-200"
@@ -868,9 +1092,9 @@ const ViewSales = () => {
                                     ) : (
                                         currentItems.map((sale, index) => {
                                             const { editLink, invoiceLink } = getActionLinks(sale);
-                                            const showFirm = sale.sale_from === 'task' && sale.firm_name;
                                             const isDropdownOpen = activeRowDropdown === sale.invoice_id;
                                             const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
+                                            const partyDetails = getSalePartyDetails(sale);
 
                                             return (
                                                 <motion.tr
@@ -887,29 +1111,25 @@ const ViewSales = () => {
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="font-medium text-slate-700 text-xs">
-                                                            {formatDate(sale.date)}
+                                                            {formatDate(sale.transaction_date)}
                                                         </div>
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
-                                                        <div className="mx-auto max-w-[180px]">
+                                                        <div className="mx-auto max-w-[200px]">
                                                             <div className="text-slate-800 font-semibold text-xs">
-                                                                {sale.particulars}
+                                                                {getSalePartyName(sale) || 'N/A'}
                                                             </div>
                                                             <div className="flex flex-col items-center gap-1 mt-1">
                                                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${
-                                                                    sale.sale_from === 'client' ? 'bg-blue-100 text-blue-700' :
-                                                                    sale.sale_from === 'task' ? 'bg-emerald-100 text-emerald-700' :
-                                                                    sale.sale_from === 'ca' ? 'bg-purple-100 text-purple-700' :
-                                                                    sale.sale_from === 'bank' ? 'bg-amber-100 text-amber-700' :
-                                                                    sale.sale_from === 'staff' ? 'bg-rose-100 text-rose-700' :
+                                                                    sale.sale_type === 'client' ? 'bg-blue-100 text-blue-700' :
+                                                                    sale.sale_type === 'bank' ? 'bg-amber-100 text-amber-700' :
                                                                     'bg-slate-100 text-slate-700'
                                                                 }`}>
-                                                                    {sale.sale_from}
+                                                                    {getSaleTypeDisplay(sale.sale_type)}
                                                                 </span>
-                                                                {showFirm && (
-                                                                    <span className="flex items-center justify-center gap-1 text-slate-600 text-[10px] bg-slate-100 px-2 py-0.5 rounded">
-                                                                        <FiUsers className="w-2.5 h-2.5" />
-                                                                        {sale.firm_name}
+                                                                {partyDetails && partyDetails.mobile && (
+                                                                    <span className="text-slate-500 text-[10px]">
+                                                                        {partyDetails.mobile}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -927,17 +1147,17 @@ const ViewSales = () => {
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <span className="inline-flex items-center justify-center bg-gradient-to-r from-green-50 to-green-100 text-green-800 font-bold px-3 py-1.5 rounded text-xs min-w-[90px] shadow-xs">
-                                                            ₹{formatCurrency(sale.total)}
+                                                            ₹{formatCurrency(sale.calculation?.total || sale.amount || 0)}
                                                         </span>
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <span className="inline-flex items-center justify-center bg-gradient-to-r from-amber-50 to-amber-100 text-amber-800 font-bold px-3 py-1.5 rounded text-xs min-w-[90px] shadow-xs">
-                                                            ₹{formatCurrency(sale.tax)}
+                                                            ₹{formatCurrency(sale.calculation?.gst_value || 0)}
                                                         </span>
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <span className="inline-flex items-center justify-center bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 font-bold px-3 py-1.5 rounded text-xs min-w-[90px] shadow-xs">
-                                                            ₹{formatCurrency(sale.grand_total)}
+                                                            ₹{formatCurrency(sale.calculation?.grand_total || sale.amount || 0)}
                                                         </span>
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
@@ -960,25 +1180,42 @@ const ViewSales = () => {
                                                                     >
                                                                         <div className="py-1">
                                                                             <button
+                                                                                onClick={() => handleViewSale(sale)}
                                                                                 className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
-                                                                                onClick={() => {
-                                                                                    setActiveRowDropdown(null);
-                                                                                    // Handle edit action
-                                                                                }}
                                                                             >
                                                                                 <div className="p-1 bg-blue-50 rounded mr-2">
-                                                                                    {sale.sale_from === 'task' ? (
-                                                                                        <FiFileText className="w-3 h-3 text-blue-500" />
-                                                                                    ) : (
-                                                                                        <FiEdit className="w-3 h-3 text-blue-500" />
-                                                                                    )}
+                                                                                    <FiEye className="w-3 h-3 text-blue-500" />
                                                                                 </div>
                                                                                 <div className="text-left">
-                                                                                    <div className="font-medium">
-                                                                                        {sale.sale_from === 'task' ? 'Task Details' : 'Edit Sale'}
-                                                                                    </div>
+                                                                                    <div className="font-medium">View Details</div>
                                                                                 </div>
                                                                             </button>
+                                                                            <a
+                                                                                href={editLink}
+                                                                                className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                onClick={() => setActiveRowDropdown(null)}
+                                                                            >
+                                                                                <div className="p-1 bg-blue-50 rounded mr-2">
+                                                                                    <FiEdit className="w-3 h-3 text-blue-500" />
+                                                                                </div>
+                                                                                <div className="text-left">
+                                                                                    <div className="font-medium">Edit Sale</div>
+                                                                                </div>
+                                                                            </a>
+                                                                            {invoiceLink && (
+                                                                                <a
+                                                                                    href={invoiceLink}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    onClick={() => setActiveRowDropdown(null)}
+                                                                                >
+                                                                                    <div className="p-1 bg-slate-50 rounded mr-2">
+                                                                                        <FiFileText className="w-3 h-3 text-slate-600" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">View Invoice</div>
+                                                                                    </div>
+                                                                                </a>
+                                                                            )}
                                                                             <div className="border-t border-slate-100 mt-1 pt-1">
                                                                                 <button
                                                                                     className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
@@ -1028,13 +1265,23 @@ const ViewSales = () => {
                             </table>
 
                             {/* Pagination Controls */}
-                            {sales.length > itemsPerPage && !showAll && (
+                            {!loading && totalRecords > itemsPerPage && !showAll && (
                                 <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
                                     <div className="flex flex-col sm:flex-row justify-between items-center px-4 py-3 gap-3">
                                         <div className="text-xs text-slate-600">
-                                            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, sales.length)} of {sales.length} entries
+                                            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, totalRecords)} of {totalRecords} entries
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            <select
+                                                value={itemsPerPage}
+                                                onChange={handleItemsPerPageChange}
+                                                className="px-2 py-1 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value={10}>10 per page</option>
+                                                <option value={25}>25 per page</option>
+                                                <option value={50}>50 per page</option>
+                                                <option value={100}>100 per page</option>
+                                            </select>
                                             <button
                                                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                                 disabled={currentPage === 1}
@@ -1073,33 +1320,30 @@ const ViewSales = () => {
                                             </div>
                                             <button
                                                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                                disabled={currentPage === totalPages}
+                                                disabled={currentPage === totalPages || isLastPage}
                                                 className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                                             >
                                                 Next
                                                 <FiChevronRightIcon className="w-3 h-3" />
                                             </button>
+                                            <button
+                                                onClick={handleShowAll}
+                                                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors"
+                                            >
+                                                Show All
+                                                <FiChevronDown className="w-3 h-3" />
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={() => setShowAll(true)}
-                                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors"
-                                        >
-                                            Show All
-                                            <FiChevronDown className="w-3 h-3" />
-                                        </button>
                                     </div>
                                 </div>
                             )}
 
                             {/* Show Less Button when showing all */}
-                            {showAll && sales.length > itemsPerPage && (
+                            {!loading && showAll && totalRecords > itemsPerPage && (
                                 <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
                                     <div className="flex justify-center px-4 py-3">
                                         <button
-                                            onClick={() => {
-                                                setShowAll(false);
-                                                setCurrentPage(1);
-                                            }}
+                                            onClick={handleShowLess}
                                             className="flex items-center gap-1 px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors shadow-sm"
                                         >
                                             Show Less
@@ -1132,6 +1376,11 @@ const ViewSales = () => {
                 onClose={() => setWhatsappModalOpen(false)}
                 onSubmit={handleWhatsappSubmit}
             />
+
+            {/* View Sale Modal */}
+            <AnimatePresence>
+                {viewModalOpen && <ViewSaleModal />}
+            </AnimatePresence>
 
             {/* Export Confirmation Modal */}
             <AnimatePresence>

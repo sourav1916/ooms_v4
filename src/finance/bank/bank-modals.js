@@ -1,11 +1,19 @@
 // finance/bank/bank-modals.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiUser, FiDollarSign, FiShoppingBag, FiTruck, FiFileText, FiRepeat, FiPlus, FiTrash2, FiSearch, FiMail, FiPhone, FiCreditCard, FiHome } from 'react-icons/fi';
+import { IoTrash, IoAdd } from "react-icons/io5";
+import { FiX, FiUser, FiDollarSign, FiShoppingBag, FiTruck, FiFileText, FiRepeat, FiPlus, FiTrash2, FiSearch, FiMail, FiPhone, FiCreditCard, FiCalendar, FiHash, FiHome } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import API_BASE_URL from '../../utils/api-controller';
 import getHeaders from '../../utils/get-headers';
 import axios from 'axios';
+
+const appSettings = {
+    company_name: 'Professional Accounting Services',
+    gst_applicable: true,
+    default_gst_rate: 18,
+    currency: 'INR',
+};
 
 // Base Modal Component
 const BaseModal = ({ isOpen, onClose, title, children }) => {
@@ -812,399 +820,1096 @@ export const PaymentModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
 };
 // Sale Modal with Items
 export const SaleModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency }) => {
-    const [items, setItems] = useState([{ id: 1, service: '', description: '', price: 0 }]);
-    const [total, setTotal] = useState(0);
+    const [formData, setFormData] = useState({
+        payment_date: new Date().toISOString().split('T')[0],
+        items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
+        subtotal: 0,
+        discount: 0,
+        discount_type: 'percentage',
+        sgst_rate: appSettings.gst_applicable ? appSettings.default_gst_rate / 2 : 0,
+        cgst_rate: appSettings.gst_applicable ? appSettings.default_gst_rate / 2 : 0,
+        sgst_amount: 0,
+        cgst_amount: 0,
+        round_off: 0,
+        grand_total: 0,
+        notes: '',
+        tax_rate: appSettings.default_gst_rate,
+        additional_charge: 0,
+        apply_round_off: false
+    });
 
-    const addItem = () => {
-        setItems([...items, { id: items.length + 1, service: '', description: '', price: 0 }]);
-    };
+    const [serviceOptions, setServiceOptions] = useState([]);
+    const [isLoadingServices, setIsLoadingServices] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [sendEmail, setSendEmail] = useState(true);
+    const [sendWhatsApp, setSendWhatsApp] = useState(true);
 
-    const removeItem = (id) => {
-        if (items.length > 1) {
-            setItems(items.filter(item => item.id !== id));
+    useEffect(() => {
+        if (isOpen) {
+            fetchServices();
+            resetForm();
+        }
+    }, [isOpen]);
+
+    const fetchServices = async () => {
+        setIsLoadingServices(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/service/list?search=&category_id`, {
+                method: 'GET',
+                headers: getHeaders()
+            });
+            const data = await response.json();
+            if (data.success) {
+                setServiceOptions(data.data.map(service => ({
+                    service_id: service.service_id,
+                    name: service.name,
+                    fees: parseFloat(service.fees),
+                    category: service.category_name,
+                    remark: service.remark
+                })));
+            }
+        } catch (error) {
+            console.error('Error fetching services:', error);
+        } finally {
+            setIsLoadingServices(false);
         }
     };
 
-    const updateItem = (id, field, value) => {
-        const updatedItems = items.map(item => {
-            if (item.id === id) {
-                return { ...item, [field]: value };
+    const resetForm = () => {
+        setFormData({
+            payment_date: new Date().toISOString().split('T')[0],
+            items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
+            subtotal: 0,
+            discount: 0,
+            discount_type: 'percentage',
+            sgst_rate: appSettings.gst_applicable ? appSettings.default_gst_rate / 2 : 0,
+            cgst_rate: appSettings.gst_applicable ? appSettings.default_gst_rate / 2 : 0,
+            sgst_amount: 0,
+            cgst_amount: 0,
+            round_off: 0,
+            grand_total: 0,
+            notes: '',
+            tax_rate: appSettings.default_gst_rate,
+            additional_charge: 0,
+            apply_round_off: false
+        });
+    };
+
+    const addItem = () => {
+        setFormData(prev => ({
+            ...prev,
+            items: [
+                ...prev.items,
+                { service_id: '', description: '', price: '', amount: 0, remark: '' }
+            ]
+        }));
+    };
+
+    const removeItem = (index) => {
+        if (formData.items.length > 1) {
+            setFormData(prev => ({
+                ...prev,
+                items: prev.items.filter((_, i) => i !== index)
+            }));
+        }
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: name === 'additional_charge' || name === 'discount' ? parseFloat(value) || 0 : value
+        }));
+    };
+
+    const handleItemChange = (index, field, value) => {
+        const updatedItems = formData.items.map((item, i) => {
+            if (i === index) {
+                const updatedItem = {
+                    ...item,
+                    [field]: field === 'price' ? parseFloat(value) || 0 : value
+                };
+                updatedItem.amount = updatedItem.price || 0;
+                return updatedItem;
             }
             return item;
         });
-        setItems(updatedItems);
-        
-        // Recalculate total
-        const newTotal = updatedItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
-        setTotal(newTotal);
+
+        setFormData(prev => ({ ...prev, items: updatedItems }));
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = {
-            date: formData.get('date'),
-            items: items,
-            total: total,
-            bank: formData.get('bank')
-        };
-        onSubmit('SALE', data);
+    const handleServiceChange = (index, serviceId) => {
+        const service = serviceOptions.find(s => s.service_id === serviceId);
+        if (service) {
+            const updatedItems = formData.items.map((item, i) =>
+                i === index ? {
+                    ...item,
+                    service_id: serviceId,
+                    price: parseFloat(service.fees),
+                    amount: parseFloat(service.fees),
+                    description: service.name,
+                    remark: service.remark || ''
+                } : item
+            );
+
+            setFormData(prev => ({
+                ...prev,
+                items: updatedItems
+            }));
+        }
     };
+
+    // Calculate totals
+    useEffect(() => {
+        let subtotal = 0;
+        formData.items.forEach(item => {
+            subtotal += Number(item.amount) || 0;
+        });
+
+        let discountAmount = 0;
+        if (formData.discount > 0) {
+            if (formData.discount_type === 'percentage') {
+                discountAmount = subtotal * (Number(formData.discount) / 100);
+            } else {
+                discountAmount = Number(formData.discount) || 0;
+            }
+        }
+
+        const amountAfterDiscount = Math.max(0, subtotal - discountAmount);
+        
+        const sgst_amount = amountAfterDiscount * (Number(formData.sgst_rate) / 100);
+        const cgst_amount = amountAfterDiscount * (Number(formData.cgst_rate) / 100);
+        
+        let grand_total = amountAfterDiscount + sgst_amount + cgst_amount + (Number(formData.additional_charge) || 0);
+        
+        let round_off = 0;
+        if (formData.apply_round_off) {
+            round_off = Math.round(grand_total) - grand_total;
+            grand_total = Math.round(grand_total);
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            subtotal,
+            sgst_amount,
+            cgst_amount,
+            round_off,
+            grand_total
+        }));
+    }, [formData.items, formData.discount, formData.discount_type, formData.sgst_rate, formData.cgst_rate, formData.additional_charge, formData.apply_round_off]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (isSubmitting) return;
+
+        const hasValidItems = formData.items.some(item => item.service_id && item.price > 0);
+        if (!hasValidItems) {
+            alert('Please add at least one valid service item');
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const payload = {
+                transaction_date: formData.payment_date,
+                remark: formData.notes,
+                tax_rate: formData.tax_rate,
+                items: formData.items
+                    .filter(item => item.service_id && item.price > 0)
+                    .map(item => ({
+                        service_id: item.service_id,
+                        fees: item.price,
+                        remark: item.remark || item.description
+                    })),
+                additional_charge: Number(formData.additional_charge) || 0,
+                round_off: formData.apply_round_off
+            };
+
+            if (formData.discount > 0) {
+                payload.discount_type = formData.discount_type;
+                if (formData.discount_type === 'percentage') {
+                    payload.discount_perc_rate = Number(formData.discount);
+                } else {
+                    payload.discount_value = Number(formData.discount);
+                }
+            } else {
+                payload.discount_type = 'not applicable';
+            }
+
+            payload.bank_id = bankId;
+
+            const response = await fetch(`${API_BASE_URL}/sale/create/bank`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const submissionData = {
+                    ...formData,
+                    bankDetails,
+                    timestamp: new Date().toISOString(),
+                    api_response: data,
+                    notifications: {
+                        email: sendEmail,
+                        whatsapp: sendWhatsApp
+                    }
+                };
+                onSubmit('SALE', submissionData);
+                onClose();
+            } else {
+                throw new Error(data.message || 'Failed to create sale');
+            }
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            alert(error.message || 'Error creating sale. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const formatCurrencyLocal = (amount) => {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(amount);
+    };
+
+    if (!isOpen) return null;
 
     return (
-        <BaseModal isOpen={isOpen} onClose={onClose} title="Create Sale from Bank">
-            <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200 mb-4">
-                    <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen p-4">
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity" onClick={onClose} />
+                <div className="relative w-full max-w-4xl bg-white rounded-xl shadow-2xl max-h-[90vh] flex flex-col">
+                    {/* Header */}
+                    <div className="flex-shrink-0 flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-xl">
                         <div>
-                            <p className="text-xs text-green-600 font-medium">Bank Name</p>
-                            <p className="text-sm font-bold text-slate-700">{bankDetails?.bank || 'Current Bank'}</p>
+                            <h2 className="text-lg font-bold">Create Bank Sale Invoice</h2>
+                            <p className="text-blue-100 text-xs">{bankDetails?.bank || 'Bank Transaction'}</p>
                         </div>
-                        <div>
-                            <p className="text-xs text-green-600 font-medium">Credit</p>
-                            <p className="text-sm font-bold text-green-600">₹{formatCurrency(bankDetails?.balance || 0)}</p>
+                        <button onClick={onClose} className="p-1 hover:bg-blue-500 rounded-lg">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Body */}
+                    <div className="flex-1 overflow-y-auto p-5 bg-gray-50">
+                        <form onSubmit={handleSubmit}>
+                            {/* Bank Info */}
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-5">
+                                <div className="grid grid-cols-3 gap-4 text-center">
+                                    <div>
+                                        <p className="text-xs text-blue-600 font-medium">Bank Name</p>
+                                        <p className="text-sm font-bold text-slate-700">{bankDetails?.bank || bankDetails?.name || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-blue-600 font-medium">Account No</p>
+                                        <p className="text-sm font-bold text-slate-700">{bankDetails?.account_no || bankDetails?.account || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-blue-600 font-medium">Balance</p>
+                                        <p className="text-sm font-bold text-green-600">₹{formatCurrencyLocal(bankDetails?.balance || 0)}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Date */}
+                            <div className="mb-5">
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                    Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    name="payment_date"
+                                    value={formData.payment_date}
+                                    onChange={handleInputChange}
+                                    required
+                                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+
+                            {/* Services Table */}
+                            <div className="mb-5">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h3 className="text-base font-bold text-gray-900">Services & Items</h3>
+                                    <button
+                                        type="button"
+                                        onClick={addItem}
+                                        className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                                    >
+                                        <IoAdd className="w-4 h-4 mr-1" />
+                                        Add Service
+                                    </button>
+                                </div>
+
+                                <div className="overflow-x-auto border border-gray-300 rounded-lg">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Service</th>
+                                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Description</th>
+                                                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-700">Price</th>
+                                                <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 w-12">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {formData.items.map((item, index) => (
+                                                <tr key={index}>
+                                                    <td className="px-3 py-2">
+                                                        <select
+                                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            value={item.service_id}
+                                                            onChange={(e) => handleServiceChange(index, e.target.value)}
+                                                            required
+                                                            disabled={isLoadingServices}
+                                                        >
+                                                            <option value="">Select Service</option>
+                                                            {serviceOptions.map(service => (
+                                                                <option key={service.service_id} value={service.service_id}>
+                                                                    {service.name} - ₹{service.fees}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <input
+                                                            type="text"
+                                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                            placeholder="Description"
+                                                            value={item.description}
+                                                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <input
+                                                            type="number"
+                                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                                                            placeholder="0"
+                                                            value={item.price}
+                                                            onChange={(e) => handleItemChange(index, 'price', e.target.value)}
+                                                            required
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-2 text-center">
+                                                        {formData.items.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeItem(index)}
+                                                                className="text-red-500 hover:bg-red-50 p-1 rounded"
+                                                            >
+                                                                <IoTrash className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Additional Settings */}
+                            <div className="grid grid-cols-2 gap-4 mb-5">
+                                <div className="bg-white p-3 rounded-lg border">
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Additional Charge (₹)</label>
+                                    <input
+                                        type="number"
+                                        name="additional_charge"
+                                        value={formData.additional_charge}
+                                        onChange={handleInputChange}
+                                        className="w-full px-2 py-1 border rounded text-sm"
+                                        min="0"
+                                    />
+                                </div>
+                                <div className="bg-white p-3 rounded-lg border flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="round_off"
+                                        checked={formData.apply_round_off}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, apply_round_off: e.target.checked }))}
+                                        className="mr-2"
+                                    />
+                                    <label htmlFor="round_off" className="text-xs font-medium text-gray-700">Apply Round Off</label>
+                                </div>
+                            </div>
+
+                            {/* Discount Section */}
+                            <div className="bg-white p-4 rounded-lg border mb-5">
+                                <h4 className="text-sm font-bold mb-3">Discount</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <select
+                                        name="discount_type"
+                                        value={formData.discount_type}
+                                        onChange={handleInputChange}
+                                        className="px-2 py-1 border rounded text-sm"
+                                    >
+                                        <option value="percentage">Percentage (%)</option>
+                                        <option value="flat">Flat Amount (₹)</option>
+                                    </select>
+                                    <input
+                                        type="number"
+                                        name="discount"
+                                        value={formData.discount}
+                                        onChange={handleInputChange}
+                                        placeholder={formData.discount_type === 'percentage' ? 'Percentage' : 'Amount'}
+                                        className="px-2 py-1 border rounded text-sm"
+                                        min="0"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Notes */}
+                            <div className="mb-5">
+                                <textarea
+                                    name="notes"
+                                    value={formData.notes}
+                                    onChange={handleInputChange}
+                                    placeholder="Additional notes..."
+                                    className="w-full px-3 py-2 border rounded-lg text-sm resize-none"
+                                    rows="2"
+                                />
+                            </div>
+
+                            {/* Summary */}
+                            <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-lg border border-blue-100">
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span>Subtotal:</span>
+                                        <span className="font-semibold">{formatCurrencyLocal(formData.subtotal)}</span>
+                                    </div>
+                                    {formData.discount > 0 && (
+                                        <div className="flex justify-between text-red-600">
+                                            <span>Discount:</span>
+                                            <span>-{formatCurrencyLocal(formData.discount_type === 'percentage' 
+                                                ? formData.subtotal * (formData.discount / 100) 
+                                                : formData.discount)}</span>
+                                        </div>
+                                    )}
+                                    {appSettings.gst_applicable && (
+                                        <>
+                                            <div className="flex justify-between">
+                                                <span>SGST ({formData.sgst_rate}%):</span>
+                                                <span>{formatCurrencyLocal(formData.sgst_amount)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>CGST ({formData.cgst_rate}%):</span>
+                                                <span>{formatCurrencyLocal(formData.cgst_amount)}</span>
+                                            </div>
+                                        </>
+                                    )}
+                                    {formData.additional_charge > 0 && (
+                                        <div className="flex justify-between">
+                                            <span>Additional Charge:</span>
+                                            <span>{formatCurrencyLocal(formData.additional_charge)}</span>
+                                        </div>
+                                    )}
+                                    <div className="pt-2 border-t">
+                                        <div className="flex justify-between font-bold">
+                                            <span>Grand Total:</span>
+                                            <span className="text-blue-700 text-lg">{formatCurrencyLocal(formData.grand_total)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex-shrink-0 border-t bg-white p-4 rounded-b-xl">
+                        <div className="flex justify-between items-center mb-3">
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} className="mr-2" />
+                                    <span className="text-xs">Email Invoice</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={sendWhatsApp} onChange={(e) => setSendWhatsApp(e.target.checked)} className="mr-2" />
+                                    <span className="text-xs">WhatsApp Invoice</span>
+                                </label>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-xs text-green-600 font-medium">Debit</p>
-                            <p className="text-sm font-bold text-red-600">₹0.00</p>
+                        <div className="flex gap-3">
+                            <button
+                                type="submit"
+                                onClick={handleSubmit}
+                                disabled={isSubmitting || formData.items.every(item => !item.service_id)}
+                                className="flex-1 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 transition-all"
+                            >
+                                {isSubmitting ? 'Creating...' : 'Create Bank Sale Invoice'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="flex-1 px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all"
+                            >
+                                Cancel
+                            </button>
                         </div>
                     </div>
                 </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        type="date"
-                        name="date"
-                        defaultValue={new Date().toISOString().split('T')[0]}
-                        required
-                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                </div>
-
-                {/* Items Table */}
-                <div className="border-2 border-slate-200 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                        <thead className="bg-slate-100">
-                            <tr>
-                                <th className="p-3 text-left text-sm font-semibold text-slate-600">Item</th>
-                                <th className="p-3 text-left text-sm font-semibold text-slate-600">Description</th>
-                                <th className="p-3 text-right text-sm font-semibold text-slate-600">Price (₹)</th>
-                                <th className="p-3 text-center text-sm font-semibold text-slate-600 w-16"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                            {items.map((item, index) => (
-                                <tr key={item.id}>
-                                    <td className="p-2">
-                                        <select
-                                            value={item.service}
-                                            onChange={(e) => updateItem(item.id, 'service', e.target.value)}
-                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                        >
-                                            <option value="">Select Service</option>
-                                            <option value="service1">Service 1</option>
-                                            <option value="service2">Service 2</option>
-                                            <option value="service3">Service 3</option>
-                                        </select>
-                                    </td>
-                                    <td className="p-2">
-                                        <input
-                                            type="text"
-                                            value={item.description}
-                                            onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                                            placeholder="Description"
-                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                        />
-                                    </td>
-                                    <td className="p-2">
-                                        <input
-                                            type="number"
-                                            value={item.price}
-                                            onChange={(e) => updateItem(item.id, 'price', e.target.value)}
-                                            placeholder="0.00"
-                                            min="0"
-                                            step="0.01"
-                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-right"
-                                        />
-                                    </td>
-                                    <td className="p-2 text-center">
-                                        {items.length > 1 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => removeItem(item.id)}
-                                                className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                            >
-                                                <FiTrash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                <button
-                    type="button"
-                    onClick={addItem}
-                    className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
-                >
-                    <FiPlus className="w-4 h-4" />
-                    Add Item
-                </button>
-
-                {/* Summary */}
-                <div className="bg-slate-50 p-4 rounded-lg border-2 border-slate-200">
-                    <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-slate-600">Total:</span>
-                        <span className="text-lg font-bold text-slate-800">₹{formatCurrency(total)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-200">
-                        <span className="text-base font-medium text-slate-700">Payable:</span>
-                        <span className="text-xl font-bold text-blue-600">₹{formatCurrency(total)}</span>
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Select Bank <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                        name="bank"
-                        required
-                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        <option value={bankId}>
-                            {bankDetails?.bank || 'Current Bank'} - Balance: ₹{formatCurrency(bankDetails?.balance || 0)}
-                        </option>
-                    </select>
-                </div>
-
-                <div className="flex gap-3 pt-4 border-t border-slate-200">
-                    <button
-                        type="submit"
-                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-base font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
-                    >
-                        Submit
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="flex-1 px-6 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-lg text-base font-medium hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all duration-200"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            </form>
-        </BaseModal>
+            </div>
+        </div>
     );
 };
 
 // Purchase Modal (similar to Sale)
 export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency }) => {
-    const [items, setItems] = useState([{ id: 1, item: '', description: '', price: 0 }]);
-    const [total, setTotal] = useState(0);
+    const [formData, setFormData] = useState({
+        purchase_date: new Date().toISOString().split('T')[0],
+        items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
+        subtotal: 0,
+        discount: 0,
+        discount_type: 'percentage',
+        sgst_rate: 9,
+        cgst_rate: 9,
+        sgst_amount: 0,
+        cgst_amount: 0,
+        round_off: 0,
+        grand_total: 0,
+        notes: '',
+        tax_rate: 18,
+        additional_charge: 0,
+        apply_round_off: false,
+        vendor: ''
+    });
 
-    const addItem = () => {
-        setItems([...items, { id: items.length + 1, item: '', description: '', price: 0 }]);
-    };
+    const [serviceOptions, setServiceOptions] = useState([]);
+    const [isLoadingServices, setIsLoadingServices] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [sendEmail, setSendEmail] = useState(true);
+    const [sendWhatsApp, setSendWhatsApp] = useState(true);
 
-    const removeItem = (id) => {
-        if (items.length > 1) {
-            setItems(items.filter(item => item.id !== id));
+    useEffect(() => {
+        if (isOpen) {
+            fetchServices();
+            resetForm();
+        }
+    }, [isOpen]);
+
+    const fetchServices = async () => {
+        setIsLoadingServices(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/service/list?search=&category_id`, {
+                method: 'GET',
+                headers: getHeaders()
+            });
+            const data = await response.json();
+            if (data.success) {
+                setServiceOptions(data.data.map(service => ({
+                    service_id: service.service_id,
+                    name: service.name,
+                    fees: parseFloat(service.fees),
+                    category: service.category_name,
+                    remark: service.remark
+                })));
+            }
+        } catch (error) {
+            console.error('Error fetching services:', error);
+        } finally {
+            setIsLoadingServices(false);
         }
     };
 
-    const updateItem = (id, field, value) => {
-        const updatedItems = items.map(item => {
-            if (item.id === id) {
-                return { ...item, [field]: value };
+    const resetForm = () => {
+        setFormData({
+            purchase_date: new Date().toISOString().split('T')[0],
+            items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
+            subtotal: 0,
+            discount: 0,
+            discount_type: 'percentage',
+            sgst_rate: 9,
+            cgst_rate: 9,
+            sgst_amount: 0,
+            cgst_amount: 0,
+            round_off: 0,
+            grand_total: 0,
+            notes: '',
+            tax_rate: 18,
+            additional_charge: 0,
+            apply_round_off: false,
+            vendor: ''
+        });
+    };
+
+    const addItem = () => {
+        setFormData(prev => ({
+            ...prev,
+            items: [
+                ...prev.items,
+                { service_id: '', description: '', price: '', amount: 0, remark: '' }
+            ]
+        }));
+    };
+
+    const removeItem = (index) => {
+        if (formData.items.length > 1) {
+            setFormData(prev => ({
+                ...prev,
+                items: prev.items.filter((_, i) => i !== index)
+            }));
+        }
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: name === 'additional_charge' || name === 'discount' ? parseFloat(value) || 0 : value
+        }));
+    };
+
+    const handleItemChange = (index, field, value) => {
+        const updatedItems = formData.items.map((item, i) => {
+            if (i === index) {
+                const updatedItem = {
+                    ...item,
+                    [field]: field === 'price' ? parseFloat(value) || 0 : value
+                };
+                updatedItem.amount = updatedItem.price || 0;
+                return updatedItem;
             }
             return item;
         });
-        setItems(updatedItems);
-        
-        const newTotal = updatedItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
-        setTotal(newTotal);
+
+        setFormData(prev => ({ ...prev, items: updatedItems }));
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = {
-            date: formData.get('date'),
-            vendor: formData.get('vendor'),
-            items: items,
-            total: total,
-            bank: formData.get('bank')
-        };
-        onSubmit('PURCHASE', data);
+    const handleServiceChange = (index, serviceId) => {
+        const service = serviceOptions.find(s => s.service_id === serviceId);
+        if (service) {
+            const updatedItems = formData.items.map((item, i) =>
+                i === index ? {
+                    ...item,
+                    service_id: serviceId,
+                    price: parseFloat(service.fees),
+                    amount: parseFloat(service.fees),
+                    description: service.name,
+                    remark: service.remark || ''
+                } : item
+            );
+
+            setFormData(prev => ({
+                ...prev,
+                items: updatedItems
+            }));
+        }
     };
+
+    // Calculate totals
+    useEffect(() => {
+        let subtotal = 0;
+        formData.items.forEach(item => {
+            subtotal += Number(item.amount) || 0;
+        });
+
+        let discountAmount = 0;
+        if (formData.discount > 0) {
+            if (formData.discount_type === 'percentage') {
+                discountAmount = subtotal * (Number(formData.discount) / 100);
+            } else {
+                discountAmount = Number(formData.discount) || 0;
+            }
+        }
+
+        const amountAfterDiscount = Math.max(0, subtotal - discountAmount);
+        
+        const sgst_amount = amountAfterDiscount * (Number(formData.sgst_rate) / 100);
+        const cgst_amount = amountAfterDiscount * (Number(formData.cgst_rate) / 100);
+        
+        let grand_total = amountAfterDiscount + sgst_amount + cgst_amount + (Number(formData.additional_charge) || 0);
+        
+        let round_off = 0;
+        if (formData.apply_round_off) {
+            round_off = Math.round(grand_total) - grand_total;
+            grand_total = Math.round(grand_total);
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            subtotal,
+            sgst_amount,
+            cgst_amount,
+            round_off,
+            grand_total
+        }));
+    }, [formData.items, formData.discount, formData.discount_type, formData.sgst_rate, formData.cgst_rate, formData.additional_charge, formData.apply_round_off]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (isSubmitting) return;
+
+        const hasValidItems = formData.items.some(item => item.service_id && item.price > 0);
+        if (!hasValidItems) {
+            alert('Please add at least one valid service item');
+            return;
+        }
+
+        if (!formData.vendor) {
+            alert('Please select a vendor');
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const payload = {
+                transaction_date: formData.purchase_date,
+                remark: formData.notes,
+                tax_rate: formData.tax_rate,
+                items: formData.items
+                    .filter(item => item.service_id && item.price > 0)
+                    .map(item => ({
+                        service_id: item.service_id,
+                        fees: item.price,
+                        remark: item.remark || item.description
+                    }))
+            };
+
+            payload.bank_id = bankId;
+
+            const response = await fetch(`${API_BASE_URL}/purchase/create/bank`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const submissionData = {
+                    ...formData,
+                    bankDetails,
+                    timestamp: new Date().toISOString(),
+                    api_response: data,
+                    notifications: {
+                        email: sendEmail,
+                        whatsapp: sendWhatsApp
+                    }
+                };
+                onSubmit('PURCHASE', submissionData);
+                onClose();
+            } else {
+                throw new Error(data.message || 'Failed to create purchase');
+            }
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            alert(error.message || 'Error creating purchase. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const formatCurrencyLocal = (amount) => {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(amount);
+    };
+
+    if (!isOpen) return null;
 
     return (
-        <BaseModal isOpen={isOpen} onClose={onClose} title="Create Purchase">
-            <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200 mb-4">
-                    <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen p-4">
+                <div className="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm transition-opacity" onClick={onClose} />
+                <div className="relative w-full max-w-4xl bg-white rounded-xl shadow-2xl max-h-[90vh] flex flex-col">
+                    {/* Header */}
+                    <div className="flex-shrink-0 flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-xl">
                         <div>
-                            <p className="text-xs text-purple-600 font-medium">Bank Name</p>
-                            <p className="text-sm font-bold text-slate-700">{bankDetails?.bank || 'Current Bank'}</p>
+                            <h2 className="text-lg font-bold">Create Purchase Bill</h2>
+                            <p className="text-blue-100 text-xs">{bankDetails?.bank || 'Bank Transaction'}</p>
                         </div>
-                        <div>
-                            <p className="text-xs text-purple-600 font-medium">Credit</p>
-                            <p className="text-sm font-bold text-green-600">₹{formatCurrency(bankDetails?.balance || 0)}</p>
+                        <button onClick={onClose} className="p-1 hover:bg-blue-500 rounded-lg">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Body */}
+                    <div className="flex-1 overflow-y-auto p-5 bg-gray-50">
+                        <form onSubmit={handleSubmit}>
+                            {/* Bank Info */}
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-5">
+                                <div className="grid grid-cols-3 gap-4 text-center">
+                                    <div>
+                                        <p className="text-xs text-blue-600 font-medium">Bank Name</p>
+                                        <p className="text-sm font-bold text-slate-700">{bankDetails?.bank || bankDetails?.name || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-blue-600 font-medium">Account No</p>
+                                        <p className="text-sm font-bold text-slate-700">{bankDetails?.account_no || bankDetails?.account || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-blue-600 font-medium">Balance</p>
+                                        <p className="text-sm font-bold text-green-600">₹{formatCurrencyLocal(bankDetails?.balance || 0)}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Vendor Selection */}
+                            <div className="mb-5">
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                    Select Vendor <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    name="vendor"
+                                    value={formData.vendor}
+                                    onChange={handleInputChange}
+                                    required
+                                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                    <option value="">Select Vendor</option>
+                                    <option value="Vendor 1">Vendor 1</option>
+                                    <option value="Vendor 2">Vendor 2</option>
+                                    <option value="Vendor 3">Vendor 3</option>
+                                    <option value="Vendor 4">Vendor 4</option>
+                                    <option value="Vendor 5">Vendor 5</option>
+                                </select>
+                            </div>
+
+                            {/* Date */}
+                            <div className="mb-5">
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                    Bill Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    name="purchase_date"
+                                    value={formData.purchase_date}
+                                    onChange={handleInputChange}
+                                    required
+                                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+
+                            {/* Items Table */}
+                            <div className="mb-5">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h3 className="text-base font-bold text-gray-900">Purchase Items</h3>
+                                    <button
+                                        type="button"
+                                        onClick={addItem}
+                                        className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                                    >
+                                        <IoAdd className="w-4 h-4 mr-1" />
+                                        Add Item
+                                    </button>
+                                </div>
+
+                                <div className="overflow-x-auto border border-gray-300 rounded-lg">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Service/Item</th>
+                                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Description</th>
+                                                <th className="px-3 py-2 text-right text-xs font-semibold text-gray-700">Price</th>
+                                                <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 w-12">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {formData.items.map((item, index) => (
+                                                <tr key={index}>
+                                                    <td className="px-3 py-2">
+                                                        <select
+                                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            value={item.service_id}
+                                                            onChange={(e) => handleServiceChange(index, e.target.value)}
+                                                            required
+                                                            disabled={isLoadingServices}
+                                                        >
+                                                            <option value="">Select Service</option>
+                                                            {serviceOptions.map(service => (
+                                                                <option key={service.service_id} value={service.service_id}>
+                                                                    {service.name} - ₹{service.fees}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <input
+                                                            type="text"
+                                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                            placeholder="Description"
+                                                            value={item.description}
+                                                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <input
+                                                            type="number"
+                                                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                                                            placeholder="0"
+                                                            value={item.price}
+                                                            onChange={(e) => handleItemChange(index, 'price', e.target.value)}
+                                                            required
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-2 text-center">
+                                                        {formData.items.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeItem(index)}
+                                                                className="text-red-500 hover:bg-red-50 p-1 rounded"
+                                                            >
+                                                                <IoTrash className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Additional Settings */}
+                            <div className="grid grid-cols-2 gap-4 mb-5">
+                                <div className="bg-white p-3 rounded-lg border">
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Additional Charge (₹)</label>
+                                    <input
+                                        type="number"
+                                        name="additional_charge"
+                                        value={formData.additional_charge}
+                                        onChange={handleInputChange}
+                                        className="w-full px-2 py-1 border rounded text-sm"
+                                        min="0"
+                                    />
+                                </div>
+                                <div className="bg-white p-3 rounded-lg border flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="round_off"
+                                        checked={formData.apply_round_off}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, apply_round_off: e.target.checked }))}
+                                        className="mr-2"
+                                    />
+                                    <label htmlFor="round_off" className="text-xs font-medium text-gray-700">Apply Round Off</label>
+                                </div>
+                            </div>
+
+                            {/* Discount Section */}
+                            <div className="bg-white p-4 rounded-lg border mb-5">
+                                <h4 className="text-sm font-bold mb-3">Discount</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <select
+                                        name="discount_type"
+                                        value={formData.discount_type}
+                                        onChange={handleInputChange}
+                                        className="px-2 py-1 border rounded text-sm"
+                                    >
+                                        <option value="percentage">Percentage (%)</option>
+                                        <option value="flat">Flat Amount (₹)</option>
+                                    </select>
+                                    <input
+                                        type="number"
+                                        name="discount"
+                                        value={formData.discount}
+                                        onChange={handleInputChange}
+                                        placeholder={formData.discount_type === 'percentage' ? 'Percentage' : 'Amount'}
+                                        className="px-2 py-1 border rounded text-sm"
+                                        min="0"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Notes */}
+                            <div className="mb-5">
+                                <textarea
+                                    name="notes"
+                                    value={formData.notes}
+                                    onChange={handleInputChange}
+                                    placeholder="Additional notes..."
+                                    className="w-full px-3 py-2 border rounded-lg text-sm resize-none"
+                                    rows="2"
+                                />
+                            </div>
+
+                            {/* Summary */}
+                            <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-lg border border-blue-100">
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span>Subtotal:</span>
+                                        <span className="font-semibold">{formatCurrencyLocal(formData.subtotal)}</span>
+                                    </div>
+                                    {formData.discount > 0 && (
+                                        <div className="flex justify-between text-red-600">
+                                            <span>Discount:</span>
+                                            <span>-{formatCurrencyLocal(formData.discount_type === 'percentage' 
+                                                ? formData.subtotal * (formData.discount / 100) 
+                                                : formData.discount)}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between">
+                                        <span>SGST ({formData.sgst_rate}%):</span>
+                                        <span>{formatCurrencyLocal(formData.sgst_amount)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>CGST ({formData.cgst_rate}%):</span>
+                                        <span>{formatCurrencyLocal(formData.cgst_amount)}</span>
+                                    </div>
+                                    {formData.additional_charge > 0 && (
+                                        <div className="flex justify-between">
+                                            <span>Additional Charge:</span>
+                                            <span>{formatCurrencyLocal(formData.additional_charge)}</span>
+                                        </div>
+                                    )}
+                                    <div className="pt-2 border-t">
+                                        <div className="flex justify-between font-bold">
+                                            <span>Total Payable:</span>
+                                            <span className="text-blue-700 text-lg">{formatCurrencyLocal(formData.grand_total)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex-shrink-0 border-t bg-white p-4 rounded-b-xl">
+                        <div className="flex justify-between items-center mb-3">
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} className="mr-2" />
+                                    <span className="text-xs">Email Bill</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={sendWhatsApp} onChange={(e) => setSendWhatsApp(e.target.checked)} className="mr-2" />
+                                    <span className="text-xs">WhatsApp Bill</span>
+                                </label>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-xs text-purple-600 font-medium">Debit</p>
-                            <p className="text-sm font-bold text-red-600">₹0.00</p>
+                        <div className="flex gap-3">
+                            <button
+                                type="submit"
+                                onClick={handleSubmit}
+                                disabled={isSubmitting || formData.items.every(item => !item.service_id) || !formData.vendor}
+                                className="flex-1 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 transition-all"
+                            >
+                                {isSubmitting ? 'Creating...' : 'Create Purchase Bill'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="flex-1 px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all"
+                            >
+                                Cancel
+                            </button>
                         </div>
                     </div>
                 </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Select Vendor <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                        name="vendor"
-                        required
-                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        <option value="">Select Vendor</option>
-                        <option value="1">Vendor 1</option>
-                        <option value="2">Vendor 2</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        type="date"
-                        name="date"
-                        defaultValue={new Date().toISOString().split('T')[0]}
-                        required
-                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                </div>
-
-                {/* Items Table */}
-                <div className="border-2 border-slate-200 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                        <thead className="bg-slate-100">
-                            <tr>
-                                <th className="p-3 text-left text-sm font-semibold text-slate-600">Item</th>
-                                <th className="p-3 text-left text-sm font-semibold text-slate-600">Description</th>
-                                <th className="p-3 text-right text-sm font-semibold text-slate-600">Price (₹)</th>
-                                <th className="p-3 text-center text-sm font-semibold text-slate-600 w-16"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                            {items.map((item, index) => (
-                                <tr key={item.id}>
-                                    <td className="p-2">
-                                        <input
-                                            type="text"
-                                            value={item.item}
-                                            onChange={(e) => updateItem(item.id, 'item', e.target.value)}
-                                            placeholder="Item name"
-                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                        />
-                                    </td>
-                                    <td className="p-2">
-                                        <input
-                                            type="text"
-                                            value={item.description}
-                                            onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                                            placeholder="Description"
-                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                        />
-                                    </td>
-                                    <td className="p-2">
-                                        <input
-                                            type="number"
-                                            value={item.price}
-                                            onChange={(e) => updateItem(item.id, 'price', e.target.value)}
-                                            placeholder="0.00"
-                                            min="0"
-                                            step="0.01"
-                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-right"
-                                        />
-                                    </td>
-                                    <td className="p-2 text-center">
-                                        {items.length > 1 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => removeItem(item.id)}
-                                                className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                            >
-                                                <FiTrash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                <button
-                    type="button"
-                    onClick={addItem}
-                    className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
-                >
-                    <FiPlus className="w-4 h-4" />
-                    Add Item
-                </button>
-
-                {/* Summary */}
-                <div className="bg-slate-50 p-4 rounded-lg border-2 border-slate-200">
-                    <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-slate-600">Total:</span>
-                        <span className="text-lg font-bold text-slate-800">₹{formatCurrency(total)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-200">
-                        <span className="text-base font-medium text-slate-700">Payable:</span>
-                        <span className="text-xl font-bold text-blue-600">₹{formatCurrency(total)}</span>
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Select Bank <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                        name="bank"
-                        required
-                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        <option value={bankId}>
-                            {bankDetails?.bank || 'Current Bank'} - Balance: ₹{formatCurrency(bankDetails?.balance || 0)}
-                        </option>
-                    </select>
-                </div>
-
-                <div className="flex gap-3 pt-4 border-t border-slate-200">
-                    <button
-                        type="submit"
-                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-base font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
-                    >
-                        Submit
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="flex-1 px-6 py-3 bg-white border-2 border-slate-200 text-slate-700 rounded-lg text-base font-medium hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all duration-200"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            </form>
-        </BaseModal>
+            </div>
+        </div>
     );
 };
 
@@ -1365,110 +2070,567 @@ export const ExpenseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, f
 
 // Contra Modal
 export const ContraModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, formatCurrency }) => {
-    const handleSubmit = (e) => {
+    const [formData, setFormData] = useState({
+        from_bank_id: bankId || '',
+        to_bank_id: '',
+        date: new Date().toISOString().split('T')[0],
+        amount: '',
+        description: '',
+        transaction_ref_id: ''
+    });
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [banks, setBanks] = useState([]);
+    const [loadingBanks, setLoadingBanks] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showFromDropdown, setShowFromDropdown] = useState(false);
+    const [showToDropdown, setShowToDropdown] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    
+    const fromDropdownRef = useRef(null);
+    const toDropdownRef = useRef(null);
+    
+    // Selected banks for display
+    const [selectedFromBank, setSelectedFromBank] = useState(null);
+    const [selectedToBank, setSelectedToBank] = useState(null);
+    
+    // Filter banks based on search
+    const filteredBanks = useMemo(() => {
+        if (!searchTerm) return banks;
+        return banks.filter(bank =>
+            bank.bank?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            bank.account_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            bank.ifsc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            bank.branch?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [searchTerm, banks]);
+
+    // Fetch banks list
+    const fetchBanks = useCallback(async (pageNum = 1, append = false) => {
+        setLoadingBanks(true);
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/transaction/bank/list?page_no=${pageNum}&limit=10&search=${searchTerm}`,
+                { headers: getHeaders() }
+            );
+            
+            if (response.data.success) {
+                const bankData = response.data.data || [];
+                if (append) {
+                    setBanks(prev => [...prev, ...bankData]);
+                } else {
+                    setBanks(bankData);
+                }
+                setHasMore(!response.data.is_last_page);
+            }
+        } catch (error) {
+            console.error('Error fetching banks:', error);
+            toast.error('Failed to fetch banks');
+        } finally {
+            setLoadingBanks(false);
+        }
+    }, [searchTerm]);
+
+    // Debounced search
+    useEffect(() => {
+        const debounceTimer = setTimeout(() => {
+            setCurrentPage(1);
+            fetchBanks(1, false);
+        }, 500);
+        return () => clearTimeout(debounceTimer);
+    }, [searchTerm, fetchBanks]);
+
+    // Initial load when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            fetchBanks(1, false);
+        }
+    }, [isOpen, fetchBanks]);
+
+    // Load more banks
+    const loadMoreBanks = () => {
+        const nextPage = currentPage + 1;
+        setCurrentPage(nextPage);
+        fetchBanks(nextPage, true);
+    };
+
+    // Set selected from bank when bankId changes
+    useEffect(() => {
+        if (bankId && banks.length > 0) {
+            const fromBank = banks.find(bank => bank.bank_id === bankId);
+            if (fromBank) {
+                setSelectedFromBank(fromBank);
+                setFormData(prev => ({ ...prev, from_bank_id: bankId }));
+            }
+        }
+    }, [bankId, banks]);
+
+    // Click outside handlers
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (fromDropdownRef.current && !fromDropdownRef.current.contains(event.target)) {
+                setShowFromDropdown(false);
+            }
+            if (toDropdownRef.current && !toDropdownRef.current.contains(event.target)) {
+                setShowToDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleFromBankSelect = (bank) => {
+        setSelectedFromBank(bank);
+        setFormData(prev => ({ ...prev, from_bank_id: bank.bank_id }));
+        setShowFromDropdown(false);
+    };
+
+    const handleToBankSelect = (bank) => {
+        setSelectedToBank(bank);
+        setFormData(prev => ({ ...prev, to_bank_id: bank.bank_id }));
+        setShowToDropdown(false);
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        onSubmit('CONTRA', Object.fromEntries(formData));
+        
+        if (!formData.from_bank_id || !formData.to_bank_id || !formData.amount) {
+            toast.error('Please fill all required fields');
+            return;
+        }
+
+        if (formData.from_bank_id === formData.to_bank_id) {
+            toast.error('Cannot transfer between the same bank account');
+            return;
+        }
+
+        if (isSubmitting) return;
+
+        // Check if sufficient balance in source bank
+        if (selectedFromBank && parseFloat(formData.amount) > parseFloat(selectedFromBank.balance || 0)) {
+            toast.error(`Insufficient balance in ${selectedFromBank.bank}. Available balance: ₹${formatCurrency(selectedFromBank.balance || 0)}`);
+            return;
+        }
+
+        setIsSubmitting(true);
+        
+        const payload = {
+            amount: parseFloat(formData.amount),
+            party1_id: formData.from_bank_id,
+            party2_id: formData.to_bank_id,
+            party1_type: "bank",
+            party2_type: "bank",
+            remark: formData.description || `Contra transfer from ${selectedFromBank?.bank || 'source'} to ${selectedToBank?.bank || 'destination'}`,
+            transaction_date: formData.date
+        };
+
+        // Add transaction reference if provided
+        if (formData.transaction_ref_id) {
+            payload.transaction_ref_id = formData.transaction_ref_id;
+        }
+
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/transaction/payment/contra`,
+                payload,
+                { headers: getHeaders() }
+            );
+
+            if (response.data.success) {
+                toast.success(response.data.message || 'Contra transfer completed successfully');
+                onSubmit('CONTRA', response.data.data);
+                onClose();
+                // Reset form
+                setFormData({
+                    from_bank_id: bankId || '',
+                    to_bank_id: '',
+                    date: new Date().toISOString().split('T')[0],
+                    amount: '',
+                    description: '',
+                    transaction_ref_id: ''
+                });
+                setSelectedFromBank(selectedFromBank);
+                setSelectedToBank(null);
+            } else {
+                toast.error(response.data.message || 'Failed to create contra transfer');
+            }
+        } catch (error) {
+            console.error('Error creating contra transfer:', error);
+            const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to create contra transfer';
+            toast.error(errorMessage);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Bank Dropdown Component
+    const BankDropdown = ({ 
+        type, 
+        selectedBank, 
+        onSelect, 
+        showDropdown, 
+        setShowDropdown,
+        placeholder = "Select bank account..."
+    }) => {
+        const dropdownRef = type === 'from' ? fromDropdownRef : toDropdownRef;
+        
+        return (
+            <div className="relative" ref={dropdownRef}>
+                <div
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg bg-white cursor-pointer hover:border-indigo-400 transition-all duration-200"
+                    onClick={() => setShowDropdown(!showDropdown)}
+                >
+                    {selectedBank ? (
+                        <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                    <div className={`p-1.5 rounded ${type === 'from' ? 'bg-red-100' : 'bg-green-100'}`}>
+                                        <FiCreditCard className={`w-4 h-4 ${type === 'from' ? 'text-red-600' : 'text-green-600'}`} />
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-medium text-slate-800">
+                                            {selectedBank.bank}
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                            A/c: {selectedBank.account_no} | IFSC: {selectedBank.ifsc}
+                                        </div>
+                                        <div className="text-xs text-slate-400">
+                                            Branch: {selectedBank.branch}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-green-600">
+                                    ₹{formatCurrency(selectedBank.balance || 0)}
+                                </span>
+                                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between text-slate-500">
+                            <div className="flex items-center gap-2">
+                                <FiCreditCard className="w-4 h-4" />
+                                <span className="text-sm">{placeholder}</span>
+                            </div>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    )}
+                </div>
+
+                {showDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-80 overflow-y-auto">
+                        <div className="sticky top-0 p-2 border-b border-slate-200 bg-slate-50">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Search banks by name, account, or IFSC..."
+                                    className="w-full px-3 py-2 pl-8 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    autoFocus
+                                />
+                                <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                            </div>
+                        </div>
+                        <div className="py-1">
+                            {loadingBanks && banks.length === 0 ? (
+                                <div className="px-4 py-3 text-center text-slate-500">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent mx-auto mb-2"></div>
+                                    Loading banks...
+                                </div>
+                            ) : filteredBanks.length > 0 ? (
+                                <>
+                                    {filteredBanks.map(bank => (
+                                        <div
+                                            key={bank.bank_id}
+                                            className={`px-3 py-2 cursor-pointer hover:bg-slate-50 border-l-2 ${selectedBank?.bank_id === bank.bank_id
+                                                ? type === 'from' ? 'border-red-500 bg-red-50' : 'border-green-500 bg-green-50'
+                                                : 'border-transparent'
+                                            }`}
+                                            onClick={() => onSelect(bank)}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex-1">
+                                                    <div className="text-sm font-medium text-slate-900">{bank.bank}</div>
+                                                    <div className="text-xs text-slate-600">
+                                                        A/c: {bank.account_no} • IFSC: {bank.ifsc}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500 mt-0.5">
+                                                        Branch: {bank.branch}
+                                                    </div>
+                                                    {bank.remark && (
+                                                        <div className="text-xs text-slate-400 mt-0.5">
+                                                            Note: {bank.remark}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-semibold text-green-600">
+                                                        ₹{formatCurrency(bank.balance || 0)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {hasMore && (
+                                        <button
+                                            type="button"
+                                            onClick={loadMoreBanks}
+                                            disabled={loadingBanks}
+                                            className="w-full px-4 py-2 text-center bg-slate-50 hover:bg-slate-100 text-indigo-600 font-medium text-sm border-t border-slate-200 transition-colors disabled:opacity-50"
+                                        >
+                                            {loadingBanks ? 'Loading...' : 'Load More Banks'}
+                                        </button>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="px-4 py-3 text-center text-slate-500">
+                                    {searchTerm ? 'No banks found' : 'No banks available'}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
     };
 
     return (
         <BaseModal isOpen={isOpen} onClose={onClose} title="Create Contra Entry">
             <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200 mb-4">
-                    <div className="grid grid-cols-2 gap-4 text-center">
-                        <div>
-                            <p className="text-xs text-indigo-600 font-medium">From Bank</p>
-                            <p className="text-sm font-bold text-slate-700">{bankDetails?.bank || 'Current Bank'}</p>
-                            <p className="text-xs text-indigo-600 mt-1">Balance: ₹{formatCurrency(bankDetails?.balance || 0)}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-indigo-600 font-medium">To Bank</p>
-                            <p className="text-sm font-bold text-slate-700">To be selected</p>
-                        </div>
+                {/* Bank Transfer Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* From Bank */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                            From Bank (Payment Out) <span className="text-red-500">*</span>
+                        </label>
+                        <BankDropdown
+                            type="from"
+                            selectedBank={selectedFromBank}
+                            onSelect={handleFromBankSelect}
+                            showDropdown={showFromDropdown}
+                            setShowDropdown={setShowFromDropdown}
+                            placeholder="Select source bank..."
+                        />
+                        {selectedFromBank && (
+                            <div className="mt-2 text-xs text-slate-600">
+                                <span className="font-medium">Available Balance: ₹{formatCurrency(selectedFromBank.balance || 0)}</span>
+                                <span className="text-slate-400 ml-2">•</span>
+                                <span className="ml-2">IFSC: {selectedFromBank.ifsc}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* To Bank */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                            To Bank (Payment In) <span className="text-red-500">*</span>
+                        </label>
+                        <BankDropdown
+                            type="to"
+                            selectedBank={selectedToBank}
+                            onSelect={handleToBankSelect}
+                            showDropdown={showToDropdown}
+                            setShowDropdown={setShowToDropdown}
+                            placeholder="Select destination bank..."
+                        />
+                        {selectedToBank && (
+                            <div className="mt-2 text-xs text-slate-600">
+                                <span className="font-medium">Current Balance: ₹{formatCurrency(selectedToBank.balance || 0)}</span>
+                                <span className="text-slate-400 ml-2">•</span>
+                                <span className="ml-2">IFSC: {selectedToBank.ifsc}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                <div className="space-y-4">
-                    <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                        <label className="block text-sm font-medium text-red-700 mb-2">
-                            From Bank (Payment Out) <span className="text-red-500">*</span>
+                {/* Date and Amount Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                            Transfer Date <span className="text-red-500">*</span>
                         </label>
-                        <select
-                            name="from_bank"
-                            required
-                            className="w-full px-4 py-3 border-2 border-red-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white"
-                        >
-                            <option value={bankId}>
-                                {bankDetails?.bank || 'Current Bank'} - Balance: ₹{formatCurrency(bankDetails?.balance || 0)}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                Date <span className="text-red-500">*</span>
-                            </label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <FiCalendar className="w-4 h-4 text-slate-400" />
+                            </div>
                             <input
                                 type="date"
                                 name="date"
-                                defaultValue={new Date().toISOString().split('T')[0]}
+                                value={formData.date}
+                                onChange={handleInputChange}
                                 required
-                                className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                Amount <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="number"
-                                name="amount"
-                                placeholder="Enter amount"
-                                required
-                                min="0.01"
-                                step="0.01"
-                                className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Description
+                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                            Transfer Amount <span className="text-red-500">*</span>
                         </label>
-                        <textarea
-                            name="description"
-                            placeholder="Enter description"
-                            rows="3"
-                            className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                    </div>
-
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <label className="block text-sm font-medium text-green-700 mb-2">
-                            To Bank (Payment In) <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            name="to_bank"
-                            required
-                            className="w-full px-4 py-3 border-2 border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
-                        >
-                            <option value="">Select Bank</option>
-                            <option value="1">Bank 1</option>
-                            <option value="2">Bank 2</option>
-                            <option value="3">Bank 3</option>
-                        </select>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <FiDollarSign className="w-4 h-4 text-slate-400" />
+                            </div>
+                            <input
+                                type="number"
+                                name="amount"
+                                value={formData.amount}
+                                onChange={handleInputChange}
+                                placeholder="Enter amount"
+                                required
+                                min="0.01"
+                                step="0.01"
+                                className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                        </div>
                     </div>
                 </div>
 
+                {/* Transaction Reference ID */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Transaction Reference ID
+                    </label>
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <FiHash className="w-4 h-4 text-slate-400" />
+                        </div>
+                        <input
+                            type="text"
+                            name="transaction_ref_id"
+                            value={formData.transaction_ref_id}
+                            onChange={handleInputChange}
+                            placeholder="Enter transaction reference (UTR number, cheque no., etc.)"
+                            className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                        Bank transaction ID, UTR number, or transfer reference
+                    </p>
+                </div>
+
+                {/* Description */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Description
+                    </label>
+                    <div className="relative">
+                        <div className="absolute left-3 top-3 pointer-events-none">
+                            <FiFileText className="w-4 h-4 text-slate-400" />
+                        </div>
+                        <textarea
+                            name="description"
+                            value={formData.description}
+                            onChange={handleInputChange}
+                            placeholder="Enter transfer description or remarks..."
+                            rows="3"
+                            className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                    </div>
+                </div>
+
+                {/* Transfer Summary */}
+                {(selectedFromBank || selectedToBank || formData.amount) && (
+                    <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                        <h4 className="text-sm font-semibold text-indigo-900 mb-3">Transfer Summary</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="text-center p-2 bg-white rounded border border-indigo-100">
+                                <div className="text-xs text-slate-600 mb-1">From Bank</div>
+                                <div className="font-semibold text-red-600 text-sm truncate">
+                                    {selectedFromBank?.bank || 'Not selected'}
+                                </div>
+                                <div className="text-xs text-slate-500 mt-1">
+                                    ₹{formatCurrency(selectedFromBank?.balance || 0)}
+                                </div>
+                            </div>
+                            <div className="text-center p-2 bg-white rounded border border-indigo-100">
+                                <div className="text-xs text-slate-600 mb-1">Amount</div>
+                                <div className="font-semibold text-indigo-600 text-sm">
+                                    {formData.amount ? `₹${formatCurrency(formData.amount)}` : '₹0'}
+                                </div>
+                            </div>
+                            <div className="text-center p-2 bg-white rounded border border-indigo-100">
+                                <div className="text-xs text-slate-600 mb-1">To Bank</div>
+                                <div className="font-semibold text-green-600 text-sm truncate">
+                                    {selectedToBank?.bank || 'Not selected'}
+                                </div>
+                                <div className="text-xs text-slate-500 mt-1">
+                                    ₹{formatCurrency(selectedToBank?.balance || 0)}
+                                </div>
+                            </div>
+                            <div className="text-center p-2 bg-white rounded border border-indigo-100">
+                                <div className="text-xs text-slate-600 mb-1">Ref ID</div>
+                                <div className="font-semibold text-blue-600 text-sm truncate">
+                                    {formData.transaction_ref_id || 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Warning Messages */}
+                {formData.from_bank_id === formData.to_bank_id && formData.from_bank_id && formData.to_bank_id && (
+                    <div className="flex items-center p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <svg className="w-4 h-4 text-amber-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.342 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        <span className="text-xs text-amber-700">Cannot transfer between the same bank account</span>
+                    </div>
+                )}
+
+                {selectedFromBank && formData.amount && 
+                 parseFloat(formData.amount) > parseFloat(selectedFromBank.balance || 0) && (
+                    <div className="flex items-center p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <svg className="w-4 h-4 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-xs text-red-700">
+                            Insufficient balance! Available: ₹{formatCurrency(selectedFromBank.balance || 0)}
+                        </span>
+                    </div>
+                )}
+
+                {/* Action Buttons */}
                 <div className="flex gap-3 pt-4 border-t border-slate-200">
                     <button
                         type="submit"
-                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-base font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
+                        disabled={isSubmitting || 
+                            !formData.from_bank_id || 
+                            !formData.to_bank_id || 
+                            !formData.amount || 
+                            formData.from_bank_id === formData.to_bank_id ||
+                            (selectedFromBank && formData.amount && 
+                             parseFloat(formData.amount) > parseFloat(selectedFromBank.balance || 0))}
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-base font-medium hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Submit
+                        {isSubmitting ? (
+                            <div className="flex items-center justify-center gap-2">
+                                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Processing...
+                            </div>
+                        ) : (
+                            'Transfer Funds'
+                        )}
                     </button>
                     <button
                         type="button"

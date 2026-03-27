@@ -31,6 +31,8 @@ import MobileSelectionModal from '../components/mobile-selection';
 import PurchaseForm from '../components/purchase-form';
 import DateFilter from '../components/DateFilter';
 import { Header, Sidebar } from '../components/header';
+import API_BASE_URL from '../utils/api-controller';
+import getHeaders from '../utils/get-headers';
 
 const ViewPurchase = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -62,207 +64,12 @@ const ViewPurchase = () => {
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(10);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
     const [showAll, setShowAll] = useState(false);
-
-    // Mock purchase data
-    const mockPurchaseData = [
-        {
-            invoice_id: '1',
-            invoice_no: 'PUR-001',
-            date: '2024-01-15',
-            particulars: 'Office Supplies',
-            purchase_from: 'client',
-            firm_name: 'ABC Corporation',
-            remark: 'Monthly office supplies',
-            total: 5000,
-            tax: 900,
-            grand_total: 5900,
-            task_id: null
-        },
-        {
-            invoice_id: '2',
-            invoice_no: 'PUR-002',
-            date: '2024-01-10',
-            particulars: 'Software Licenses',
-            purchase_from: 'ca',
-            firm_name: 'Tech Solutions Ltd',
-            remark: 'Annual software subscription',
-            total: 15000,
-            tax: 2700,
-            grand_total: 17700,
-            task_id: null
-        },
-        {
-            invoice_id: '3',
-            invoice_no: 'PUR-003',
-            date: '2024-01-05',
-            particulars: 'Marketing Materials',
-            purchase_from: 'bank',
-            firm_name: 'Marketing Pro Inc',
-            remark: 'Q1 marketing campaign',
-            total: 8000,
-            tax: 1440,
-            grand_total: 9440,
-            task_id: null
-        },
-        {
-            invoice_id: '4',
-            invoice_no: 'PUR-004',
-            date: '2024-01-20',
-            particulars: 'Equipment Purchase',
-            purchase_from: 'capital',
-            firm_name: 'Office Equipment Co',
-            remark: 'New office equipment',
-            total: 25000,
-            tax: 4500,
-            grand_total: 29500,
-            task_id: null
-        },
-        {
-            invoice_id: '5',
-            invoice_no: 'PUR-005',
-            date: '2024-01-18',
-            particulars: 'Furniture',
-            purchase_from: 'client',
-            firm_name: 'Furniture World',
-            remark: 'Office chairs and tables',
-            total: 35000,
-            tax: 6300,
-            grand_total: 41300,
-            task_id: null
-        },
-        {
-            invoice_id: '6',
-            invoice_no: 'PUR-006',
-            date: '2024-01-12',
-            particulars: 'IT Infrastructure',
-            purchase_from: 'ca',
-            firm_name: 'IT Services Ltd',
-            remark: 'Server and network equipment',
-            total: 75000,
-            tax: 13500,
-            grand_total: 88500,
-            task_id: null
-        },
-        {
-            invoice_id: '7',
-            invoice_no: 'PUR-007',
-            date: '2024-01-08',
-            particulars: 'Cloud Services',
-            purchase_from: 'bank',
-            firm_name: 'Cloud Solutions Inc',
-            remark: 'Annual cloud subscription',
-            total: 12000,
-            tax: 2160,
-            grand_total: 14160,
-            task_id: null
-        },
-        {
-            invoice_id: '8',
-            invoice_no: 'PUR-008',
-            date: '2024-01-25',
-            particulars: 'Security System',
-            purchase_from: 'capital',
-            firm_name: 'Security Systems Ltd',
-            remark: 'Office security upgrade',
-            total: 45000,
-            tax: 8100,
-            grand_total: 53100,
-            task_id: null
-        },
-        {
-            invoice_id: '9',
-            invoice_no: 'PUR-009',
-            date: '2024-01-22',
-            particulars: 'Printing Services',
-            purchase_from: 'client',
-            firm_name: 'Print Masters',
-            remark: 'Business cards and brochures',
-            total: 6000,
-            tax: 1080,
-            grand_total: 7080,
-            task_id: null
-        },
-        {
-            invoice_id: '10',
-            invoice_no: 'PUR-010',
-            date: '2024-01-14',
-            particulars: 'Telephone System',
-            purchase_from: 'ca',
-            firm_name: 'Telecom Solutions',
-            remark: 'New VOIP system',
-            total: 28000,
-            tax: 5040,
-            grand_total: 33040,
-            task_id: null
-        },
-        {
-            invoice_id: '11',
-            invoice_no: 'PUR-011',
-            date: '2024-01-30',
-            particulars: 'Vehicle Purchase',
-            purchase_from: 'capital',
-            firm_name: 'Auto Dealers Ltd',
-            remark: 'Company vehicle',
-            total: 850000,
-            tax: 153000,
-            grand_total: 1003000,
-            task_id: null
-        },
-        {
-            invoice_id: '12',
-            invoice_no: 'PUR-012',
-            date: '2024-01-28',
-            particulars: 'Legal Services',
-            purchase_from: 'ca',
-            firm_name: 'Legal Advisors LLP',
-            remark: 'Annual retainer fee',
-            total: 50000,
-            tax: 9000,
-            grand_total: 59000,
-            task_id: null
-        },
-        {
-            invoice_id: '13',
-            invoice_no: 'PUR-013',
-            date: '2024-01-17',
-            particulars: 'Accounting Software',
-            purchase_from: 'bank',
-            firm_name: 'Software Solutions Inc',
-            remark: 'ERP system license',
-            total: 35000,
-            tax: 6300,
-            grand_total: 41300,
-            task_id: null
-        },
-        {
-            invoice_id: '14',
-            invoice_no: 'PUR-014',
-            date: '2024-01-11',
-            particulars: 'Office Renovation',
-            purchase_from: 'capital',
-            firm_name: 'Builders & Co',
-            remark: 'Office remodeling',
-            total: 125000,
-            tax: 22500,
-            grand_total: 147500,
-            task_id: null
-        },
-        {
-            invoice_id: '15',
-            invoice_no: 'PUR-015',
-            date: '2024-01-03',
-            particulars: 'Training Programs',
-            purchase_from: 'client',
-            firm_name: 'Training Institute',
-            remark: 'Employee training',
-            total: 25000,
-            tax: 4500,
-            grand_total: 29500,
-            task_id: null
-        }
-    ];
+    const [totalItems, setTotalItems] = useState(0);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDateFilter, setSelectedDateFilter] = useState(null);
+    const [error, setError] = useState(null);
 
     // Persist sidebar minimized state
     useEffect(() => {
@@ -283,7 +90,8 @@ const ViewPurchase = () => {
 
     const handlePurchaseSuccess = (purchaseData) => {
         console.log('Purchase created successfully:', purchaseData);
-        alert('Purchase entry confirmed! Refreshing data...');
+        // Refresh the purchase list
+        fetchPurchaseData();
     };
 
     const handleEmailSubmit = (email) => {
@@ -312,9 +120,12 @@ const ViewPurchase = () => {
     useEffect(() => {
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-        const lastDay = today;
-
-        const formatDate = (date) => {
+        
+        const formatDateForAPI = (date) => {
+            return date.toISOString().split('T')[0];
+        };
+        
+        const formatDateForDisplay = (date) => {
             return date.toLocaleDateString('en-GB', {
                 day: '2-digit',
                 month: '2-digit',
@@ -322,12 +133,14 @@ const ViewPurchase = () => {
             }).replace(/\//g, '/');
         };
 
-        const from = formatDate(firstDay);
-        const to = formatDate(lastDay);
+        const fromDate = formatDateForAPI(firstDay);
+        const toDate = formatDateForAPI(today);
+        const fromDisplay = formatDateForDisplay(firstDay);
+        const toDisplay = formatDateForDisplay(today);
 
-        setDateRange(`${from} - ${to}`);
-        setFromToDate(`From ${from} to ${to}`);
-        fetchPurchaseData(from, to);
+        setDateRange(`${fromDisplay} - ${toDisplay}`);
+        setFromToDate(`From ${fromDisplay} to ${toDisplay}`);
+        fetchPurchaseData(fromDate, toDate, 1, itemsPerPage, '');
     }, []);
 
     // Format currency
@@ -338,42 +151,204 @@ const ViewPurchase = () => {
         }).format(amount);
     };
 
-    // Simulate API call to fetch purchase data
-    const fetchPurchaseData = async (from, to) => {
+    // API call to fetch purchase data
+    const fetchPurchaseData = async (fromDate = null, toDate = null, pageNo = currentPage, limit = itemsPerPage, search = searchTerm) => {
         setLoading(true);
-
-        // Simulate API delay
-        setTimeout(() => {
-            const purchaseData = mockPurchaseData;
-            setPurchases(purchaseData);
-
-            // Calculate summary
-            const summaryData = purchaseData.reduce((acc, purchase) => ({
-                total: acc.total + purchase.total,
-                tax: acc.tax + purchase.tax,
-                grand_total: acc.grand_total + purchase.grand_total
-            }), { total: 0, tax: 0, grand_total: 0 });
-
-            setSummary(summaryData);
+        setError(null);
+        
+        try {
+            // Get current date if not provided
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            
+            const formatDateForAPI = (date) => {
+                return date.toISOString().split('T')[0];
+            };
+            
+            const from = fromDate || formatDateForAPI(firstDay);
+            const to = toDate || formatDateForAPI(today);
+            
+            // Build URL with query parameters
+            let url = `${API_BASE_URL}/purchase/list?page_no=${pageNo}&limit=${limit}&from_date=${from}&to_date=${to}`;
+            
+            if (search && search.trim()) {
+                url += `&search=${encodeURIComponent(search.trim())}`;
+            }
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: getHeaders(),
+                credentials: 'include'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Transform API data to match component structure
+                const transformedData = result.data.map(item => ({
+                    invoice_id: item.invoice_id,
+                    invoice_no: item.invoice_no,
+                    date: item.transaction_date,
+                    particulars: item.remark || 'No particulars',
+                    purchase_from: item.purchase_type,
+                    firm_name: item.purchase_type === 'client' ? item.purchase_party?.name : 
+                              item.purchase_type === 'bank' ? item.purchase_party?.holder : '',
+                    remark: item.remark,
+                    total: parseFloat(item.calculation?.subtotal || 0),
+                    tax: parseFloat(item.calculation?.gst_value || 0),
+                    grand_total: parseFloat(item.calculation?.grand_total || 0),
+                    task_id: null,
+                    purchase_party: item.purchase_party,
+                    calculation: item.calculation
+                }));
+                
+                setPurchases(transformedData);
+                
+                // Calculate summary from stats
+                if (result.stats) {
+                    setSummary({
+                        total: result.stats.amount || 0,
+                        tax: result.stats.tax || 0,
+                        grand_total: result.stats.amount || 0
+                    });
+                } else {
+                    // Fallback calculation
+                    const summaryData = transformedData.reduce((acc, purchase) => ({
+                        total: acc.total + purchase.total,
+                        tax: acc.tax + purchase.tax,
+                        grand_total: acc.grand_total + purchase.grand_total
+                    }), { total: 0, tax: 0, grand_total: 0 });
+                    setSummary(summaryData);
+                }
+                
+                // Update pagination info
+                if (result.meta) {
+                    setTotalItems(result.meta.total);
+                    setItemsPerPage(result.meta.limit);
+                    // Check if we're on the last page
+                    if (result.meta.is_last_page && currentPage !== result.meta.page_no) {
+                        setCurrentPage(result.meta.page_no);
+                    }
+                }
+            } else {
+                console.error('API returned error:', result);
+                setPurchases([]);
+                setSummary({ total: 0, tax: 0, grand_total: 0 });
+                setError(result.message || 'Failed to fetch purchase data');
+            }
+        } catch (error) {
+            console.error('Error fetching purchase data:', error);
+            setPurchases([]);
+            setSummary({ total: 0, tax: 0, grand_total: 0 });
+            setError(error.message || 'Network error. Please check your connection.');
+        } finally {
             setLoading(false);
-        }, 1500);
+        }
     };
 
     // Handle search
     const handleSearch = () => {
-        const [from, to] = dateRange.split(' - ');
-        setFromToDate(`From ${from} to ${to}`);
-        fetchPurchaseData(from, to);
+        const [fromDisplay, toDisplay] = dateRange.split(' - ');
+        
+        // Parse dates from display format to API format
+        const parseDate = (dateStr) => {
+            const [day, month, year] = dateStr.split('/');
+            return `${year}-${month}-${day}`;
+        };
+        
+        const fromDate = parseDate(fromDisplay);
+        const toDate = parseDate(toDisplay);
+        
+        setFromToDate(`From ${fromDisplay} to ${toDisplay}`);
+        setCurrentPage(1); // Reset to first page on search
+        fetchPurchaseData(fromDate, toDate, 1, itemsPerPage, searchTerm);
     };
 
     // Handle date filter change
     const handleDateFilterChange = (filter) => {
         console.log('Selected filter:', filter);
+        setSelectedDateFilter(filter);
+        
         if (filter.range) {
             setDateRange(filter.range);
-            const [from, to] = filter.range.split(' - ');
-            setFromToDate(`From ${from} to ${to}`);
+            const [fromDisplay, toDisplay] = filter.range.split(' - ');
+            
+            // Parse dates from display format to API format
+            const parseDate = (dateStr) => {
+                const [day, month, year] = dateStr.split('/');
+                return `${year}-${month}-${day}`;
+            };
+            
+            const fromDate = parseDate(fromDisplay);
+            const toDate = parseDate(toDisplay);
+            
+            setFromToDate(`From ${fromDisplay} to ${toDisplay}`);
+            setCurrentPage(1); // Reset to first page on date change
+            fetchPurchaseData(fromDate, toDate, 1, itemsPerPage, searchTerm);
         }
+    };
+
+    // Handle search input change
+    const handleSearchInputChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
+
+    // Handle search on enter key
+    const handleSearchKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    };
+
+    // Handle page change
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+        
+        const [fromDisplay, toDisplay] = dateRange.split(' - ');
+        const parseDate = (dateStr) => {
+            const [day, month, year] = dateStr.split('/');
+            return `${year}-${month}-${day}`;
+        };
+        
+        const fromDate = parseDate(fromDisplay);
+        const toDate = parseDate(toDisplay);
+        
+        fetchPurchaseData(fromDate, toDate, newPage, itemsPerPage, searchTerm);
+    };
+
+    // Handle items per page change
+    const handleItemsPerPageChange = (newLimit) => {
+        setItemsPerPage(newLimit);
+        setCurrentPage(1);
+        
+        const [fromDisplay, toDisplay] = dateRange.split(' - ');
+        const parseDate = (dateStr) => {
+            const [day, month, year] = dateStr.split('/');
+            return `${year}-${month}-${day}`;
+        };
+        
+        const fromDate = parseDate(fromDisplay);
+        const toDate = parseDate(toDisplay);
+        
+        fetchPurchaseData(fromDate, toDate, 1, newLimit, searchTerm);
+    };
+
+    // Handle refresh
+    const handleRefresh = () => {
+        const [fromDisplay, toDisplay] = dateRange.split(' - ');
+        const parseDate = (dateStr) => {
+            const [day, month, year] = dateStr.split('/');
+            return `${year}-${month}-${day}`;
+        };
+        
+        const fromDate = parseDate(fromDisplay);
+        const toDate = parseDate(toDisplay);
+        
+        fetchPurchaseData(fromDate, toDate, currentPage, itemsPerPage, searchTerm);
     };
 
     // Get edit link and invoice link based on purchase_from
@@ -390,14 +365,17 @@ const ViewPurchase = () => {
                 editLink = `/edit-purchase-client?redirect=${window.location.href}&invoice_id=${purchase.invoice_id}`;
                 invoiceLink = `/preview-invoice-purchase?invoice_id=${purchase.invoice_id}`;
                 break;
+            case 'bank':
             case 'cash':
             case 'savings':
             case 'current':
             case 'loan':
                 editLink = `/edit-purchase-bank?redirect=${window.location.href}&invoice_id=${purchase.invoice_id}`;
+                invoiceLink = `/preview-invoice-purchase?invoice_id=${purchase.invoice_id}`;
                 break;
             case 'capital':
                 editLink = `/edit-purchase-capital?redirect=${window.location.href}&invoice_id=${purchase.invoice_id}`;
+                invoiceLink = `/preview-invoice-purchase?invoice_id=${purchase.invoice_id}`;
                 break;
             default:
                 editLink = '#';
@@ -433,13 +411,11 @@ const ViewPurchase = () => {
         };
     }, []);
 
-    // Get current items based on pagination
-    const indexOfLastItem = showAll ? purchases.length : currentPage * itemsPerPage;
-    const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
-    const currentItems = purchases.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(purchases.length / itemsPerPage);
+    // Get current items based on pagination (for display, but API handles pagination)
+    const currentItems = purchases;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-    // Calculate paginated summary
+    // Calculate paginated summary (for current page)
     const paginatedSummary = currentItems.reduce((acc, purchase) => ({
         total: acc.total + purchase.total,
         tax: acc.tax + purchase.tax,
@@ -539,8 +515,8 @@ const ViewPurchase = () => {
         </div>
     );
 
-    // Show skeleton while loading
-    if (loading) {
+    // Show skeleton while loading and no data
+    if (loading && purchases.length === 0) {
         return <SkeletonLoader />;
     }
 
@@ -565,6 +541,28 @@ const ViewPurchase = () => {
             {/* Main Content Area - Full Page Scroll */}
             <div className={`pt-16 transition-all duration-300 ease-in-out ${isMinimized ? 'md:pl-20' : 'md:pl-72'}`}>
                 <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    {/* Error Alert */}
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="text-red-500">⚠️</div>
+                                    <p className="text-red-700 text-sm">{error}</p>
+                                </div>
+                                <button
+                                    onClick={() => setError(null)}
+                                    className="text-red-500 hover:text-red-700"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
                     {/* Header Stats Cards - Smaller */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                         <motion.div 
@@ -611,6 +609,33 @@ const ViewPurchase = () => {
                                 <FiCreditCard className="w-5 h-5 opacity-80" />
                             </div>
                         </motion.div>
+                    </div>
+
+                    {/* Search and Filter Bar */}
+                    <div className="mb-4 flex gap-2">
+                        <div className="relative flex-1">
+                            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                            <input
+                                type="text"
+                                placeholder="Search by invoice no, particulars, firm name..."
+                                value={searchTerm}
+                                onChange={handleSearchInputChange}
+                                onKeyPress={handleSearchKeyPress}
+                                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            />
+                        </div>
+                        <button
+                            onClick={handleSearch}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                        >
+                            Search
+                        </button>
+                        <button
+                            onClick={handleRefresh}
+                            className="px-4 py-2 bg-slate-600 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
+                        >
+                            Refresh
+                        </button>
                     </div>
 
                     {/* Main Card */}
@@ -767,7 +792,12 @@ const ViewPurchase = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-slate-100">
-                                    {purchases.length === 0 ? (
+                                    {loading ? (
+                                        // Show skeleton rows while loading
+                                        [...Array(5)].map((_, index) => (
+                                            <SkeletonRow key={index} />
+                                        ))
+                                    ) : purchases.length === 0 ? (
                                         <tr>
                                             <td colSpan="8" className="text-center py-8 text-slate-500">
                                                 <div className="flex flex-col items-center justify-center">
@@ -792,7 +822,7 @@ const ViewPurchase = () => {
                                             const { editLink, invoiceLink } = getActionLinks(purchase);
                                             const showFirm = purchase.purchase_from && purchase.firm_name;
                                             const isDropdownOpen = activeRowDropdown === purchase.invoice_id;
-                                            const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
+                                            const actualIndex = (currentPage - 1) * itemsPerPage + index;
 
                                             return (
                                                 <motion.tr
@@ -934,7 +964,7 @@ const ViewPurchase = () => {
                                                                 )}
                                                             </AnimatePresence>
                                                         </div>
-                                                    </td>
+                                                     </td>
                                                 </motion.tr>
                                             );
                                         })
@@ -943,15 +973,15 @@ const ViewPurchase = () => {
                             </table>
 
                             {/* Pagination Controls */}
-                            {purchases.length > itemsPerPage && !showAll && (
+                            {!loading && purchases.length > 0 && totalPages > 1 && (
                                 <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
                                     <div className="flex flex-col sm:flex-row justify-between items-center px-4 py-3 gap-3">
                                         <div className="text-xs text-slate-600">
-                                            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, purchases.length)} of {purchases.length} entries
+                                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} entries
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <button
-                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                onClick={() => handlePageChange(currentPage - 1)}
                                                 disabled={currentPage === 1}
                                                 className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                                             >
@@ -974,7 +1004,7 @@ const ViewPurchase = () => {
                                                     return (
                                                         <button
                                                             key={pageNumber}
-                                                            onClick={() => setCurrentPage(pageNumber)}
+                                                            onClick={() => handlePageChange(pageNumber)}
                                                             className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
                                                                 currentPage === pageNumber
                                                                     ? 'bg-blue-600 text-white'
@@ -987,7 +1017,7 @@ const ViewPurchase = () => {
                                                 })}
                                             </div>
                                             <button
-                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                                onClick={() => handlePageChange(currentPage + 1)}
                                                 disabled={currentPage === totalPages}
                                                 className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                                             >
@@ -995,31 +1025,18 @@ const ViewPurchase = () => {
                                                 <FiChevronRightIcon className="w-3 h-3" />
                                             </button>
                                         </div>
-                                        <button
-                                            onClick={() => setShowAll(true)}
-                                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors"
-                                        >
-                                            Show All
-                                            <FiChevronDown className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Show Less Button when showing all */}
-                            {showAll && purchases.length > itemsPerPage && (
-                                <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
-                                    <div className="flex justify-center px-4 py-3">
-                                        <button
-                                            onClick={() => {
-                                                setShowAll(false);
-                                                setCurrentPage(1);
-                                            }}
-                                            className="flex items-center gap-1 px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors shadow-sm"
-                                        >
-                                            Show Less
-                                            <FiChevronUp className="w-3 h-3" />
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                value={itemsPerPage}
+                                                onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                                                className="px-2 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                                            >
+                                                <option value={5}>5 per page</option>
+                                                <option value={10}>10 per page</option>
+                                                <option value={20}>20 per page</option>
+                                                <option value={50}>50 per page</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             )}

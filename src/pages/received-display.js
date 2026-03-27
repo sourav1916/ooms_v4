@@ -29,6 +29,8 @@ import EmailSelectionModal from '../components/email-selection';
 import MobileSelectionModal from '../components/mobile-selection';
 import PaymentReceived from '../components/payment-received';
 import DateFilter from '../components/DateFilter';
+import API_BASE_URL from "../utils/api-controller";
+import getHeaders from "../utils/get-headers";
 
 const ViewReceived = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -37,6 +39,7 @@ const ViewReceived = () => {
         return saved ? JSON.parse(saved) : false;
     });
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [dateRange, setDateRange] = useState('');
     const [fromToDate, setFromToDate] = useState('');
     const [received, setReceived] = useState([]);
@@ -58,235 +61,10 @@ const ViewReceived = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
     const [showAll, setShowAll] = useState(false);
-
-    // Mock received data
-    const mockReceivedData = [
-        {
-            invoice_id: '1',
-            invoice_no: 'REC-001',
-            date: '2024-01-15',
-            particulars: 'Payment from Client',
-            party_type: 'client',
-            remark: 'Advance payment for tax filing',
-            amount: 50000,
-            received_bank: 'State Bank of India',
-            received_bank_type: 'savings',
-            creator_name: 'John Manager',
-            creator_mobile: '9876543210',
-            creator_type: 'manager',
-            payment_id: null
-        },
-        {
-            invoice_id: '2',
-            invoice_no: 'REC-002',
-            date: '2024-01-10',
-            particulars: 'CA Payment Received',
-            party_type: 'ca',
-            remark: 'Monthly retainer fee',
-            amount: 25000,
-            received_bank: 'HDFC Bank',
-            received_bank_type: 'current',
-            creator_name: 'Sarah Executive',
-            creator_mobile: '9876543211',
-            creator_type: 'employee',
-            payment_id: null
-        },
-        {
-            invoice_id: '3',
-            invoice_no: 'REC-003',
-            date: '2024-01-05',
-            particulars: 'Capital Investment',
-            party_type: 'capital',
-            remark: 'Additional capital infusion',
-            amount: 100000,
-            received_bank: 'ICICI Bank',
-            received_bank_type: 'savings',
-            creator_name: 'Mike Director',
-            creator_mobile: '9876543212',
-            creator_type: 'admin',
-            payment_id: 'PAY001'
-        },
-        {
-            invoice_id: '4',
-            invoice_no: 'REC-004',
-            date: '2024-01-20',
-            particulars: 'Agent Commission Received',
-            party_type: 'agent',
-            remark: 'Q1 commission payment',
-            amount: 15000,
-            received_bank: 'Axis Bank',
-            received_bank_type: 'current',
-            creator_name: 'Lisa Supervisor',
-            creator_mobile: '9876543213',
-            creator_type: 'manager',
-            payment_id: null
-        },
-        {
-            invoice_id: '5',
-            invoice_no: 'REC-005',
-            date: '2024-01-18',
-            particulars: 'Client Settlement',
-            party_type: 'client',
-            remark: 'Final settlement for audit services',
-            amount: 75000,
-            received_bank: 'Kotak Mahindra Bank',
-            received_bank_type: 'savings',
-            creator_name: 'Robert Accountant',
-            creator_mobile: '9876543214',
-            creator_type: 'employee',
-            payment_id: null
-        },
-        {
-            invoice_id: '6',
-            invoice_no: 'REC-006',
-            date: '2024-01-12',
-            particulars: 'Consulting Fee',
-            party_type: 'ca',
-            remark: 'Business consulting services',
-            amount: 45000,
-            received_bank: 'Yes Bank',
-            received_bank_type: 'current',
-            creator_name: 'Priya Manager',
-            creator_mobile: '9876543215',
-            creator_type: 'manager',
-            payment_id: null
-        },
-        {
-            invoice_id: '7',
-            invoice_no: 'REC-007',
-            date: '2024-01-08',
-            particulars: 'Loan Received',
-            party_type: 'bank',
-            remark: 'Business loan disbursement',
-            amount: 500000,
-            received_bank: 'ICICI Bank',
-            received_bank_type: 'savings',
-            creator_name: 'Mike Director',
-            creator_mobile: '9876543212',
-            creator_type: 'admin',
-            payment_id: 'PAY002'
-        },
-        {
-            invoice_id: '8',
-            invoice_no: 'REC-008',
-            date: '2024-01-25',
-            particulars: 'Vendor Refund',
-            party_type: 'vendor',
-            remark: 'Excess payment refund',
-            amount: 25000,
-            received_bank: 'Axis Bank',
-            received_bank_type: 'current',
-            creator_name: 'Lisa Supervisor',
-            creator_mobile: '9876543213',
-            creator_type: 'manager',
-            payment_id: null
-        },
-        {
-            invoice_id: '9',
-            invoice_no: 'REC-009',
-            date: '2024-01-22',
-            particulars: 'Investment Return',
-            party_type: 'investment',
-            remark: 'Fixed deposit maturity',
-            amount: 150000,
-            received_bank: 'Kotak Mahindra Bank',
-            received_bank_type: 'savings',
-            creator_name: 'Robert Accountant',
-            creator_mobile: '9876543214',
-            creator_type: 'employee',
-            payment_id: null
-        },
-        {
-            invoice_id: '10',
-            invoice_no: 'REC-010',
-            date: '2024-01-14',
-            particulars: 'Service Fee',
-            party_type: 'client',
-            remark: 'Annual maintenance contract',
-            amount: 120000,
-            received_bank: 'Yes Bank',
-            received_bank_type: 'current',
-            creator_name: 'Priya Manager',
-            creator_mobile: '9876543215',
-            creator_type: 'manager',
-            payment_id: null
-        },
-        {
-            invoice_id: '11',
-            invoice_no: 'REC-011',
-            date: '2024-01-30',
-            particulars: 'Royalty Payment',
-            party_type: 'client',
-            remark: 'Software royalty',
-            amount: 75000,
-            received_bank: 'State Bank of India',
-            received_bank_type: 'savings',
-            creator_name: 'John Manager',
-            creator_mobile: '9876543210',
-            creator_type: 'manager',
-            payment_id: null
-        },
-        {
-            invoice_id: '12',
-            invoice_no: 'REC-012',
-            date: '2024-01-28',
-            particulars: 'Consultancy Fee',
-            party_type: 'ca',
-            remark: 'Project consultancy',
-            amount: 85000,
-            received_bank: 'HDFC Bank',
-            received_bank_type: 'current',
-            creator_name: 'Sarah Executive',
-            creator_mobile: '9876543211',
-            creator_type: 'employee',
-            payment_id: null
-        },
-        {
-            invoice_id: '13',
-            invoice_no: 'REC-013',
-            date: '2024-01-17',
-            particulars: 'Grant Received',
-            party_type: 'government',
-            remark: 'Research grant',
-            amount: 200000,
-            received_bank: 'ICICI Bank',
-            received_bank_type: 'savings',
-            creator_name: 'Mike Director',
-            creator_mobile: '9876543212',
-            creator_type: 'admin',
-            payment_id: 'PAY003'
-        },
-        {
-            invoice_id: '14',
-            invoice_no: 'REC-014',
-            date: '2024-01-11',
-            particulars: 'Commission Received',
-            party_type: 'agent',
-            remark: 'Sales commission',
-            amount: 35000,
-            received_bank: 'Axis Bank',
-            received_bank_type: 'current',
-            creator_name: 'Lisa Supervisor',
-            creator_mobile: '9876543213',
-            creator_type: 'manager',
-            payment_id: null
-        },
-        {
-            invoice_id: '15',
-            invoice_no: 'REC-015',
-            date: '2024-01-03',
-            particulars: 'Subscription Fee',
-            party_type: 'client',
-            remark: 'Annual subscription',
-            amount: 60000,
-            received_bank: 'Kotak Mahindra Bank',
-            received_bank_type: 'savings',
-            creator_name: 'Robert Accountant',
-            creator_mobile: '9876543214',
-            creator_type: 'employee',
-            payment_id: null
-        }
-    ];
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [isLastPage, setIsLastPage] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDateFilter, setSelectedDateFilter] = useState(null);
 
     // Persist sidebar minimized state
     useEffect(() => {
@@ -312,18 +90,18 @@ const ViewReceived = () => {
         const lastDay = today;
 
         const formatDate = (date) => {
-            return date.toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            }).replace(/\//g, '/');
+            return date.toISOString().split('T')[0]; // Format as YYYY-MM-DD for API
         };
 
         const from = formatDate(firstDay);
         const to = formatDate(lastDay);
 
-        setDateRange(`${from} - ${to}`);
-        setFromToDate(`From ${from} to ${to}`);
+        // Format for display
+        const displayFrom = firstDay.toLocaleDateString('en-GB');
+        const displayTo = lastDay.toLocaleDateString('en-GB');
+        
+        setDateRange(`${displayFrom} - ${displayTo}`);
+        setFromToDate(`From ${displayFrom} to ${displayTo}`);
         fetchReceivedData(from, to);
     }, []);
 
@@ -335,27 +113,81 @@ const ViewReceived = () => {
         }).format(amount);
     };
 
-    // Simulate API call to fetch received data
-    const fetchReceivedData = async (from, to) => {
+    // Format date for display
+    const formatDisplayDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB');
+    };
+
+    // Fetch received data from API
+    const fetchReceivedData = async (fromDate, toDate, page = 1, search = '') => {
         setLoading(true);
-
-        // Simulate API delay
-        setTimeout(() => {
-            const receivedData = mockReceivedData;
-            setReceived(receivedData);
-
-            // Calculate total amount
-            const total = receivedData.reduce((acc, item) => acc + item.amount, 0);
-            setTotalAmount(total);
+        setError(null);
+        
+        try {
+            // Use showAll logic: if showAll is true, fetch all records by setting limit to total
+            const limit = showAll ? 10000 : itemsPerPage;
+            
+            const url = `${API_BASE_URL}/transaction/report/receive?page_no=${page}&limit=${limit}&from_date=${fromDate}&to_date=${toDate}${search ? `&search=${search}` : ''}`;
+            
+            const headers = await getHeaders();
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: headers
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                setReceived(result.data || []);
+                setTotalRecords(result.meta?.total || 0);
+                setIsLastPage(result.meta?.is_last_page || false);
+                
+                // Calculate total amount from all records (for the current page or all records)
+                const total = (result.data || []).reduce((acc, item) => {
+                    const amount = parseFloat(item.amount) || 0;
+                    return acc + amount;
+                }, 0);
+                setTotalAmount(total);
+            } else {
+                setError(result.message || 'Failed to fetch received data');
+                setReceived([]);
+                setTotalAmount(0);
+            }
+        } catch (err) {
+            console.error('Error fetching received data:', err);
+            setError('Network error: Failed to fetch received data');
+            setReceived([]);
+            setTotalAmount(0);
+        } finally {
             setLoading(false);
-        }, 1500);
+        }
     };
 
     // Handle search
     const handleSearch = () => {
-        const [from, to] = dateRange.split(' - ');
-        setFromToDate(`From ${from} to ${to}`);
-        fetchReceivedData(from, to);
+        if (!dateRange) return;
+        
+        const [displayFrom, displayTo] = dateRange.split(' - ');
+        
+        // Convert display dates to YYYY-MM-DD format for API
+        const from = convertToAPIDate(displayFrom);
+        const to = convertToAPIDate(displayTo);
+        
+        setFromToDate(`From ${displayFrom} to ${displayTo}`);
+        setCurrentPage(1); // Reset to first page on new search
+        fetchReceivedData(from, to, 1, searchTerm);
+    };
+
+    // Convert display date (DD/MM/YYYY) to API date (YYYY-MM-DD)
+    const convertToAPIDate = (displayDate) => {
+        if (!displayDate) return '';
+        const parts = displayDate.split('/');
+        if (parts.length === 3) {
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+        return displayDate;
     };
 
     // Handle date filter change
@@ -363,31 +195,94 @@ const ViewReceived = () => {
         console.log('Selected filter:', filter);
         if (filter.range) {
             setDateRange(filter.range);
-            const [from, to] = filter.range.split(' - ');
-            setFromToDate(`From ${from} to ${to}`);
+            setSelectedDateFilter(filter);
+            
+            const [displayFrom, displayTo] = filter.range.split(' - ');
+            setFromToDate(`From ${displayFrom} to ${displayTo}`);
+            
+            // Convert to API format
+            const from = convertToAPIDate(displayFrom);
+            const to = convertToAPIDate(displayTo);
+            
+            setCurrentPage(1);
+            fetchReceivedData(from, to, 1, searchTerm);
+        }
+    };
+
+    // Handle search term change
+    const handleSearchTermChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
+
+    // Handle search on Enter key
+    const handleSearchKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    };
+
+    // Handle page change
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+        if (dateRange) {
+            const [displayFrom, displayTo] = dateRange.split(' - ');
+            const from = convertToAPIDate(displayFrom);
+            const to = convertToAPIDate(displayTo);
+            fetchReceivedData(from, to, newPage, searchTerm);
+        }
+    };
+
+    // Handle show all toggle
+    const handleShowAll = () => {
+        setShowAll(true);
+        if (dateRange) {
+            const [displayFrom, displayTo] = dateRange.split(' - ');
+            const from = convertToAPIDate(displayFrom);
+            const to = convertToAPIDate(displayTo);
+            fetchReceivedData(from, to, 1, searchTerm);
+        }
+    };
+
+    // Handle show less (back to pagination)
+    const handleShowLess = () => {
+        setShowAll(false);
+        setCurrentPage(1);
+        if (dateRange) {
+            const [displayFrom, displayTo] = dateRange.split(' - ');
+            const from = convertToAPIDate(displayFrom);
+            const to = convertToAPIDate(displayTo);
+            fetchReceivedData(from, to, 1, searchTerm);
         }
     };
 
     const handleReceivedSuccess = (receivedData) => {
         console.log('Received entry created successfully:', receivedData);
-        alert('Received entry confirmed! Refreshing data...');
+        // Refresh the data after successful addition
+        if (dateRange) {
+            const [displayFrom, displayTo] = dateRange.split(' - ');
+            const from = convertToAPIDate(displayFrom);
+            const to = convertToAPIDate(displayTo);
+            fetchReceivedData(from, to, currentPage, searchTerm);
+        }
     };
 
     const handleEmailSubmit = (email) => {
         setSelectedEmail(email);
         setIsEmailModalOpen(false);
         console.log('Selected email:', email);
+        // Implement email sending logic here
     };
 
     const handleWhatsappSubmit = (number) => {
         setSelectedWhatsapp(number);
         setWhatsappModalOpen(false);
         console.log('Selected number:', number);
+        // Implement WhatsApp sending logic here
     };
 
     const handleExport = (type, data = null) => {
         setExportModal({ open: true, type, data });
-
+        
         // Simulate export process
         setTimeout(() => {
             setExportModal({ open: false, type: '', data: null });
@@ -395,12 +290,13 @@ const ViewReceived = () => {
         }, 1500);
     };
 
-    // Get edit link and invoice link based on party_type
+    // Get edit link and invoice link based on payment_from type
     const getActionLinks = (item) => {
         let editLink = '';
         let invoiceLink = '';
+        const partyType = item.payment_from?.type || '';
 
-        switch (item.party_type) {
+        switch (partyType) {
             case 'client':
                 editLink = `/edit-received-client?redirect=${window.location.href}&invoice_id=${item.invoice_id}`;
                 invoiceLink = `/preview-invoice-received?invoice_id=${item.invoice_id}`;
@@ -418,7 +314,7 @@ const ViewReceived = () => {
                 invoiceLink = `/preview-invoice-received?invoice_id=${item.invoice_id}`;
                 break;
             case 'capital':
-                editLink = `/edit-received-client-capital?redirect=${window.location.href}&payment_id=${item.payment_id}`;
+                editLink = `/edit-received-client-capital?redirect=${window.location.href}&payment_id=${item.transaction_id}`;
                 break;
             default:
                 editLink = '#';
@@ -428,15 +324,106 @@ const ViewReceived = () => {
         return { editLink, invoiceLink };
     };
 
-    // Format date
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-GB');
+    // Get party type display info
+    const getPartyTypeInfo = (item) => {
+        const type = item.payment_from?.type || '';
+        const details = item.payment_from?.details || {};
+        
+        let displayName = '';
+        let bgColor = '';
+        let textColor = '';
+        
+        switch (type) {
+            case 'client':
+                displayName = details.name || 'Client';
+                bgColor = 'bg-blue-100';
+                textColor = 'text-blue-700';
+                break;
+            case 'ca':
+                displayName = details.name || 'CA';
+                bgColor = 'bg-purple-100';
+                textColor = 'text-purple-700';
+                break;
+            case 'capital':
+                displayName = 'Capital';
+                bgColor = 'bg-emerald-100';
+                textColor = 'text-emerald-700';
+                break;
+            case 'agent':
+                displayName = details.name || 'Agent';
+                bgColor = 'bg-amber-100';
+                textColor = 'text-amber-700';
+                break;
+            case 'bank':
+                displayName = details.bank || 'Bank';
+                bgColor = 'bg-violet-100';
+                textColor = 'text-violet-700';
+                break;
+            case 'staff':
+                displayName = details.name || 'Staff';
+                bgColor = 'bg-rose-100';
+                textColor = 'text-rose-700';
+                break;
+            default:
+                displayName = type || 'Other';
+                bgColor = 'bg-slate-100';
+                textColor = 'text-slate-700';
+        }
+        
+        return { displayName, bgColor, textColor, type };
+    };
+
+    // Get bank type info
+    const getBankTypeInfo = (item) => {
+        const bankDetails = item.payment_to?.details || {};
+        const bankType = bankDetails.type || '';
+        
+        let bgColor = '';
+        let textColor = '';
+        
+        switch (bankType) {
+            case 'savings':
+                bgColor = 'bg-blue-100';
+                textColor = 'text-blue-700';
+                break;
+            case 'current':
+                bgColor = 'bg-emerald-100';
+                textColor = 'text-emerald-700';
+                break;
+            default:
+                bgColor = 'bg-slate-100';
+                textColor = 'text-slate-700';
+        }
+        
+        return { bankType, bgColor, textColor, bankName: bankDetails.bank || '', accountNo: bankDetails.account_no || '' };
+    };
+
+    // Get creator type info
+    const getCreatorTypeInfo = (item) => {
+        const creator = item.create_by || {};
+        const username = creator.username || '';
+        
+        let type = 'employee';
+        let bgColor = 'bg-emerald-100';
+        let textColor = 'text-emerald-700';
+        
+        // You can customize this logic based on your user roles
+        if (username === 'admin' || username.includes('admin')) {
+            type = 'admin';
+            bgColor = 'bg-red-100';
+            textColor = 'text-red-700';
+        } else if (username.includes('manager')) {
+            type = 'manager';
+            bgColor = 'bg-blue-100';
+            textColor = 'text-blue-700';
+        }
+        
+        return { type, bgColor, textColor, name: creator.name || '', mobile: creator.mobile || '' };
     };
 
     // Toggle row dropdown
-    const toggleRowDropdown = (invoiceId) => {
-        setActiveRowDropdown(activeRowDropdown === invoiceId ? null : invoiceId);
+    const toggleRowDropdown = (transactionId) => {
+        setActiveRowDropdown(activeRowDropdown === transactionId ? null : transactionId);
     };
 
     // Close all dropdowns when clicking outside
@@ -454,14 +441,15 @@ const ViewReceived = () => {
         };
     }, []);
 
-    // Get current items based on pagination
-    const indexOfLastItem = showAll ? received.length : currentPage * itemsPerPage;
-    const indexOfFirstItem = showAll ? 0 : (currentPage - 1) * itemsPerPage;
-    const currentItems = received.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(received.length / itemsPerPage);
-
-    // Calculate paginated total
-    const paginatedTotal = currentItems.reduce((acc, item) => acc + item.amount, 0);
+    // Calculate total pages
+    const totalPages = Math.ceil(totalRecords / itemsPerPage);
+    
+    // Get current items (already handled by API pagination)
+    const currentItems = received;
+    const paginatedTotal = currentItems.reduce((acc, item) => {
+        const amount = parseFloat(item.amount) || 0;
+        return acc + amount;
+    }, 0);
 
     // Skeleton loader component
     const SkeletonRow = () => (
@@ -598,6 +586,17 @@ const ViewReceived = () => {
                         </div>
                     </motion.div>
 
+                    {/* Error Message */}
+                    {error && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4"
+                        >
+                            <p className="text-red-600 text-sm">{error}</p>
+                        </motion.div>
+                    )}
+
                     {/* Main Card */}
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.98 }}
@@ -628,6 +627,19 @@ const ViewReceived = () => {
                                 </div>
 
                                 <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+                                    {/* Search Input */}
+                                    <div className="relative w-full lg:w-64">
+                                        <input
+                                            type="text"
+                                            placeholder="Search by invoice no, party, remark..."
+                                            value={searchTerm}
+                                            onChange={handleSearchTermChange}
+                                            onKeyPress={handleSearchKeyPress}
+                                            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        />
+                                        <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                    </div>
+
                                     {/* Date Filter Component */}
                                     <div className="w-full lg:w-auto">
                                         <DateFilter onChange={handleDateFilterChange} />
@@ -775,12 +787,15 @@ const ViewReceived = () => {
                                     ) : (
                                         currentItems.map((item, index) => {
                                             const { editLink, invoiceLink } = getActionLinks(item);
-                                            const isDropdownOpen = activeRowDropdown === item.invoice_id;
+                                            const isDropdownOpen = activeRowDropdown === item.transaction_id;
                                             const actualIndex = showAll ? index : (currentPage - 1) * itemsPerPage + index;
+                                            const partyInfo = getPartyTypeInfo(item);
+                                            const bankInfo = getBankTypeInfo(item);
+                                            const creatorInfo = getCreatorTypeInfo(item);
 
                                             return (
                                                 <motion.tr
-                                                    key={item.invoice_id}
+                                                    key={item.transaction_id}
                                                     initial={{ opacity: 0 }}
                                                     animate={{ opacity: 1 }}
                                                     transition={{ duration: 0.15 }}
@@ -793,25 +808,17 @@ const ViewReceived = () => {
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="font-medium text-slate-700 text-xs">
-                                                            {formatDate(item.date)}
+                                                            {formatDisplayDate(item.transaction_date)}
                                                         </div>
                                                     </td>
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="mx-auto max-w-[180px]">
                                                             <div className="text-slate-800 font-semibold text-xs">
-                                                                {item.particulars}
+                                                                {partyInfo.displayName}
                                                             </div>
                                                             <div className="flex justify-center mt-1">
-                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${
-                                                                    item.party_type === 'client' ? 'bg-blue-100 text-blue-700' :
-                                                                    item.party_type === 'ca' ? 'bg-purple-100 text-purple-700' :
-                                                                    item.party_type === 'capital' ? 'bg-emerald-100 text-emerald-700' :
-                                                                    item.party_type === 'agent' ? 'bg-amber-100 text-amber-700' :
-                                                                    item.party_type === 'bank' ? 'bg-violet-100 text-violet-700' :
-                                                                    item.party_type === 'staff' ? 'bg-rose-100 text-rose-700' :
-                                                                    'bg-slate-100 text-slate-700'
-                                                                }`}>
-                                                                    {item.party_type}
+                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${partyInfo.bgColor} ${partyInfo.textColor}`}>
+                                                                    {partyInfo.type}
                                                                 </span>
                                                             </div>
                                                             {item.remark && (
@@ -834,15 +841,16 @@ const ViewReceived = () => {
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="mx-auto max-w-[140px]">
                                                             <div className="text-slate-800 text-xs font-medium">
-                                                                {item.received_bank}
+                                                                {bankInfo.bankName || item.payment_to?.details?.bank || 'N/A'}
                                                             </div>
+                                                            {bankInfo.accountNo && (
+                                                                <div className="text-slate-500 text-[10px] mt-0.5">
+                                                                    {bankInfo.accountNo}
+                                                                </div>
+                                                            )}
                                                             <div className="flex justify-center mt-1">
-                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${
-                                                                    item.received_bank_type === 'savings' ? 'bg-blue-100 text-blue-700' :
-                                                                    item.received_bank_type === 'current' ? 'bg-emerald-100 text-emerald-700' :
-                                                                    'bg-slate-100 text-slate-700'
-                                                                }`}>
-                                                                    {item.received_bank_type}
+                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${bankInfo.bgColor} ${bankInfo.textColor}`}>
+                                                                    {bankInfo.bankType || 'bank'}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -850,19 +858,14 @@ const ViewReceived = () => {
                                                     <td className="text-center p-3 align-middle">
                                                         <div className="mx-auto max-w-[140px]">
                                                             <div className="text-slate-800 text-xs font-medium">
-                                                                {item.creator_name}
+                                                                {creatorInfo.name}
                                                             </div>
                                                             <div className="flex flex-col items-center gap-1 mt-1">
                                                                 <div className="text-slate-600 text-[10px]">
-                                                                    {item.creator_mobile}
+                                                                    {creatorInfo.mobile}
                                                                 </div>
-                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${
-                                                                    item.creator_type === 'admin' ? 'bg-red-100 text-red-700' :
-                                                                    item.creator_type === 'manager' ? 'bg-blue-100 text-blue-700' :
-                                                                    item.creator_type === 'employee' ? 'bg-emerald-100 text-emerald-700' :
-                                                                    'bg-slate-100 text-slate-700'
-                                                                }`}>
-                                                                    {item.creator_type}
+                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${creatorInfo.bgColor} ${creatorInfo.textColor}`}>
+                                                                    {creatorInfo.type}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -871,7 +874,7 @@ const ViewReceived = () => {
                                                         <div className="dropdown-container relative flex justify-center">
                                                             <motion.button
                                                                 className="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors duration-150 border border-slate-200 hover:border-blue-300"
-                                                                onClick={() => toggleRowDropdown(item.invoice_id)}
+                                                                onClick={() => toggleRowDropdown(item.transaction_id)}
                                                                 whileHover={{ scale: 1.05 }}
                                                                 whileTap={{ scale: 0.95 }}
                                                             >
@@ -898,6 +901,20 @@ const ViewReceived = () => {
                                                                                     <div className="font-medium">Edit Received</div>
                                                                                 </div>
                                                                             </a>
+                                                                            {invoiceLink && (
+                                                                                <a
+                                                                                    href={invoiceLink}
+                                                                                    className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
+                                                                                    onClick={() => setActiveRowDropdown(null)}
+                                                                                >
+                                                                                    <div className="p-1 bg-purple-50 rounded mr-2">
+                                                                                        <FiFileText className="w-3 h-3 text-purple-500" />
+                                                                                    </div>
+                                                                                    <div className="text-left">
+                                                                                        <div className="font-medium">View Invoice</div>
+                                                                                    </div>
+                                                                                </a>
+                                                                            )}
                                                                             <div className="border-t border-slate-100 mt-1 pt-1">
                                                                                 <button
                                                                                     className="flex items-center w-full px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 transition-colors duration-150"
@@ -947,15 +964,15 @@ const ViewReceived = () => {
                             </table>
 
                             {/* Pagination Controls */}
-                            {received.length > itemsPerPage && !showAll && (
+                            {!showAll && totalRecords > itemsPerPage && (
                                 <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
                                     <div className="flex flex-col sm:flex-row justify-between items-center px-4 py-3 gap-3">
                                         <div className="text-xs text-slate-600">
-                                            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, received.length)} of {received.length} entries
+                                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalRecords)} of {totalRecords} entries
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <button
-                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                onClick={() => handlePageChange(currentPage - 1)}
                                                 disabled={currentPage === 1}
                                                 className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                                             >
@@ -978,7 +995,7 @@ const ViewReceived = () => {
                                                     return (
                                                         <button
                                                             key={pageNumber}
-                                                            onClick={() => setCurrentPage(pageNumber)}
+                                                            onClick={() => handlePageChange(pageNumber)}
                                                             className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
                                                                 currentPage === pageNumber
                                                                     ? 'bg-blue-600 text-white'
@@ -991,8 +1008,8 @@ const ViewReceived = () => {
                                                 })}
                                             </div>
                                             <button
-                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                                disabled={currentPage === totalPages}
+                                                onClick={() => handlePageChange(currentPage + 1)}
+                                                disabled={isLastPage}
                                                 className="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                                             >
                                                 Next
@@ -1000,7 +1017,7 @@ const ViewReceived = () => {
                                             </button>
                                         </div>
                                         <button
-                                            onClick={() => setShowAll(true)}
+                                            onClick={handleShowAll}
                                             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors"
                                         >
                                             Show All
@@ -1011,14 +1028,11 @@ const ViewReceived = () => {
                             )}
 
                             {/* Show Less Button when showing all */}
-                            {showAll && received.length > itemsPerPage && (
+                            {showAll && totalRecords > itemsPerPage && (
                                 <div className="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
                                     <div className="flex justify-center px-4 py-3">
                                         <button
-                                            onClick={() => {
-                                                setShowAll(false);
-                                                setCurrentPage(1);
-                                            }}
+                                            onClick={handleShowLess}
                                             className="flex items-center gap-1 px-4 py-2 text-xs font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition-colors shadow-sm"
                                         >
                                             Show Less

@@ -789,39 +789,84 @@ const TransactionHistory = () => {
     };
 
     // Get particulars display with proper details from API response
-    const getParticularsDisplay = (transaction) => {
-        // Check if particular exists with details
-        if (transaction.particular?.details) {
+   // Get particulars display with proper details from API response
+const getParticularsDisplay = (transaction) => {
+    // Check if particular exists
+    if (transaction.particular) {
+        // Handle bank/contra transactions with bank details
+        if (transaction.particular.type === 'bank' && transaction.particular.details) {
+            const details = transaction.particular.details;
+            return (
+                <div className="flex flex-col">
+                    <div className="font-medium text-slate-800">
+                        {details.bank || 'N/A'}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                        A/C: {details.account_no || 'N/A'} | {details.holder || 'N/A'}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                        {details.branch || 'N/A'} ({details.ifsc || 'N/A'})
+                    </div>
+                    {transaction.particular.remark && (
+                        <div className="text-xs text-slate-400 mt-1 italic">
+                            Note: {transaction.particular.remark}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        // Handle customer/supplier transactions with person details
+        if (transaction.particular.details && (transaction.particular.details.name || transaction.particular.details.email)) {
             const details = transaction.particular.details;
             return (
                 <div className="flex flex-col">
                     <div className="font-medium text-slate-800">{details.name || 'N/A'}</div>
                     <div className="text-xs text-slate-500">{details.email || ''}</div>
                     {details.mobile && (
-                        <div className="text-xs text-slate-500">+{details.country_code || ''} {details.mobile}</div>
+                        <div className="text-xs text-slate-500">
+                            +{details.country_code || ''} {details.mobile}
+                        </div>
                     )}
                     {transaction.particular.remark && (
-                        <div className="text-xs text-slate-400 mt-1 italic">Note: {transaction.particular.remark}</div>
+                        <div className="text-xs text-slate-400 mt-1 italic">
+                            Note: {transaction.particular.remark}
+                        </div>
                     )}
                 </div>
             );
         }
         
-        // Fallback to create_by if particular not available
-        if (transaction.create_by) {
+        // Fallback to remark only if no details
+        if (transaction.particular.remark) {
             return (
                 <div className="flex flex-col">
-                    <div className="font-medium text-slate-800">{transaction.create_by.name || 'N/A'}</div>
-                    <div className="text-xs text-slate-500">{transaction.create_by.email || ''}</div>
-                    {transaction.create_by.mobile && (
-                        <div className="text-xs text-slate-500">+{transaction.create_by.country_code || ''} {transaction.create_by.mobile}</div>
-                    )}
+                    <div className="font-medium text-slate-800">Contra Transfer</div>
+                    <div className="text-xs text-slate-400 italic">
+                        Note: {transaction.particular.remark}
+                    </div>
                 </div>
             );
         }
-        
-        return <span className="text-sm text-slate-500">N/A</span>;
-    };
+    }
+    
+    // Fallback to create_by if particular not available
+    if (transaction.create_by) {
+        return (
+            <div className="flex flex-col">
+                <div className="font-medium text-slate-800">{transaction.create_by.name || 'N/A'}</div>
+                <div className="text-xs text-slate-500">{transaction.create_by.email || ''}</div>
+                {transaction.create_by.mobile && (
+                    <div className="text-xs text-slate-500">
+                        +{transaction.create_by.country_code || ''} {transaction.create_by.mobile}
+                    </div>
+                )}
+            </div>
+        );
+    }
+    
+    return <span className="text-sm text-slate-500">N/A</span>;
+};
 
     // Loading skeleton
     const SkeletonRow = () => (
