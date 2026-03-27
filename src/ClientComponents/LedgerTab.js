@@ -654,98 +654,18 @@ const ClientLedger = () => {
         }
     };
 
-<<<<<<< HEAD
-   // Get particulars display (new API: particular.type + particular.details, fallback to create_by)
+// Get particulars display (new API: particular.type + particular.details + particular.remark, fallback to transaction_type + remark)
 const getParticularsDisplay = (transaction) => {
     const particular = transaction.particular;
-    
-    // Handle client-type particulars (your actual data structure)
-    if (particular?.type === 'client' && particular?.details) {
-        const d = particular.details;
-        return (
-            <div className="flex flex-col">
-                <div className="font-medium text-slate-800">{d.name || 'Client'}</div>
-                <div className="text-xs text-slate-500">
-                    {[
-                        d.email,
-                        d.country_code && d.mobile && `+${d.country_code} ${d.mobile}`
-                    ].filter(Boolean).join(' • ')}
-                </div>
-                {particular.remark && (
-                    <div className="text-xs text-indigo-600 mt-1 font-medium">
-                        {particular.remark}
-                    </div>
-                )}
-            </div>
-        );
-    }
-    
-    // Handle bank-type particulars
+    const remark = particular?.remark;
     if (particular?.type === 'bank' && particular?.details) {
         const d = particular.details;
         return (
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
                 <div className="font-medium text-slate-800">{d.bank || 'Bank'}</div>
                 <div className="text-xs text-slate-500">
                     {[d.account_no, d.holder, d.ifsc, d.branch].filter(Boolean).join(' • ')}
                 </div>
-            </div>
-        );
-    }
-    
-    // Fallback to create_by information
-    if (transaction.create_by) {
-        return (
-            <div className="flex flex-col">
-                <div className="font-medium text-slate-800">{transaction.create_by.name || 'Company'}</div>
-                <div className="text-xs text-slate-500">{transaction.create_by.email || ''}</div>
-            </div>
-        );
-    }
-    
-    return <span className="text-sm text-slate-500">N/A</span>;
-};
-=======
-    // Get particulars display (new API: particular.type + particular.details + particular.remark, fallback to transaction_type + remark)
-    const getParticularsDisplay = (transaction) => {
-        const particular = transaction.particular;
-        const remark = particular?.remark;
-        if (particular?.type === 'bank' && particular?.details) {
-            const d = particular.details;
-            return (
-                <div className="flex flex-col min-w-0">
-                    <div className="font-medium text-slate-800">{d.bank || 'Bank'}</div>
-                    <div className="text-xs text-slate-500">
-                        {[d.account_no, d.holder, d.ifsc, d.branch].filter(Boolean).join(' • ')}
-                    </div>
-                    {remark && (
-                        <div className="text-xs text-slate-600 mt-1 truncate max-w-[200px]" title={remark}>
-                            {remark}
-                        </div>
-                    )}
-                </div>
-            );
-        }
-        if (transaction.create_by && particular?.type) {
-            return (
-                <div className="flex flex-col min-w-0">
-                    <div className="font-medium text-slate-800">{transaction.create_by.name || 'Company'}</div>
-                    <div className="text-xs text-slate-500">{transaction.create_by.email || ''}</div>
-                    {remark && (
-                        <div className="text-xs text-slate-600 mt-1 truncate max-w-[200px]" title={remark}>
-                            {remark}
-                        </div>
-                    )}
-                </div>
-            );
-        }
-        // No particulars (e.g. opening balance) – show transaction type + remark
-        const txType = (transaction.transaction_type || '')
-            .replace(/_/g, ' ')
-            .replace(/\b\w/g, (c) => c.toUpperCase());
-        return (
-            <div className="flex flex-col min-w-0">
-                <div className="font-medium text-slate-800">{txType || 'N/A'}</div>
                 {remark && (
                     <div className="text-xs text-slate-600 mt-1 truncate max-w-[200px]" title={remark}>
                         {remark}
@@ -753,8 +673,35 @@ const getParticularsDisplay = (transaction) => {
                 )}
             </div>
         );
-    };
->>>>>>> aeea5f80f3b64138605e943e5105a1b095168fa0
+    }
+    if (transaction.create_by && particular?.type) {
+        return (
+            <div className="flex flex-col min-w-0">
+                <div className="font-medium text-slate-800">{transaction.create_by.name || 'Company'}</div>
+                <div className="text-xs text-slate-500">{transaction.create_by.email || ''}</div>
+                {remark && (
+                    <div className="text-xs text-slate-600 mt-1 truncate max-w-[200px]" title={remark}>
+                        {remark}
+                    </div>
+                )}
+            </div>
+        );
+    }
+    // No particulars (e.g. opening balance) – show transaction type + remark
+    const txType = (transaction.transaction_type || '')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+    return (
+        <div className="flex flex-col min-w-0">
+            <div className="font-medium text-slate-800">{txType || 'N/A'}</div>
+            {remark && (
+                <div className="text-xs text-slate-600 mt-1 truncate max-w-[200px]" title={remark}>
+                    {remark}
+                </div>
+            )}
+        </div>
+    );
+};
 
     // Navigate to client profile
     const goToClientProfile = () => {
