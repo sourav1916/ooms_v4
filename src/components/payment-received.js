@@ -38,9 +38,10 @@ const PaymentReceived = ({
     const [sendWhatsApp, setSendWhatsApp] = useState(true);
     const [bankOptions, setBankOptions] = useState([]);
     const [bankLoading, setBankLoading] = useState(false);
+    const [clientSummary, setClientSummary] = useState(null); // Add client summary state
     const clientSearchAbortRef = useRef(null);
 
-    // Fetch banks from API
+    // Fetch banks from API (same as ReceiveModal)
     useEffect(() => {
         if (isOpen) {
             fetchBanks();
@@ -66,6 +67,25 @@ const PaymentReceived = ({
             toast.error('Failed to load bank accounts');
         } finally {
             setBankLoading(false);
+        }
+    };
+
+    // Fetch client summary when client is selected (like in ReceiveModal)
+    const fetchClientSummary = async (clientUsername) => {
+        if (!clientUsername) return;
+        
+        try {
+            const response = await axios.get(
+                `${API_BASE_URL}/transaction/summary/client/${clientUsername}`,
+                { headers: getHeaders() }
+            );
+            
+            if (response.data.success) {
+                setClientSummary(response.data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching client summary:', error);
+            // Don't show toast error for summary, it's not critical
         }
     };
 
@@ -100,7 +120,7 @@ const PaymentReceived = ({
         };
     }, [clientSearchQuery]);
 
-    // Auto-select when initialUsername passed
+    // Auto-select when initialUsername passed and fetch summary
     useEffect(() => {
         if (!isOpen || !usernameToUse || usernameToUse.length < 3) return;
         const headers = getHeaders();
@@ -114,6 +134,7 @@ const PaymentReceived = ({
                 if (match) {
                     setSelectedClient(match);
                     setFormData((prev) => ({ ...prev, client_username: match.username }));
+                    fetchClientSummary(match.username); // Fetch summary when client is auto-selected
                 }
             })
             .catch(() => {});
@@ -133,9 +154,10 @@ const PaymentReceived = ({
             setClientSearchQuery('');
             setClientSearchResults([]);
             setShowClientDropdown(false);
+            setClientSummary(null); // Reset client summary
             if (!usernameToUse) setSelectedClient(null);
         }
-    }, [isOpen]);
+    }, [isOpen, usernameToUse]);
 
     const getSelectedClient = () => selectedClient;
 
@@ -163,11 +185,13 @@ const PaymentReceived = ({
         setFormData((prev) => ({ ...prev, client_username: client.username }));
         setShowClientDropdown(false);
         setClientSearchQuery('');
+        fetchClientSummary(client.username); // Fetch summary when client is selected
     };
 
     const handleClientClear = () => {
         setSelectedClient(null);
         setFormData((prev) => ({ ...prev, client_username: '' }));
+        setClientSummary(null); // Clear summary
     };
 
     const formatCurrency = (amount) => {
@@ -201,12 +225,13 @@ const PaymentReceived = ({
         
         try {
             const selectedBank = getSelectedBank();
+            // Same payload structure as ReceiveModal
             const payload = {
                 amount: parseFloat(formData.amount),
-                party1_id: formData.client_username,
-                party1_type: "client",
-                party2_id: formData.bank_id,
-                party2_type: "bank",
+                party1_id: formData.client_username, // Client username as party1_id
+                party1_type: "client",               // party1_type is client
+                party2_id: formData.bank_id,         // Bank ID as party2_id
+                party2_type: "bank",                 // party2_type is bank
                 remark: formData.remark || `Payment received from ${selectedClient?.name || selectedClient?.username}`,
                 transaction_date: formData.payment_date
             };
@@ -249,6 +274,7 @@ const PaymentReceived = ({
                 });
                 setSelectedClient(null);
                 setClientSearchQuery('');
+                setClientSummary(null); // Clear summary
             } else {
                 toast.error(response.data.message || 'Failed to receive payment');
             }
@@ -282,7 +308,7 @@ const PaymentReceived = ({
                         </svg>
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold">Receive Payment</h2>
+                        <h2 className="text-xl font-bold">Receive Payment from Client</h2>
                         <p className="text-indigo-200 text-sm mt-0.5">{appSettings.company_name}</p>
                     </div>
                 </div>
@@ -299,7 +325,25 @@ const PaymentReceived = ({
             {/* Scrollable Content Area */}
             <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-gradient-to-b from-slate-50 to-white">
                 <form onSubmit={handleSubmit}>
-                    {/* Client Selection and Date Section - Compact */}
+                    {/* Client Info Section - Similar to ReceiveModal */}
+                    {selectedClient && clientSummary && (
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs text-blue-600 font-medium">Client</p>
+                                    <p className="text-lg font-semibold text-slate-800">{selectedClient.name}</p>
+                                    <p className="text-xs text-slate-500">Username: {selectedClient.username}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs text-blue-600 font-medium">Balance Summary</p>
+                                    <p className="text-sm text-green-600">Credit: ₹{formatCurrency(clientSummary?.totalCredit || 0)}</p>
+                                    <p className="text-sm text-red-600">Debit: ₹{formatCurrency(clientSummary?.totalDebit || 0)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Client Selection and Date Section */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                         {/* Client Selection */}
                         <div>
@@ -438,7 +482,7 @@ const PaymentReceived = ({
                         </div>
                     </div>
 
-                    {/* Amount and Bank Section - Compact */}
+                    {/* Amount and Bank Section */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                         {/* Amount */}
                         <div>
@@ -460,14 +504,14 @@ const PaymentReceived = ({
                                     onChange={handleInputChange}
                                     placeholder="Enter amount"
                                     required
-                                    min="1"
+                                    min="0.01"
                                     step="0.01"
                                 />
                             </div>
                         </div>
 
                         {/* Bank Selection */}
-                        <div className="space-y-3">
+                        <div>
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="block text-sm font-semibold text-gray-700">
                                     Bank Account <span className="text-red-500">*</span>
@@ -499,38 +543,10 @@ const PaymentReceived = ({
                                     </svg>
                                 </div>
                             </div>
-                            {/* Selected Bank Details */}
-                            {formData.bank_id && getSelectedBank() && (
-                                <div className="mt-3 p-4 rounded-xl bg-white border-2 border-indigo-100 shadow-sm">
-                                    <div className="flex items-start gap-4">
-                                        <div className="p-2.5 bg-indigo-100 rounded-xl shrink-0">
-                                            <FiCreditCard className="w-5 h-5 text-indigo-600" />
-                                        </div>
-                                        <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                            <div>
-                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Bank</p>
-                                                <p className="text-sm font-semibold text-gray-900 mt-0.5">{getSelectedBank().bank}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Account No</p>
-                                                <p className="text-sm font-mono font-semibold text-gray-900 mt-0.5">{getSelectedBank().account_no}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">IFSC Code</p>
-                                                <p className="text-sm font-mono font-semibold text-gray-900 mt-0.5">{getSelectedBank().ifsc || 'N/A'}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</p>
-                                                <p className="text-sm font-bold text-emerald-600 mt-0.5">₹{formatCurrency(getSelectedBank().balance || 0)}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
 
-                    {/* Transaction Ref ID and Description Section - Compact */}
+                    {/* Transaction Ref ID and Description Section */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                         {/* Transaction Ref ID */}
                         <div>
@@ -580,43 +596,30 @@ const PaymentReceived = ({
                         </div>
                     </div>
 
-                    {/* Summary Section - Compact */}
-                    <div className="bg-gradient-to-br from-indigo-50 to-white p-4 rounded-lg border border-indigo-100 shadow-sm">
-                        <div className="flex items-center mb-3">
-                            <div className="p-1.5 bg-indigo-600 text-white rounded mr-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                </svg>
-                            </div>
-                            <h4 className="text-sm font-bold text-gray-900">Payment Summary</h4>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <div className="text-center p-2 bg-white rounded border border-gray-200">
-                                <div className="text-xs text-gray-600 mb-1">Client</div>
-                                <div className="font-semibold text-gray-900 text-sm truncate">
-                                    {getSelectedClient()?.name || 'Not selected'}
+                    {/* Transaction Summary - Similar to ReceiveModal */}
+                    {selectedClient && getSelectedBank() && formData.amount && (
+                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
+                            <p className="text-xs text-slate-600 mb-2 font-medium">Transaction Summary</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="font-medium text-slate-600">Receiving from:</span>
+                                    <span className="text-blue-600 font-semibold">{selectedClient.name}</span>
                                 </div>
-                            </div>
-                            <div className="text-center p-2 bg-white rounded border border-gray-200">
-                                <div className="text-xs text-gray-600 mb-1">Amount</div>
-                                <div className="font-semibold text-green-600 text-sm">
-                                    {formData.amount ? formatCurrency(formData.amount) : '₹0'}
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="font-medium text-slate-600">To Bank:</span>
+                                    <span className="text-blue-600 font-semibold">{getSelectedBank()?.bank}</span>
                                 </div>
-                            </div>
-                            <div className="text-center p-2 bg-white rounded border border-gray-200">
-                                <div className="text-xs text-gray-600 mb-1">Bank</div>
-                                <div className="font-semibold text-gray-900 text-sm truncate">
-                                    {getSelectedBank()?.bank || 'Not selected'}
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="font-medium text-slate-600">Amount:</span>
+                                    <span className="text-green-600 font-bold">{formatCurrency(formData.amount)}</span>
                                 </div>
-                            </div>
-                            <div className="text-center p-2 bg-white rounded border border-gray-200">
-                                <div className="text-xs text-gray-600 mb-1">Ref ID</div>
-                                <div className="font-semibold text-blue-600 text-sm truncate">
-                                    {formData.transaction_ref_id || 'N/A'}
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="font-medium text-slate-600">Date:</span>
+                                    <span className="text-slate-700">{formData.payment_date}</span>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </form>
             </div>
 
