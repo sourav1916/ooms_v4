@@ -26,20 +26,14 @@ const PurchaseForm = ({
         bill_number: `BILL-${Date.now().toString().slice(-6)}`,
         items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
         subtotal: 0,
-        discount: 0,
-        discount_type: 'percentage',
         sgst_rate: appSettings.gst_applicable ? appSettings.default_gst_rate / 2 : 0,
         cgst_rate: appSettings.gst_applicable ? appSettings.default_gst_rate / 2 : 0,
         sgst_amount: 0,
         cgst_amount: 0,
-        round_off: 0,
         grand_total: 0,
         notes: '',
         remark: '',
-        tax_rate: appSettings.default_gst_rate,
-        additional_charge: 0,
-        apply_round_off: false,
-        delivery_date: ''
+        tax_rate: appSettings.default_gst_rate
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -190,20 +184,14 @@ const PurchaseForm = ({
                 bill_number: `BILL-${Date.now().toString().slice(-6)}`,
                 items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
                 subtotal: 0,
-                discount: 0,
-                discount_type: 'percentage',
                 sgst_rate: appSettings.gst_applicable ? appSettings.default_gst_rate / 2 : 0,
                 cgst_rate: appSettings.gst_applicable ? appSettings.default_gst_rate / 2 : 0,
                 sgst_amount: 0,
                 cgst_amount: 0,
-                round_off: 0,
                 grand_total: 0,
                 notes: '',
                 remark: '',
-                tax_rate: appSettings.default_gst_rate,
-                additional_charge: 0,
-                apply_round_off: false,
-                delivery_date: ''
+                tax_rate: appSettings.default_gst_rate
             });
             setUserSearchTerm('');
             setShowPartyDropdown(false);
@@ -262,7 +250,7 @@ const PurchaseForm = ({
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: name === 'additional_charge' || name === 'discount' ? parseFloat(value) || 0 : value
+            [name]: value
         }));
     };
 
@@ -316,37 +304,19 @@ const PurchaseForm = ({
             subtotal += Number(item.amount) || 0;
         });
 
-        let discountAmount = 0;
-        if (formData.discount > 0) {
-            if (formData.discount_type === 'percentage') {
-                discountAmount = subtotal * (Number(formData.discount) / 100);
-            } else {
-                discountAmount = Number(formData.discount) || 0;
-            }
-        }
-
-        const amountAfterDiscount = Math.max(0, subtotal - discountAmount);
+        const sgst_amount = subtotal * (Number(formData.sgst_rate) / 100);
+        const cgst_amount = subtotal * (Number(formData.cgst_rate) / 100);
         
-        const sgst_amount = amountAfterDiscount * (Number(formData.sgst_rate) / 100);
-        const cgst_amount = amountAfterDiscount * (Number(formData.cgst_rate) / 100);
-        
-        let grand_total = amountAfterDiscount + sgst_amount + cgst_amount + (Number(formData.additional_charge) || 0);
-        
-        let round_off = 0;
-        if (formData.apply_round_off) {
-            round_off = Math.round(grand_total) - grand_total;
-            grand_total = Math.round(grand_total);
-        }
+        const grand_total = subtotal + sgst_amount + cgst_amount;
 
         setFormData(prev => ({
             ...prev,
             subtotal,
             sgst_amount,
             cgst_amount,
-            round_off,
             grand_total
         }));
-    }, [formData.items, formData.discount, formData.discount_type, formData.sgst_rate, formData.cgst_rate, formData.additional_charge, formData.apply_round_off]);
+    }, [formData.items, formData.sgst_rate, formData.cgst_rate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -512,9 +482,9 @@ const PurchaseForm = ({
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-gray-50">
                 <form onSubmit={handleSubmit}>
                     {/* Party Selection and Date Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                         {/* Party Selection */}
-                        <div className="lg:col-span-3">
+                        <div className="lg:col-span-1">
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="block text-sm font-semibold text-gray-700">
                                     Select {purchaseType === 'user' ? 'User/Client' : 'Bank'} <span className="text-red-500">*</span>
@@ -691,30 +661,6 @@ const PurchaseForm = ({
                                 />
                             </div>
                         </div>
-
-                        {/* Delivery Date */}
-                        <div className="lg:col-span-1">
-                            <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-sm font-semibold text-gray-700">
-                                    Delivery Date
-                                </label>
-                                <span className="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">Optional</span>
-                            </div>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="date"
-                                    className="w-full pl-9 pr-3 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-400 transition-all duration-200 shadow-sm bg-white text-sm"
-                                    name="delivery_date"
-                                    value={formData.delivery_date}
-                                    onChange={handleInputChange}
-                                />
-                            </div>
-                        </div>
                     </div>
 
                     {/* Services Section */}
@@ -790,67 +736,25 @@ const PurchaseForm = ({
                                                     />
                                                 </div>
                                             </td>
-                                                <td className="px-3 py-2.5 text-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeItem(index)}
-                                                        disabled={formData.items.length <= 1}
-                                                        className="inline-flex items-center px-2 py-1 bg-red-50 text-red-600 rounded border border-red-200 text-xs font-medium hover:bg-red-100 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        <IoTrash className="w-3 h-3" />
-                                                    </button>
-                                                </td>
-                                            </tr>
+                                            <td className="px-3 py-2.5 text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeItem(index)}
+                                                    disabled={formData.items.length <= 1}
+                                                    className="inline-flex items-center px-2 py-1 bg-red-50 text-red-600 rounded border border-red-200 text-xs font-medium hover:bg-red-100 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <IoTrash className="w-3 h-3" />
+                                                </button>
+                                            </td>
+                                        </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
-                    {/* Additional Settings Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                            <div className="flex items-center mb-3">
-                                <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded mr-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <h4 className="text-sm font-bold text-gray-900">Additional Settings</h4>
-                            </div>
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Additional Charge (₹)</label>
-                                    <div className="relative">
-                                        <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₹</span>
-                                        <input
-                                            type="number"
-                                            className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                                            name="additional_charge"
-                                            value={formData.additional_charge}
-                                            onChange={handleInputChange}
-                                            min="0"
-                                            step="1"
-                                        />
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-1">Additional charge will be added after GST calculation</p>
-                                </div>
-                                <div className="flex items-center">
-                                    <input
-                                        type="checkbox"
-                                        id="apply_round_off"
-                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                                        checked={formData.apply_round_off}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, apply_round_off: e.target.checked }))}
-                                    />
-                                    <label htmlFor="apply_round_off" className="ml-2 text-xs font-medium text-gray-700">
-                                        Apply Round Off
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Notes Section */}
+                    {/* Notes Section */}
+                    <div className="mb-6">
                         <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
                             <div className="flex items-center mb-3">
                                 <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded mr-2">
@@ -870,116 +774,39 @@ const PurchaseForm = ({
                         </div>
                     </div>
 
-                    {/* Discount and Totals Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        {/* Discount Section */}
-                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                            <div className="flex items-center mb-3">
-                                <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded mr-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <h4 className="text-sm font-bold text-gray-900">Discount</h4>
+                    {/* Totals Section */}
+                    <div className="bg-gradient-to-br from-indigo-50 to-white p-4 rounded-lg border border-indigo-100 shadow-sm">
+                        <div className="flex items-center mb-4">
+                            <div className="p-1.5 bg-indigo-600 text-white rounded mr-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
                             </div>
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Discount Type</label>
-                                    <select
-                                        className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
-                                        name="discount_type"
-                                        value={formData.discount_type}
-                                        onChange={handleInputChange}
-                                    >
-                                        <option value="percentage">Percentage (%)</option>
-                                        <option value="flat">Flat Amount (₹)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                                        {formData.discount_type === 'percentage' ? 'Percentage (%)' : 'Amount (₹)'}
-                                    </label>
-                                    <div className="relative">
-                                        {formData.discount_type === 'percentage' ? (
-                                            <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
-                                        ) : (
-                                            <span className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₹</span>
-                                        )}
-                                        <input
-                                            type="number"
-                                            className="w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-150"
-                                            name="discount"
-                                            value={formData.discount}
-                                            onChange={handleInputChange}
-                                            min="0"
-                                            step={formData.discount_type === 'percentage' ? '0.1' : '1'}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                            <h4 className="text-sm font-bold text-gray-900">Summary</h4>
                         </div>
-
-                        {/* Totals Section */}
-                        <div className="lg:col-span-2 bg-gradient-to-br from-indigo-50 to-white p-4 rounded-lg border border-indigo-100 shadow-sm">
-                            <div className="flex items-center mb-4">
-                                <div className="p-1.5 bg-indigo-600 text-white rounded mr-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                                <h4 className="text-sm font-bold text-gray-900">Summary</h4>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between items-center py-1">
+                                <span className="text-gray-600">Subtotal:</span>
+                                <span className="font-semibold text-gray-900">{formatCurrency(formData.subtotal)}</span>
                             </div>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex justify-between items-center py-1">
-                                    <span className="text-gray-600">Subtotal:</span>
-                                    <span className="font-semibold text-gray-900">{formatCurrency(formData.subtotal)}</span>
-                                </div>
 
-                                {formData.discount > 0 && (
-                                    <div className="flex justify-between items-center py-1 text-red-600">
-                                        <span>Discount:</span>
-                                        <span className="font-semibold">-{formatCurrency(
-                                            formData.discount_type === 'percentage'
-                                                ? formData.subtotal * (formData.discount / 100)
-                                                : Number(formData.discount)
-                                        )}</span>
-                                    </div>
-                                )}
-
-                                {appSettings.gst_applicable && (
-                                    <>
-                                        <div className="flex justify-between items-center py-1">
-                                            <span className="text-gray-600">SGST ({formData.sgst_rate}%):</span>
-                                            <span className="font-semibold text-gray-900">{formatCurrency(formData.sgst_amount)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center py-1">
-                                            <span className="text-gray-600">CGST ({formData.cgst_rate}%):</span>
-                                            <span className="font-semibold text-gray-900">{formatCurrency(formData.cgst_amount)}</span>
-                                        </div>
-                                    </>
-                                )}
-
-                                {formData.additional_charge > 0 && (
+                            {appSettings.gst_applicable && (
+                                <>
                                     <div className="flex justify-between items-center py-1">
-                                        <span className="text-gray-600">Additional Charge:</span>
-                                        <span className="font-semibold text-gray-900">{formatCurrency(formData.additional_charge)}</span>
+                                        <span className="text-gray-600">SGST ({formData.sgst_rate}%):</span>
+                                        <span className="font-semibold text-gray-900">{formatCurrency(formData.sgst_amount)}</span>
                                     </div>
-                                )}
-
-                                {Math.abs(formData.round_off) > 0.01 && (
                                     <div className="flex justify-between items-center py-1">
-                                        <span className="text-gray-600">Round Off:</span>
-                                        <span className={`font-semibold ${formData.round_off > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            {formatCurrency(formData.round_off)}
-                                        </span>
+                                        <span className="text-gray-600">CGST ({formData.cgst_rate}%):</span>
+                                        <span className="font-semibold text-gray-900">{formatCurrency(formData.cgst_amount)}</span>
                                     </div>
-                                )}
+                                </>
+                            )}
 
-                                <div className="pt-2 mt-1 border-t border-gray-200">
-                                    <div className="flex justify-between items-center font-bold text-gray-900 bg-indigo-50 px-3 py-2 rounded">
-                                        <span>Total Payable:</span>
-                                        <span className="text-indigo-700 text-base">{formatCurrency(formData.grand_total)}</span>
-                                    </div>
+                            <div className="pt-2 mt-1 border-t border-gray-200">
+                                <div className="flex justify-between items-center font-bold text-gray-900 bg-indigo-50 px-3 py-2 rounded">
+                                    <span>Total Payable:</span>
+                                    <span className="text-indigo-700 text-base">{formatCurrency(formData.grand_total)}</span>
                                 </div>
                             </div>
                         </div>
