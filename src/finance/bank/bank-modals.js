@@ -1366,8 +1366,6 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
         purchase_date: new Date().toISOString().split('T')[0],
         items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
         subtotal: 0,
-        discount: 0,
-        discount_type: 'percentage',
         sgst_rate: 9,
         cgst_rate: 9,
         sgst_amount: 0,
@@ -1375,10 +1373,7 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
         round_off: 0,
         grand_total: 0,
         notes: '',
-        tax_rate: 18,
-        additional_charge: 0,
-        apply_round_off: false,
-        vendor: ''
+        tax_rate: 18
     });
 
     const [serviceOptions, setServiceOptions] = useState([]);
@@ -1423,8 +1418,6 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
             purchase_date: new Date().toISOString().split('T')[0],
             items: [{ service_id: '', description: '', price: '', amount: 0, remark: '' }],
             subtotal: 0,
-            discount: 0,
-            discount_type: 'percentage',
             sgst_rate: 9,
             cgst_rate: 9,
             sgst_amount: 0,
@@ -1432,10 +1425,7 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
             round_off: 0,
             grand_total: 0,
             notes: '',
-            tax_rate: 18,
-            additional_charge: 0,
-            apply_round_off: false,
-            vendor: ''
+            tax_rate: 18
         });
     };
 
@@ -1462,7 +1452,7 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: name === 'additional_charge' || name === 'discount' ? parseFloat(value) || 0 : value
+            [name]: value
         }));
     };
 
@@ -1510,27 +1500,12 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
             subtotal += Number(item.amount) || 0;
         });
 
-        let discountAmount = 0;
-        if (formData.discount > 0) {
-            if (formData.discount_type === 'percentage') {
-                discountAmount = subtotal * (Number(formData.discount) / 100);
-            } else {
-                discountAmount = Number(formData.discount) || 0;
-            }
-        }
-
-        const amountAfterDiscount = Math.max(0, subtotal - discountAmount);
+        const sgst_amount = subtotal * (Number(formData.sgst_rate) / 100);
+        const cgst_amount = subtotal * (Number(formData.cgst_rate) / 100);
         
-        const sgst_amount = amountAfterDiscount * (Number(formData.sgst_rate) / 100);
-        const cgst_amount = amountAfterDiscount * (Number(formData.cgst_rate) / 100);
-        
-        let grand_total = amountAfterDiscount + sgst_amount + cgst_amount + (Number(formData.additional_charge) || 0);
+        let grand_total = subtotal + sgst_amount + cgst_amount;
         
         let round_off = 0;
-        if (formData.apply_round_off) {
-            round_off = Math.round(grand_total) - grand_total;
-            grand_total = Math.round(grand_total);
-        }
 
         setFormData(prev => ({
             ...prev,
@@ -1540,7 +1515,7 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
             round_off,
             grand_total
         }));
-    }, [formData.items, formData.discount, formData.discount_type, formData.sgst_rate, formData.cgst_rate, formData.additional_charge, formData.apply_round_off]);
+    }, [formData.items, formData.sgst_rate, formData.cgst_rate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -1550,11 +1525,6 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
         const hasValidItems = formData.items.some(item => item.service_id && item.price > 0);
         if (!hasValidItems) {
             alert('Please add at least one valid service item');
-            return;
-        }
-
-        if (!formData.vendor) {
-            alert('Please select a vendor');
             return;
         }
 
@@ -1657,27 +1627,6 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
                                 </div>
                             </div>
 
-                            {/* Vendor Selection */}
-                            <div className="mb-5">
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                    Select Vendor <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    name="vendor"
-                                    value={formData.vendor}
-                                    onChange={handleInputChange}
-                                    required
-                                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option value="">Select Vendor</option>
-                                    <option value="Vendor 1">Vendor 1</option>
-                                    <option value="Vendor 2">Vendor 2</option>
-                                    <option value="Vendor 3">Vendor 3</option>
-                                    <option value="Vendor 4">Vendor 4</option>
-                                    <option value="Vendor 5">Vendor 5</option>
-                                </select>
-                            </div>
-
                             {/* Date */}
                             <div className="mb-5">
                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -1773,56 +1722,6 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
                                 </div>
                             </div>
 
-                            {/* Additional Settings */}
-                            <div className="grid grid-cols-2 gap-4 mb-5">
-                                <div className="bg-white p-3 rounded-lg border">
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Additional Charge (₹)</label>
-                                    <input
-                                        type="number"
-                                        name="additional_charge"
-                                        value={formData.additional_charge}
-                                        onChange={handleInputChange}
-                                        className="w-full px-2 py-1 border rounded text-sm"
-                                        min="0"
-                                    />
-                                </div>
-                                <div className="bg-white p-3 rounded-lg border flex items-center">
-                                    <input
-                                        type="checkbox"
-                                        id="round_off"
-                                        checked={formData.apply_round_off}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, apply_round_off: e.target.checked }))}
-                                        className="mr-2"
-                                    />
-                                    <label htmlFor="round_off" className="text-xs font-medium text-gray-700">Apply Round Off</label>
-                                </div>
-                            </div>
-
-                            {/* Discount Section */}
-                            <div className="bg-white p-4 rounded-lg border mb-5">
-                                <h4 className="text-sm font-bold mb-3">Discount</h4>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <select
-                                        name="discount_type"
-                                        value={formData.discount_type}
-                                        onChange={handleInputChange}
-                                        className="px-2 py-1 border rounded text-sm"
-                                    >
-                                        <option value="percentage">Percentage (%)</option>
-                                        <option value="flat">Flat Amount (₹)</option>
-                                    </select>
-                                    <input
-                                        type="number"
-                                        name="discount"
-                                        value={formData.discount}
-                                        onChange={handleInputChange}
-                                        placeholder={formData.discount_type === 'percentage' ? 'Percentage' : 'Amount'}
-                                        className="px-2 py-1 border rounded text-sm"
-                                        min="0"
-                                    />
-                                </div>
-                            </div>
-
                             {/* Notes */}
                             <div className="mb-5">
                                 <textarea
@@ -1842,14 +1741,6 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
                                         <span>Subtotal:</span>
                                         <span className="font-semibold">{formatCurrencyLocal(formData.subtotal)}</span>
                                     </div>
-                                    {formData.discount > 0 && (
-                                        <div className="flex justify-between text-red-600">
-                                            <span>Discount:</span>
-                                            <span>-{formatCurrencyLocal(formData.discount_type === 'percentage' 
-                                                ? formData.subtotal * (formData.discount / 100) 
-                                                : formData.discount)}</span>
-                                        </div>
-                                    )}
                                     <div className="flex justify-between">
                                         <span>SGST ({formData.sgst_rate}%):</span>
                                         <span>{formatCurrencyLocal(formData.sgst_amount)}</span>
@@ -1858,12 +1749,6 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
                                         <span>CGST ({formData.cgst_rate}%):</span>
                                         <span>{formatCurrencyLocal(formData.cgst_amount)}</span>
                                     </div>
-                                    {formData.additional_charge > 0 && (
-                                        <div className="flex justify-between">
-                                            <span>Additional Charge:</span>
-                                            <span>{formatCurrencyLocal(formData.additional_charge)}</span>
-                                        </div>
-                                    )}
                                     <div className="pt-2 border-t">
                                         <div className="flex justify-between font-bold">
                                             <span>Total Payable:</span>
@@ -1893,7 +1778,7 @@ export const PurchaseModal = ({ isOpen, onClose, bankDetails, bankId, onSubmit, 
                             <button
                                 type="submit"
                                 onClick={handleSubmit}
-                                disabled={isSubmitting || formData.items.every(item => !item.service_id) || !formData.vendor}
+                                disabled={isSubmitting || formData.items.every(item => !item.service_id)}
                                 className="flex-1 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 transition-all"
                             >
                                 {isSubmitting ? 'Creating...' : 'Create Purchase Bill'}
