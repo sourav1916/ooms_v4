@@ -26,6 +26,7 @@ import {
   FiMic,
   FiMinimize2,
   FiPaperclip,
+  FiPhone,
   FiPause,
   FiPlay,
   FiRefreshCw,
@@ -48,6 +49,7 @@ import OneChattingMediaModal from "../../../components/Modals/OneChattingMediaMo
 import OneChattingTemplateModal from "../../../components/Modals/OneChattingTemplateModal";
 import OneChattingTemplatePreview from "../../../components/WhatsApp/OneChattingTemplatePreview";
 import { whatsappApi } from "../../../services/whatsappApi";
+import { voipApi } from "../../../services/voipApi";
 import {
   buildReplyPayload,
   enrichSentMessage,
@@ -689,6 +691,7 @@ const OneChattingLiveChat = ({
   const [assignPermission, setAssignPermission] = useState(null);
   const [assignTeam, setAssignTeam] = useState([]);
   const [assignLoading, setAssignLoading] = useState(false);
+  const [callLoading, setCallLoading] = useState(false);
   const [assignPermissionLoading, setAssignPermissionLoading] =
     useState(false);
   const [assignMenuOpen, setAssignMenuOpen] = useState(false);
@@ -1418,6 +1421,24 @@ const OneChattingLiveChat = ({
 
   const handleUnassign = () => {
     handleChatAssign("unassign");
+  };
+
+  const handleCall = async () => {
+    const number = normalizeRecipientNumber(selectedContact?.number);
+    if (!number || callLoading) return;
+    setCallLoading(true);
+    try {
+      const response = await voipApi.requestCall(number);
+      if (response?.success) {
+        toast.success("Call requested");
+      } else {
+        toast.error(response?.message || "Unable to request call");
+      }
+    } catch (error) {
+      toast.error(extractApiError(error, "Unable to request call"));
+    } finally {
+      setCallLoading(false);
+    }
   };
 
   const handleToggleFullScreen = () => {
@@ -2464,6 +2485,17 @@ const OneChattingLiveChat = ({
                         </div>
                       ) : null}
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={handleCall}
+                      disabled={callLoading}
+                      className="p-1.5 rounded-lg text-green-700 hover:bg-green-100 transition-colors disabled:opacity-50 shrink-0"
+                      title="Call contact"
+                      aria-label="Call contact"
+                    >
+                      <FiPhone className={`w-4 h-4 ${callLoading ? "animate-pulse" : ""}`} />
+                    </button>
 
                     <button
                       type="button"
