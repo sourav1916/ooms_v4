@@ -441,8 +441,27 @@ export const Header = ({ mobileMenuOpen, setMobileMenuOpen, isMinimized, setIsMi
     setMobileMenuOpen(true);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setProfileDropdownOpen(false);
+
+    const token = localStorage.getItem('user_token');
+    const username = localStorage.getItem('user_username');
+
+    try {
+      if (token && username) {
+        await fetch(`${API_BASE_URL}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            token,
+            username,
+          },
+        });
+      }
+    } catch (error) {
+      console.warn('Web logout API request failed; continuing with local logout.', error);
+    }
+
     localStorage.removeItem('user_token');
     localStorage.removeItem('user_username');
     localStorage.removeItem('user_email');
