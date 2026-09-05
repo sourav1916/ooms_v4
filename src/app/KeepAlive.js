@@ -59,10 +59,44 @@ export function isKeepAlivePath(pathname = '') {
   );
 }
 
+/**
+ * Profile pages use tab segments in the URL but one mounted shell per entity.
+ * Without this, each tab path is a separate keep-alive entry → full remount + skeleton.
+ */
+function normalizeKeepAlivePathname(pathname = '') {
+  const path = String(pathname || '').replace(/\/+$/, '') || '/';
+
+  let match = path.match(/^\/task\/profile\/([^/]+)(?:\/[^/]+)?$/);
+  if (match) return `/task/profile/${match[1]}`;
+
+  match = path.match(/^\/task\/([^/]+)$/);
+  if (match && match[1] !== 'detailed') {
+    return `/task/profile/${match[1]}`;
+  }
+
+  match = path.match(/^\/client\/profile\/([^/]+)(?:\/[^/]+)?$/);
+  if (match) return `/client/profile/${match[1]}`;
+
+  return path;
+}
+
+/** Transient query params that must not create a separate keep-alive cache entry. */
+const KEEP_ALIVE_IGNORE_SEARCH_PARAMS = new Set(["duplicate"]);
+
+function normalizeKeepAliveSearch(search = "") {
+  const raw = String(search || "").trim();
+  if (!raw) return "";
+
+  const params = new URLSearchParams(raw.startsWith("?") ? raw.slice(1) : raw);
+  KEEP_ALIVE_IGNORE_SEARCH_PARAMS.forEach((key) => params.delete(key));
+  const normalized = params.toString();
+  return normalized ? `?${normalized}` : "";
+}
+
 export function getKeepAliveKey(location) {
   if (!location) return '';
-  const path = String(location.pathname || '').replace(/\/+$/, '') || '/';
-  return `${path}${location.search || ''}`;
+  const path = normalizeKeepAlivePathname(location.pathname);
+  return `${path}${normalizeKeepAliveSearch(location.search)}`;
 }
 
 let version = 0;
