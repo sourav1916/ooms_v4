@@ -26,6 +26,7 @@ import {
     getTaskCompleteDateValue,
     isTaskCompleteStatus,
 } from '../utils/taskCompleteDate';
+import StaffColumnCell from '../TaskComponent/StaffColumnCell';
 
 /** Matches `task-display` status filter options */
 const STATUS_OPTIONS = [
@@ -40,6 +41,14 @@ const DEFAULT_SELECTED_STATUSES = [
     'in process',
     'pending from client',
     'pending from department',
+];
+
+/** CA approval filter (CA profile tasks tab) — matches tasks.ca_approval */
+const CA_APPROVAL_OPTIONS = [
+    { value: 'all', label: 'All CA Approval' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'sent', label: 'Sent' },
+    { value: 'complete', label: 'Complete' },
 ];
 
 const getLoggedInUsername = () =>
@@ -226,6 +235,7 @@ const TaskTab = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [statusFilterValues, setStatusFilterValues] = useState(DEFAULT_SELECTED_STATUSES);
+    const [caApprovalFilter, setCaApprovalFilter] = useState('all');
     const [selectedFirmId, setSelectedFirmId] = useState(null);
     const [firmOptions, setFirmOptions] = useState([]);
     const [pagination, setPagination] = useState({ page_no: 1, limit: 20, total: 0 });
@@ -301,7 +311,7 @@ const TaskTab = ({
         setPagination((prev) => (prev.page_no !== 1 ? { ...prev, page_no: 1 } : prev));
         setSelectedTasks(new Set());
         setSelectAll(false);
-    }, [debouncedSearch, statusFilterValues, selectedFirmId]);
+    }, [debouncedSearch, statusFilterValues, caApprovalFilter, selectedFirmId]);
 
     useEffect(() => {
         if (isProfileScopedMode || !clientUsernameTrimmed) {
@@ -493,6 +503,9 @@ const TaskTab = ({
             queryParams.append('firm_id', selectedFirmId || '');
             queryParams.append('service_id', '');
             statusFilterValues.forEach((status) => queryParams.append('status', status));
+            if (caApprovalFilter && caApprovalFilter !== 'all') {
+                queryParams.append('ca_approval', caApprovalFilter);
+            }
 
             const response = await fetch(`${API_BASE_URL}/task/list?${queryParams.toString()}`, {
                 method: 'GET',
@@ -534,6 +547,7 @@ const TaskTab = ({
         pagination.limit,
         debouncedSearch,
         statusFilterValues,
+        caApprovalFilter,
         selectedFirmId,
     ]);
 
@@ -969,108 +983,11 @@ const TaskTab = ({
                     );
                 }
                 case 'staffs': {
-                    const staffs = Array.isArray(task.staffs) ? task.staffs : [];
-                    const caName = task.has_ca && task.ca
-                        ? safeGetString(task.ca.name || task.ca.username)
-                        : null;
-                    const agentName = task.has_agent && task.agent
-                        ? safeGetString(task.agent.name || task.agent.username)
-                        : null;
-
-                    const renderStaffAvatars = () => {
-                        if (staffs.length === 1) {
-                            const staffName = safeGetString(staffs[0].name || staffs[0].profile?.name || 'S');
-                            return (
-                                <button
-                                    type="button"
-                                    onClick={() => openUsers(staffs, task.service?.name)}
-                                    className="flex items-center justify-start cursor-pointer hover:opacity-80 transition-opacity"
-                                    title={`Click to view ${staffName}'s details`}
-                                >
-                                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow-sm">
-                                        {staffName.charAt(0)}
-                                    </div>
-                                </button>
-                            );
-                        }
-                        if (staffs.length === 2) {
-                            return (
-                                <div className="flex -space-x-2">
-                                    {staffs.map((staff, staffIndex) => {
-                                        const staffName = safeGetString(staff.name || staff.profile?.name || 'S');
-                                        return (
-                                            <button
-                                                type="button"
-                                                key={staff.assign_id || staff.username || staffIndex}
-                                                onClick={() => openUsers(staffs, task.service?.name)}
-                                                className="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                                                title={`Click to view ${staffName}'s details`}
-                                            >
-                                                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow-sm">
-                                                    {staffName.charAt(0)}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            );
-                        }
-                        if (staffs.length > 2) {
-                            const showMoreCount = staffs.length - 2;
-                            return (
-                                <div className="flex -space-x-2">
-                                    {staffs.slice(0, 2).map((staff, staffIndex) => {
-                                        const staffName = safeGetString(staff.name || staff.profile?.name || 'S');
-                                        return (
-                                            <button
-                                                type="button"
-                                                key={staff.assign_id || staff.username || staffIndex}
-                                                onClick={() => openUsers(staffs, task.service?.name)}
-                                                className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow-sm hover:opacity-80 transition-opacity"
-                                                title={`Click to view all ${staffs.length} staff members`}
-                                            >
-                                                {staffName.charAt(0)}
-                                            </button>
-                                        );
-                                    })}
-                                    <button
-                                        type="button"
-                                        onClick={() => openUsers(staffs, task.service?.name)}
-                                        className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow-sm"
-                                        title={`Click to view all ${staffs.length} staff members`}
-                                    >
-                                        +{showMoreCount}
-                                    </button>
-                                </div>
-                            );
-                        }
-                        return null;
-                    };
-
-                    if (staffs.length === 0 && !caName && !agentName) {
-                        return <span className="text-gray-400 text-sm">-</span>;
-                    }
-
                     return (
-                        <div className="flex flex-col items-start gap-1.5 min-w-0 max-w-full">
-                            {renderStaffAvatars()}
-                            {caName && (
-                                <span
-                                    className="text-[10px] font-semibold text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded truncate max-w-full"
-                                    title={`CA: ${caName}`}
-                                >
-                                    CA: {caName}
-                                </span>
-                            )}
-                            {agentName && (
-                                <span
-                                    className="text-[10px] font-semibold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded truncate max-w-full"
-                                    title={`Agent: ${agentName}`}
-                                >
-                                    Agent: {agentName}
-                                </span>
-                            )}
-                        </div>
+                        <StaffColumnCell
+                            task={task}
+                            onOpenUsers={openUsers}
+                        />
                     );
                 }
                 case 'status': {
@@ -1299,6 +1216,18 @@ const TaskTab = ({
                         valueKey="value"
                         labelKey="label"
                         className="w-full min-w-0"
+                    />
+                </div>
+                <div className="w-full md:min-w-0 md:w-52 min-w-0 flex items-center">
+                    <CustomSelect
+                        options={CA_APPROVAL_OPTIONS}
+                        value={optionByValue(CA_APPROVAL_OPTIONS, caApprovalFilter)}
+                        onChange={(opt) => setCaApprovalFilter(opt?.value || 'all')}
+                        getOptionLabel={(opt) => opt.label}
+                        getOptionValue={(opt) => opt.value}
+                        placeholder="CA Approval"
+                        searchPlaceholder="Search CA approval..."
+                        isClearable={false}
                     />
                 </div>
             </div>

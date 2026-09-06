@@ -30,11 +30,22 @@ import {
     getTaskCompleteDateValue,
     isTaskCompleteStatus,
 } from '../utils/taskCompleteDate';
+import { AssignedCaBlock } from '../TaskComponent/StaffColumnCell';
+import CustomSelect from '../components/CustomSelect';
+import { optionByValue } from '../utils/customSelectHelpers';
+
+const CA_APPROVAL_OPTIONS = [
+    { value: 'all', label: 'All CA Approval' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'sent', label: 'Sent' },
+    { value: 'complete', label: 'Complete' },
+];
 
 const TaskTab = ({ username, variants }) => {
     const [viewMode, setViewMode] = useState('table'); // 'table', 'list', 'grid'
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [caApprovalFilter, setCaApprovalFilter] = useState('all');
     const [loading, setLoading] = useState(false);
     const [staffTasks, setStaffTasks] = useState([]);
     const [staffInfo, setStaffInfo] = useState(null);
@@ -51,14 +62,18 @@ const TaskTab = ({ username, variants }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     // Fetch tasks from API
-    const fetchTasks = async (status = filterStatus) => {
+    const fetchTasks = async (status = filterStatus, caApproval = caApprovalFilter) => {
         if (!username) return;
 
         setLoading(true);
         try {
             const statusParam = status === 'all' ? '' : `&status=${encodeURIComponent(status)}`;
+            const caApprovalParam =
+                caApproval && caApproval !== 'all'
+                    ? `&ca_approval=${encodeURIComponent(caApproval)}`
+                    : '';
             const searchParam = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : '';
-            const url = `${API_BASE_URL}/report/staff-tasks?staff_username=${username}${statusParam}${searchParam}`;
+            const url = `${API_BASE_URL}/report/staff-tasks?staff_username=${username}${statusParam}${caApprovalParam}${searchParam}`;
 
             const response = await fetch(url, {
                 headers: getHeaders()
@@ -84,15 +99,15 @@ const TaskTab = ({ username, variants }) => {
     // Initial fetch and when dependencies change
     useEffect(() => {
         if (username) {
-            fetchTasks(filterStatus);
+            fetchTasks(filterStatus, caApprovalFilter);
         }
-    }, [username, filterStatus]);
+    }, [username, filterStatus, caApprovalFilter]);
 
     // Handle search with debounce
     useEffect(() => {
         const debounceTimer = setTimeout(() => {
             if (username) {
-                fetchTasks(filterStatus);
+                fetchTasks(filterStatus, caApprovalFilter);
             }
         }, 500);
 
@@ -239,6 +254,7 @@ const TaskTab = ({ username, variants }) => {
                         {task.firm_name}
                     </div>
                 ) : null}
+                <AssignedCaBlock task={task} />
             </div>
         );
     };
@@ -392,6 +408,7 @@ const TaskTab = ({ username, variants }) => {
                                     {periodLabel ? (
                                         <span className="text-xs text-gray-500">{periodLabel}</span>
                                     ) : null}
+                                    <AssignedCaBlock task={task} />
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
                                     <div className="flex items-center gap-2 text-gray-600">
@@ -475,6 +492,7 @@ const TaskTab = ({ username, variants }) => {
                             {periodLabel ? (
                                 <span className="text-xs text-gray-500">{periodLabel}</span>
                             ) : null}
+                            <AssignedCaBlock task={task} />
                         </div>
 
                         <div className="space-y-1.5 mb-3 text-sm">
@@ -687,9 +705,21 @@ const TaskTab = ({ username, variants }) => {
                         )}
                     </div>
 
+                    <div className="min-w-[180px]">
+                        <CustomSelect
+                            options={CA_APPROVAL_OPTIONS}
+                            value={optionByValue(CA_APPROVAL_OPTIONS, caApprovalFilter)}
+                            onChange={(opt) => setCaApprovalFilter(opt?.value || 'all')}
+                            getOptionLabel={(opt) => opt.label}
+                            getOptionValue={(opt) => opt.value}
+                            placeholder="CA Approval"
+                            isClearable={false}
+                        />
+                    </div>
+
                     {/* Refresh Button */}
                     <button
-                        onClick={() => fetchTasks(filterStatus)}
+                        onClick={() => fetchTasks(filterStatus, caApprovalFilter)}
                         className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 transition-all duration-200 flex items-center gap-2 shadow-sm"
                         disabled={loading}
                     >

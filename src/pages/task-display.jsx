@@ -32,6 +32,8 @@ import TaskTable from '../TaskComponent/TaskTable';
 import TaskCards from '../TaskComponent/TaskCards';
 import SettingsModal from '../TaskComponent/SettingsModal';
 import MultiSelectInput from '../components/MultiSelectInput';
+import CustomSelect from '../components/CustomSelect';
+import { optionByValue } from '../utils/customSelectHelpers';
 import AssignedStaffList from '../components/Modals/AssignedStaffList';
 import TaskStatusChange from '../components/Modals/TaskStatusChange';
 import TablePagination from '../components/TablePagination';
@@ -51,6 +53,7 @@ import {
     getTaskCompleteDateValue,
     isTaskCompleteStatus,
 } from '../utils/taskCompleteDate';
+import StaffColumnCell, { formatCaApprovalLabel } from '../TaskComponent/StaffColumnCell';
 
 const getLoggedInUsername = () =>
     localStorage.getItem('user_username') || localStorage.getItem('username') || '';
@@ -73,6 +76,13 @@ const statusOptions = [
 ];
 const DEFAULT_SELECTED_STATUSES = ['in process', 'pending from client', 'pending from department'];
 
+const CA_APPROVAL_OPTIONS = [
+    { value: 'all', label: 'All CA Approval' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'sent', label: 'Sent' },
+    { value: 'complete', label: 'Complete' },
+];
+
 // Persist list view state (filters + pagination + row data) so browser Back
 // restores the same page/UI without an immediate API reset.
 const TASK_LIST_STATE_KEY = 'taskListViewState_v2';
@@ -86,6 +96,7 @@ const buildTaskListFingerprint = (filters = {}, pagination = {}) =>
         service_id: filters.service_id || '',
         status: [...(filters.status || [])].map(String).sort(),
         service_ids: [...(filters.service_ids || [])].map(String).sort(),
+        ca_approval: filters.ca_approval || 'all',
         page_no: Number(pagination.page_no) || 1,
         limit: Number(pagination.limit) || 20,
     });
@@ -366,6 +377,21 @@ const FilterRow = ({ filters, setFilters, serviceOptions, statusOptions, onSearc
                     />
                 </div>
 
+                <div className="min-w-[180px]">
+                    <CustomSelect
+                        options={CA_APPROVAL_OPTIONS}
+                        value={optionByValue(CA_APPROVAL_OPTIONS, filters.ca_approval || 'all')}
+                        onChange={(opt) =>
+                            setFilters((prev) => ({ ...prev, ca_approval: opt?.value || 'all' }))
+                        }
+                        getOptionLabel={(opt) => opt.label}
+                        getOptionValue={(opt) => opt.value}
+                        placeholder="CA Approval"
+                        searchPlaceholder="Search CA approval..."
+                        isClearable={false}
+                    />
+                </div>
+
                 <div className="min-w-[220px]">
                     <MultiSelectInput
                         options={serviceOptions.map((service) => ({ ...service, label: service.name }))}
@@ -562,6 +588,7 @@ const TaskDisplay = () => {
         service_id: '',
         status: DEFAULT_SELECTED_STATUSES,
         service_ids: [],
+        ca_approval: 'all',
         ...(savedListStateRef.current?.filters || {}),
     };
     const initialPagination = {
@@ -780,7 +807,7 @@ const TaskDisplay = () => {
         if (pagination.page_no !== 1) {
             setPagination(prev => ({ ...prev, page_no: 1 }));
         }
-    }, [filters.search, filters.username, filters.firm_id, filters.service_id, filters.status, filters.service_ids]);
+    }, [filters.search, filters.username, filters.firm_id, filters.service_id, filters.status, filters.service_ids, filters.ca_approval]);
 
     // Keep the saved list view state in sync so back-navigation restores it
     useEffect(() => {
@@ -820,7 +847,7 @@ const TaskDisplay = () => {
             return;
         }
         fetchTasks();
-    }, [pagination.page_no, pagination.limit, filters.search, filters.username, filters.firm_id, filters.service_id, filters.status, filters.service_ids]);
+    }, [pagination.page_no, pagination.limit, filters.search, filters.username, filters.firm_id, filters.service_id, filters.status, filters.service_ids, filters.ca_approval]);
 
     // Disable browser auto scroll restoration on this page
     useLayoutEffect(() => enableManualScrollRestoration(), []);
@@ -944,6 +971,9 @@ const TaskDisplay = () => {
             queryParams.append('service_id', nextFilters.service_id || '');
             (nextFilters.status || []).forEach((status) => queryParams.append('status', status));
             (nextFilters.service_ids || []).forEach((serviceId) => queryParams.append('service_ids', serviceId));
+            if (nextFilters.ca_approval && nextFilters.ca_approval !== 'all') {
+                queryParams.append('ca_approval', nextFilters.ca_approval);
+            }
 
             const response = await fetch(`${API_BASE_URL}/task/list?${queryParams.toString()}`, {
                 method: 'GET',
@@ -1284,7 +1314,8 @@ const TaskDisplay = () => {
             firm_id: '',
             service_id: '',
             status: DEFAULT_SELECTED_STATUSES,
-            service_ids: []
+            service_ids: [],
+            ca_approval: 'all',
         };
         skipNextAutoFetchRef.current = true;
         setFilters(resetFilters);
@@ -1385,7 +1416,10 @@ const TaskDisplay = () => {
                             break;
                         case 'staffs': {
                             const staffNames = (task.staffs || []).map((s) => s.name).filter(Boolean);
-                            if (task.has_ca && task.ca?.name) staffNames.push(`CA: ${task.ca.name}`);
+                            if (task.has_ca && task.ca?.name) {
+                                const approval = formatCaApprovalLabel(task.ca_approval);
+                                staffNames.push(`CA: ${task.ca.name} (${approval})`);
+                            }
                             if (task.has_agent && task.agent?.name) staffNames.push(`Agent: ${task.agent.name}`);
                             value = staffNames.join(', ');
                             break;
@@ -1581,111 +1615,16 @@ const TaskDisplay = () => {
                     </span>
                 );
             case 'staffs': {
-                const staffs = task.staffs || [];
                 const staffColId = getStaffColumnId();
                 const showCa = !hiddenFields[`${staffColId}_staff_ca`];
                 const showAgent = !hiddenFields[`${staffColId}_staff_agent`];
-                const caName = showCa && task.has_ca && task.ca
-                    ? safeGetString(task.ca.name || task.ca.username)
-                    : null;
-                const agentName = showAgent && task.has_agent && task.agent
-                    ? safeGetString(task.agent.name || task.agent.username)
-                    : null;
-
-                const renderStaffAvatars = () => {
-                    if (staffs.length === 1) {
-                        const staffName = safeGetString(staffs[0].name || 'S');
-                        return (
-                            <button
-                                type="button"
-                                onClick={() => openUsersModal(staffs, task.service?.name)}
-                                className="flex items-center justify-start cursor-pointer hover:opacity-80 transition-opacity"
-                                title={`Click to view ${staffName}'s details`}
-                            >
-                                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white">
-                                    {staffName.charAt(0)}
-                                </div>
-                            </button>
-                        );
-                    }
-                    if (staffs.length === 2) {
-                        return (
-                            <div className="flex -space-x-2">
-                                {staffs.map((staff, staffIndex) => {
-                                    const staffName = safeGetString(staff.name || 'S');
-                                    return (
-                                        <button
-                                            type="button"
-                                            key={staff.assign_id || staffIndex}
-                                            onClick={() => openUsersModal(staffs, task.service?.name)}
-                                            className="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                                            title={`Click to view ${staffName}'s details`}
-                                        >
-                                            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white">
-                                                {staffName.charAt(0)}
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        );
-                    }
-                    if (staffs.length > 2) {
-                        const showMoreCount = staffs.length - 2;
-                        return (
-                            <div className="flex -space-x-2">
-                                {staffs.slice(0, 2).map((staff, staffIndex) => {
-                                    const staffName = safeGetString(staff.name || 'S');
-                                    return (
-                                        <button
-                                            type="button"
-                                            key={staff.assign_id || staffIndex}
-                                            onClick={() => openUsersModal(staffs, task.service?.name)}
-                                            className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white hover:opacity-80 transition-opacity"
-                                            title={`Click to view all ${staffs.length} staff members`}
-                                        >
-                                            {staffName.charAt(0)}
-                                        </button>
-                                    );
-                                })}
-                                <button
-                                    type="button"
-                                    onClick={() => openUsersModal(staffs, task.service?.name)}
-                                    className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white"
-                                    title={`Click to view all ${staffs.length} staff members`}
-                                >
-                                    +{showMoreCount}
-                                </button>
-                            </div>
-                        );
-                    }
-                    return null;
-                };
-
-                if (staffs.length === 0 && !caName && !agentName) {
-                    return <span className="text-gray-400 text-sm">-</span>;
-                }
-
                 return (
-                    <div className="flex flex-col items-start gap-1.5 min-w-0 max-w-full">
-                        {renderStaffAvatars()}
-                        {caName && (
-                            <span
-                                className="text-[10px] font-semibold text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded truncate max-w-full"
-                                title={`CA: ${caName}`}
-                            >
-                                CA: {caName}
-                            </span>
-                        )}
-                        {agentName && (
-                            <span
-                                className="text-[10px] font-semibold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded truncate max-w-full"
-                                title={`Agent: ${agentName}`}
-                            >
-                                Agent: {agentName}
-                            </span>
-                        )}
-                    </div>
+                    <StaffColumnCell
+                        task={task}
+                        onOpenUsers={openUsersModal}
+                        showCa={showCa}
+                        showAgent={showAgent}
+                    />
                 );
             }
             case 'is_recurring':

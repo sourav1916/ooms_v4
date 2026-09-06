@@ -30,6 +30,7 @@ import AssignedStaffList from '../components/Modals/AssignedStaffList';
 import TaskStatusChange from '../components/Modals/TaskStatusChange';
 import DeleteConfirmationModal from '../components/delete-confirmation';
 import TaskTable from '../TaskComponent/TaskTable';
+import StaffColumnCell from '../TaskComponent/StaffColumnCell';
 import EditTaskModal from '../TaskComponent/EdittaskModal';
 import CustomSelect from '../components/CustomSelect';
 import useDebounce from '../components/useDebounce';
@@ -175,6 +176,13 @@ const IN_PROCESS_STATUS_OPTION =
 
 const IN_PROCESS_ONLY_CATEGORIES = ['OD', 'DT', 'D7', 'FT'];
 
+const CA_APPROVAL_OPTIONS = [
+  { value: 'all', label: 'All CA Approval' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'complete', label: 'Complete' },
+];
+
 const TASK_DETAILED_CACHE_PREFIX = 'taskDetailedViewState:';
 const TASK_DETAILED_SCROLL_ID = 'task-table-scroll';
 
@@ -184,6 +192,7 @@ const buildDetailedFingerprint = ({
   staffUsername = '',
   search = '',
   statusValue = '',
+  caApproval = 'all',
   page_no = 1,
   limit = 20,
 }) =>
@@ -193,6 +202,7 @@ const buildDetailedFingerprint = ({
     staffUsername: staffUsername || '',
     search: search || '',
     statusValue: statusValue || '',
+    caApproval: caApproval || 'all',
     page_no: Number(page_no) || 1,
     limit: Number(limit) || 20,
   });
@@ -367,6 +377,9 @@ const mapReportTaskToDisplayTask = (row) => {
     has_ca: Boolean(assignment.ca),
     has_agent: Boolean(assignment.agent),
     ca: assignment.ca || null,
+    ca_approval: assignment.ca
+      ? (assignment.ca_approval ?? row.ca_approval ?? null)
+      : null,
     agent: assignment.agent || null,
     in_user: row.in_user || assignment.in_user || null,
     is_recurring: details.task_kind === 'recurring',
@@ -487,12 +500,17 @@ const TaskDetailedPage = ({ category: categoryProp } = {}) => {
   )
     ? restoredStatusFilter
     : defaultStatusFilter;
+  const initialCaApproval =
+    typeof savedViewRef.current?.caApprovalFilter === 'string'
+      ? savedViewRef.current.caApprovalFilter
+      : 'all';
   const initialFingerprint = buildDetailedFingerprint({
     category,
     serviceId,
     staffUsername,
     search: initialSearch,
     statusValue: statusForInit?.value || '',
+    caApproval: initialCaApproval,
     page_no: initialPagination.page_no,
     limit: initialPagination.limit,
   });
@@ -532,6 +550,9 @@ const TaskDetailedPage = ({ category: categoryProp } = {}) => {
   const debouncedSearch = useDebounce(search, 400);
   const [statusFilter, setStatusFilter] = useState(() =>
     canRestoreList ? statusForInit : defaultStatusFilter,
+  );
+  const [caApprovalFilter, setCaApprovalFilter] = useState(() =>
+    canRestoreList ? initialCaApproval : 'all',
   );
   const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [activeRowDropdown, setActiveRowDropdown] = useState(null);
@@ -581,6 +602,7 @@ const TaskDetailedPage = ({ category: categoryProp } = {}) => {
       statusFilter: statusFilter
         ? { value: statusFilter.value, label: statusFilter.label || statusFilter.name }
         : null,
+      caApprovalFilter,
       pagination: {
         page_no: pagination.page_no,
         limit: pagination.limit,
@@ -594,6 +616,7 @@ const TaskDetailedPage = ({ category: categoryProp } = {}) => {
         staffUsername,
         search: debouncedSearch,
         statusValue: statusFilter?.value || '',
+        caApproval: caApprovalFilter,
         page_no: pagination.page_no,
         limit: pagination.limit,
       }),
@@ -607,6 +630,7 @@ const TaskDetailedPage = ({ category: categoryProp } = {}) => {
     staffUsername,
     debouncedSearch,
     statusFilter,
+    caApprovalFilter,
     pagination.page_no,
     pagination.limit,
     pagination.total,
@@ -885,6 +909,9 @@ const TaskDetailedPage = ({ category: categoryProp } = {}) => {
       } else if (statusFilter?.value) {
         paramsObj.set('status_filter', statusFilter.value);
       }
+      if (caApprovalFilter && caApprovalFilter !== 'all') {
+        paramsObj.set('ca_approval', caApprovalFilter);
+      }
 
       const response = await fetch(
         `${API_BASE_URL}/report/task-detailed?${paramsObj.toString()}`,
@@ -917,7 +944,7 @@ const TaskDetailedPage = ({ category: categoryProp } = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [category, serviceId, staffUsername, pagination.page_no, pagination.limit, debouncedSearch, statusFilter]);
+  }, [category, serviceId, staffUsername, pagination.page_no, pagination.limit, debouncedSearch, statusFilter, caApprovalFilter]);
 
   useEffect(() => {
     if (skipNextFetchRef.current) {
@@ -936,7 +963,7 @@ const TaskDetailedPage = ({ category: categoryProp } = {}) => {
       return;
     }
     setPagination((prev) => (prev.page_no === 1 ? prev : { ...prev, page_no: 1 }));
-  }, [category, serviceId, staffUsername, debouncedSearch, statusFilter]);
+  }, [category, serviceId, staffUsername, debouncedSearch, statusFilter, caApprovalFilter]);
 
   const handleTaskSelect = (taskId) => {
     setSelectedTasks((prev) => {
@@ -1243,53 +1270,11 @@ const TaskDetailedPage = ({ category: categoryProp } = {}) => {
         );
       }
       case 'staffs': {
-        const staffs = task.staffs || [];
-        const caName =
-          task.has_ca && task.ca ? safeGetString(task.ca.name || task.ca.username) : null;
-        const agentName =
-          task.has_agent && task.agent
-            ? safeGetString(task.agent.name || task.agent.username)
-            : null;
-
-        if (!staffs.length && !caName && !agentName) {
-          return <span className="text-gray-400 text-sm">-</span>;
-        }
-
         return (
-          <div className="flex flex-col items-start gap-1.5">
-            {staffs.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => openUsers(staffs, task.service?.name || '')}
-                className="flex -space-x-2"
-              >
-                {staffs.slice(0, 2).map((staff, idx) => (
-                  <div
-                    key={staff.username || idx}
-                    className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white"
-                    title={staff.name}
-                  >
-                    {(staff.name || 'S').charAt(0).toUpperCase()}
-                  </div>
-                ))}
-                {staffs.length > 2 ? (
-                  <div className="w-8 h-8 bg-gray-200 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-gray-700">
-                    +{staffs.length - 2}
-                  </div>
-                ) : null}
-              </button>
-            ) : null}
-            {caName ? (
-              <span className="text-[10px] font-semibold text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded">
-                CA: {caName}
-              </span>
-            ) : null}
-            {agentName ? (
-              <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded">
-                Agent: {agentName}
-              </span>
-            ) : null}
-          </div>
+          <StaffColumnCell
+            task={task}
+            onOpenUsers={openUsers}
+          />
         );
       }
       case 'status': {
@@ -1493,10 +1478,23 @@ const TaskDetailedPage = ({ category: categoryProp } = {}) => {
                 />
               </div>
               ) : null}
+              <div className="xl:col-span-2">
+                <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                  CA Approval
+                </label>
+                <CustomSelect
+                  options={CA_APPROVAL_OPTIONS}
+                  value={optionByValue(CA_APPROVAL_OPTIONS, caApprovalFilter)}
+                  onChange={(opt) => setCaApprovalFilter(opt?.value || 'all')}
+                  placeholder="CA Approval"
+                  isClearable={false}
+                  isSearchable={false}
+                />
+              </div>
               <div className={`sm:col-span-2 ${
                 IN_PROCESS_ONLY_CATEGORIES.includes(category)
-                  ? 'xl:col-span-6'
-                  : 'xl:col-span-4'
+                  ? 'xl:col-span-4'
+                  : 'xl:col-span-2'
               }`}>
                 <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1">
                   <FiSearch className="w-3 h-3" />
